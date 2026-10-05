@@ -79,9 +79,12 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
 .dsearch input{ width:100%; background:var(--card2); border:0; border-radius:10px;
   padding:10px 12px; font-size:16px; color:var(--tx); }
 .dsearch input::placeholder{ color:var(--mut); }
-.drawer .df{ padding:12px 16px calc(12px + env(safe-area-inset-bottom)); }
-.dr.solid{ background:var(--card2); border-radius:14px; }
-.dr.solid:active{ background:var(--card3); }
+.drawer .df{ display:flex; justify-content:flex-end; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); }
+.gearbtn{ width:44px; height:44px; border-radius:50%; background:var(--card2);
+  display:flex; align-items:center; justify-content:center; }
+.gearbtn:active{ background:var(--card3); }
+.gearbtn svg{ width:22px; height:22px; stroke:var(--mut); fill:none; stroke-width:1.7;
+  stroke-linecap:round; stroke-linejoin:round; }
 
 /* Web: drawer opens by default at a fifth of the page */
 @media (min-width:900px){

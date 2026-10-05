@@ -143,9 +143,8 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch }: DrawerP
           ))}
         </div>
         <div className="df">
-          <button className="dr solid" onClick={() => onPick('Settings')}>
+          <button className="gearbtn" onClick={() => onPick('Settings')} aria-label="Settings">
             <Icon name="gear" />
-            <span className="g">Settings</span>
           </button>
         </div>
       </aside>
