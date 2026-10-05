@@ -69,12 +69,13 @@ const TABS: { id: TabId; label: string; Icon: () => JSX.Element }[] = [
 ];
 
 export default function TabBar({ active, onChange }: TabBarProps) {
+  const idx = Math.max(0, TABS.findIndex((t) => t.id === active));
   return (
     <nav className="tbar">
+      <span className="ind" aria-hidden="true" style={{ transform: `translateX(${idx * 100}%)` }} />
       {TABS.map(({ id, label, Icon }) => (
         <button key={id} className={active === id ? 'on' : ''} onClick={() => onChange(id)} aria-label={label}>
           <Icon />
-          <span>{label}</span>
         </button>
       ))}
     </nav>

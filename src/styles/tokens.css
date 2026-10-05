@@ -42,11 +42,15 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
 .hb svg{ width:22px; height:22px; }
 
 /* Tab bar: fixed bottom, blurred, 6 tabs */
-.tbar{ display:flex; background:color-mix(in srgb, var(--card) 92%, transparent);
+.tbar{ position:relative; display:flex; background:color-mix(in srgb, var(--card) 92%, transparent);
   backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
-  border-top:1px solid var(--hair); padding:8px 2px calc(10px + env(safe-area-inset-bottom)); z-index:20; }
-.tbar button{ flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
-  color:var(--mut); font-size:10px; padding:4px 0; }
+  border-radius:26px 26px 0 0; padding:10px 6px calc(12px + env(safe-area-inset-bottom)); z-index:20; }
+.tbar .ind{ position:absolute; top:10px; bottom:calc(12px + env(safe-area-inset-bottom)); left:6px;
+  width:calc((100% - 12px)/6); border-radius:18px;
+  background:color-mix(in srgb, var(--ac) 16%, transparent);
+  transition:transform .25s ease; }
+.tbar button{ position:relative; flex:1; display:flex; align-items:center; justify-content:center;
+  color:var(--mut); padding:10px 0; }
 .tbar button.on{ color:var(--ac); }
 .tbar button svg{ width:22px; height:22px; }
 
