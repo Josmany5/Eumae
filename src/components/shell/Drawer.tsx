@@ -113,12 +113,10 @@ interface DrawerProps {
 
 export default function Drawer({ open, onClose, tab, onPick, onSearch }: DrawerProps) {
   const [q, setQ] = useState('');
-  const [ql, setQl] = useState('');
 
   const submit = () => {
     onSearch();
     setQ('');
-    setQl('');
   };
 
   return (
@@ -135,16 +133,6 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch }: DrawerP
               onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
             />
           </div>
-          {tab === 'library' && (
-            <div className="dsearch">
-              <input
-                value={ql}
-                onChange={(e) => setQl(e.target.value)}
-                placeholder="Search Library..."
-                onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-              />
-            </div>
-          )}
           {MENU[tab].map((s, i) => (
             <div key={i}>
               {s.title ? <div className="ds">{s.title}</div> : null}
