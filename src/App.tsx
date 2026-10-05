@@ -16,23 +16,31 @@ const TAB_TITLES: Record<TabId, string> = {
 
 export default function App() {
   const [tab, setTab] = useState<TabId>('chat');
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(() => window.matchMedia('(min-width: 900px)').matches);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const notify = useCallback((msg: string) => setToast(msg), []);
+  const pickDrawer = useCallback((label: string) => {
+    setDrawerOpen(false);
+    notify(`${label} arrives with its screen`);
+  }, [notify]);
+  const searchDrawer = useCallback(() => {
+    setDrawerOpen(false);
+    notify('Search arrives in Stage 6');
+  }, [notify]);
 
   return (
     <div id="app">
       <Header
         title={TAB_TITLES[tab]}
-        onMenu={() => setDrawerOpen(true)}
+        onMenu={() => setDrawerOpen((v) => !v)}
         onActivity={() => setSheetOpen(true)}
         onSettings={() => notify('Settings arrives in Stage 6')}
       />
       <main id="mn" />
       <TabBar active={tab} onChange={setTab} />
-      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} tab={tab} onPick={pickDrawer} onSearch={searchDrawer} />
       <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Activity" />
       <Toast message={toast} onDone={() => setToast(null)} />
     </div>
