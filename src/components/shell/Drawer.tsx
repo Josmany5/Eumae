@@ -129,7 +129,7 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch }: DrawerP
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search Eumae..."
+              placeholder="Search"
               onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
             />
           </div>
