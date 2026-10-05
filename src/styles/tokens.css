@@ -35,8 +35,8 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
 /* Header: blurred, menu / title / activity / gear */
 .hd{ display:flex; align-items:center; gap:4px; padding:calc(10px + env(safe-area-inset-top)) 12px 8px;
   background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--hair); z-index:20; }
-.hd .t{ flex:1; text-align:center; font-size:19px; font-weight:700; }
+  z-index:20; }
+.hd .t{ flex:1; }
 .hb{ width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--tx); }
 .hb:active{ background:var(--card2); }
 .hb svg{ width:22px; height:22px; }
@@ -65,8 +65,7 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
   background:var(--card); transform:translateX(-110%); transition:transform .28s ease;
   display:flex; flex-direction:column; }
 .drawer.open{ transform:translateX(0); }
-.drawer .dh{ padding:calc(16px + env(safe-area-inset-top)) 20px 12px; font-size:19px; font-weight:700;
-  border-bottom:1px solid var(--hair); }
+.drawer .dh{ padding:calc(16px + env(safe-area-inset-top)) 20px 12px; font-size:19px; font-weight:700; }
 .drawer .db{ flex:1; overflow-y:auto; padding:8px 0 calc(16px + env(safe-area-inset-bottom)); }
 .dr{ display:flex; align-items:center; gap:12px; width:100%; background:none; padding:12px 20px;
   font-size:16px; text-align:left; border-radius:0; color:var(--tx); }
