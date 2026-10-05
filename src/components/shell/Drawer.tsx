@@ -43,7 +43,6 @@ const MENU: Record<TabId, MenuSection[]> = {
     { title: 'Recent chats', items: [] },
     { title: '', items: [{ label: 'Archive', icon: 'doc' }] },
     { title: 'Project shortcuts', items: [] },
-    { title: '', items: [{ label: 'Settings', icon: 'gear' }] },
   ],
   console: [
     { title: 'Console', items: [
@@ -53,7 +52,6 @@ const MENU: Record<TabId, MenuSection[]> = {
       { label: 'Pinned project', icon: 'fol' },
       { label: 'Customize', icon: 'gear' },
     ] },
-    { title: '', items: [{ label: 'Settings', icon: 'gear' }] },
   ],
   studio: [
     { title: 'Studio', items: [
@@ -64,7 +62,6 @@ const MENU: Record<TabId, MenuSection[]> = {
       { label: 'Flows', icon: 'zap' },
       { label: 'Project filter', icon: 'fol' },
     ] },
-    { title: '', items: [{ label: 'Settings', icon: 'gear' }] },
   ],
   library: [
     { title: 'Library', items: [
@@ -77,7 +74,6 @@ const MENU: Record<TabId, MenuSection[]> = {
       { label: 'Sources', icon: 'lnk' },
       { label: 'Trash', icon: 'doc' },
     ] },
-    { title: '', items: [{ label: 'Settings', icon: 'gear' }] },
   ],
   classroom: [
     { title: 'Classroom', items: [
@@ -88,7 +84,6 @@ const MENU: Record<TabId, MenuSection[]> = {
       { label: 'Progress', icon: 'str' },
       { label: 'Sources', icon: 'db' },
     ] },
-    { title: '', items: [{ label: 'Settings', icon: 'gear' }] },
   ],
   guild: [
     { title: 'Guild', items: [
@@ -98,7 +93,6 @@ const MENU: Record<TabId, MenuSection[]> = {
       { label: 'Shared work', icon: 'fol' },
       { label: 'Activity', icon: 'clk' },
     ] },
-    { title: '', items: [{ label: 'Settings', icon: 'gear' }] },
   ],
 };
 
@@ -147,6 +141,12 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch }: DrawerP
               )}
             </div>
           ))}
+        </div>
+        <div className="df">
+          <button className="dr solid" onClick={() => onPick('Settings')}>
+            <Icon name="gear" />
+            <span className="g">Settings</span>
+          </button>
         </div>
       </aside>
     </>
