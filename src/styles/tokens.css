@@ -65,8 +65,8 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
   background:var(--card); transform:translateX(-110%); transition:transform .28s ease;
   display:flex; flex-direction:column; }
 .drawer.open{ transform:translateX(0); }
-.dh{ padding:calc(16px + env(safe-area-inset-top)) 20px 12px; font-size:19px; font-weight:700; }
-.db{ flex:1; overflow-y:auto; padding:8px 0 calc(16px + env(safe-area-inset-bottom)); }
+.drawer .dh{ padding:calc(16px + env(safe-area-inset-top)) 20px 12px; font-size:19px; font-weight:700; }
+.drawer .db{ flex:1; overflow-y:auto; padding:8px 0 calc(16px + env(safe-area-inset-bottom)); }
 .dr{ display:flex; align-items:center; gap:12px; width:100%; background:none; padding:12px 20px;
   font-size:16px; text-align:left; border-radius:0; color:var(--tx); }
 .dr:active{ background:var(--card2); }
@@ -79,23 +79,16 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
 .dsearch input{ width:100%; background:var(--card2); border:0; border-radius:10px;
   padding:10px 12px; font-size:16px; color:var(--tx); }
 .dsearch input::placeholder{ color:var(--mut); }
-.df{ display:flex; justify-content:flex-end; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); }
+.drawer .df{ display:flex; justify-content:flex-end; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); }
 .gearbtn{ width:44px; height:44px; border-radius:50%; background:transparent;
   border:1px solid var(--hair); display:flex; align-items:center; justify-content:center; }
 .gearbtn:active{ background:var(--card2); }
 .gearbtn svg{ width:22px; height:22px; stroke:var(--tx); fill:none; stroke-width:1.7;
   stroke-linecap:round; stroke-linejoin:round; }
 
-/* Desktop: full-width app, docked sidebar */
-.belowhead{ display:flex; flex:1; min-height:0; }
-.maincol{ flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; }
-.sidebardock{ display:none; }
+/* Web: drawer opens by default at a fifth of the page */
 @media (min-width:900px){
-  #app{ max-width:none; }
-  .sidebardock{ display:flex; flex-direction:column; width:min(320px,20%); flex:none;
-    min-height:0; background:var(--bg); overflow:hidden; }
-  .dscrim, .drawer{ display:none !important; }
-  .tbar{ max-width:520px; margin-left:auto; margin-right:auto; }
+  .drawer{ width:min(320px,20%); }
 }
 
 /* Settings: full-screen overlay page */

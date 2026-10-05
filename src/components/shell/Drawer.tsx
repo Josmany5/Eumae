@@ -79,7 +79,7 @@ interface DrawerProps {
   onSearch: () => void;
 }
 
-export function DrawerBody({ tab, onPick, onSearch }: { tab: TabId; onPick: (label: string) => void; onSearch: () => void }) {
+export default function Drawer({ open, onClose, tab, onPick, onSearch }: DrawerProps) {
   const [q, setQ] = useState('');
 
   const submit = () => {
@@ -89,47 +89,39 @@ export function DrawerBody({ tab, onPick, onSearch }: { tab: TabId; onPick: (lab
 
   return (
     <>
-      <div className="dh">Eumae</div>
-      <div className="db">
-        <div className="dsearch">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search"
-            onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-          />
-        </div>
-        {MENU[tab].map((s, i) => (
-          <div key={i}>
-            {s.title ? <div className="ds">{s.title}</div> : null}
-            {s.items.length === 0 ? (
-              <div className="dr ghost"><span className="g">Nothing here yet</span></div>
-            ) : (
-              s.items.map((it) => (
-                <button key={it.label} className="dr" onClick={() => onPick(it.label)}>
-                  <Icon name={it.icon} />
-                  <span className="g">{it.label}</span>
-                </button>
-              ))
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="df">
-        <button className="gearbtn" onClick={() => onPick('Settings')} aria-label="Settings">
-          <Icon name="gear" />
-        </button>
-      </div>
-    </>
-  );
-}
-
-export default function Drawer({ open, onClose, tab, onPick, onSearch }: DrawerProps) {
-  return (
-    <>
       <div className={`dscrim${open ? ' open' : ''}`} onClick={onClose} />
       <aside className={`drawer${open ? ' open' : ''}`}>
-        <DrawerBody tab={tab} onPick={onPick} onSearch={onSearch} />
+        <div className="dh">Eumae</div>
+        <div className="db">
+          <div className="dsearch">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search"
+              onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+            />
+          </div>
+          {MENU[tab].map((s, i) => (
+            <div key={i}>
+              {s.title ? <div className="ds">{s.title}</div> : null}
+              {s.items.length === 0 ? (
+                <div className="dr ghost"><span className="g">Nothing here yet</span></div>
+              ) : (
+                s.items.map((it) => (
+                  <button key={it.label} className="dr" onClick={() => onPick(it.label)}>
+                    <Icon name={it.icon} />
+                    <span className="g">{it.label}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="df">
+          <button className="gearbtn" onClick={() => onPick('Settings')} aria-label="Settings">
+            <Icon name="gear" />
+          </button>
+        </div>
       </aside>
     </>
   );
