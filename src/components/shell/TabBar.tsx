@@ -76,6 +76,7 @@ export default function TabBar({ active, onChange }: TabBarProps) {
       {TABS.map(({ id, label, Icon }) => (
         <button key={id} className={active === id ? 'on' : ''} onClick={() => onChange(id)} aria-label={label}>
           <Icon />
+          <span>{label}</span>
         </button>
       ))}
     </nav>
