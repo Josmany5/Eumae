@@ -21,7 +21,8 @@ dependency for accounts.
 **Stage: pre-alpha (0.1).**
 
 - **Real:** the shell, navigation (rail / drawer / tab bar / pages), Settings (22
-  rows, 23 panes), the composer, the `+` menu, the right panel, the theme.
+  rows, 23 panes), the composer, the `+` menu, the right panel, the theme, and the
+  activity log behind Settings → Logs.
 - **Not real:** AI answers, accounts, chat persistence, Studio artifacts, any test
   suite, any CI. `src/store/store.tsx`'s `EumaeState` is still an empty interface.
 
@@ -30,9 +31,10 @@ dependency for accounts.
 1. **Comments explain *why*, never *what*.** Read half a dozen before writing new
    ones. The house style is prose that names the bug, the mockup line, or the
    reasoning that produced the decision.
-2. **One door per room.** One file input (`App.tsx`), one log writer (Phase 2),
-   one reader per storage key. Twice now a control grew a second way to do the
-   same thing, and that *was* the bug. Prefer shared context over a second path.
+2. **One door per room.** One file input (`App.tsx`), one log writer
+   (`src/log.ts`; everything else calls `logEv`), one reader per storage key.
+   Twice now a control grew a second way to do the same thing, and that *was* the
+   bug. Prefer shared context over a second path.
 3. **Never invent data.** Where the mockup shows a fake password, a session list,
    a spend figure or fake log rows, this codebase shows the true state ("Local
    only", "Nothing logged here yet", "No charge today") and names the gap out
@@ -48,21 +50,22 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (2771 lines across src/ + api/)
+### Code map (2884 lines across src/ + api/)
 
 | File | Lines | Role |
 | --- | --- | --- |
-| `src/components/settings/Settings.tsx` | 686 | the whole Settings overlay; also owns `useStored`, export/wipe |
+| `src/components/settings/Settings.tsx` | 696 | the whole Settings overlay; also owns `useStored`, export/wipe |
 | `api/ai.ts` | 501 | the only server code; Vercel handler |
-| `src/App.tsx` | 269 | the shell: tab + page stack + panel + drawers + file input |
-| `src/components/shell/AddSheet.tsx` | 175 | the composer's `+` menu ("Add to this chat") |
+| `src/App.tsx` | 289 | the shell: tab + page stack + panel + drawers + file input |
+| `src/components/shell/AddSheet.tsx` | 179 | the composer's `+` menu ("Add to this chat") |
 | `src/components/shell/RightPanel.tsx` | 149 | the right panel (Context / Code / Preview) |
 | `src/components/shell/pageMenu.ts` | 125 | `PAGE_MENU` — each tab's rail rows |
 | `src/components/shell/Composer.tsx` | 107 | input row, chip, `+`, paperclip, mic, send |
 | `src/nav.ts` | 105 | `NavContext`: go/back, goTab, panel, turn, pickFile |
 | `src/components/shell/Sidebar.tsx` | 89 | desktop rail |
+| `src/log.ts` | 78 | the activity log: `LOG_AREAS`, the one writer, the read |
 | `src/pages/SearchPage.tsx` | 70 | the only real sub-page |
-| `src/screens/ChatScreen.tsx` | 68 | the only real tab screen |
+| `src/screens/ChatScreen.tsx` | 75 | the only real tab screen |
 | `src/components/shell/icons.tsx` | 69 | the icon registry |
 | `src/components/shell/Drawer.tsx` | 65 | phone drawer |
 | `src/components/shell/Header.tsx` | 37 | title, hamburger, activity, back |
@@ -152,7 +155,7 @@ dependency for accounts.
 
 ## 3. What exists today, piece by piece
 
-### Shell — `src/App.tsx` (269), `src/nav.ts` (104)
+### Shell — `src/App.tsx` (289), `src/nav.ts` (105)
 
 `App` owns: the active tab, the page stack, rail-collapsed, drawer-open,
 settings-open, the toast, the panel (open + view), `refs` (attached items), the
@@ -164,13 +167,13 @@ add sheet, `turn`, and the single `<input type="file">`.
 `Turn = {mode, role, skill, thinking, model}` with the mockup's opening values in
 `DEFAULT_TURN`.
 
-**Known defect to fix in Phase 4:** `App.tsx:212` — the header's activity button
+**Known defect to fix in Phase 4:** `App.tsx:232` — the header's activity button
 calls `openPanel('context')`, but the button means *activity*. It should open the
 panel's Activity zone.
 
 ### Screens — `src/screens/`
 
-- `ChatScreen.tsx` (68) is the only real one: a local `msgs` array, four greeting
+- `ChatScreen.tsx` (75) is the only real one: a local `msgs` array, four greeting
   chips, and `send()` that appends a **user** bubble. There is no assistant reply
   and no backend. It also infers the mode from the prompt text (two regexes,
   mockup line 878): "make/build/create/draft/write me/design" → Build,
@@ -190,15 +193,32 @@ panel's Activity zone.
   + Settings), filters by name, and opens them; it grows for free as tabs and
   pages land. It is the model for what a page looks like.
 
-### Settings — `src/components/settings/Settings.tsx` (686)
+### The log — `src/log.ts` (78)
+
+One module, one writer. `LOG_AREAS` (the `All` view plus the six tabs, Library
+included), `LogEntry` (`{ id, area, text, ts, status }` — the id is the writer's
+counter, so a list has a stable key), `logEv(draft)` as the *only* thing that
+appends, `logAll()`, and `useLog(area)` over `useSyncExternalStore`. No provider:
+the log sits at module scope because its readers are not each other's parents.
+`status` is the mockup's dot (CSS 115–116) re-named for what it claims — green
+happened, amber waiting, red failed.
+
+Who writes today: a message sent (`ChatScreen`), a file attached or detached
+(`App`), a pick in the `+` menu ("Set mode to Build"), a page opened (`App.go`).
+`App.tsx`'s `AREA_OF` maps a tab to the area its pages file under and is typed
+`Record<TabId, LogFiled>`, so a seventh tab fails the build instead of quietly
+filing nothing. It is memory only, and the pane says that out loud.
+
+### Settings — `src/components/settings/Settings.tsx` (696)
 
 An overlay (`open` / `onClose` / `notify` props): a rail of rows in five groups
 (Eumae, App, Account, Data, Support), 22 rows → 23 titles → 23 panes. The extra
 title is `main`, the mobile root list (account card plus the same rows), which no
 rail row points at because on desktop the rail sits beside the pane. The titles
-map is at line 18; `LOG_AREAS` is at line 131.
+map is at line 19. The Logs areas are not kept here — `LOG_AREAS` lives in
+`src/log.ts` (see the log subsection above), which is the point of it.
 
-It also owns storage: `useStored` (line 55), `exportData` (writes one JSON file of
+It also owns storage: `useStored` (line 56), `exportData` (writes one JSON file of
 every `eumae:` key) and `wipeData` (deletes them). Keys in use: `mems`, `grants`,
 `autos`, `theme`, `voice`, `notif`, `skill-websearch`, `personalization`, `a11y`.
 
@@ -214,7 +234,7 @@ What is real versus named-out-loud-gap:
 | Billing | "No charge today"; Model spend lives in Usage, shown never blocking |
 | Security | "Signed in as: This device", "Local only", "there is no password to leak" |
 | Data controls | really downloads the JSON as one file (Export my data); Restore notifies "arrives in a later stage"; Delete everything wipes and reloads |
-| **Logs** | the seven `LOG_AREAS` pills over "Nothing logged here yet." — **Phase 2 fills this in** (lines 643–658, the comment there says so) |
+| **Logs** | real: the seven `LOG_AREAS` pills filter `src/log.ts`, newest first. Each row is a status dot, the sentence, then `area · time`. Empty until something happens, and the pane says so in its own words |
 | Legal | three rows, each notifying "publishes with the first release" |
 | About | Version / Stage / Your data |
 
@@ -242,7 +262,7 @@ the code/eye branch (133–145) and `.pEmpty*` in favour of zones.
 - `Composer.tsx` (107): chip, `+` (openAdd), auto-growing textarea, paperclip
   (`pickFile`), **mic (inert — no handler)**, send. A lone `/`
   opens the add menu (mockup line 1278). Enter sends, Shift+Enter newlines.
-- `AddSheet.tsx` (175): five sections that decide *how* Eumae answers (Mode, Role,
+- `AddSheet.tsx` (179): five sections that decide *how* Eumae answers (Mode, Role,
   Skill, Thinking, Model) plus the Context rows. Picking closes the sheet.
   `ROLES = ['Default','Coach','Teacher','Sparring partner']` are the mockup's
   ROLEDEF; user-created roles arrive with Studio.
@@ -270,13 +290,17 @@ Design tokens plus every component's styles in one file, class-named per compone
 
 ## 4. Locked decisions (with the reason — don't relitigate without cause)
 
-1. **Library is a log area.** `LOG_AREAS = ['All','Chat','Console','Studio','Library','Classroom','Guild']`
-   (`Settings.tsx:131`), in tab-bar order. Filing and publishing events log to
-   `Library`. Areas must match that list exactly or the filter silently drops rows.
-2. **One activity log, one writer.** Phase 2 creates `src/log.ts` where `logEv(...)`
-   is the *only* thing that writes an entry. Three consumers read it: the panel's
-   Activity zone, Console's Activity card, Settings → Logs. No component invents
-   its own log.
+1. **Library is a log area.** `LOG_AREAS` lives in `src/log.ts`, in tab-bar order,
+   with `Library` in it — the mockup's own filter row (line 1434) left that one
+   out. Filing and publishing events log to `Library`, which is what makes it the
+   most audit-worthy of the six. Settings imports the list instead of keeping a
+   copy: a second copy is how a filter starts silently dropping rows.
+2. **One activity log, one writer.** `src/log.ts` exists: `logEv({ area, text })` is
+   the *only* thing that writes an entry, and it stamps the time and owns the id,
+   so no component can invent either. Readers use `useLog(area)`. Settings → Logs
+   is the one reader wired today; the panel's Activity zone and Console's Activity
+   card read that same list when those surfaces exist (Phase 4, and Console's own
+   build). Neither was faked in the meantime — no component invents its own log.
 3. **Two doors, two jobs** (a bug forced this rule): `+` sets the chat up
    (Mode/Role/Skill/Thinking/Model + Context) and never attaches; the paperclip
    attaches a photo or PDF into this message. The composer's third door, `ctx`,
@@ -337,7 +361,12 @@ argument for a test suite:
    and its own test *method*.
 3. **SSR render check.** `renderToStaticMarkup` from `react-dom/server` over the
    settings overlay to assert the boot value reaches the Appearance row with no
-   browser involved.
+   browser involved. `useLog` passes `logAll` as its server snapshot so this keeps
+   working now that the Logs pane reads the log.
+4. **One log writer** (added in Phase 2). `grep -rn 'logEv(' src` should show the
+   definition plus one call site per event and nothing else, and `entries =`
+   should appear only inside `src/log.ts`. Same shape as check 1: a source scan for
+   the rule this codebase keeps re-learning (§9).
 
 **Never claim a UI behaviour works because it typechecks.** Build it, and open
 `dist/index.html` or `npm run preview` when the claim is visual.
@@ -355,22 +384,31 @@ Account group, `LOG_AREAS` including Library, six icons, `.ftabs` and the
 reduce-motion rule. The export pane was folded into Data controls afterwards and
 its row removed, so the rail is 22 rows today (§4.11).
 
-**Phase 2 — `src/log.ts`. Next up.**
+**Phase 2 — `src/log.ts`. ✅ Done.**
 
-- One module: an entry type (`{ area, text, ts, status }`), `logEv(entry)` as the
-  single writer, a read (`logAll()` / a hook) and a subscribe so components
-  re-render. Keep it framework-light; a small context plus a listener is enough.
-- **Export `LOG_AREAS` from here** and have `Settings.tsx` import it, so the areas
-  are one list, not two copies that can drift.
-- Real events only to start: file attached / detached, mode·role·skill changed in
-  the `+` menu, message sent, page opened. `Chat` for chat actions; `Library` for
-  filing and publishing; `Studio` / `Console` / `Guild` / `Classroom` as those
-  screens gain behaviour.
-- Wire the three readers: Settings → Logs (`Settings.tsx:643-658`) filtered by
-  `logArea`; the panel's Activity zone; Console's Activity card.
-- Persistence: keep it in memory first. If it is stored, it goes through
-  `useStored` so export/wipe keep working — and think before logging anything
-  that would make exports large.
+- `src/log.ts` (78): `LOG_AREAS`, `LogEntry` (`{ id, area, text, ts, status }` — the
+  id is the writer's counter, so a list has a stable key), `logEv(draft)` as the
+  single writer, `logAll()`, and `useLog(area)` over `useSyncExternalStore`. No
+  provider and no context: the log lives at module scope precisely because its
+  readers are not each other's parents, so nothing had to be prop-drilled for it.
+- `LOG_AREAS` moved here and `Settings.tsx` imports it — the two copies became one.
+- Writers, all of them real events: a message sent (`ChatScreen`), a file attached
+  or detached (`App`), a pick in the `+` menu — "Set mode to Build", same for role,
+  thinking and model — and a page opened (`App.go`, filed under the tab that pushed
+  it, via `AREA_OF`). **Tab switches are deliberately not logged:** a tab is a
+  screen, and five of the six still have nothing to say. Their areas fill in as
+  those screens gain behaviour, which is the rule the original phase asked for.
+- One of the three readers is wired — Settings → Logs, filtered by the pill you're
+  on. The panel's Activity zone waits for Phase 4's rebuild and Console's Activity
+  card waits for Console: both read the same `useLog`, so wiring them later is
+  reading, not rebuilding. Building them now would have meant designing two
+  surfaces this plan already owns.
+- Persistence: memory only, on purpose. Storing it would put a growing list inside
+  every export and inside "Delete everything", so the pane says out loud that rows
+  live in this session.
+- Verified: build green at 54 modules (one more than before — this file), CSS
+  23.13 kB, JS 270.30 kB; `dist/assets/*.css` carries `.hi`, `.dt` and the three
+  dots; `grep` says `logEv` has one definition and five call sites.
 
 **Phase 3 — the `+` menu's turn window.** The five sections and `setTurn` exist;
 what is missing is the other half of the contract. Decide and write down the
@@ -379,7 +417,7 @@ request shape (`{ mode, role, skill, thinking, model, refs, text }`) now, becaus
 
 **Phase 4 — panel rebuild.**
 
-- `App.tsx:212`: `openPanel('context')` → `'activity'`.
+- `App.tsx:232`: `openPanel('context')` → `'activity'`.
 - Move `PanelView` to the zoned model (`'activity' | 'context'`) — or keep three
   views with the first renamed; decide once and document it in `nav.ts`.
 - Delete: `TABS` (`RightPanel.tsx:14-18`), the `.ptabs` / `.ptab` row (63-76), the

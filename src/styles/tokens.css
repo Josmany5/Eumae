@@ -142,6 +142,15 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
 /* Settings page pieces (ported from the mockup) */
 .card{ background:var(--card); border-radius:16px; padding:14px; margin:10px 0; }
 .s{ font-size:14px; } .xs{ font-size:12px; } .m{ color:var(--mut); }
+/* A log row: the status dot, then the sentence and its house-keeping line.
+   Straight from the mockup (115-116), except that its dot classes are renamed
+   for what they claim — ok / warn / bad rather than ok / in / bd. */
+.hi{ display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--hair); font-size:15px; }
+.hi:last-child{ border:0; }
+.dt{ width:9px; height:9px; border-radius:50%; margin-top:7px; flex:none; }
+.dt.ok{ background:var(--gr); }
+.dt.warn{ background:var(--am); }
+.dt.bad{ background:var(--rd); }
 .sec{ font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--mut); margin:22px 0 2px; font-weight:600; }
 .sg{ background:var(--card); border-radius:16px; margin:10px 0; overflow:hidden; }
 .sr{ display:flex; align-items:center; gap:12px; width:100%; background:none; padding:13px 16px;

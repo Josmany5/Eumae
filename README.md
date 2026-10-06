@@ -3,9 +3,9 @@
 One window, six views — **Chat, Console, Studio, Library, Classroom, Guild** — plus Settings, a
 right-hand panel, and a desktop rail that carries each tab's own menu.
 
-**Status: pre-alpha (0.1).** The shell, the navigation and Settings are real and
-verified. The AI, accounts and storage are not wired yet: sending a message
-appends a local bubble, and the only thing that survives a reload is what
+**Status: pre-alpha (0.1).** The shell, the navigation, Settings and the activity
+log are real and verified. The AI, accounts and storage are not wired yet: sending
+a message appends a local bubble, and the only thing that survives a reload is what
 Settings writes to `localStorage`. There is no test suite, no linter and no CI —
 see *What's missing* at the bottom.
 
@@ -46,6 +46,7 @@ index.html                 shell HTML + the pre-paint theme boot script
 src/main.tsx               mounts App
 src/App.tsx                the shell: tab, page stack, panel, drawers
 src/nav.ts                 NavContext — go/back, goTab, panel, turn, pickFile
+src/log.ts                 the activity log — LOG_AREAS, logEv (the one writer), useLog
 src/store/store.tsx        state skeleton (EumaeState is still empty)
 src/store/types.ts         Actor / ActionStamp / SavedItem
 src/screens/               one component per tab; index.tsx maps TabId -> screen
@@ -69,7 +70,7 @@ src/styles/tokens.css      design tokens + every component's styles
 - **Settings is an overlay, not a page:** 22 rows → 23 titles → 23 panes, across
   five groups (Eumae, App, Account, Data, Support). The extra title is `main`, the
   mobile root list; no rail row points at it.
-- **Storage convention.** `useStored(key, initial)` (`Settings.tsx:55`) writes
+- **Storage convention.** `useStored(key, initial)` (`Settings.tsx:56`) writes
   `eumae:<key>` as JSON. Export and "Delete everything" both filter on that
   `eumae:` prefix, so the prefix *is* the contract — a preference that skips it
   silently escapes backups.
@@ -78,6 +79,11 @@ src/styles/tokens.css      design tokens + every component's styles
   otherwise paint the dark default and then flip.
 - **Icons** come from one registry (`components/shell/icons.tsx`); a row names an
   icon, and an unknown name renders nothing.
+- **One log, one writer.** `src/log.ts` owns the activity log: `logEv` is the only
+  thing that appends to it, `useLog(area)` is the only read, and the areas come from
+  one list the filter and the writers share. Settings → Logs is the reader today;
+  the panel's Activity zone and Console's Activity card read the same list when those
+  surfaces land. It is memory-only for now, and the pane says so.
 - **Honesty rule.** Where the mockup invents data — a password, active sessions, a
   spend figure, fake log rows — this codebase shows the real state and names the
   gap instead. Keep it that way.
@@ -98,7 +104,7 @@ several times and only the *last* definition is live. `AGENTS.md` explains.
 ## Roadmap
 
 1. ✅ Settings caught up to the mockup — 8 new panes, Account group, real Logs row
-2. ⬜ `src/log.ts` — one activity log with one writer, seven areas
+2. ✅ One activity log (`src/log.ts`) — one writer, seven areas, read back in Settings → Logs
 3. ⬜ The `+` menu's turn window (Mode / Role / Skill / Thinking / Model)
 4. ⬜ Panel rebuild — zoned (Activity / Context); the Context·Code·Preview pill row goes
 5. ⬜ Chips — read the current turn back above the input
@@ -114,6 +120,8 @@ is exotic, and all of it is explained in `AGENTS.md` §8.
   named in `AGENTS.md` §5.
 - **A linter / formatter** (ESLint + Prettier), so style stops being something
   anyone thinks about.
+- **Persistence.** Messages and the activity log both live in memory: a reload
+  forgets them, and neither is in an export.
 - **`.env.example`**, and an error that names a missing key instead of a 500.
 - **An error boundary**, so a crash is a message and not a white screen.
 - **No `main` branch** — the default branch is `stage/0-foundation`.

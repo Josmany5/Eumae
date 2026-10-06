@@ -1,6 +1,7 @@
 import Sheet from './Sheet';
 import { Icon } from './icons';
 import { useNav, type Model, type Mode, type Thinking } from '../../nav';
+import { logEv } from '../../log';
 
 /** The composer's `+` menu — the mockup's `plusSh()`, titled "Add to this chat"
  *  (line 1280).
@@ -71,9 +72,12 @@ function Row({
 export default function AddSheet({ open, onClose, onPage }: AddSheetProps) {
   const { turn, setTurn, pickFile } = useNav();
 
-  /** Pick one, and the sheet is done — the chip above the input is the receipt. */
-  const pick = (patch: Partial<typeof turn>) => () => {
+  /** Pick one, and the sheet is done — the chip above the input is the receipt,
+   *  the log is the record. Each row says what it set, so the Logs pane reads as
+   *  a sentence and not as a code. */
+  const pick = (patch: Partial<typeof turn>, text: string) => () => {
     setTurn(patch);
+    logEv({ area: 'Chat', text });
     onClose();
   };
 
@@ -87,7 +91,7 @@ export default function AddSheet({ open, onClose, onPage }: AddSheetProps) {
             label={m.id}
             desc={m.desc}
             on={turn.mode === m.id}
-            onClick={pick({ mode: m.id })}
+            onClick={pick({ mode: m.id }, `Set mode to ${m.id}`)}
           />
         ))}
       </div>
@@ -101,7 +105,7 @@ export default function AddSheet({ open, onClose, onPage }: AddSheetProps) {
             /* The mockup stores "Default" as '' and tests `ROLE9 || "Default"`,
                so the two spellings have to meet somewhere — this is it. */
             on={(turn.role || 'Default') === r}
-            onClick={pick({ role: r === 'Default' ? '' : r })}
+            onClick={pick({ role: r === 'Default' ? '' : r }, `Set role to ${r}`)}
           />
         ))}
         <button
@@ -127,7 +131,7 @@ export default function AddSheet({ open, onClose, onPage }: AddSheetProps) {
       <h3 className="sec">Thinking</h3>
       <div className="shGroup">
         {THINKING.map((t) => (
-          <Row key={t} label={t} on={turn.thinking === t} onClick={pick({ thinking: t })} />
+          <Row key={t} label={t} on={turn.thinking === t} onClick={pick({ thinking: t }, `Set thinking to ${t}`)} />
         ))}
       </div>
 
@@ -139,7 +143,7 @@ export default function AddSheet({ open, onClose, onPage }: AddSheetProps) {
             label={m.id}
             desc={m.desc}
             on={turn.model === m.id}
-            onClick={pick({ model: m.id })}
+            onClick={pick({ model: m.id }, `Set model to ${m.id}`)}
           />
         ))}
       </div>

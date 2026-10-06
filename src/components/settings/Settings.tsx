@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '../shell/icons';
+import { LOG_AREAS, useLog, type LogArea } from '../../log';
 
 // There are no accounts yet (§7), so there is no real name or address to show. This
 // is a placeholder on purpose: the file is public and the app is deployed, so a real
@@ -123,13 +124,6 @@ function localeFacts() {
 
 const LANG_FACTS = localeFacts();
 
-/* The areas a log row can carry — the six tabs in their tab-bar order, plus
-   Library. `All` is a view of the list, not an area, which is the distinction
-   Phase 2's writer needs: it is the list of things that can be filed and
-   published, so it is the most audit-worthy area of the six. Keeping the order
-   identical to the tab bar means the filter row reads like the app. */
-const LOG_AREAS = ['All', 'Chat', 'Console', 'Studio', 'Library', 'Classroom', 'Guild'];
-
 interface Mem { id: string; t: string }
 interface Auto { id: string; n: string; w: string; on: boolean }
 
@@ -183,7 +177,10 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
   // the type scale is px-based, so larger/bold text are stored preferences the
   // pane admits are not applied yet, and voice answers wait on replies.
   const [a11y, setA11y] = useStored('a11y', { larger: false, bold: false, reduce: false, voice: true });
-  const [logArea, setLogArea] = useState('All');
+  const [logArea, setLogArea] = useState<LogArea>('All');
+  // Which pill is lit is view state and is never stored; the list it filters
+  // lives in src/log.ts, which is not Settings' to keep.
+  const logRows = useLog(logArea);
 
   // Mobile: a full-page sheet opened from the list. Desktop: a modal whose left
   // rail *is* the list, so it opens on the first section instead.
@@ -648,12 +645,25 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
               ))}
             </div>
             <div className="card" style={{ padding: '6px 14px' }}>
-              {/* Phase 2 reads src/log.ts here and filters on logArea. The mockup
-                  seeded invented rows; an empty pane is the honest version until
-                  something actually writes. */}
-              <div className="s m">Nothing logged here yet.</div>
+              {/* The real log (src/log.ts), filtered by the pill you're on. The
+                  mockup seeded invented rows here (line 1435); this pane shows
+                  what actually happened, and stays empty — in its own words —
+                  until something does. */}
+              {logRows.length ? (
+                logRows.map((l) => (
+                  <div className="hi" key={l.id}>
+                    <span className={`dt ${l.status}`} />
+                    <div className="s">
+                      {l.text}
+                      <div className="xs m">{l.area} · {l.ts}</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="s m">Nothing logged here yet.</div>
+              )}
             </div>
-            <div className="s m" style={{ marginTop: 8 }}>One log, filtered by area.</div>
+            <div className="s m" style={{ marginTop: 8 }}>One log, filtered by area. It lives in this session — nothing is stored or exported yet.</div>
           </>
         )}
 

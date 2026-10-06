@@ -11,12 +11,26 @@ import { Icon } from './components/shell/icons';
 import { SCREENS, LABELS } from './screens';
 import { PAGES, pageTitle } from './pages';
 import { NavContext, DEFAULT_TURN, type Nav, type PanelView, type Turn } from './nav';
+import { logEv, type LogFiled } from './log';
 
 /** A sub-page pushed on top of the current tab — the mockup's pageSt entry. */
 interface Pushed {
   page: string;
   arg?: unknown;
 }
+
+/** Which log area each tab files under (src/log.ts). A page belongs to the
+ *  screen that pushed it, so this is what an opened page logs as. Typed as
+ *  `Record<TabId, …>` on purpose: a seventh tab fails the build here instead of
+ *  quietly filing nothing. */
+const AREA_OF: Record<TabId, LogFiled> = {
+  chat: 'Chat',
+  console: 'Console',
+  studio: 'Studio',
+  library: 'Library',
+  classroom: 'Classroom',
+  guild: 'Guild',
+};
 
 export default function App() {
   const [tab, setTab] = useState<TabId>('chat');
@@ -71,12 +85,14 @@ export default function App() {
       }
       setRefs((list) => [...list, r]);
       notify(`Attached ${r.label}`);
+      logEv({ area: 'Chat', text: `Attached ${r.label}` });
     },
     [refs, notify],
   );
 
   const detach = useCallback((label: string) => {
     setRefs((list) => list.filter((r) => r.label !== label));
+    logEv({ area: 'Chat', text: `Detached ${label}` });
   }, []);
 
   /* What the paperclip and the menu's file row both land on. The mockup reads
@@ -118,9 +134,13 @@ export default function App() {
     setTab(t);
   }, []);
 
-  const go = useCallback((page: string, arg?: unknown) => {
-    setStack((s) => [...s, arg === undefined ? { page } : { page, arg }]);
-  }, []);
+  const go = useCallback(
+    (page: string, arg?: unknown) => {
+      setStack((s) => [...s, arg === undefined ? { page } : { page, arg }]);
+      logEv({ area: AREA_OF[tab], text: `Opened ${pageTitle(page)}` });
+    },
+    [tab],
+  );
 
   const back = useCallback(() => setStack((s) => s.slice(0, -1)), []);
   const openSettings = useCallback(() => setSettingsOpen(true), []);

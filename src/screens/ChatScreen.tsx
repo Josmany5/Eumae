@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Composer from '../components/shell/Composer';
 import { useNav } from '../nav';
+import { logEv } from '../log';
 
 interface Msg {
   id: number;
@@ -30,6 +31,12 @@ export default function ChatScreen() {
     else if (/(learn|teach me|explain|how does|what is a)/i.test(text)) setTurn({ mode: 'Learn' });
 
     setMsgs((m) => [...m, { id: Date.now(), role: 'you', text }]);
+
+    // What happened is a message landing in this thread — there is no reply to
+    // record yet, because nothing answers (Phase 6 wires /api/ai). The clip is
+    // the opening of it: a log row is a sentence, not a transcript.
+    const clip = text.length > 60 ? `${text.slice(0, 60)}…` : text;
+    logEv({ area: 'Chat', text: `Sent: ${clip}` });
   };
 
   return (
