@@ -1,6 +1,7 @@
 interface HeaderProps {
   onMenu: () => void;
   onActivity: () => void;
+  title: string;
 }
 
 function MenuIcon() {
@@ -19,13 +20,13 @@ function ActivityIcon() {
   );
 }
 
-export default function Header({ onMenu, onActivity }: HeaderProps) {
+export default function Header({ onMenu, onActivity, title }: HeaderProps) {
   return (
     <header className="hd">
       <button className="hb" onClick={onMenu} aria-label="Menu">
         <MenuIcon />
       </button>
-      <div className="t" />
+      <div className="t">{title}</div>
       <button className="hb" onClick={onActivity} aria-label="Activity">
         <ActivityIcon />
       </button>

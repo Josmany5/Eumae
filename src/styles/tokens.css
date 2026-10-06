@@ -28,15 +28,17 @@ body{
 #root{ height:100%; }
 button{ font:inherit; color:inherit; background:none; border:none; padding:0; cursor:pointer; }
 
-/* App shell: centered column, header / scroll area / tab bar */
-#app{ max-width:520px; height:100%; margin:0 auto; position:relative; display:flex; flex-direction:column; background:var(--bg); }
-#mn{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+/* App shell: one column on mobile; rail + content on desktop.
+   Defined once — no screen touches this, so no screen can resize the chrome. */
+#app{ height:100%; display:grid; grid-template-columns:1fr; background:var(--bg); }
+.col{ min-width:0; min-height:0; display:flex; flex-direction:column; background:var(--bg); }
+#mn{ flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
 
-/* Header: blurred, menu / title / activity / gear */
+/* Header: mobile only. Desktop navigates from the rail. */
 .hd{ display:flex; align-items:center; gap:4px; padding:calc(10px + env(safe-area-inset-top)) 12px 8px;
   background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
   z-index:20; }
-.hd .t{ flex:1; }
+.hd .t{ flex:1; text-align:center; font-size:16px; font-weight:600; }
 .hb{ width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--tx); }
 .hb:active{ background:var(--card2); }
 .hb svg{ width:22px; height:22px; }
@@ -86,9 +88,9 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
 .gearbtn svg{ width:22px; height:22px; stroke:var(--tx); fill:none; stroke-width:1.7;
   stroke-linecap:round; stroke-linejoin:round; }
 
-/* Web: drawer opens by default at a fifth of the page */
+/* Desktop: the drawer retires in favour of the rail. */
 @media (min-width:900px){
-  .drawer{ width:min(320px,20%); }
+  .drawer, .dscrim{ display:none; }
 }
 
 /* Settings: full-screen overlay page */
@@ -163,3 +165,89 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
   font-size:15px; font-weight:500; z-index:60; pointer-events:none;
   opacity:0; transition:opacity .25s ease, transform .25s ease; white-space:nowrap; }
 .tst.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ─── Web app shell ─────────────────────────────────────────────────────────
+   The rail is the web home for the six tabs. It replaces the phone's bottom
+   tab bar + slide-out drawer, and it lives here once — no screen touches it.
+   Scale also tightens here: the mockup is drawn at phone scale (16px base,
+   44px rows, 22px icons); a web app wants ~14px / ~34px / ~17px. */
+
+.sb{ display:none; }
+
+@media (min-width:900px){
+  #app{ grid-template-columns:264px 1fr; }
+  .hd, .tbar{ display:none; }
+  body{ font-size:14px; }
+
+  .sb{ display:flex; flex-direction:column; gap:2px; min-height:0;
+    background:var(--card); border-right:1px solid var(--hair);
+    padding:12px 10px calc(12px + env(safe-area-inset-bottom)); }
+  .sbHead{ padding:6px 8px 12px; }
+  .sbMark{ font-size:16px; font-weight:700; letter-spacing:-.01em; }
+  .sbNew{ display:flex; align-items:center; gap:10px; width:100%; padding:9px 10px; margin-bottom:8px;
+    border-radius:10px; background:var(--card2); color:var(--tx); font-size:14px; }
+  .sbNew:hover{ background:var(--card3); }
+  .sbSearch{ padding:0 2px 8px; }
+  .sbSearch input{ width:100%; background:var(--card2); border:0; border-radius:9px;
+    padding:8px 10px; font-size:13px; color:var(--tx); }
+  .sbSearch input::placeholder{ color:var(--mut); }
+  .sbNav{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:1px; }
+  .sbItem{ display:flex; align-items:center; gap:10px; width:100%; padding:8px 10px; text-align:left;
+    border-radius:9px; font-size:14px; color:var(--mut); }
+  .sbItem:hover{ background:var(--card2); color:var(--tx); }
+  .sbItem.on{ background:var(--acsoft); color:var(--ac); font-weight:600; }
+  .sbItem svg{ width:17px; height:17px; flex:none; stroke:currentColor; fill:none; stroke-width:1.7;
+    stroke-linecap:round; stroke-linejoin:round; }
+  .sbFoot{ margin-top:8px; padding-top:8px; border-top:1px solid var(--hair); }
+
+  /* Settings opens inside the content area, capped — not a giant full-bleed page. */
+  .settings{ left:264px; }
+  .shead, .sbody{ width:100%; max-width:760px; margin:0 auto; }
+  .sr{ padding:10px 14px; font-size:14px; }
+  .card{ padding:12px; border-radius:12px; }
+}
+
+/* ─── Screens ─────────────────────────────────────────────────────────────── */
+
+.scEmpty{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; gap:6px; padding:40px 24px; }
+.scEmptyK{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ac); }
+.scEmptyT{ margin:0; font-size:20px; font-weight:700; letter-spacing:-.01em; }
+.scEmptyN{ margin:0; max-width:420px; font-size:14px; color:var(--mut); }
+
+.chat{ flex:1; min-height:0; display:flex; flex-direction:column; }
+.chatScroll{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; padding:24px 20px; }
+.hello{ margin:auto; max-width:520px; text-align:center; }
+.helloT{ margin:0 0 8px; font-size:24px; font-weight:700; letter-spacing:-.02em; }
+.helloN{ margin:0 0 20px; font-size:14px; color:var(--mut); }
+.chips{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+.chip{ padding:8px 14px; border-radius:99px; font-size:13px; color:var(--tx);
+  background:var(--card); border:1px solid var(--hair); }
+.chip:hover{ background:var(--card2); }
+.thread{ width:100%; max-width:720px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+.msg{ display:flex; }
+.msg.you{ justify-content:flex-end; }
+.bubble{ max-width:80%; padding:10px 14px; border-radius:16px; font-size:14px; line-height:1.5;
+  background:var(--card); }
+.msg.you .bubble{ background:var(--ac); color:#fff; }
+.chatFoot{ flex:none; padding:0 20px calc(14px + env(safe-area-inset-bottom)); }
+.chatFoot .cmp, .hint{ max-width:720px; margin-left:auto; margin-right:auto; }
+.hint{ margin-top:6px; text-align:center; font-size:11px; color:var(--mut); }
+
+.cmp{ display:flex; flex-direction:column; gap:8px; padding:10px 12px;
+  background:var(--card); border:1px solid var(--hair); border-radius:16px; }
+.cmpIn{ width:100%; max-height:200px; padding:2px; resize:none; border:0; background:none;
+  color:var(--tx); font-size:14px; line-height:1.5; }
+.cmpIn:focus{ outline:none; }
+.cmpIn::placeholder{ color:var(--mut); }
+.cmpBar{ display:flex; align-items:center; gap:4px; }
+.cmpIcon{ width:30px; height:30px; border-radius:8px; display:inline-flex; align-items:center;
+  justify-content:center; color:var(--mut); }
+.cmpIcon:hover{ background:var(--card2); color:var(--tx); }
+.cmpIcon svg{ width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:1.8;
+  stroke-linecap:round; stroke-linejoin:round; }
+.cmpSend{ margin-left:auto; width:30px; height:30px; border-radius:9px; display:inline-flex;
+  align-items:center; justify-content:center; background:var(--ac); color:#fff; }
+.cmpSend:disabled{ opacity:.35; cursor:default; }
+.cmpSend svg{ width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:2;
+  stroke-linecap:round; stroke-linejoin:round; }
