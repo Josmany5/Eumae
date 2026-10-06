@@ -6,11 +6,11 @@ import AddSheet from './components/shell/AddSheet';
 import Toast from './components/shell/Toast';
 import Settings from './components/settings/Settings';
 import Sidebar from './components/shell/Sidebar';
-import RightPanel, { type Ref } from './components/shell/RightPanel';
+import RightPanel from './components/shell/RightPanel';
 import { Icon } from './components/shell/icons';
 import { SCREENS, LABELS } from './screens';
 import { PAGES, pageTitle } from './pages';
-import { NavContext, DEFAULT_TURN, type Nav, type PanelView, type Turn } from './nav';
+import { NavContext, DEFAULT_TURN, type Nav, type PanelView, type Ref, type Turn } from './nav';
 import { logEv } from './log';
 
 /** A sub-page pushed on top of the current tab — the mockup's pageSt entry. */
@@ -146,6 +146,8 @@ export default function App() {
       openPanel,
       closePanel,
       openAdd,
+      refs,
+      detach,
       turn,
       setTurn,
       pickFile,
@@ -162,6 +164,8 @@ export default function App() {
       openPanel,
       closePanel,
       openAdd,
+      refs,
+      detach,
       turn,
       setTurn,
       pickFile,
@@ -251,8 +255,6 @@ export default function App() {
           onView={setPanelView}
           onClose={closePanel}
           onToggle={togglePanel}
-          refs={refs}
-          onDetach={detach}
         />
 
         <Drawer

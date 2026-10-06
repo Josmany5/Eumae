@@ -102,8 +102,12 @@ export default function AddSheet({ open, onClose, onPage }: AddSheetProps) {
           <Row
             key={r}
             label={r}
-            /* The mockup stores "Default" as '' and tests `ROLE9 || "Default"`,
-               so the two spellings have to meet somewhere — this is it. */
+            /* '' is this app's spelling of the mockup's "Default": its picker
+               opens on '' (1218), its checkmark tests `ROLE9 || "Default"`
+               (1284), and picking the Default row writes the literal word.
+               Keeping one spelling means the chip hides Default the same way
+               the mockup's does (1270) and a request sends no Role line at all
+               rather than "Role: Default." (request.ts). */
             on={(turn.role || 'Default') === r}
             onClick={pick({ role: r === 'Default' ? '' : r }, `Set role to ${r}`)}
           />

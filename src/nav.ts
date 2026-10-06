@@ -11,6 +11,19 @@ import type { TabId } from './components/shell/TabBar';
  *  between them. */
 export type PanelView = 'context' | 'activity' | 'studio';
 
+/** A reference attached to this conversation — the mockup's `S.refs` entry. It
+ *  lives with the chat's other state rather than in the panel that draws it:
+ *  App holds the list, the panel lists it, and the request built when a message
+ *  is sent carries it (src/request.ts). */
+export interface Ref {
+  label: string;
+  icon: string;
+  /** A data URL, when the reference is something you can look at — the photo the
+   *  paperclip read. The mockup shows the same thumbnail in its attach chip
+   *  (line 1664), so a photo reads as a photo and not as a filename. */
+  url?: string;
+}
+
 /** How Eumae answers on this chat. The mockup keeps these five in module scope
  *  (`MODE`, `ROLE9`, `SKS9`, `THINK9`, `MODEL9` — line 1280) and shows them in
  *  two places: the `+` menu sets them, the chip above the input reads them back.
@@ -76,6 +89,14 @@ export interface Nav {
    *  panel's Context view, not here. */
   openAdd: () => void;
 
+  /** What is attached to this chat. Written by App — the one file input and the
+   *  panel's detach button — and read by the panel that lists it and by the
+   *  request a sent message becomes (src/request.ts). The panel used to be
+   *  handed this list as a prop; it reads it here instead, because the send path
+   *  is a second reader that no prop can reach. */
+  refs: Ref[];
+  detach: (label: string) => void;
+
   /** How this chat answers. Set by that menu, read back by the chip above the
    *  input — the two ends of one piece of state, so it lives with both. */
   turn: Turn;
@@ -100,6 +121,8 @@ export const NavContext = createContext<Nav>({
   openPanel: () => {},
   closePanel: () => {},
   openAdd: () => {},
+  refs: [],
+  detach: () => {},
   turn: DEFAULT_TURN,
   setTurn: () => {},
   pickFile: () => {},

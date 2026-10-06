@@ -1,16 +1,6 @@
 import { Icon } from './icons';
 import { useLog } from '../../log';
-import type { PanelView } from '../../nav';
-
-/** A reference attached to the conversation — the mockup's `S.refs` entry. */
-export interface Ref {
-  label: string;
-  icon: string;
-  /** A data URL, when the reference is something you can look at — the photo the
-   *  paperclip read. The mockup shows the same thumbnail in its attach chip
-   *  (line 1664), so a photo reads as a photo and not as a filename. */
-  url?: string;
-}
+import { useNav, type PanelView } from '../../nav';
 
 const TABS: { id: PanelView; label: string; icon: string }[] = [
   { id: 'context', label: 'Context', icon: 'ctx' },
@@ -29,8 +19,6 @@ interface RightPanelProps {
   onClose: () => void;
   /** Opens it again from the corner handle. */
   onToggle: () => void;
-  refs: Ref[];
-  onDetach: (label: string) => void;
 }
 
 /** The right panel — a new surface, not in the mockup.
@@ -44,8 +32,13 @@ interface RightPanelProps {
  *  Context and Activity are the two readings with real data today: what is in
  *  play, and what actually happened. Studio is an honest empty — Studio owns
  *  artifacts, so its sandbox stays empty until an artifact exists to show,
- *  rather than inventing a preview nothing feeds. */
-export default function RightPanel({ open, view, onView, onClose, onToggle, refs, onDetach }: RightPanelProps) {
+ *  rather than inventing a preview nothing feeds.
+ *
+ *  Refs and detach come from `useNav()` rather than props: this panel is one of
+ *  two readers of that list, and the other one is the request built when a
+ *  message is sent (src/request.ts), which no prop can reach. */
+export default function RightPanel({ open, view, onView, onClose, onToggle }: RightPanelProps) {
+  const { refs, detach } = useNav();
   /* The log's second reader, after Settings → Logs. Read on every render rather
      than only on the Activity reading, so the list is already correct the
      moment you switch to it and the log never has to be copied into state. */
@@ -107,7 +100,7 @@ export default function RightPanel({ open, view, onView, onClose, onToggle, refs
                       <span className="g">{r.label}</span>
                       <button
                         className="pRm"
-                        onClick={() => onDetach(r.label)}
+                        onClick={() => detach(r.label)}
                         aria-label={`Detach ${r.label}`}
                         title="Detach"
                       >

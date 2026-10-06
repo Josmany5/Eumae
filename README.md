@@ -45,8 +45,10 @@ api/ai.ts                  the only server code (a Vercel function)
 index.html                 shell HTML + the pre-paint theme boot script
 src/main.tsx               mounts App
 src/App.tsx                the shell: tab, page stack, panel, drawers
-src/nav.ts                 NavContext — go/back, goTab, panel, turn, pickFile
+src/nav.ts                 NavContext — go/back, goTab, panel, turn, refs, pickFile
 src/log.ts                 the activity log — LOG_AREAS, logEv (the one writer), useLog
+src/request.ts             the request /api/ai will be handed — the turn as prose,
+                           the model as a server key, the thread as its window
 src/store/store.tsx        state skeleton (EumaeState is still empty)
 src/store/types.ts         Actor / ActionStamp / SavedItem
 src/screens/               one component per tab; index.tsx maps TabId -> screen
@@ -92,6 +94,14 @@ src/styles/tokens.css      design tokens + every component's styles
   Activity (what happened — the log), and Studio (what came out of it). The header's
   clock button opens it straight on Activity; the corner handle reopens it on
   whatever you read last.
+- **The turn becomes a request in one place.** `src/request.ts` is the whole
+  contract with `/api/ai`: the five `+` choices don't travel as fields — they
+  become a prose settings block inside `systemPrompt` — and the model travels as
+  the server's own key (`lite` / `best`), never as the `Fast` / `Best` label the
+  chip shows, because the server treats an unknown key as a silent default rather
+  than an error. `Auto` sends no key. Each message keeps the body it was sent
+  with — built at send, so changing your mind later cannot rewrite how an earlier
+  message was asked. Nothing posts it yet; that is Phase 6.
 - **Honesty rule.** Where the mockup invents data — a password, active sessions, a
   spend figure, fake log rows — this codebase shows the real state and names the
   gap instead. Keep it that way.
@@ -113,7 +123,7 @@ several times and only the *last* definition is live. `AGENTS.md` explains.
 
 1. ✅ Settings caught up to the mockup — 8 new panes, Account group, real Logs row
 2. ✅ One activity log (`src/log.ts`) — one writer, seven areas, read back in Settings → Logs
-3. ⬜ The `+` menu's turn window (Mode / Role / Skill / Thinking / Model)
+3. ✅ The request shape — `src/request.ts` defines what a sent turn becomes for `/api/ai`
 4. ✅ Panel rebuilt — Context · Activity · Studio readings; the clock button opens Activity
 5. ⬜ Chips — read the current turn back above the input
 6. ⬜ Sandbox, Studio artifacts, and `/api/ai` wired to the thread
@@ -130,6 +140,10 @@ is exotic, and all of it is explained in `AGENTS.md` §8.
   anyone thinks about.
 - **Persistence.** Messages and the activity log both live in memory: a reload
   forgets them, and neither is in an export.
+- **The POST.** `src/request.ts` defines the body `/api/ai` will receive, and
+  every message already builds and keeps its own — but nothing sends one yet. The
+  fetch, the streaming reader for `chatStream`, and the auth screen the endpoint
+  requires are Phase 6.
 - **`.env.example`**, and an error that names a missing key instead of a 500.
 - **An error boundary**, so a crash is a message and not a white screen.
 - **No `main` branch** — the default branch is `stage/0-foundation`.
