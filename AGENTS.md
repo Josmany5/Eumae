@@ -62,7 +62,7 @@ dependency for accounts.
 | `src/nav.ts` | 104 | `NavContext`: go/back, goTab, panel, turn, pickFile |
 | `src/components/shell/Sidebar.tsx` | 89 | desktop rail |
 | `src/pages/SearchPage.tsx` | 70 | the only real sub-page |
-| `src/screens/ChatScreen.tsx` | 69 | the only real tab screen |
+| `src/screens/ChatScreen.tsx` | 68 | the only real tab screen |
 | `src/components/shell/icons.tsx` | 69 | the icon registry |
 | `src/components/shell/Drawer.tsx` | 65 | phone drawer |
 | `src/components/shell/Header.tsx` | 37 | title, hamburger, activity, back |
@@ -165,7 +165,7 @@ panel's Activity zone.
 
 ### Screens — `src/screens/`
 
-- `ChatScreen.tsx` (69) is the only real one: a local `msgs` array, four greeting
+- `ChatScreen.tsx` (68) is the only real one: a local `msgs` array, four greeting
   chips, and `send()` that appends a **user** bubble. There is no assistant reply
   and no backend. It also infers the mode from the prompt text (two regexes,
   mockup line 878): "make/build/create/draft/write me/design" → Build,

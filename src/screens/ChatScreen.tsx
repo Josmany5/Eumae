@@ -62,7 +62,6 @@ export default function ChatScreen() {
 
       <div className="chatFoot">
         <Composer onSend={send} />
-        <div className="hint">Enter to send · Shift+Enter for a new line</div>
       </div>
     </div>
   );

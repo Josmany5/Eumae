@@ -80,7 +80,11 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
 .dscrim{ position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:41;
   opacity:0; pointer-events:none; transition:opacity .28s ease; }
 .dscrim.open{ opacity:1; pointer-events:auto; }
-.drawer{ position:fixed; top:0; bottom:0; left:0; width:min(320px,50%); z-index:42;
+/* `min(320px,50%)` measured 195px on a 390px phone — a column of clipped
+   labels. Most of the screen now, capped so a tablet doesn't stretch it. This
+   is mobile-only: the desktop rail retires the drawer at 900px, so the rail's
+   264px grid column is untouched. */
+.drawer{ position:fixed; top:0; bottom:0; left:0; width:min(340px,86%); z-index:42;
   background:var(--card); transform:translateX(-110%); transition:transform .28s ease;
   display:flex; flex-direction:column; }
 .drawer.open{ transform:translateX(0); }
@@ -284,11 +288,21 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
 .msg.you .bubble{ background:var(--ac); color:#fff; }
 /* The thread scrolls *under* the composer, so the last line fades out instead of
    being guillotined by the pill. */
-.chatFoot{ position:relative; flex:none; padding:0 20px calc(14px + env(safe-area-inset-bottom)); }
+/* The composer rides the tab bar rather than floating above a caption. Mobile
+   first: `.tbar` already carries the bottom margin and the home-indicator inset,
+   so any padding here stacks a second gap on top of it. The caption that used to
+   sit under the pill is gone — ChatScreen renders the composer alone, and the
+   keys are a keyboard convention, not a thing to label. */
+.chatFoot{ position:relative; flex:none; padding:0 20px 6px; }
 .chatFoot::before{ content:""; position:absolute; left:0; right:0; top:-30px; height:30px;
   background:linear-gradient(to bottom, transparent, var(--bg)); pointer-events:none; }
-.chatFoot .cmpWrap, .hint{ max-width:720px; margin-left:auto; margin-right:auto; }
-.hint{ margin-top:6px; text-align:center; font-size:11px; color:var(--mut); }
+.chatFoot .cmpWrap{ max-width:720px; margin-left:auto; margin-right:auto; }
+
+/* Desktop has no tab bar under the composer — the window edge is the floor, so
+   the padding comes back. */
+@media (min-width:900px){
+  .chatFoot{ padding-bottom:calc(14px + env(safe-area-inset-bottom)); }
+}
 
 /* The chip above the input — the mockup's `chipsHTML` (line 1270). It reads the
    state the `+` menu writes and opens that same menu, which is what keeps the
