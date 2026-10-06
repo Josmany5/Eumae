@@ -58,8 +58,8 @@ dependency for accounts.
 | `src/components/shell/AddSheet.tsx` | 175 | the composer's `+` menu ("Add to this chat") |
 | `src/components/shell/RightPanel.tsx` | 149 | the right panel (Context / Code / Preview) |
 | `src/components/shell/pageMenu.ts` | 125 | `PAGE_MENU` — each tab's rail rows |
-| `src/components/shell/Composer.tsx` | 113 | input row, chip, `+`, paperclip, `ctx`, mic, send |
-| `src/nav.ts` | 104 | `NavContext`: go/back, goTab, panel, turn, pickFile |
+| `src/components/shell/Composer.tsx` | 107 | input row, chip, `+`, paperclip, mic, send |
+| `src/nav.ts` | 105 | `NavContext`: go/back, goTab, panel, turn, pickFile |
 | `src/components/shell/Sidebar.tsx` | 89 | desktop rail |
 | `src/pages/SearchPage.tsx` | 70 | the only real sub-page |
 | `src/screens/ChatScreen.tsx` | 68 | the only real tab screen |
@@ -239,8 +239,8 @@ the code/eye branch (133–145) and `.pEmpty*` in favour of zones.
 
 ### The rest of the shell
 
-- `Composer.tsx` (113): chip, `+` (openAdd), auto-growing textarea, paperclip
-  (`pickFile`), `ctx` (togglePanel), **mic (inert — no handler)**, send. A lone `/`
+- `Composer.tsx` (107): chip, `+` (openAdd), auto-growing textarea, paperclip
+  (`pickFile`), **mic (inert — no handler)**, send. A lone `/`
   opens the add menu (mockup line 1278). Enter sends, Shift+Enter newlines.
 - `AddSheet.tsx` (175): five sections that decide *how* Eumae answers (Mode, Role,
   Skill, Thinking, Model) plus the Context rows. Picking closes the sheet.
@@ -277,10 +277,12 @@ Design tokens plus every component's styles in one file, class-named per compone
    is the *only* thing that writes an entry. Three consumers read it: the panel's
    Activity zone, Console's Activity card, Settings → Logs. No component invents
    its own log.
-3. **Three doors, three jobs** (a bug forced this rule): `+` sets the chat up
+3. **Two doors, two jobs** (a bug forced this rule): `+` sets the chat up
    (Mode/Role/Skill/Thinking/Model + Context) and never attaches; the paperclip
-   attaches a photo or PDF; `ctx` reads back what's attached. Attaching must not
-   open the panel — that was the bug when two controls shared one room.
+   attaches a photo or PDF into this message. The composer's third door, `ctx`,
+   was retired to match the mockup's row, so what's attached is read back in the
+   panel — which the rail header and the phone header open. Attaching must not
+   open the panel: that was the bug when two controls shared one room.
 4. **One file input.** `App.tsx` renders the only `<input type="file">` and
    `pickFile()` in the nav context opens it. Never add a second picker.
 5. **Theme lives in the `eumae:` namespace and boots pre-paint.** `main.tsx` has no

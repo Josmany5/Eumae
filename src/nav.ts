@@ -44,9 +44,10 @@ export const DEFAULT_TURN: Turn = {
  * Pages register in src/pages/index.tsx. Any screen or page can reach this
  * with useNav(), so nothing has to be prop-drilled through the shell.
  *
- * The panel rides along here rather than in App state so its three doorways —
- * the composer's context button, the rail header, and the phone header — can
- * each reach it without App threading a prop through every one of them.
+ * The panel rides along here rather than in App state so its two doorways — the
+ * rail header and the phone header — can each reach it without App threading a
+ * prop through every one of them. The composer's context button was a third
+ * until it was retired: the mockup's composer row has no such control.
  */
 export interface Nav {
   go: (page: string, arg?: unknown) => void;
@@ -66,8 +67,8 @@ export interface Nav {
 
   /** The composer's `+` sheet — the mockup's `plusSh()`, "Add to this chat".
    *  This is the chat's one setup door: Mode, Role, Skill, Thinking, Model, and
-   *  the Context rows underneath. `ctx` opens the panel to read what's already
-   *  attached. */
+   *  the Context rows underneath. What is already attached is read back in the
+   *  panel's Context view, not here. */
   openAdd: () => void;
 
   /** How this chat answers. Set by that menu, read back by the chip above the

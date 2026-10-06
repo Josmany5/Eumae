@@ -13,7 +13,7 @@ const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'Wh
 /** The thread.
  *
  *  What Eumae is holding is not shown here — it lives in the right panel, which
- *  is opened by `ctx` on the composer and by the rail. The mockup put that
+ *  the rail header and the phone header open. The mockup put that
  *  answer in an `#refs` strip pinned above the input; with a panel to hold it,
  *  a second copy in the composer would just be the same list twice. */
 export default function ChatScreen() {

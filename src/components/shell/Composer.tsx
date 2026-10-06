@@ -16,13 +16,16 @@ interface ComposerProps {
  *  1799, `accept="image/*,.pdf"`) and the rewrite of `+` from the drawer to the
  *  "Add to this chat" menu (line 1273). Both are here as themselves.
  *
- *  `ctx` is the one addition; the mockup has no panel.
+ *  `ctx` used to sit between the paperclip and the mic. The mockup's row has no
+ *  context button — it has no panel at all — so it is gone and the row is `+`,
+ *  field, paperclip, mic, send. The panel did not lose its door: the rail header
+ *  and the phone header still open it (nav.ts).
  *
- *  The doors do different jobs, which is what went wrong the first time round:
- *  `+` sets the chat up and never attaches anything, the paperclip brings a
- *  photo or PDF into this message, and `ctx` reads back what's attached. */
+ *  The doors that remain do different jobs, which is what went wrong the first
+ *  time round: `+` sets the chat up and never attaches anything, and the
+ *  paperclip brings a photo or PDF into this message. */
 export default function Composer({ onSend, placeholder = 'Ask Eumae' }: ComposerProps) {
-  const { turn, openAdd, togglePanel, panelOpen, pickFile } = useNav();
+  const { turn, openAdd, pickFile } = useNav();
   const [text, setText] = useState('');
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -92,15 +95,6 @@ export default function Composer({ onSend, placeholder = 'Ask Eumae' }: Composer
           <Icon name="clp" />
         </button>
 
-        <button
-          className={`cmpIcon${panelOpen ? ' on' : ''}`}
-          onClick={togglePanel}
-          aria-label="Context"
-          aria-pressed={panelOpen}
-          title="What Eumae is holding"
-        >
-          <Icon name="ctx" />
-        </button>
         <button className="cmpIcon" aria-label="Voice mode" title="Voice mode">
           <Icon name="mic" />
         </button>

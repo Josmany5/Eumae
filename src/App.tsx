@@ -59,9 +59,9 @@ export default function App() {
   const pickFile = useCallback(() => fileRef.current?.click(), []);
 
   /* Attaching opens nothing but the panel's own list — it never opens the panel.
-     That was the bug when `+` and `ctx` both landed in the same room: the panel
-     is where you *read* what's attached, and attaching is not also a way to
-     open it. */
+     That was the bug when the add door and the context door both landed in the
+     same room: the panel is where you *read* what's attached, and attaching is
+     not also a way to open it. */
   const attach = useCallback(
     (r: Ref) => {
       setAddOpen(false);
