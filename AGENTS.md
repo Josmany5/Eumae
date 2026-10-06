@@ -81,6 +81,8 @@ dependency for accounts.
 | `src/store/types.ts` | 15 | `Actor`, `ActionStamp`, `SavedItem` |
 | `src/screens/{Console,Studio,Library,Classroom,Guild}Screen.tsx` | 11 each | stubs rendering `Empty` |
 | `src/styles/tokens.css` | — | tokens + all component styles |
+| `AGENTS.md` | — | the handoff: state, locked decisions, gotchas, the next steps |
+| `IDEAS.md` | — | the owner's idea queue — tracked here, committed nowhere |
 | `src/pages/index.tsx`, `src/screens/index.tsx` | — | the two maps that make a new screen/page one row |
 
 ### Branches
@@ -375,6 +377,10 @@ Design tokens plus every component's styles in one file, class-named per compone
    was retired to match the mockup's row, so what's attached is read back in the
    panel — which the rail header and the phone header open. Attaching must not
    open the panel: that was the bug when two controls shared one room.
+   **Amended 2026-10-06 (§4.13):** the Context half of `+` is being retired —
+   attaching is the paperclip's job and a project scope needs a door of its own
+   (§4.7) — so once Phase 5 lands this reads "`+` sets how Eumae answers" and
+   nothing else.
 4. **One file input.** `App.tsx` renders the only `<input type="file">` and
    `pickFile()` in the nav context opens it. Never add a second picker.
 5. **Theme lives in the `eumae:` namespace and boots pre-paint.** `main.tsx` has no
@@ -388,6 +394,10 @@ Design tokens plus every component's styles in one file, class-named per compone
    deliberately (it only ever called `goPage('projects')` and scoped nothing);
    Console's menu is "Full pages"; "New chat" is chat-scoped, not global; the
    Events row was added on purpose.
+   **Amended 2026-10-06:** that reason expires under §4.13 — the row was dropped
+   *because* the `+` menu held it, and `+` is losing it — so Phase 5 puts the rail
+   row back even though, until a project is real, it still scopes nothing: a
+   labelled row beats no door.
 8. **About and Legal are real pages.** The mockup left About as a
    `toast('Eumae 0.8')`; the rail row exists, so it opens a page.
 9. **Mode is inferred from the prompt** (two regexes in `ChatScreen.send`) until a
@@ -416,6 +426,21 @@ Design tokens plus every component's styles in one file, class-named per compone
     its own read list, so the two ends cannot drift apart unnoticed. `Ref` moved
     into `nav.ts` in the same phase, because `refs` gained a reader — the send
     path — that props cannot reach; the panel reads it from `useNav()` now.
+13. **Behavior vs focus — one writer each** (the owner's split, 2026-10-06).
+    `+` sets *how* Eumae answers (Mode/Role/Skill/Thinking/Model) and is the only
+    writer of those five; the panel's Context reading holds *what Eumae is looking
+    at* (attachments, a project scope, what is always in context) and is the only
+    writer of those. (Where a scope is *chosen* is still open: the rail row §4.7
+    revives may open that room, but it must not become a second writer.) The chip
+    and the panel both **read** the five back — the chip as the glance, the panel
+    in full — and neither writes them. This is §1 rule 2 at the feature level, and
+    it is why the ask that sounded contradictory is not:
+    everything the picker sets shows as chips *and* in the panel, while the panel's
+    attach controls leave the picker entirely. It **amends §4.3** (the `+` menu's
+    Context half is retired) and **revives the rail row §4.7 dropped**. The same
+    axis is what the log's facets will name — you × Eumae, thinking × doing — so
+    both ends of a turn can say who acted instead of assuming it. Full queue, with
+    what is still open on each, in `IDEAS.md`.
 
 ---
 
@@ -488,10 +513,12 @@ the recipe to rebuild them, and the strongest argument for a test suite:
 
 ---
 
-## 6. The plan — six phases, four done
+## 6. The plan — seven phases, four done
 
 Locked with the owner. The order matters: each phase removes a lie before the next
-one adds a feature.
+one adds a feature. Phases 1-4 are landed. Phases 5-7 come from the owner's own
+queue, tracked entry by entry in `IDEAS.md`, and are written out here once an
+entry became work.
 
 **Phase 1 — Settings caught up to the mockup. ✅ Done.** 24 rows, 8 new panes
 (language, accessibility, billing, security, export, logs, legal, about), the
@@ -597,18 +624,46 @@ its row removed, so the rail is 22 rows today (§4.11).
   SSR check (15 assertions with rows, 12 against an empty log) rendered all three
   readings and passed, then was deleted.
 
-**Phase 5 — chips.** The chip already reads `turn` (`Composer.tsx:40-48`). Phase 5
-makes each part honest: show nothing when nothing is set, keep the caret that says
-it opens, and match the mockup's chip (line 1270).
+**Phase 5 — the turn window, and chips that tell the truth.** Two halves of one
+change, from `IDEAS.md` I1-I4, under §4.13.
+
+- `+` becomes the window Settings already is (`useMedia('(min-width:900px)')`,
+  `Settings.tsx:187`: a full sheet on a phone, a scrim + modal with its own rail
+  at desktop width) instead of the bottom sheet of five stacked sections it is
+  today (`AddSheet.tsx`), and each rail row carries that setting's live value the
+  way Settings' rows carry "Free" / "Dark" / "$0.00".
+- `+` stops attaching: its Context section is retired (§4.3) and "Scope to a
+  project" returns to the rail's Context group (§4.7), or scoping has no door.
+- The chip carries every setting the picker sets, hiding the ones at their
+  default — five possible chips instead of today's hardcoded three
+  (`Composer.tsx:43`, mockup 1270 for the chip itself) — and the panel's Context
+  reading states the same five read-only, replacing its line that points at `+`
+  to attach (`RightPanel.tsx:114`).
 
 **Phase 6 — sandbox, artifacts, `/api/ai`.** Studio artifacts and the panel's
 Studio reading get something real; the UI finally calls `api/ai.ts`; an auth
-screen exists, since the API rejects every unsigned call by design.
+screen exists, since the API rejects every unsigned call by design. **The log's
+second layer lands here too** (`IDEAS.md` I5): `LogEntry` grows `who`, `phase` and
+`type`, and Eumae's own rows appear for the first time — which is also the first
+moment anything in the log is not the owner acting.
+
+**Phase 7 — the Logs lens.** The deep dive, in Settings rather than the panel
+(`IDEAS.md` I6-I7): one filter object (`{ who?, phase?, type?, area?, q? }`)
+behind one `useLog`, the area pills demoted to presets, a picker for the facets
+and a box for words. It waits on Phase 6 on purpose — a lens over one dimension
+is the pill row again.
 
 ---
 
 ## 7. Known gaps and deliberately deferred work
 
+- **The owner's open ideas live in `IDEAS.md`.** They are neither defects nor
+  commitments: the file says whether each one landed in a phase or is still
+  waiting. Open as of 2026-10-06: the `+` menu still attaches (I2); the Context
+  reading does not state the turn and its empty line still points at `+` (I3);
+  the chip is still mode · role · skill (I4); the log has one dimension — area —
+  so nothing can be filtered by actor (I5); Settings → Logs is still pills-only
+  (I6); "Always in context" is still furniture (I8); the mic is still inert (I9).
 - **~40 rail rows are inert.** `MenuItem` is only `{label, icon}` (`pageMenu.ts:3-6`).
   Tasks, Events, Calendar, Goals, Projects, Notes, Flows, Favorites, Sources,
   Contacts, Messages, Requests, courses, digests… all render, and clicking one

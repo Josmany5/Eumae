@@ -58,6 +58,8 @@ src/components/shell/      Header, TabBar, Sidebar (desktop rail), Drawer (phone
                            Toast, icons
 src/components/settings/   Settings.tsx — the whole overlay
 src/styles/tokens.css      design tokens + every component's styles
+AGENTS.md                  the handoff — read it first: state, decisions, next steps
+IDEAS.md                   the owner's idea queue — tracked, not committed
 ```
 
 ## How it fits together
@@ -125,8 +127,12 @@ several times and only the *last* definition is live. `AGENTS.md` explains.
 2. ✅ One activity log (`src/log.ts`) — one writer, seven areas, read back in Settings → Logs
 3. ✅ The request shape — `src/request.ts` defines what a sent turn becomes for `/api/ai`
 4. ✅ Panel rebuilt — Context · Activity · Studio readings; the clock button opens Activity
-5. ⬜ Chips — read the current turn back above the input
-6. ⬜ Sandbox, Studio artifacts, and `/api/ai` wired to the thread
+5. ⬜ The `+` window — its five choices in a pop-up shaped like Settings, and chips that show what's set
+6. ⬜ Sandbox, Studio artifacts, and `/api/ai` wired to the thread (+ the log's second layer)
+7. ⬜ The Logs lens — a drill-down and a search in Settings → Logs, over one filter
+
+Items 5-7 come from the owner's own list in **`IDEAS.md`**, which says where each
+idea stands and which phase it landed in.
 
 ## What's missing
 
@@ -151,5 +157,6 @@ is exotic, and all of it is explained in `AGENTS.md` §8.
 ## Working on this repo
 
 Read **`AGENTS.md`** first: current state, locked decisions, gotchas, the exact
-next steps, and the production-readiness list.
+next steps, and the production-readiness list. The owner's unscheduled ideas —
+and where each one stands — are in **`IDEAS.md`**.
 
