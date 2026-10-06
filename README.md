@@ -66,9 +66,10 @@ src/styles/tokens.css      design tokens + every component's styles
 - **One shell, two shapes.** The desktop rail (`Sidebar`) and the phone drawer
   render the same two maps — the six tabs and `pageMenu.ts`'s `PAGE_MENU` — so the
   two cannot drift apart.
-- **Settings is an overlay, not a page:** 24 rows → 24 titles → 24 panes, across
-  five groups (Eumae, App, Account, Data, Support).
-- **Storage convention.** `useStored(key, initial)` (`Settings.tsx:56`) writes
+- **Settings is an overlay, not a page:** 22 rows → 23 titles → 23 panes, across
+  five groups (Eumae, App, Account, Data, Support). The extra title is `main`, the
+  mobile root list; no rail row points at it.
+- **Storage convention.** `useStored(key, initial)` (`Settings.tsx:55`) writes
   `eumae:<key>` as JSON. Export and "Delete everything" both filter on that
   `eumae:` prefix, so the prefix *is* the contract — a preference that skips it
   silently escapes backups.

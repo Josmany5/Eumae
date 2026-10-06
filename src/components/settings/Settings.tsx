@@ -12,7 +12,7 @@ type View =
   | 'main' | 'personalization' | 'memory' | 'permissions' | 'skills'
   | 'automations' | 'crew' | 'appearance' | 'language' | 'accessibility'
   | 'voice' | 'notifications' | 'connectors' | 'billing' | 'security'
-  | 'export' | 'usage' | 'logs' | 'datacontrols' | 'storage'
+  | 'usage' | 'logs' | 'datacontrols' | 'storage'
   | 'help' | 'report' | 'legal' | 'about';
 
 const TITLES: Record<View, string> = {
@@ -31,7 +31,6 @@ const TITLES: Record<View, string> = {
   connectors: 'Connectors',
   billing: 'Billing',
   security: 'Security',
-  export: 'Export and backup',
   usage: 'Usage',
   logs: 'Logs',
   datacontrols: 'Data controls',
@@ -281,7 +280,6 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
       items: [
         { key: 'billing', icon: 'bill', title: 'Billing', value: 'Free' },
         { key: 'security', icon: 'shield', title: 'Security' },
-        { key: 'export', icon: 'arch', title: 'Export and backup' },
       ],
     },
     {
@@ -523,11 +521,27 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
           </div>
         )}
 
+        {/* The mockup settles this one: both its rows call goPage('sDat') — the
+            Account row "Export and backup" and the Data row "Data controls" open
+            the same pane, titled "Data controls"
+            (eumae-mockup-wove-branch.html:1436, the live settings list; the pane it
+            lands on is pgSDat at 696). Two rows pointing at one pane is two doors
+            to one room, which is this project's recurring bug class, so the second
+            row is gone rather than kept as an alias — and the backup card that used
+            to sit behind it moved in here, where the export action already lived. */}
         {view === 'datacontrols' && (
-          <div className="btns">
-            <button onClick={exportData}>Export my data</button>
-            <button className="gho" style={{ color: 'var(--rd)' }} onClick={wipeData}>Delete everything</button>
-          </div>
+          <>
+            <div className="card" style={{ padding: '6px 14px' }}>
+              <div className="kv"><span className="m">What a backup holds</span><span>Everything Eumae keeps</span></div>
+              <div className="kv"><span className="m">Where it goes</span><span>A file you keep</span></div>
+            </div>
+            <div className="btns">
+              <button onClick={exportData}>Export my data</button>
+              <button className="gho" onClick={() => notify('Restoring from a file arrives in a later stage')}>Restore from a file</button>
+              <button className="gho" style={{ color: 'var(--rd)' }} onClick={wipeData}>Delete everything</button>
+            </div>
+            <div className="s m">One plain JSON file, written on this device. Nothing is uploaded.</div>
+          </>
         )}
 
         {view === 'storage' && (
@@ -623,23 +637,6 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
               <button className="gho" style={{ color: 'var(--rd)' }} onClick={signOut}>Sign out</button>
             </div>
             <div className="s m">Passwords, two-factor and active sessions arrive with accounts. Until then there is no password to leak.</div>
-          </>
-        )}
-
-        {/* The mockup points this rail row at Data controls, so it carries nothing
-            of its own. A backup is worth its own door: one real action (the export
-            that already exists) and one gap named out loud. */}
-        {view === 'export' && (
-          <>
-            <div className="card" style={{ padding: '6px 14px' }}>
-              <div className="kv"><span className="m">What a backup holds</span><span>Everything Eumae keeps</span></div>
-              <div className="kv"><span className="m">Where it goes</span><span>A file you keep</span></div>
-            </div>
-            <div className="btns">
-              <button onClick={exportData}>Download my data</button>
-              <button className="gho" onClick={() => notify('Restoring from a file arrives in a later stage')}>Restore from a file</button>
-            </div>
-            <div className="s m">One plain JSON file, written on this device. Nothing is uploaded.</div>
           </>
         )}
 

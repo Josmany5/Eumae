@@ -20,8 +20,8 @@ dependency for accounts.
 
 **Stage: pre-alpha (0.1).**
 
-- **Real:** the shell, navigation (rail / drawer / tab bar / pages), Settings (24
-  rows, 24 panes), the composer, the `+` menu, the right panel, the theme.
+- **Real:** the shell, navigation (rail / drawer / tab bar / pages), Settings (22
+  rows, 23 panes), the composer, the `+` menu, the right panel, the theme.
 - **Not real:** AI answers, accounts, chat persistence, Studio artifacts, any test
   suite, any CI. `src/store/store.tsx`'s `EumaeState` is still an empty interface.
 
@@ -48,11 +48,11 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (2774 lines across src/ + api/)
+### Code map (2771 lines across src/ + api/)
 
 | File | Lines | Role |
 | --- | --- | --- |
-| `src/components/settings/Settings.tsx` | 689 | the whole Settings overlay; also owns `useStored`, export/wipe |
+| `src/components/settings/Settings.tsx` | 686 | the whole Settings overlay; also owns `useStored`, export/wipe |
 | `api/ai.ts` | 501 | the only server code; Vercel handler |
 | `src/App.tsx` | 269 | the shell: tab + page stack + panel + drawers + file input |
 | `src/components/shell/AddSheet.tsx` | 175 | the composer's `+` menu ("Add to this chat") |
@@ -185,18 +185,21 @@ panel's Activity zone.
   + Settings), filters by name, and opens them; it grows for free as tabs and
   pages land. It is the model for what a page looks like.
 
-### Settings — `src/components/settings/Settings.tsx` (689)
+### Settings — `src/components/settings/Settings.tsx` (686)
 
 An overlay (`open` / `onClose` / `notify` props): a rail of rows in five groups
-(Eumae, App, Account, Data, Support), 24 rows → 24 titles → 24 panes. The titles
-map is at line 18; `LOG_AREAS` is at line 132.
+(Eumae, App, Account, Data, Support), 22 rows → 23 titles → 23 panes. The extra
+title is `main`, the mobile root list (account card plus the same rows), which no
+rail row points at because on desktop the rail sits beside the pane. The titles
+map is at line 18; `LOG_AREAS` is at line 131.
 
-It also owns storage: `useStored` (line 56), `exportData` (writes one JSON file of
+It also owns storage: `useStored` (line 55), `exportData` (writes one JSON file of
 every `eumae:` key) and `wipeData` (deletes them). Keys in use: `mems`, `grants`,
 `autos`, `theme`, `voice`, `notif`, `skill-websearch`, `personalization`, `a11y`.
 
 Added in the phase just landed: **language, accessibility, billing, security,
-export, logs, legal, about**.
+logs, legal, about** — that phase also gave export its own pane, which was folded
+back into Data controls afterwards (§4.11).
 
 What is real versus named-out-loud-gap:
 
@@ -205,8 +208,8 @@ What is real versus named-out-loud-gap:
 | Appearance, Voice, Notifications, Language, Accessibility, Personalization | genuinely write state |
 | Billing | "No charge today"; Model spend lives in Usage, shown never blocking |
 | Security | "Signed in as: This device", "Local only", "there is no password to leak" |
-| Export | really downloads the JSON; Restore notifies "arrives in a later stage" |
-| **Logs** | the seven `LOG_AREAS` pills over "Nothing logged here yet." — **Phase 2 fills this in** (lines 646–661, the comment there says so) |
+| Data controls | really downloads the JSON as one file (Export my data); Restore notifies "arrives in a later stage"; Delete everything wipes and reloads |
+| **Logs** | the seven `LOG_AREAS` pills over "Nothing logged here yet." — **Phase 2 fills this in** (lines 643–658, the comment there says so) |
 | Legal | three rows, each notifying "publishes with the first release" |
 | About | Version / Stage / Your data |
 
@@ -263,7 +266,7 @@ Design tokens plus every component's styles in one file, class-named per compone
 ## 4. Locked decisions (with the reason — don't relitigate without cause)
 
 1. **Library is a log area.** `LOG_AREAS = ['All','Chat','Console','Studio','Library','Classroom','Guild']`
-   (`Settings.tsx:132`), in tab-bar order. Filing and publishing events log to
+   (`Settings.tsx:131`), in tab-bar order. Filing and publishing events log to
    `Library`. Areas must match that list exactly or the filter silently drops rows.
 2. **One activity log, one writer.** Phase 2 creates `src/log.ts` where `logEv(...)`
    is the *only* thing that writes an entry. Three consumers read it: the panel's
@@ -294,6 +297,14 @@ Design tokens plus every component's styles in one file, class-named per compone
 10. **Onboarding/`+` choices are made, not stored per-chat.** `turn` is one piece
     of state in the nav context, read by the chip and written by the sheet, so the
     two ends cannot disagree.
+11. **Data controls is the one data room** (merged after Phase 1). The mockup's
+    Account row "Export and backup" and its Data row "Data controls" both call
+    `goPage('sDat')` — one pane behind two doors
+    (`eumae-mockup-wove-branch.html:1436`, the live settings list; the pane it
+    lands on is `pgSDat` at 696). This codebase keeps one door: the second rail row
+    is gone, and the backup card that used to sit behind it lives in Data controls
+    beside the export action it described. Putting the alias back is §9's
+    double-writer bug, in the rail.
 
 ---
 
@@ -307,9 +318,10 @@ Three checks were used for the phase that just landed. They were hand-run scratc
 scripts and are **gone** — this is the recipe to rebuild them, and the strongest
 argument for a test suite:
 
-1. **Rail ↔ title ↔ pane integrity.** 24 rail rows ↔ 24 titles in the titles map ↔
-   24 `view === '…'` panes. Express as a unit test over the row data plus a source
-   scan; it is the check that would have caught a drift the moment it happened.
+1. **Rail ↔ title ↔ pane integrity.** 22 rail rows ↔ 22 of the 23 titles in the
+   titles map ↔ 23 `view === '…'` panes (the extra title and pane are `main`).
+   Express as a unit test over the row data plus a source scan; it is the check
+   that would have caught a drift the moment it happened.
 2. **Theme boot, nine cases**, run against the **built** `dist/index.html`:
    `eumae:theme` = `"light"` / `"dark"`, a bare unquoted `light` (pre-JSON values),
    `null`, garbage, a value containing a `"`, and no OS preference at all —
@@ -333,7 +345,8 @@ one adds a feature.
 **Phase 1 — Settings caught up to the mockup. ✅ Done.** 24 rows, 8 new panes
 (language, accessibility, billing, security, export, logs, legal, about), the
 Account group, `LOG_AREAS` including Library, six icons, `.ftabs` and the
-reduce-motion rule.
+reduce-motion rule. The export pane was folded into Data controls afterwards and
+its row removed, so the rail is 22 rows today (§4.11).
 
 **Phase 2 — `src/log.ts`. Next up.**
 
@@ -346,7 +359,7 @@ reduce-motion rule.
   the `+` menu, message sent, page opened. `Chat` for chat actions; `Library` for
   filing and publishing; `Studio` / `Console` / `Guild` / `Classroom` as those
   screens gain behaviour.
-- Wire the three readers: Settings → Logs (`Settings.tsx:646-661`) filtered by
+- Wire the three readers: Settings → Logs (`Settings.tsx:643-658`) filtered by
   `logArea`; the panel's Activity zone; Console's Activity card.
 - Persistence: keep it in memory first. If it is stored, it goes through
   `useStored` so export/wipe keep working — and think before logging anything
@@ -458,7 +471,8 @@ staging environments, PR review bots, monorepo tooling, Docker, feature flags.
 - **Secrets:** `api/ai.ts` must keep reading `process.env`. There is no `.env` in
   the repo and there must never be one; a hardcoded key would be a public leak.
 - **Double writers are this project's recurring bug class.** Before adding a
-  control, ask which single thing already owns that state.
+  control, ask which single thing already owns that state. The latest instance sat
+  in the rail itself — two rows opening one pane — merged in §4.11.
 - **The mockups are outside the repo.** If the Desktop files move, the line-number
   citations in the comments go stale; that is a known, accepted weakness.
 
