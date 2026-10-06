@@ -84,8 +84,13 @@ dependency for accounts.
 - **Default branch: `stage/0-foundation`.** There is **no `main`** in this repo.
   The owner thinks of the default branch as "main", so when he asks for work to
   land on main, he means this one.
-- `feat/web-shell` — the current line of work. At the time of writing it is a
-  clean fast-forward of `stage/0-foundation`: nothing diverged, nothing to force.
+- **One branch, and it is that one.** `feat/web-shell` mirrored it — a clean
+  fast-forward, nothing diverged, nothing to force — until 2026-10-06, when both
+  names pointed at the same commit and it was retired, local and `origin`. Push
+  to `stage/0-foundation` and nowhere else.
+- `backup/pre-rewrite` is **local-only** and stays that way: it is the way back
+  from the identity rewrite, so every commit on it predates that rewrite. Never
+  push it, and delete it once the scrub is confirmed good.
 - The work landed as one commit (`6cb3f4d`) because `tokens.css`, `index.html` and
   `Settings.tsx` each carried two phases of change, so splitting would have left
   commits that don't build.
