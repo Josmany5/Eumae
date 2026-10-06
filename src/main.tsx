@@ -4,17 +4,9 @@ import './styles/tokens.css';
 import App from './App';
 import { StoreProvider } from './store/store';
 
-function initTheme() {
-  const saved = localStorage.getItem('eumae-theme');
-  const theme =
-    saved === 'light' || saved === 'dark'
-      ? saved
-      : window.matchMedia('(prefers-color-scheme: light)').matches
-        ? 'light'
-        : 'dark';
-  document.documentElement.dataset.theme = theme;
-}
-initTheme();
+// Appearance is applied by the inline script in index.html, before the first
+// paint. Reading `eumae:theme` again here would be a second parser of the same
+// value, running strictly later than the one that already decided it.
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

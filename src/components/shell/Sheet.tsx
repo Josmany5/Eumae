@@ -15,7 +15,9 @@ export default function Sheet({ open, onClose, title, children }: SheetProps) {
         <div className="sh">
           <div className="t">{title}</div>
         </div>
-        <div className="sb">{children ?? <div className="empty">Nothing here yet.</div>}</div>
+        {/* Its own class: "sb" belongs to the rail, and sharing it made this
+            inherit the rail's border-right at desktop width. */}
+        <div className="sheetBody">{children ?? <div className="empty">Nothing here yet.</div>}</div>
       </div>
     </>
   );

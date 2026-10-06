@@ -4,6 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Eumae</title>
+    <!-- Appearance is applied here rather than from the bundle: the bundle is a
+         deferred script, so a light user would paint the dark default on <html>
+         first and then flip. Same `eumae:theme` store Settings writes, which is
+         what lets a backup carry it and Delete everything clear it. -->
+    <script>
+      (function () {
+        var raw = null, saved = null;
+        try {
+          raw = localStorage.getItem('eumae:theme');
+          saved = JSON.parse(raw || 'null');
+        } catch {
+          saved = raw; // a bare, unquoted value: hand-edited, or from before this was JSON
+        }
+        if (saved !== 'light' && saved !== 'dark') {
+          saved = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.dataset.theme = saved;
+      })();
+    </script>
+    <!-- The type the AI apps use. Falls back to the system UI font offline. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>

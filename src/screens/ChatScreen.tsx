@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Composer from '../components/shell/Composer';
+import { useNav } from '../nav';
 
 interface Msg {
   id: number;
@@ -9,12 +10,25 @@ interface Msg {
 
 const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'What am I forgetting?'];
 
+/** The thread.
+ *
+ *  What Eumae is holding is not shown here — it lives in the right panel, which
+ *  is opened by `ctx` on the composer and by the rail. The mockup put that
+ *  answer in an `#refs` strip pinned above the input; with a panel to hold it,
+ *  a second copy in the composer would just be the same list twice. */
 export default function ChatScreen() {
+  const { setTurn } = useNav();
   const [msgs, setMsgs] = useState<Msg[]>([]);
 
   // Stage: pages first, backend later. This is local-only until the
   // memory + harness land and /api/ai is wired to the thread.
   const send = (text: string) => {
+    // The mockup reads the mode off what you asked for (line 878), and the add
+    // menu's own tip promises it — so the chip has to keep up. It only ever
+    // moves to Build or Learn: an ordinary ask leaves the mode where it is.
+    if (/(make|build|create|draft|write me|design)/i.test(text)) setTurn({ mode: 'Build' });
+    else if (/(learn|teach me|explain|how does|what is a)/i.test(text)) setTurn({ mode: 'Learn' });
+
     setMsgs((m) => [...m, { id: Date.now(), role: 'you', text }]);
   };
 
@@ -45,6 +59,7 @@ export default function ChatScreen() {
           </div>
         )}
       </div>
+
       <div className="chatFoot">
         <Composer onSend={send} />
         <div className="hint">Enter to send · Shift+Enter for a new line</div>

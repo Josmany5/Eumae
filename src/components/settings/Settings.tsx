@@ -3,8 +3,10 @@ import { Icon } from '../shell/icons';
 
 type View =
   | 'main' | 'personalization' | 'memory' | 'permissions' | 'skills'
-  | 'automations' | 'crew' | 'appearance' | 'voice' | 'notifications'
-  | 'connectors' | 'usage' | 'datacontrols' | 'storage' | 'help' | 'report';
+  | 'automations' | 'crew' | 'appearance' | 'language' | 'accessibility'
+  | 'voice' | 'notifications' | 'connectors' | 'billing' | 'security'
+  | 'export' | 'usage' | 'logs' | 'datacontrols' | 'storage'
+  | 'help' | 'report' | 'legal' | 'about';
 
 const TITLES: Record<View, string> = {
   main: 'Settings',
@@ -15,15 +17,34 @@ const TITLES: Record<View, string> = {
   automations: 'Agents and automation',
   crew: 'Crew',
   appearance: 'Appearance',
+  language: 'Language and region',
+  accessibility: 'Accessibility',
   voice: 'Voice',
   notifications: 'Notifications',
   connectors: 'Connectors',
+  billing: 'Billing',
+  security: 'Security',
+  export: 'Export and backup',
   usage: 'Usage',
+  logs: 'Logs',
   datacontrols: 'Data controls',
   storage: 'Storage',
   help: 'Help',
   report: 'Report a problem',
+  legal: 'Legal',
+  about: 'About',
 };
+
+function useMedia(query: string): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const m = window.matchMedia(query);
+    const on = () => setMatches(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, [query]);
+  return matches;
+}
 
 function useStored<T>(key: string, initial: T): [T, (v: T) => void] {
   const [val, setVal] = useState<T>(() => {
@@ -68,6 +89,41 @@ function Toggle({ on, onClick, label }: { on: boolean; onClick: () => void; labe
   return <button className={`tg${on ? ' on' : ''}`} onClick={onClick} aria-label={label} />;
 }
 
+/* Language and region is a read-out, not a picker. Nothing here is typed in:
+   the only honest source for a locale is the browser's own, so the label, the
+   region name and the sample date are all derived from it. Translations are a
+   separate job — when they land, this page grows a real selector. */
+function localeFacts() {
+  let tag = 'en-US';
+  try {
+    tag = navigator.language || tag;
+  } catch {
+    /* no navigator — server render, tests */
+  }
+  const parts = tag.split('-');
+  const region = (parts[1] || 'US').toUpperCase();
+  try {
+    const languages = new Intl.DisplayNames([tag], { type: 'language' });
+    const regions = new Intl.DisplayNames([tag], { type: 'region' });
+    return {
+      label: `${languages.of(parts[0]) || 'English'} (${region})`,
+      region: regions.of(region) || region,
+      date: new Intl.DateTimeFormat(tag, { dateStyle: 'medium' }).format(new Date()),
+    };
+  } catch {
+    return { label: 'English (US)', region: 'United States', date: new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date()) };
+  }
+}
+
+const LANG_FACTS = localeFacts();
+
+/* The areas a log row can carry — the six tabs in their tab-bar order, plus
+   Library. `All` is a view of the list, not an area, which is the distinction
+   Phase 2's writer needs: it is the list of things that can be filed and
+   published, so it is the most audit-worthy area of the six. Keeping the order
+   identical to the tab bar means the filter row reads like the app. */
+const LOG_AREAS = ['All', 'Chat', 'Console', 'Studio', 'Library', 'Classroom', 'Guild'];
+
 interface Mem { id: string; t: string }
 interface Auto { id: string; n: string; w: string; on: boolean }
 
@@ -106,26 +162,50 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
     { id: 'a1', n: 'Morning brief', w: 'Weekdays 7:00 AM', on: true },
     { id: 'a2', n: 'Shutdown ritual', w: 'Daily 9:00 PM', on: true },
   ]);
-  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'dark');
+  // Appearance is stored like every other preference (`eumae:theme`), which is
+  // what puts it in a backup and lets Delete everything clear it. The default is
+  // whatever boot applied in index.html — when nothing is stored yet, that value
+  // already followed the OS, so the pane can't disagree with the screen.
+  const [theme, setTheme] = useStored('theme', document.documentElement.dataset.theme || 'dark');
   const [voice, setVoice] = useStored('voice', 'Nova');
   const [notif, setNotif] = useStored('notif', { allow: true, proposals: true });
   const [websearch, setWebsearch] = useStored('skill-websearch', true);
   const [style, setStyle] = useStored('personalization', '');
   const [draft, setDraft] = useState('');
   const [report, setReport] = useState('');
+  // The four accessibility switches. Only "Reduce motion" has a writer today:
+  // the type scale is px-based, so larger/bold text are stored preferences the
+  // pane admits are not applied yet, and voice answers wait on replies.
+  const [a11y, setA11y] = useStored('a11y', { larger: false, bold: false, reduce: false, voice: true });
+  const [logArea, setLogArea] = useState('All');
+
+  // Mobile: a full-page sheet opened from the list. Desktop: a modal whose left
+  // rail *is* the list, so it opens on the first section instead.
+  const isDesktop = useMedia('(min-width:900px)');
 
   useEffect(() => {
-    if (open) setView('main');
-  }, [open ]);
+    if (open) setView(isDesktop ? 'personalization' : 'main');
+  }, [open, isDesktop]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  // Reduce motion is the one accessibility switch that needs no new design
+  // language: tokens.css reads the attribute and flattens every transition.
+  useEffect(() => {
+    if (a11y.reduce) document.documentElement.dataset.motion = 'reduce';
+    else delete document.documentElement.dataset.motion;
+  }, [a11y.reduce]);
 
   const pickTheme = (t: string) => {
     setTheme(t);
     document.documentElement.dataset.theme = t;
-    try {
-      localStorage.setItem('eumae-theme', t);
-    } catch {
-      /* storage unavailable */
-    }
   };
 
   const exportData = () => {
@@ -155,54 +235,134 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
     }
   };
 
-  const back = () => (view === 'main' ? onClose() : setView('main'));
+  const back = () => (isDesktop || view === 'main' ? onClose() : setView('main'));
+  const onBackdrop = (e: React.MouseEvent) => {
+    if (isDesktop && e.target === e.currentTarget) onClose();
+  };
+  const signOut = () => notify('Sign-in arrives in a later stage');
+
+  // One source for both the mobile list and the desktop rail.
+  const sections: { group: string; items: { key: View; icon: string; title: string; value?: string }[] }[] = [
+    {
+      group: 'Eumae',
+      items: [
+        { key: 'personalization', icon: 'str', title: 'Personalization' },
+        { key: 'memory', icon: 'db', title: 'Memory', value: `${mems.length} saved` },
+        { key: 'permissions', icon: 'chk', title: 'Permissions' },
+        { key: 'skills', icon: 'zap', title: 'Skills' },
+        { key: 'automations', icon: 'clk', title: 'Agents and automation', value: `${autos.length}` },
+        { key: 'crew', icon: 'chat', title: 'Crew' },
+      ],
+    },
+    {
+      group: 'App',
+      items: [
+        { key: 'appearance', icon: 'img', title: 'Appearance', value: theme === 'dark' ? 'Dark' : 'Light' },
+        { key: 'voice', icon: 'mic', title: 'Voice', value: voice },
+        { key: 'notifications', icon: 'bel', title: 'Notifications', value: notif.allow ? 'On' : 'Off' },
+        { key: 'connectors', icon: 'lnk', title: 'Connectors', value: '2 connected' },
+        { key: 'language', icon: 'globe', title: 'Language and region', value: LANG_FACTS.label },
+        { key: 'accessibility', icon: 'acc', title: 'Accessibility' },
+      ],
+    },
+    // Account holds the rows that only mean something once there is an account.
+    // They read as unbuilt today ("Free", no password) rather than as a fake
+    // profile — the mockup's Security page invents a password, a passkey and two
+    // sessions, which is the one thing we can't ship.
+    {
+      group: 'Account',
+      items: [
+        { key: 'billing', icon: 'bill', title: 'Billing', value: 'Free' },
+        { key: 'security', icon: 'shield', title: 'Security' },
+        { key: 'export', icon: 'arch', title: 'Export and backup' },
+      ],
+    },
+    {
+      group: 'Data',
+      items: [
+        { key: 'usage', icon: 'zap', title: 'Usage', value: '$0.00' },
+        { key: 'logs', icon: 'clk', title: 'Logs' },
+        { key: 'datacontrols', icon: 'db', title: 'Data controls' },
+        { key: 'storage', icon: 'fol', title: 'Storage' },
+      ],
+    },
+    {
+      group: 'Support',
+      items: [
+        { key: 'help', icon: 'chat', title: 'Help' },
+        { key: 'report', icon: 'doc', title: 'Report a problem' },
+        { key: 'legal', icon: 'law', title: 'Legal' },
+        // About was a stray group of its own with a toast for a door. It belongs
+        // beside Help and Legal, and it can carry the version as a real page.
+        { key: 'about', icon: 'str', title: 'About', value: 'Eumae 0.1' },
+      ],
+    },
+  ];
 
   return (
-    <div className={`settings${open ? ' open' : ''}`}>
-      <div className="shead">
-        <button className="hb" onClick={back} aria-label="Back">
-          <Icon name="bk" />
-        </button>
-        <div className="tt">{TITLES[view]}</div>
-        <div style={{ width: 40 }} />
-      </div>
-      <div className="sbody">
-        {view === 'main' && (
-          <>
-            <div className="card" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <div className="fi" style={{ borderRadius: '50%', fontSize: 15 }}>G</div>
-              <div className="g"><b>Guest</b><div className="xs m">not signed in</div></div>
-              <button className="fb" onClick={() => notify('Profile editor arrives in a later stage')}>Edit</button>
+    <div className={`settings${open ? ' open' : ''}`} onClick={onBackdrop}>
+      <div className="smodal">
+        {isDesktop && (
+          <aside className="stabs">
+            <div className="stAccount">
+              <div className="fi av">G</div>
+              <div className="g">
+                <b>Guest</b>
+                <div className="xs m">not signed in</div>
+              </div>
             </div>
-            <Group title="Eumae">
-              <Row icon="str" title="Personalization" onClick={() => setView('personalization')} />
-              <Row icon="db" title="Memory" value={`${mems.length} saved`} onClick={() => setView('memory')} />
-              <Row icon="chk" title="Permissions" onClick={() => setView('permissions')} />
-              <Row icon="zap" title="Skills" onClick={() => setView('skills')} />
-              <Row icon="clk" title="Agents and automation" value={`${autos.length}`} onClick={() => setView('automations')} />
-              <Row icon="chat" title="Crew" onClick={() => setView('crew')} />
-            </Group>
-            <Group title="App">
-              <Row icon="img" title="Appearance" value={theme === 'dark' ? 'Dark' : 'Light'} onClick={() => setView('appearance')} />
-              <Row icon="mic" title="Voice" value={voice} onClick={() => setView('voice')} />
-              <Row icon="bel" title="Notifications" value={notif.allow ? 'On' : 'Off'} onClick={() => setView('notifications')} />
-              <Row icon="lnk" title="Connectors" value="2 connected" onClick={() => setView('connectors')} />
-            </Group>
-            <Group title="Data">
-              <Row icon="zap" title="Usage" value="$0.00" onClick={() => setView('usage')} />
-              <Row icon="db" title="Data controls" onClick={() => setView('datacontrols')} />
-              <Row icon="fol" title="Storage" onClick={() => setView('storage')} />
-            </Group>
-            <Group title="Support">
-              <Row icon="chat" title="Help" onClick={() => notify('Help center arrives in a later stage')} />
-              <Row icon="doc" title="Report a problem" onClick={() => setView('report')} />
-              <Row icon="doc" title="About" onClick={() => notify('Eumae 0.1')} />
-            </Group>
-            <div className="btns">
-              <button className="gho" style={{ color: 'var(--rd)' }} onClick={() => notify('Sign-in arrives in a later stage')}>Sign out</button>
+            <div className="stScroll">
+              {sections.map((s) => (
+                <div key={s.group}>
+                  <div className="stGroup">{s.group}</div>
+                  {s.items.map((it) => (
+                    <button
+                      key={it.key}
+                      className={`stab${view === it.key ? ' on' : ''}`}
+                      onClick={() => setView(it.key)}
+                    >
+                      <Icon name={it.icon} />
+                      <span className="g">{it.title}</span>
+                      {it.value ? <span className="v">{it.value}</span> : null}
+                    </button>
+                  ))}
+                </div>
+              ))}
             </div>
-          </>
+            <div className="stFoot">
+              <button className="stab danger" onClick={signOut}>Sign out</button>
+            </div>
+          </aside>
         )}
+
+        <div className="spanel">
+          <div className="shead">
+            <button className="hb" onClick={back} aria-label={isDesktop ? 'Close' : 'Back'}>
+              <Icon name={isDesktop ? 'x' : 'bk'} />
+            </button>
+            <div className="tt">{TITLES[view]}</div>
+            <div className="sp" />
+          </div>
+          <div className="sbody">
+            {view === 'main' && !isDesktop && (
+              <>
+                <div className="card acctCard">
+                  <div className="fi av">G</div>
+                  <div className="g"><b>Guest</b><div className="xs m">not signed in</div></div>
+                  <button className="fb" onClick={() => notify('Profile editor arrives in a later stage')}>Edit</button>
+                </div>
+                {sections.map((s) => (
+                  <Group key={s.group} title={s.group}>
+                    {s.items.map((it) => (
+                      <Row key={it.key} icon={it.icon} title={it.title} value={it.value} onClick={() => setView(it.key)} />
+                    ))}
+                  </Group>
+                ))}
+                <div className="btns">
+                  <button className="gho" style={{ color: 'var(--rd)' }} onClick={signOut}>Sign out</button>
+                </div>
+              </>
+            )}
 
         {view === 'personalization' && (
           <div className="card">
@@ -391,6 +551,131 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
             </div>
           </div>
         )}
+        {view === 'language' && (
+          <>
+            <div className="sg">
+              <div className="sr">
+                <Icon name="globe" />
+                <span className="g">{LANG_FACTS.label}</span>
+                <span className="v m">selected</span>
+              </div>
+            </div>
+            <div className="card" style={{ padding: '6px 14px' }}>
+              <div className="kv"><span className="m">Region</span><span>{LANG_FACTS.region}</span></div>
+              <div className="kv"><span className="m">Date format</span><span>{LANG_FACTS.date}</span></div>
+            </div>
+            <div className="s m">Read from your browser — there is nothing to change yet. More languages arrive with translations.</div>
+          </>
+        )}
+
+        {view === 'accessibility' && (
+          <>
+            <div className="card" style={{ padding: '6px 14px' }}>
+              <div className="gr">
+                <div className="g"><b>Larger text</b></div>
+                <Toggle on={a11y.larger} onClick={() => setA11y({ ...a11y, larger: !a11y.larger })} label="Larger text" />
+              </div>
+              <div className="gr">
+                <div className="g"><b>Bold text</b></div>
+                <Toggle on={a11y.bold} onClick={() => setA11y({ ...a11y, bold: !a11y.bold })} label="Bold text" />
+              </div>
+              <div className="gr">
+                <div className="g"><b>Reduce motion</b><div className="xs m">Calms the widget jiggle and page swipes</div></div>
+                <Toggle on={a11y.reduce} onClick={() => setA11y({ ...a11y, reduce: !a11y.reduce })} label="Reduce motion" />
+              </div>
+              <div className="gr">
+                <div className="g"><b>Voice answers</b><div className="xs m">Read replies aloud</div></div>
+                <Toggle on={a11y.voice} onClick={() => setA11y({ ...a11y, voice: !a11y.voice })} label="Voice answers" />
+              </div>
+            </div>
+            <div className="s m">Reduce motion applies right away — every sheet, chip and fade stops moving. The type scale is rebuilt before larger and bold text can mean anything, and voice answers need replies to read.</div>
+          </>
+        )}
+
+        {view === 'billing' && (
+          <div className="card">
+            <div className="row">
+              <div className="g"><b>Eumae Free</b><div className="xs m">Everything on while we build.</div></div>
+              <b>$0</b>
+            </div>
+            <div className="bar"><i style={{ width: '0%' }} /></div>
+            <div className="xs m">No charge today. Model spend lives in Usage — shown, never blocking.</div>
+            <div className="btns">
+              <button className="pri" onClick={() => notify('Checkout opens at launch')}>Upgrade at launch</button>
+            </div>
+          </div>
+        )}
+
+        {view === 'security' && (
+          <>
+            <div className="card" style={{ padding: '6px 14px' }}>
+              <div className="kv"><span className="m">Signed in as</span><span>This device</span></div>
+              <div className="kv"><span className="m">Where your work lives</span><span>Local only</span></div>
+            </div>
+            <div className="btns">
+              <button className="gho" style={{ color: 'var(--rd)' }} onClick={signOut}>Sign out</button>
+            </div>
+            <div className="s m">Passwords, two-factor and active sessions arrive with accounts. Until then there is no password to leak.</div>
+          </>
+        )}
+
+        {/* The mockup points this rail row at Data controls, so it carries nothing
+            of its own. A backup is worth its own door: one real action (the export
+            that already exists) and one gap named out loud. */}
+        {view === 'export' && (
+          <>
+            <div className="card" style={{ padding: '6px 14px' }}>
+              <div className="kv"><span className="m">What a backup holds</span><span>Everything Eumae keeps</span></div>
+              <div className="kv"><span className="m">Where it goes</span><span>A file you keep</span></div>
+            </div>
+            <div className="btns">
+              <button onClick={exportData}>Download my data</button>
+              <button className="gho" onClick={() => notify('Restoring from a file arrives in a later stage')}>Restore from a file</button>
+            </div>
+            <div className="s m">One plain JSON file, written on this device. Nothing is uploaded.</div>
+          </>
+        )}
+
+        {view === 'logs' && (
+          <>
+            <div className="ftabs">
+              {LOG_AREAS.map((a) => (
+                <button key={a} className={logArea === a ? 'on' : ''} onClick={() => setLogArea(a)}>{a}</button>
+              ))}
+            </div>
+            <div className="card" style={{ padding: '6px 14px' }}>
+              {/* Phase 2 reads src/log.ts here and filters on logArea. The mockup
+                  seeded invented rows; an empty pane is the honest version until
+                  something actually writes. */}
+              <div className="s m">Nothing logged here yet.</div>
+            </div>
+            <div className="s m" style={{ marginTop: 8 }}>One log, filtered by area.</div>
+          </>
+        )}
+
+        {view === 'legal' && (
+          <>
+            <div className="sg">
+              <Row icon="law" title="Terms of service" onClick={() => notify('Terms publish with the first release')} />
+              <Row icon="law" title="Privacy policy" onClick={() => notify('The privacy policy publishes with the first release')} />
+              <Row icon="law" title="Licenses" onClick={() => notify('Open-source licenses publish with the first release')} />
+            </div>
+            <div className="s m" style={{ marginTop: 8 }}>Eumae 0.1 · Your data stays yours.</div>
+          </>
+        )}
+
+        {view === 'about' && (
+          <>
+            <div className="card" style={{ padding: '6px 14px' }}>
+              <div className="kv"><span className="m">Version</span><span>0.1</span></div>
+              <div className="kv"><span className="m">Stage</span><span>Building</span></div>
+              <div className="kv"><span className="m">Your data</span><span>Local only</span></div>
+            </div>
+            <div className="s m">One window: Chat, Console, Studio, Library, Classroom and Guild — six views on one app.</div>
+          </>
+        )}
+          </div>
+        </div>
       </div>
     </div>
   );
