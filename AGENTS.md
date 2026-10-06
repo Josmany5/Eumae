@@ -48,7 +48,7 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (2774 lines total at commit `cf0130b`)
+### Code map (2774 lines across src/ + api/)
 
 | File | Lines | Role |
 | --- | --- | --- |
@@ -86,7 +86,7 @@ dependency for accounts.
   land on main, he means this one.
 - `feat/web-shell` — the current line of work. At the time of writing it is a
   clean fast-forward of `stage/0-foundation`: nothing diverged, nothing to force.
-- The work landed as one commit (`cf0130b`) because `tokens.css`, `index.html` and
+- The work landed as one commit (`6cb3f4d`) because `tokens.css`, `index.html` and
   `Settings.tsx` each carried two phases of change, so splitting would have left
   commits that don't build.
 
@@ -121,7 +121,7 @@ dependency for accounts.
 - `npm run dev` does **not** serve `api/ai.ts`; that needs `vercel dev` or Vercel.
 - No test runner, no ESLint/Prettier, no CI, no `.env.example`. Verification is
   manual today (§5).
-- Verified good at `cf0130b`: 53 modules, 3.54s, `dist/index.html` 1.65 kB,
+- Verified good at `6cb3f4d`: 53 modules, 3.54s, `dist/index.html` 1.65 kB,
   CSS 22.95 kB, JS 269.63 kB (82 kB gzipped).
 - The build regularly exceeds a 30-second tool timeout in-session: launch it with
   `nohup npm run build > /tmp/eumae-build.log 2>&1 &` and poll the log.
@@ -136,6 +136,12 @@ dependency for accounts.
 - History is worth preserving with intent: rewriting the default branch is fine
   when asked, but always say what it will do *before* doing it.
 - The remote redirects `eumae` → `Eumae` (capitalisation); harmless.
+- Commits use the GitHub **noreply** identity — `Josmany5 <189303011+Josmany5@users.noreply.github.com>`
+  — set in this repo's local `.git/config`. A clone on another machine must set it
+  again before committing: the repo is public, so never commit from a personal address.
+- History was rewritten once, to strip the owner's real email. The details are in the
+  note at the end of this file; the short version is that hashes from before that day
+  are dead.
 
 ---
 
@@ -393,7 +399,7 @@ screen exists, since the API rejects every unsigned call by design.
   the value out of the source; this file ships to the public.
 - **No `.env.example`, no `.nvmrc`, no `vercel.json`.**
 - **No `main` branch** — the default is `stage/0-foundation`.
-- Fixed in `cf0130b`, listed so it isn't "fixed" twice: `.gitignore`'s `.DS_Store/`
+- Fixed in `6cb3f4d`, listed so it isn't "fixed" twice: `.gitignore`'s `.DS_Store/`
   had a trailing slash, so it only ever matched a *directory* of that name and the
   file was never ignored.
 
@@ -458,8 +464,11 @@ staging environments, PR review bots, monorepo tooling, Docker, feature flags.
 
 ---
 
-*Written in commit `a16efd4`, the one that added this file, on `stage/0-foundation`
-(the day this work was first pushed to GitHub). The code map in §2 still describes
-`cf0130b`, which is the source state it was measured from. If you change a locked
-decision, change §4 in the same commit — this file is the handoff, and a stale
-handoff is worse than none.*
+*Written in commit `ae1bd6f`, the one that added this file, on `stage/0-foundation`
+(the day this work was first pushed to GitHub). The code map in §2 is measured from
+the tree as it stands today. If you change a locked decision, change §4 in the same
+commit — this file is the handoff, and a stale handoff is worse than none.*
+
+*One history rewrite so far: the owner's real email was stripped from 20 commits and
+the real name and address from the file contents of 2 commits, so every hash in older
+notes and links is dead. The pre-rewrite tip survives locally as `backup/pre-rewrite`.*
