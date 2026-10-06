@@ -28,8 +28,8 @@ export default function Sidebar({
         <span className="sbMark">Eumae</span>
         {/* No panel toggle here. It used to sit next to this button — two
             panel-shaped icons at the top-left of the window, one of them opening
-            something on the far right. The panel's door is on the panel's own
-            side of the screen now (.pHandle). */}
+            something on the far right. The panel's door is in the top-right
+            corner of the screen now (.pHandle). */}
         <button className="sbIcon" onClick={onCollapse} aria-label="Toggle sidebar" title="Toggle sidebar">
           <Icon name="side" />
         </button>

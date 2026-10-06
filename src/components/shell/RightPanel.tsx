@@ -22,7 +22,7 @@ interface RightPanelProps {
   view: PanelView;
   onView: (view: PanelView) => void;
   onClose: () => void;
-  /** Opens it again from the edge handle. */
+  /** Opens it again from the corner handle. */
   onToggle: () => void;
   refs: Ref[];
   onDetach: (label: string) => void;
@@ -44,9 +44,9 @@ export default function RightPanel({ open, view, onView, onClose, onToggle, refs
       <div className={`pscrim${open ? ' open' : ''}`} onClick={onClose} />
 
       {/* The panel's door, on the panel's side. Desktop has no top bar to hang a
-          control from, and the rail is the far end of the screen — so it rides
-          the right edge, on every tab, and steps aside once you're in. The ✕ in
-          the panel's own head is the way back out. */}
+          control from and the rail is at the far end of the screen — so it sits
+          in the top-right corner, on every tab, and steps aside once you're in.
+          The ✕ in the panel's own head is the way back out. */}
       {!open ? (
         <button
           className="pHandle"

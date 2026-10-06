@@ -227,7 +227,7 @@ address into this file again.
 
 ### Right panel — `src/components/shell/RightPanel.tsx` (149)
 
-A `TABS` pill row (Context / Code / Preview), a body per view, an edge `.pHandle`
+A `TABS` pill row (Context / Code / Preview), a body per view, a corner `.pHandle`
 button when closed, and a `.pscrim` when open. Context lists real `refs` (from the
 paperclip) and then a **static** "Always in context" list (Your projects / Today &
 this week / Recent conversations) — that second list is furniture, not data, and

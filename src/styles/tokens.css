@@ -431,7 +431,7 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
 .pscrim.open{ opacity:1; pointer-events:auto; }
 
 /* The handle that opens the panel. Desktop only: on a phone the header already
-   carries the door on the right, and there's no edge to spare. */
+   carries the door in its top-right corner. */
 .pHandle{ display:none; }
 
 .pHead{ flex:none; display:flex; align-items:center; gap:6px;
@@ -501,14 +501,14 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
   #app.railCollapsed.panelOpen{ grid-template-columns:64px 1fr minmax(320px,380px); }
   .pHead{ padding:14px 12px 10px 14px; }
   .pBody{ padding:6px 14px 24px; }
-  /* The panel's door, on the panel's side. It rides the right edge so it's
-     there on every tab, and only while the panel is closed — once you're in,
-     the panel's own head is the way back. */
-  .pHandle{ display:inline-flex; position:fixed; right:0; top:38%; z-index:40;
-    align-items:center; justify-content:center; width:30px; height:56px;
-    border-radius:12px 0 0 12px; background:var(--card);
-    border:1px solid var(--hair); border-right:0; color:var(--mut);
-    transition:color .15s ease, background .15s ease; }
+  /* The panel's door, on the panel's side. It sits in the top-right corner now —
+     the corner the phone's header puts the same door in — so it's there on every
+     tab, and only while the panel is closed: once you're in, the panel's own head
+     is the way back. */
+  .pHandle{ display:inline-flex; position:fixed; right:12px; top:12px; z-index:40;
+    align-items:center; justify-content:center; width:32px; height:32px;
+    border-radius:10px; background:var(--card); border:1px solid var(--hair);
+    color:var(--mut); transition:color .15s ease, background .15s ease; }
   .pHandle:hover{ background:var(--card2); color:var(--tx); }
   .pHandle svg{ width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:1.8;
     stroke-linecap:round; stroke-linejoin:round; }
