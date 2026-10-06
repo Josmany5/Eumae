@@ -11,26 +11,13 @@ import { Icon } from './components/shell/icons';
 import { SCREENS, LABELS } from './screens';
 import { PAGES, pageTitle } from './pages';
 import { NavContext, DEFAULT_TURN, type Nav, type PanelView, type Turn } from './nav';
-import { logEv, type LogFiled } from './log';
+import { logEv } from './log';
 
 /** A sub-page pushed on top of the current tab — the mockup's pageSt entry. */
 interface Pushed {
   page: string;
   arg?: unknown;
 }
-
-/** Which log area each tab files under (src/log.ts). A page belongs to the
- *  screen that pushed it, so this is what an opened page logs as. Typed as
- *  `Record<TabId, …>` on purpose: a seventh tab fails the build here instead of
- *  quietly filing nothing. */
-const AREA_OF: Record<TabId, LogFiled> = {
-  chat: 'Chat',
-  console: 'Console',
-  studio: 'Studio',
-  library: 'Library',
-  classroom: 'Classroom',
-  guild: 'Guild',
-};
 
 export default function App() {
   const [tab, setTab] = useState<TabId>('chat');
@@ -134,13 +121,13 @@ export default function App() {
     setTab(t);
   }, []);
 
-  const go = useCallback(
-    (page: string, arg?: unknown) => {
-      setStack((s) => [...s, arg === undefined ? { page } : { page, arg }]);
-      logEv({ area: AREA_OF[tab], text: `Opened ${pageTitle(page)}` });
-    },
-    [tab],
-  );
+  /* Opening a page is deliberately not logged. The one page that exists — Search —
+     is opened by the shell, not by a tab, so filing it under the tab you happen to
+     be standing on would write "Guild · Opened Search" into a log about a Guild
+     that does nothing. It comes back when a page carries the tab it belongs to. */
+  const go = useCallback((page: string, arg?: unknown) => {
+    setStack((s) => [...s, arg === undefined ? { page } : { page, arg }]);
+  }, []);
 
   const back = useCallback(() => setStack((s) => s.slice(0, -1)), []);
   const openSettings = useCallback(() => setSettingsOpen(true), []);

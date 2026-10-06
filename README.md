@@ -81,9 +81,12 @@ src/styles/tokens.css      design tokens + every component's styles
   icon, and an unknown name renders nothing.
 - **One log, one writer.** `src/log.ts` owns the activity log: `logEv` is the only
   thing that appends to it, `useLog(area)` is the only read, and the areas come from
-  one list the filter and the writers share. Settings → Logs is the reader today;
-  the panel's Activity zone and Console's Activity card read the same list when those
-  surfaces land. It is memory-only for now, and the pane says so.
+  one list the filter and the writers share. A writer is one explicit line at the
+  action itself — the four things the app can do (send, attach, detach, a `+` menu
+  pick). Nothing is inferred, so the log can only ever hold what actually happened.
+  Settings → Logs is the reader today; the panel's Activity zone and Console's
+  Activity card read the same list when those surfaces land — which is also when the
+  log stops being nearly invisible. It is memory-only for now, and the pane says so.
 - **Honesty rule.** Where the mockup invents data — a password, active sessions, a
   spend figure, fake log rows — this codebase shows the real state and names the
   gap instead. Keep it that way.

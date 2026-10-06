@@ -50,13 +50,13 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (2884 lines across src/ + api/)
+### Code map (2871 lines across src/ + api/)
 
 | File | Lines | Role |
 | --- | --- | --- |
 | `src/components/settings/Settings.tsx` | 696 | the whole Settings overlay; also owns `useStored`, export/wipe |
 | `api/ai.ts` | 501 | the only server code; Vercel handler |
-| `src/App.tsx` | 289 | the shell: tab + page stack + panel + drawers + file input |
+| `src/App.tsx` | 276 | the shell: tab + page stack + panel + drawers + file input |
 | `src/components/shell/AddSheet.tsx` | 179 | the composer's `+` menu ("Add to this chat") |
 | `src/components/shell/RightPanel.tsx` | 149 | the right panel (Context / Code / Preview) |
 | `src/components/shell/pageMenu.ts` | 125 | `PAGE_MENU` — each tab's rail rows |
@@ -155,7 +155,7 @@ dependency for accounts.
 
 ## 3. What exists today, piece by piece
 
-### Shell — `src/App.tsx` (289), `src/nav.ts` (105)
+### Shell — `src/App.tsx` (276), `src/nav.ts` (105)
 
 `App` owns: the active tab, the page stack, rail-collapsed, drawer-open,
 settings-open, the toast, the panel (open + view), `refs` (attached items), the
@@ -167,7 +167,7 @@ add sheet, `turn`, and the single `<input type="file">`.
 `Turn = {mode, role, skill, thinking, model}` with the mockup's opening values in
 `DEFAULT_TURN`.
 
-**Known defect to fix in Phase 4:** `App.tsx:232` — the header's activity button
+**Known defect to fix in Phase 4:** `App.tsx:219` — the header's activity button
 calls `openPanel('context')`, but the button means *activity*. It should open the
 panel's Activity zone.
 
@@ -204,10 +204,11 @@ the log sits at module scope because its readers are not each other's parents.
 happened, amber waiting, red failed.
 
 Who writes today: a message sent (`ChatScreen`), a file attached or detached
-(`App`), a pick in the `+` menu ("Set mode to Build"), a page opened (`App.go`).
-`App.tsx`'s `AREA_OF` maps a tab to the area its pages file under and is typed
-`Record<TabId, LogFiled>`, so a seventh tab fails the build instead of quietly
-filing nothing. It is memory only, and the pane says that out loud.
+(`App`), a pick in the `+` menu ("Set mode to Build"). Opening a page is
+deliberately *not* logged, and that writer was removed rather than patched: the
+only page that exists is opened by the shell, so filing it under the current tab
+wrote a row about a tab that did nothing (§1.3). It is memory only, and the pane
+says that out loud.
 
 ### Settings — `src/components/settings/Settings.tsx` (696)
 
@@ -393,22 +394,35 @@ its row removed, so the rail is 22 rows today (§4.11).
   readers are not each other's parents, so nothing had to be prop-drilled for it.
 - `LOG_AREAS` moved here and `Settings.tsx` imports it — the two copies became one.
 - Writers, all of them real events: a message sent (`ChatScreen`), a file attached
-  or detached (`App`), a pick in the `+` menu — "Set mode to Build", same for role,
-  thinking and model — and a page opened (`App.go`, filed under the tab that pushed
-  it, via `AREA_OF`). **Tab switches are deliberately not logged:** a tab is a
-  screen, and five of the six still have nothing to say. Their areas fill in as
+  or detached (`App`), and a pick in the `+` menu — "Set mode to Build", same for
+  role, thinking and model. **Tab switches are deliberately not logged:** a tab is
+  a screen, and five of the six still have nothing to say. Their areas fill in as
   those screens gain behaviour, which is the rule the original phase asked for.
+- **A page open is not logged either** — that writer was removed, not patched.
+  Its first version filed `Opened ${pageTitle}` under `AREA_OF[tab]`, which was
+  wrong for the only page that exists: `search` is opened by the shell, not by a
+  tab, so standing on Guild wrote "Guild · Opened Search" about a tab with no
+  features. A row for an action that did not happen is the one thing §1.3 forbids.
+  `AREA_OF` is deleted with it; both return when a page carries the tab it belongs
+  to (then `Record<TabId, LogFiled>` is the right type for the job it did here).
 - One of the three readers is wired — Settings → Logs, filtered by the pill you're
   on. The panel's Activity zone waits for Phase 4's rebuild and Console's Activity
   card waits for Console: both read the same `useLog`, so wiring them later is
   reading, not rebuilding. Building them now would have meant designing two
   surfaces this plan already owns.
+- **The cost of that, named:** the log is write-mostly and nearly invisible today —
+  its rows are readable in one place, three taps into Settings, while the header's
+  clock button (the mockup's own way in, line 164) still opens Context. Everything
+  it records, it records where nobody is looking. Phase 4's Activity zone is what
+  makes the log visible on every screen, and until then this phase is a writer with
+  no audience.
 - Persistence: memory only, on purpose. Storing it would put a growing list inside
   every export and inside "Delete everything", so the pane says out loud that rows
   live in this session.
 - Verified: build green at 54 modules (one more than before — this file), CSS
-  23.13 kB, JS 270.30 kB; `dist/assets/*.css` carries `.hi`, `.dt` and the three
-  dots; `grep` says `logEv` has one definition and five call sites.
+  23.13 kB, JS 270.15 kB; `dist/assets/*.css` carries `.hi`, `.dt` and the three
+  dots; `grep` says `logEv` has one definition and four call sites (the fifth was
+  the page-open writer, removed below).
 
 **Phase 3 — the `+` menu's turn window.** The five sections and `setTurn` exist;
 what is missing is the other half of the contract. Decide and write down the
@@ -417,7 +431,7 @@ request shape (`{ mode, role, skill, thinking, model, refs, text }`) now, becaus
 
 **Phase 4 — panel rebuild.**
 
-- `App.tsx:232`: `openPanel('context')` → `'activity'`.
+- `App.tsx:219`: `openPanel('context')` → `'activity'`.
 - Move `PanelView` to the zoned model (`'activity' | 'context'`) — or keep three
   views with the first renamed; decide once and document it in `nav.ts`.
 - Delete: `TABS` (`RightPanel.tsx:14-18`), the `.ptabs` / `.ptab` row (63-76), the
@@ -440,11 +454,15 @@ screen exists, since the API rejects every unsigned call by design.
 - **~40 rail rows are inert.** `MenuItem` is only `{label, icon}` (`pageMenu.ts:3-6`).
   Tasks, Events, Calendar, Goals, Projects, Notes, Flows, Favorites, Sources,
   Contacts, Messages, Requests, courses, digests… all render, and clicking one
-  only toasts "…arrives with its screen" (`App.tsx:188`). To make them real,
+  only toasts "…arrives with its screen" (`App.tsx:195`). To make them real,
   `MenuItem` needs something like `{ page?: string; action?: string; filter?: string }`
   and every row a target; the mockup's last `pD` says which rows belong to which tab.
 - **Five tab screens are 11-line stubs** — their real structure has to come from
   the mockup.
+- **A page open is not logged.** Removed in Phase 2 rather than patched: the only
+  page in `PAGES` is `search`, which the shell opens, so filing it under the current
+  tab wrote "Guild · Opened Search" about a tab with no features. It comes back when
+  a page carries the tab it belongs to.
 - **`EumaeState` is an empty interface** and `StoreProvider` holds nothing.
   `Actor` / `ActionStamp` / `SavedItem` exist unused — a hint at the intended shape
   (every saved item has an owner, timestamps and a history of actions).
