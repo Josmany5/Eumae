@@ -452,6 +452,8 @@ staging environments, PR review bots, monorepo tooling, Docker, feature flags.
 
 ---
 
-*Written at commit `cf0130b` on `feat/web-shell`, the day this work was first
-pushed to GitHub. If you change a locked decision, change §4 in the same commit —
-this file is the handoff, and a stale handoff is worse than none.*
+*Written in commit `a16efd4`, the one that added this file, on `stage/0-foundation`
+(the day this work was first pushed to GitHub). The code map in §2 still describes
+`cf0130b`, which is the source state it was measured from. If you change a locked
+decision, change §4 in the same commit — this file is the handoff, and a stale
+handoff is worse than none.*
