@@ -48,11 +48,11 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (2767 lines total at commit `cf0130b`)
+### Code map (2774 lines total at commit `cf0130b`)
 
 | File | Lines | Role |
 | --- | --- | --- |
-| `src/components/settings/Settings.tsx` | 682 | the whole Settings overlay; also owns `useStored`, export/wipe |
+| `src/components/settings/Settings.tsx` | 689 | the whole Settings overlay; also owns `useStored`, export/wipe |
 | `api/ai.ts` | 501 | the only server code; Vercel handler |
 | `src/App.tsx` | 269 | the shell: tab + page stack + panel + drawers + file input |
 | `src/components/shell/AddSheet.tsx` | 175 | the composer's `+` menu ("Add to this chat") |
@@ -179,13 +179,13 @@ panel's Activity zone.
   + Settings), filters by name, and opens them; it grows for free as tabs and
   pages land. It is the model for what a page looks like.
 
-### Settings — `src/components/settings/Settings.tsx` (682)
+### Settings — `src/components/settings/Settings.tsx` (689)
 
 An overlay (`open` / `onClose` / `notify` props): a rail of rows in five groups
 (Eumae, App, Account, Data, Support), 24 rows → 24 titles → 24 panes. The titles
-map is near line 29; `LOG_AREAS` is at line 125.
+map is at line 18; `LOG_AREAS` is at line 132.
 
-It also owns storage: `useStored` (line 49), `exportData` (writes one JSON file of
+It also owns storage: `useStored` (line 56), `exportData` (writes one JSON file of
 every `eumae:` key) and `wipeData` (deletes them). Keys in use: `mems`, `grants`,
 `autos`, `theme`, `voice`, `notif`, `skill-websearch`, `personalization`, `a11y`.
 
@@ -200,12 +200,16 @@ What is real versus named-out-loud-gap:
 | Billing | "No charge today"; Model spend lives in Usage, shown never blocking |
 | Security | "Signed in as: This device", "Local only", "there is no password to leak" |
 | Export | really downloads the JSON; Restore notifies "arrives in a later stage" |
-| **Logs** | the seven `LOG_AREAS` pills over "Nothing logged here yet." — **Phase 2 fills this in** (lines 639–654, the comment there says so) |
+| **Logs** | the seven `LOG_AREAS` pills over "Nothing logged here yet." — **Phase 2 fills this in** (lines 646–661, the comment there says so) |
 | Legal | three rows, each notifying "publishes with the first release" |
 | About | Version / Stage / Your data |
 
-**Personal data:** `Settings.tsx:310-311` and `:351` hardcode the owner's real name
-and email. Replace with a placeholder before the repo is public or the app shared.
+**Personal data:** the two account cards (desktop rail, phone) render an `ACCOUNT`
+constant at the top of the file — a placeholder, because there are no accounts yet,
+and the avatar is derived from `ACCOUNT.name` so the two cards cannot drift. The
+owner's real name and email used to be hardcoded here; they were removed once the
+repo turned out to be **public** and the app deployed. Never write a real name or
+address into this file again.
 
 ### Right panel — `src/components/shell/RightPanel.tsx` (149)
 
@@ -253,7 +257,7 @@ Design tokens plus every component's styles in one file, class-named per compone
 ## 4. Locked decisions (with the reason — don't relitigate without cause)
 
 1. **Library is a log area.** `LOG_AREAS = ['All','Chat','Console','Studio','Library','Classroom','Guild']`
-   (`Settings.tsx:125`), in tab-bar order. Filing and publishing events log to
+   (`Settings.tsx:132`), in tab-bar order. Filing and publishing events log to
    `Library`. Areas must match that list exactly or the filter silently drops rows.
 2. **One activity log, one writer.** Phase 2 creates `src/log.ts` where `logEv(...)`
    is the *only* thing that writes an entry. Three consumers read it: the panel's
@@ -336,7 +340,7 @@ reduce-motion rule.
   the `+` menu, message sent, page opened. `Chat` for chat actions; `Library` for
   filing and publishing; `Studio` / `Console` / `Guild` / `Classroom` as those
   screens gain behaviour.
-- Wire the three readers: Settings → Logs (`Settings.tsx:639-654`) filtered by
+- Wire the three readers: Settings → Logs (`Settings.tsx:646-661`) filtered by
   `logArea`; the panel's Activity zone; Console's Activity card.
 - Persistence: keep it in memory first. If it is stored, it goes through
   `useStored` so export/wipe keep working — and think before logging anything
@@ -384,7 +388,9 @@ screen exists, since the API rejects every unsigned call by design.
 - **`api/ai.ts` is unreachable from the UI** and requires a signed-in caller; with
   no auth screen, today every real call would be rejected.
 - **The panel's "Always in context" list is static furniture.**
-- **Hardcoded personal data** at `Settings.tsx:310-311` and `:351` (name + email).
+- **Personal data — fixed.** The account cards render an `ACCOUNT` placeholder
+  instead of the owner's real name and email. If a profile editor ever lands, keep
+  the value out of the source; this file ships to the public.
 - **No `.env.example`, no `.nvmrc`, no `vercel.json`.**
 - **No `main` branch** — the default is `stage/0-foundation`.
 - Fixed in `cf0130b`, listed so it isn't "fixed" twice: `.gitignore`'s `.DS_Store/`

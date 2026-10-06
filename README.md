@@ -68,7 +68,7 @@ src/styles/tokens.css      design tokens + every component's styles
   two cannot drift apart.
 - **Settings is an overlay, not a page:** 24 rows → 24 titles → 24 panes, across
   five groups (Eumae, App, Account, Data, Support).
-- **Storage convention.** `useStored(key, initial)` (`Settings.tsx:49`) writes
+- **Storage convention.** `useStored(key, initial)` (`Settings.tsx:56`) writes
   `eumae:<key>` as JSON. Export and "Delete everything" both filter on that
   `eumae:` prefix, so the prefix *is* the contract — a preference that skips it
   silently escapes backups.

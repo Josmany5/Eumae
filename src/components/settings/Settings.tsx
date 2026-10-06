@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '../shell/icons';
 
+// There are no accounts yet (§7), so there is no real name or address to show. This
+// is a placeholder on purpose: the file is public and the app is deployed, so a real
+// name or email must never be written here. The avatar derives from the name, so the
+// desktop rail card and the phone account card cannot drift apart.
+const ACCOUNT = { name: 'Guest', email: 'Not signed in — this device only' };
+const ACCOUNT_INITIAL = ACCOUNT.name.slice(0, 1).toUpperCase();
+
 type View =
   | 'main' | 'personalization' | 'memory' | 'permissions' | 'skills'
   | 'automations' | 'crew' | 'appearance' | 'language' | 'accessibility'
@@ -305,10 +312,10 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
         {isDesktop && (
           <aside className="stabs">
             <div className="stAccount">
-              <div className="fi av">G</div>
+              <div className="fi av">{ACCOUNT_INITIAL}</div>
               <div className="g">
-                <b>Guest</b>
-                <div className="xs m">not signed in</div>
+                <b>{ACCOUNT.name}</b>
+                <div className="xs m">{ACCOUNT.email}</div>
               </div>
             </div>
             <div className="stScroll">
@@ -347,8 +354,8 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
             {view === 'main' && !isDesktop && (
               <>
                 <div className="card acctCard">
-                  <div className="fi av">G</div>
-                  <div className="g"><b>Guest</b><div className="xs m">not signed in</div></div>
+                  <div className="fi av">{ACCOUNT_INITIAL}</div>
+                  <div className="g"><b>{ACCOUNT.name}</b><div className="xs m">{ACCOUNT.email}</div></div>
                   <button className="fb" onClick={() => notify('Profile editor arrives in a later stage')}>Edit</button>
                 </div>
                 {sections.map((s) => (
