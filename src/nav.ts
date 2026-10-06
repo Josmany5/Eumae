@@ -1,10 +1,15 @@
 import { createContext, useContext } from 'react';
 import type { TabId } from './components/shell/TabBar';
 
-/** The right panel's three readings. Context is the one that always has
- *  something to show; Code and Preview fill in when a Studio artifact produces
- *  something to look at. */
-export type PanelView = 'context' | 'code' | 'preview';
+/** The right panel's three readings, one panel rather than three.
+ *
+ *  Context is what is in play on this conversation, Activity is what has
+ *  actually happened (the log in src/log.ts), Studio is what came out of it.
+ *  Context and Activity have real data today; Studio stays an honest empty
+ *  until an artifact exists to show. Studio absorbed the old Code and Preview
+ *  readings — two tabs holding two versions of nothing, with no artifact
+ *  between them. */
+export type PanelView = 'context' | 'activity' | 'studio';
 
 /** How Eumae answers on this chat. The mockup keeps these five in module scope
  *  (`MODE`, `ROLE9`, `SKS9`, `THINK9`, `MODEL9` — line 1280) and shows them in

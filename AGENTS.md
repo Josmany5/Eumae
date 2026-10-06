@@ -50,7 +50,7 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (2871 lines across src/ + api/)
+### Code map (2919 lines across src/ + api/)
 
 | File | Lines | Role |
 | --- | --- | --- |
@@ -58,15 +58,15 @@ dependency for accounts.
 | `api/ai.ts` | 501 | the only server code; Vercel handler |
 | `src/App.tsx` | 276 | the shell: tab + page stack + panel + drawers + file input |
 | `src/components/shell/AddSheet.tsx` | 179 | the composer's `+` menu ("Add to this chat") |
-| `src/components/shell/RightPanel.tsx` | 149 | the right panel (Context / Code / Preview) |
+| `src/components/shell/RightPanel.tsx` | 188 | the right panel (Context / Activity / Studio) |
 | `src/components/shell/pageMenu.ts` | 125 | `PAGE_MENU` — each tab's rail rows |
 | `src/components/shell/Composer.tsx` | 107 | input row, chip, `+`, paperclip, mic, send |
-| `src/nav.ts` | 105 | `NavContext`: go/back, goTab, panel, turn, pickFile |
+| `src/nav.ts` | 110 | `NavContext`: go/back, goTab, panel, turn, pickFile |
 | `src/components/shell/Sidebar.tsx` | 89 | desktop rail |
 | `src/log.ts` | 78 | the activity log: `LOG_AREAS`, the one writer, the read |
 | `src/pages/SearchPage.tsx` | 70 | the only real sub-page |
 | `src/screens/ChatScreen.tsx` | 75 | the only real tab screen |
-| `src/components/shell/icons.tsx` | 69 | the icon registry |
+| `src/components/shell/icons.tsx` | 73 | the icon registry |
 | `src/components/shell/Drawer.tsx` | 65 | phone drawer |
 | `src/components/shell/Header.tsx` | 37 | title, hamburger, activity, back |
 | `src/components/shell/TabBar.tsx` | 33 | phone tab bar + `TABS` |
@@ -163,13 +163,14 @@ add sheet, `turn`, and the single `<input type="file">`.
 
 `nav.ts` is the app-wide context reached by `useNav()`:
 `go/back/depth/goTab/openSettings`, `panelOpen/panelView/togglePanel/openPanel/closePanel`,
-`openAdd`, `turn/setTurn`, `pickFile`. `PanelView = 'context' | 'code' | 'preview'`.
+`openAdd`, `turn/setTurn`, `pickFile`. `PanelView = 'context' | 'activity' | 'studio'`.
 `Turn = {mode, role, skill, thinking, model}` with the mockup's opening values in
 `DEFAULT_TURN`.
 
-**Known defect to fix in Phase 4:** `App.tsx:219` — the header's activity button
-calls `openPanel('context')`, but the button means *activity*. It should open the
-panel's Activity zone.
+**Fixed in Phase 4:** `App.tsx:219` — the header's activity button called
+`openPanel('context')` while meaning *activity*. It opens the panel's Activity
+reading now, and its `aria-label` in `Header.tsx` changed from "Context" to
+"Activity" with it, because a label that names the wrong room is its own defect.
 
 ### Screens — `src/screens/`
 
@@ -246,17 +247,26 @@ owner's real name and email used to be hardcoded here; they were removed once th
 repo turned out to be **public** and the app deployed. Never write a real name or
 address into this file again.
 
-### Right panel — `src/components/shell/RightPanel.tsx` (149)
+### Right panel — `src/components/shell/RightPanel.tsx` (188)
 
-A `TABS` pill row (Context / Code / Preview), a body per view, a corner `.pHandle`
-button when closed, and a `.pscrim` when open. Context lists real `refs` (from the
-paperclip) and then a **static** "Always in context" list (Your projects / Today &
-this week / Recent conversations) — that second list is furniture, not data, and
-should be driven or labelled. Code and Preview render honest empties ("No code
-yet" / "Nothing to preview") because Studio owns artifacts and there are none.
+One panel, three readings — Context / Activity / Studio — behind a `TABS` row in
+`.pHead`, a body per reading, a corner `.pHandle` button when closed and a
+`.pscrim` when open.
 
-Phase 4 rebuilds this file: drop `TABS` (14–18), the `.ptabs`/`.ptab` row (63–76),
-the code/eye branch (133–145) and `.pEmpty*` in favour of zones.
+- **Context** lists real `refs` (from the paperclip) and then a **static**
+  "Always in context" list (Your projects / Today & this week / Recent
+  conversations) — that second list is furniture, not data, and should be driven
+  or labelled.
+- **Activity** is the log's second reader: `useLog()` with no area, so these are
+  the same rows Settings → Logs filters by pill, drawn with the same `.hi`/`.dt`
+  classes, because two drawings of one log is how the two drift. The header's
+  clock button opens the panel straight onto it.
+- **Studio** is one honest empty ("Nothing built yet") rather than two. It absorbed
+  the old Code and Preview readings, which held two versions of nothing with no
+  artifact between them; the single reading now names the sandbox Studio produces
+  into.
+
+Phase 4 rebuilt this file — the readings changed, the pill row survived.
 
 ### The rest of the shell
 
@@ -298,10 +308,10 @@ Design tokens plus every component's styles in one file, class-named per compone
    copy: a second copy is how a filter starts silently dropping rows.
 2. **One activity log, one writer.** `src/log.ts` exists: `logEv({ area, text })` is
    the *only* thing that writes an entry, and it stamps the time and owns the id,
-   so no component can invent either. Readers use `useLog(area)`. Settings → Logs
-   is the one reader wired today; the panel's Activity zone and Console's Activity
-   card read that same list when those surfaces exist (Phase 4, and Console's own
-   build). Neither was faked in the meantime — no component invents its own log.
+   so no component can invent either. Readers use `useLog(area)`. Two are wired:
+   Settings → Logs (filtered by pill) and the panel's Activity reading (the whole
+   list, Phase 4). Console's Activity card reads that same list when Console is
+   built. Neither gap was faked in the meantime — no component invents its own log.
 3. **Two doors, two jobs** (a bug forced this rule): `+` sets the chat up
    (Mode/Role/Skill/Thinking/Model + Context) and never attaches; the paperclip
    attaches a photo or PDF into this message. The composer's third door, `ctx`,
@@ -368,6 +378,15 @@ argument for a test suite:
    definition plus one call site per event and nothing else, and `entries =`
    should appear only inside `src/log.ts`. Same shape as check 1: a source scan for
    the rule this codebase keeps re-learning (§9).
+5. **The panel's three readings** (added in Phase 4). Render `RightPanel` through
+   `renderToStaticMarkup` once per reading and assert: the three tabs, `Activity`
+   selected, the activity rows newest-first carrying their dot and `area · time`,
+   Studio's empty state naming the sandbox, and Context still listing real refs.
+   Run it twice — with rows and with an empty log, because the empty branch is the
+   one a fresh session hits. `useLog` passes `logAll` as its server snapshot, so
+   this needs no browser. Bundle the scratch file with the repo's own esbuild
+   (`node_modules/.bin/esbuild … --bundle --platform=node --jsx=automatic`) and
+   `node` the output; `tsx` is not a dependency.
 
 **Never claim a UI behaviour works because it typechecks.** Build it, and open
 `dist/index.html` or `npm run preview` when the claim is visual.
@@ -429,22 +448,35 @@ what is missing is the other half of the contract. Decide and write down the
 request shape (`{ mode, role, skill, thinking, model, refs, text }`) now, because
 `/api/ai` will consume exactly that.
 
-**Phase 4 — panel rebuild.**
+**Phase 4 — panel rebuild. ✅ Done.**
 
-- `App.tsx:219`: `openPanel('context')` → `'activity'`.
-- Move `PanelView` to the zoned model (`'activity' | 'context'`) — or keep three
-  views with the first renamed; decide once and document it in `nav.ts`.
-- Delete: `TABS` (`RightPanel.tsx:14-18`), the `.ptabs` / `.ptab` row (63-76), the
-  code/eye branch (133-145), and `.pEmpty*` in `tokens.css`.
-- Activity zone reads `src/log.ts`. Context keeps real `refs`; "Always in context"
-  must be driven by data or labelled as static.
+- `App.tsx:219`: `openPanel('context')` → `'activity'`, and the header button's
+  `aria-label` (`Header.tsx`) changed from "Context" to "Activity" with it.
+- `PanelView` is `'context' | 'activity' | 'studio'` (`nav.ts`). The owner chose
+  **tabs, not one stacked scroll**: the three answers are exclusive, so switching
+  beats stacking a growing log under a fixed list — and the mockup, which has no
+  panel at all, never tabs one.
+- The pill row **stayed**; the readings changed. Code and Preview merged into
+  Studio (one honest empty naming the sandbox) instead of the row being deleted:
+  two tabs holding two versions of nothing was the defect, not the row. Their
+  `code` / `eye` glyphs stay in the registry, drawn and unread, for Phase 6.
+- Activity reads `src/log.ts` through `useLog()`, wearing the same `.hi`/`.dt`
+  classes as Settings → Logs: one list behind two doors.
+- **This closes Phase 2's named cost.** The log had one reader three taps into
+  Settings; the clock button now opens it from any screen, and the panel's own
+  line says it is this session only and where to filter by area.
+- Still open here: "Always in context" is furniture and should be driven or
+  labelled; Studio's sandbox is still an empty.
+- Verified: build green at 54 modules, CSS 23.13 kB, JS 270.79 kB; a throwaway
+  SSR check (15 assertions with rows, 12 against an empty log) rendered all three
+  readings and passed, then was deleted.
 
 **Phase 5 — chips.** The chip already reads `turn` (`Composer.tsx:40-48`). Phase 5
 makes each part honest: show nothing when nothing is set, keep the caret that says
 it opens, and match the mockup's chip (line 1270).
 
 **Phase 6 — sandbox, artifacts, `/api/ai`.** Studio artifacts and the panel's
-Code/Preview zones get something real; the UI finally calls `api/ai.ts`; an auth
+Studio reading get something real; the UI finally calls `api/ai.ts`; an auth
 screen exists, since the API rejects every unsigned call by design.
 
 ---

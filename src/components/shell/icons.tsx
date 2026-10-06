@@ -29,8 +29,12 @@ const PATHS: Record<string, JSX.Element> = {
   clp: <path d="M21 12.5l-8.6 8.6a5 5 0 0 1-7-7l8.6-8.6a3.5 3.5 0 0 1 5 5L10.4 19a2 2 0 0 1-2.8-2.8l7.8-7.8" />,
   side: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9.5 4v16" /></>,
 
-  /* The right panel and its three readings. `ctx` is a target — "what Eumae is
-     holding" — so it can never read as a link the way the attach rows do. */
+  /* The right panel and its readings. `ctx` is a target — "what Eumae is
+     holding" — so it can never read as a link the way the attach rows do. Its
+     other two readings borrow rather than redraw: Activity wears `clk` and
+     Studio wears `tab-studio`, because each is the same thing the header's
+     clock button and the rail's Studio row already mean. `code` and `eye` are
+     drawn for Studio's sandbox and are still unread — no artifact renders yet. */
   panel: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></>,
   ctx: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /></>,
   code: <path d="M9.5 7.5L4 12l5.5 4.5M14.5 7.5L20 12l-5.5 4.5" />,

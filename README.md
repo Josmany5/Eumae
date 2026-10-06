@@ -84,9 +84,14 @@ src/styles/tokens.css      design tokens + every component's styles
   one list the filter and the writers share. A writer is one explicit line at the
   action itself — the four things the app can do (send, attach, detach, a `+` menu
   pick). Nothing is inferred, so the log can only ever hold what actually happened.
-  Settings → Logs is the reader today; the panel's Activity zone and Console's
-  Activity card read the same list when those surfaces land — which is also when the
-  log stops being nearly invisible. It is memory-only for now, and the pane says so.
+  Settings → Logs (filtered by area) and the panel's Activity reading are both wired;
+  Console's Activity card reads the same list when Console is built. That second door
+  is what ended the log's near-invisibility — before it, the only reader sat three
+  taps into Settings. It is memory-only for now, and the pane says so.
+- **One panel, three readings.** `RightPanel` answers Context (what's in play),
+  Activity (what happened — the log), and Studio (what came out of it). The header's
+  clock button opens it straight on Activity; the corner handle reopens it on
+  whatever you read last.
 - **Honesty rule.** Where the mockup invents data — a password, active sessions, a
   spend figure, fake log rows — this codebase shows the real state and names the
   gap instead. Keep it that way.
@@ -109,7 +114,7 @@ several times and only the *last* definition is live. `AGENTS.md` explains.
 1. ✅ Settings caught up to the mockup — 8 new panes, Account group, real Logs row
 2. ✅ One activity log (`src/log.ts`) — one writer, seven areas, read back in Settings → Logs
 3. ⬜ The `+` menu's turn window (Mode / Role / Skill / Thinking / Model)
-4. ⬜ Panel rebuild — zoned (Activity / Context); the Context·Code·Preview pill row goes
+4. ✅ Panel rebuilt — Context · Activity · Studio readings; the clock button opens Activity
 5. ⬜ Chips — read the current turn back above the input
 6. ⬜ Sandbox, Studio artifacts, and `/api/ai` wired to the thread
 

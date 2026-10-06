@@ -216,7 +216,7 @@ export default function App() {
           <Header
             title={top ? pageTitle(top.page) : LABELS[tab]}
             onMenu={() => setDrawerOpen(true)}
-            onActivity={() => openPanel('context')}
+            onActivity={() => openPanel('activity')}
             onBack={top ? back : undefined}
           />
           <main id="mn">

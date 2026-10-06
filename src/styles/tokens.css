@@ -423,10 +423,15 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
   .pageBody{ padding:4px 20px 24px; }
 }
 
-/* ─── Right panel: Context / Code / Preview ──────────────────────────────── */
+/* ─── Right panel: Context / Activity / Studio ───────────────────────────── */
 /* A NEW surface — the mockup has no panel. Its `#refs` strip (line 89) is the
    thing this replaces: the same "what is Eumae holding?" question, but with
-   room to also answer the other half — what came *out* of it (Code, Preview).
+   room to also answer the two other questions a chat raises — what actually
+   happened (Activity, read from src/log.ts) and what came *out* of it (Studio,
+   the sandbox the mockup opens in its own overlay, line 1696).
+
+   Its activity rows wear `.hi`/`.dt` from the Settings block above, so the
+   panel and Settings → Logs can never drift into two ways of drawing one log.
 
    Mobile slides it over the content behind a scrim. Desktop gives it a real
    grid column, so opening it reflows the thread instead of covering it. */

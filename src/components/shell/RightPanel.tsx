@@ -1,4 +1,5 @@
 import { Icon } from './icons';
+import { useLog } from '../../log';
 import type { PanelView } from '../../nav';
 
 /** A reference attached to the conversation — the mockup's `S.refs` entry. */
@@ -13,8 +14,12 @@ export interface Ref {
 
 const TABS: { id: PanelView; label: string; icon: string }[] = [
   { id: 'context', label: 'Context', icon: 'ctx' },
-  { id: 'code', label: 'Code', icon: 'code' },
-  { id: 'preview', label: 'Preview', icon: 'eye' },
+  /* The clock, because this reading is the log — the same thing the header's
+     clock button opens. */
+  { id: 'activity', label: 'Activity', icon: 'clk' },
+  /* Studio's reading wears Studio's own glyph from the rail: it is that room's
+     output, so it must not read as a second, unrelated one. */
+  { id: 'studio', label: 'Studio', icon: 'tab-studio' },
 ];
 
 interface RightPanelProps {
@@ -33,12 +38,19 @@ interface RightPanelProps {
  *  The mockup answers "what is Eumae reading?" with the `#refs` strip pinned
  *  above the composer, which is fine for one line of pills and has nowhere to
  *  put anything else. Promoting that strip to a panel keeps the same answer and
- *  buys room for the other half of the question — what came *out* of it.
+ *  buys room for the two other questions a chat raises: what actually happened,
+ *  and what came *out* of it.
  *
- *  Context is the only reading with real data today. Code and Preview are
- *  honest empties: Studio owns artifacts, so they stay empty until an artifact
- *  exists to show, rather than inventing a sandbox nothing feeds. */
+ *  Context and Activity are the two readings with real data today: what is in
+ *  play, and what actually happened. Studio is an honest empty — Studio owns
+ *  artifacts, so its sandbox stays empty until an artifact exists to show,
+ *  rather than inventing a preview nothing feeds. */
 export default function RightPanel({ open, view, onView, onClose, onToggle, refs, onDetach }: RightPanelProps) {
+  /* The log's second reader, after Settings → Logs. Read on every render rather
+     than only on the Activity reading, so the list is already correct the
+     moment you switch to it and the log never has to be copied into state. */
+  const logRows = useLog();
+
   return (
     <>
       <div className={`pscrim${open ? ' open' : ''}`} onClick={onClose} />
@@ -52,7 +64,7 @@ export default function RightPanel({ open, view, onView, onClose, onToggle, refs
           className="pHandle"
           onClick={onToggle}
           aria-label="Open panel"
-          title="Context, code, and preview"
+          title="Context, activity, and what you've built"
         >
           <Icon name="panel" />
         </button>
@@ -130,15 +142,42 @@ export default function RightPanel({ open, view, onView, onClose, onToggle, refs
               <p className="pNote">Eumae reads these every turn, so you never have to attach them.</p>
             </div>
           </div>
+        ) : view === 'activity' ? (
+          <div className="pBody">
+            <div className="pSec">
+              <div className="pGrp">What happened</div>
+              {/* The same log Settings → Logs reads, same rows, same dots — one
+                  list with two doors, never two lists. */}
+              {logRows.length ? (
+                logRows.map((l) => (
+                  <div className="hi" key={l.id}>
+                    <span className={`dt ${l.status}`} />
+                    <div className="s">
+                      {l.text}
+                      <div className="xs m">{l.area} · {l.ts}</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="pEmptyN">
+                  Nothing yet. Sending a message, attaching a file, or picking from the <b>+</b> menu
+                  lands here.
+                </p>
+              )}
+            </div>
+            <p className="pNote">
+              The whole app's one log, newest first, in this session only. Filter it by area in
+              Settings → Logs.
+            </p>
+          </div>
         ) : (
           <div className="pBody">
             <div className="pEmpty">
-              <Icon name={view === 'code' ? 'code' : 'eye'} />
-              <p className="pEmptyT">{view === 'code' ? 'No code yet' : 'Nothing to preview'}</p>
+              <Icon name="tab-studio" />
+              <p className="pEmptyT">Nothing built yet</p>
               <p className="pEmptyN">
-                {view === 'code'
-                  ? 'Code appears here when a Studio artifact produces one. This panel reads what exists — it does not invent it.'
-                  : 'Preview appears here when there is something to render: an artifact, a page, a document.'}
+                Studio's sandbox appears here when an artifact produces something to look at — a page, a
+                document, a chart. This panel reads what exists; it does not invent it.
               </p>
             </div>
           </div>
