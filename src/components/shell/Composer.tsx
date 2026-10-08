@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Icon } from './icons';
-import { useNav } from '../../nav';
+import { useNav, DEFAULT_TURN } from '../../nav';
 
 interface ComposerProps {
   onSend: (text: string) => void;
@@ -37,17 +37,39 @@ export default function Composer({ onSend, placeholder = 'Ask Eumae' }: Composer
     if (ref.current) ref.current.style.height = 'auto';
   };
 
-  /* The mockup's chip (line 1270) — mode, then role and skill only when they're
-     doing something, then the caret that says it opens. It is the read-out for
-     the `+` menu, which is what stops that menu from being write-only. */
-  const live = [turn.mode, turn.role, turn.skill].filter(Boolean).join(' · ');
+  /* The chip row — the mockup's `chipsHTML` (line 1270) taken one step further.
+     That one always shows the mode, adds the role unless it is Default and the
+     skill unless one is set, and never draws Thinking or Model because it never
+     had a chip for them; its own later draft (`chips10HTML`, line 1341) does
+     draw Thinking when it isn't Balanced, which is the rule Phase 5 extends to
+     all five. So: one pill per setting that is doing something, mode always,
+     defaults hidden — and "doing something" is read off `DEFAULT_TURN` rather
+     than spelled out here, so a changed default cannot leave a stale pill.
+
+     Every pill is read-only (I4). §4.13 gives the five to `+` and nothing else,
+     so a pill cannot clear itself the way 1341's did with its ×; all of them
+     open that one window instead — the receipt is what stops the window being
+     write-only. */
+  const pills: { k: string; v: string }[] = [
+    { k: 'mode', v: turn.mode },
+    { k: 'role', v: turn.role },
+    { k: 'skill', v: turn.skill },
+    { k: 'thinking', v: turn.thinking === DEFAULT_TURN.thinking ? '' : turn.thinking },
+    { k: 'model', v: turn.model === DEFAULT_TURN.model ? '' : turn.model },
+  ].filter((p) => p.v);
 
   return (
     <div className="cmpWrap">
       <div className="modeBar">
-        <button className="modeChip" onClick={openAdd} title="How Eumae answers">
-          {live} <span className="cv">▾</span>
-        </button>
+        {pills.map((p, i) => (
+          <button key={p.k} className="modeChip" onClick={openAdd} title="How Eumae answers">
+            {p.v}
+            {/* One caret for the row, on its last pill — the mockup's single `▾`
+                (line 1270) said the chip opens; the row says it once, at its
+                end, rather than on all five. */}
+            {i === pills.length - 1 ? <span className="cv"> ▾</span> : null}
+          </button>
+        ))}
       </div>
 
       <div className="cmp">

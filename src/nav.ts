@@ -83,10 +83,11 @@ export interface Nav {
   openPanel: (view?: PanelView) => void;
   closePanel: () => void;
 
-  /** The composer's `+` sheet — the mockup's `plusSh()`, "Add to this chat".
+  /** The composer's `+` window — the mockup's `plusSh()`, "Add to this chat".
    *  This is the chat's one setup door: Mode, Role, Skill, Thinking, Model, and
-   *  the Context rows underneath. What is already attached is read back in the
-   *  panel's Context view, not here. */
+   *  nothing else since Phase 5 (§4.13). What is already attached is read back in
+   *  the panel's Context view, not here — the paperclip is what brings a file
+   *  in. */
   openAdd: () => void;
 
   /** What is attached to this chat. Written by App — the one file input and the
@@ -103,9 +104,10 @@ export interface Nav {
   setTurn: (patch: Partial<Turn>) => void;
 
   /** Opens the file input, which App renders once. It sits here rather than in
-   *  the composer because the paperclip and the menu's "Attach a file…" row
-   *  have to open the same input — two pickers would be two readers, and the
-   *  last time a control grew a second door to the same room was the bug. */
+   *  the composer because more than one control has to open the *same* input —
+   *  the paperclip and the rail's "Attach an item" row (§4.4). Two pickers would
+   *  be two readers, and the last time a control grew a second door to the same
+   *  room was the bug. */
   pickFile: () => void;
 }
 

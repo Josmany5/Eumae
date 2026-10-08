@@ -35,7 +35,15 @@ settles the ask that looked self-contradictory: everything the picker sets shows
 as chips *and* in the panel, while the panel's attach controls leave the picker
 entirely. Locked as §4.13.
 
-## I1 — `+` becomes a window, like Settings
+## ~~I1 — `+` becomes a window, like Settings~~ ✅ Phase 5
+
+**Landed 2026-10-07.** `AddSheet.tsx` is a full sheet on a phone and a scrim +
+modal at desktop width, built from Settings' own `.smodal/.stabs/.spanel/.shead/
+.sbody` skeleton rather than a copy of it; the breakpoint moved into
+`src/useMedia.ts` so both overlays read one of them. The old shape went, and
+`Sheet.tsx` with it. The open question is answered **yes**: each rail row carries
+that setting's live value (Ask / Default / — / Balanced / Auto), which is what kept
+the window one screen tall.
 
 - **From:** owner, 2026-10-06 — "converts the plus menu to a pop up window like
   settings".
@@ -49,7 +57,15 @@ entirely. Locked as §4.13.
   Balanced). That is what would make the rail the read-out and keep the window
   one screen tall, and it is what makes I4's chip affordable.
 
-## I2 — `+` stops attaching
+## ~~I2 — `+` stops attaching~~ ✅ Phase 5
+
+**Landed 2026-10-07.** The Context section is gone, "Attach a file…" with it, and
+"Scope to a project" is back in the rail's Context group — so the window is
+behavior only and scoping has a door again. "Attach an item" now opens the one file
+input (`pickFile`, §4.4) instead of a window that can no longer attach anything, and
+`App.tsx`'s `openAddPage('projects')` branch was deleted rather than left
+unreachable. The open question is **still open**: the rail row scopes nothing until
+a project screen exists, so where a scope is chosen is deferred, not settled.
 
 - **From:** owner, 2026-10-06 — and the file already argues for it:
   `AddSheet.tsx:9-14` says setting the chat up is the whole job of `+`, while its
@@ -64,7 +80,13 @@ entirely. Locked as §4.13.
   the rail row, the panel, or both. Both would be two doors to one room (§1 rule
   2).
 
-## I3 — The Context reading becomes the focus surface
+## ~~I3 — The Context reading becomes the focus surface~~ ✅ Phase 5 (in part)
+
+**Landed 2026-10-07, partly.** The reading gained a read-only "How Eumae answers"
+block (Mode / Role / Skill / Thinking / Model) and lost its false sentence — the
+empty state names the paperclip now, which is what actually attaches. What is *not*
+built is attaching from the panel: the paperclip owns attaching (§4.3), and the
+panel reads what it produced. I8 is untouched, so this entry is not finished.
 
 - **From:** owner, 2026-10-06.
 - **Says:** the panel's Context reading is where the context picker lives —
@@ -76,7 +98,14 @@ entirely. Locked as §4.13.
 - **Open:** whether the always-in-context list is driven by real data or labelled
   as the standing rule it currently is (I8).
 
-## I4 — The chip carries everything the picker sets
+## ~~I4 — The chip carries everything the picker sets~~ ✅ Phase 5
+
+**Landed 2026-10-07.** `Composer` draws one chip per setting that is not at its
+default — Mode always, then Role / Skill / Thinking / Model — with the defaults read
+off `DEFAULT_TURN`, so Thinking and Model reach the chip for the first time. The
+open question is answered: the row **wraps** on a phone (`.modeBar` already did). No
+chip clears itself, unlike the mockup's own later draft (`chips10HTML`, 1341), whose
+× would have made the chip a second writer of the five (§4.13).
 
 - **From:** owner, 2026-10-06. It reverses his own line from earlier the same day
   — see *Reversals* below.
@@ -158,12 +187,14 @@ entirely. Locked as §4.13.
 
 1. **Docs — ✅** this file, plus the `AGENTS.md` §4.3 / §4.7 amendments and the
    new §4.13.
-2. **Phase 5 — I1–I4, one change.** `+` becomes the window and stops attaching;
-   "Scope to a project" returns to the rail; the chip carries the whole turn; the
-   Context reading gains its read-only block and loses its false sentence.
+2. **Phase 5 — I1–I4, one change. ✅** `+` became the window and stopped attaching;
+   "Scope to a project" returned to the rail; the chip carries the whole turn; the
+   Context reading gained its read-only block and lost its false sentence. Landed
+   2026-10-07, written up in `AGENTS.md` §6.
 3. **Phase 6 — as already written, plus I5.** Sandbox, artifacts, `/api/ai`; and
    the facets land with it, because that is the phase where Eumae's own rows
    first exist.
 4. **Phase 7 — I6 + I7.** The Logs lens in Settings, over one filter object.
-5. **Whenever — I8 and I9**, plus the two open owner decisions still standing
-   from before (wire-or-hide the mic; drive-or-label always-in-context).
+5. **Whenever — I8 and I9**, plus the open owner decisions still standing: wire or
+   hide the mic (I9); drive or label always-in-context (I8); and where a project
+   scope is chosen now that the rail row is back but inert (§4.13).

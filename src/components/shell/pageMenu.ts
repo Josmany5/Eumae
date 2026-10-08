@@ -28,13 +28,16 @@ export const PAGE_MENU: Record<TabId, MenuSection[]> = {
     { items: [{ label: 'New chat', icon: 'pls' }] },
     { heading: 'Recent chats', items: [], empty: 'No chats yet' },
     {
-      /* "Scope to a project" was dropped on purpose. It already exists in the
-         composer's own add menu, which is where a scope is actually chosen
-         (mockup line 1288: Context → "Attach a file…" / "Scope to a project…"),
-         and the rail row was only `goPage('projects')` — it opened Projects
-         without scoping anything. */
+      /* "Scope to a project" came back in Phase 5. It was dropped on purpose
+         because the composer's add menu held it — and that menu is behavior only
+         now (§4.13), so with the row gone a scope would have no door at all. It
+         still scopes nothing until a project screen exists, and it toasts like
+         every other unbuilt row; a labelled row beats no door (§4.7). */
       heading: 'Context',
-      items: [{ label: 'Attach an item', icon: 'lnk' }],
+      items: [
+        { label: 'Attach an item', icon: 'lnk' },
+        { label: 'Scope to a project', icon: 'fol' },
+      ],
     },
   ],
   console: [

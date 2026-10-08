@@ -3,11 +3,11 @@
 One window, six views — **Chat, Console, Studio, Library, Classroom, Guild** — plus Settings, a
 right-hand panel, and a desktop rail that carries each tab's own menu.
 
-**Status: pre-alpha (0.1).** The shell, the navigation, Settings and the activity
-log are real and verified. The AI, accounts and storage are not wired yet: sending
-a message appends a local bubble, and the only thing that survives a reload is what
-Settings writes to `localStorage`. There is no test suite, no linter and no CI —
-see *What's missing* at the bottom.
+**Status: pre-alpha (0.1).** The shell, the navigation, Settings, the composer's
+`+` window and the activity log are real and verified. The AI, accounts and storage
+are not wired yet: sending a message appends a local bubble, and the only thing that
+survives a reload is what Settings writes to `localStorage`. There is no test suite,
+no linter and no CI — see *What's missing* at the bottom.
 
 ## Quick start
 
@@ -49,12 +49,13 @@ src/nav.ts                 NavContext — go/back, goTab, panel, turn, refs, pic
 src/log.ts                 the activity log — LOG_AREAS, logEv (the one writer), useLog
 src/request.ts             the request /api/ai will be handed — the turn as prose,
                            the model as a server key, the thread as its window
+src/useMedia.ts            the (min-width:900px) hook Settings and the `+` window share
 src/store/store.tsx        state skeleton (EumaeState is still empty)
 src/store/types.ts         Actor / ActionStamp / SavedItem
 src/screens/               one component per tab; index.tsx maps TabId -> screen
 src/pages/                 sub-pages pushed onto a tab; index.tsx maps name -> page
 src/components/shell/      Header, TabBar, Sidebar (desktop rail), Drawer (phone),
-                           Composer, AddSheet (the `+` menu), RightPanel, Sheet,
+                           Composer, AddSheet (the `+` window), RightPanel,
                            Toast, icons
 src/components/settings/   Settings.tsx — the whole overlay
 src/styles/tokens.css      design tokens + every component's styles
@@ -74,6 +75,14 @@ IDEAS.md                   the owner's idea queue — tracked, not committed
 - **Settings is an overlay, not a page:** 22 rows → 23 titles → 23 panes, across
   five groups (Eumae, App, Account, Data, Support). The extra title is `main`, the
   mobile root list; no rail row points at it.
+- **Two overlays, one shape.** The composer's `+` window opens the same way
+  Settings does — a full sheet on a phone, a scrim + modal with a rail at desktop
+  width — and renders the very same `.smodal`/`.stabs`/`.spanel`/`.shead`/`.sbody`
+  rules rather than a second copy of them. `useMedia('(min-width:900px)')` in
+  `src/useMedia.ts` is the one breakpoint the two agree on. It is also where the
+  split lives: `+` sets **how** Eumae answers and is the only writer of those five;
+  the panel's Context reading holds **what** it is looking at (the chip and the panel
+  read the five back). `AGENTS.md` §4.13.
 - **Storage convention.** `useStored(key, initial)` (`Settings.tsx:56`) writes
   `eumae:<key>` as JSON. Export and "Delete everything" both filter on that
   `eumae:` prefix, so the prefix *is* the contract — a preference that skips it
@@ -127,7 +136,8 @@ several times and only the *last* definition is live. `AGENTS.md` explains.
 2. ✅ One activity log (`src/log.ts`) — one writer, seven areas, read back in Settings → Logs
 3. ✅ The request shape — `src/request.ts` defines what a sent turn becomes for `/api/ai`
 4. ✅ Panel rebuilt — Context · Activity · Studio readings; the clock button opens Activity
-5. ⬜ The `+` window — its five choices in a pop-up shaped like Settings, and chips that show what's set
+5. ✅ The `+` window — its five choices in a pop-up shaped like Settings, with a rail
+   row carrying each live value, and a chip row that shows everything that is set
 6. ⬜ Sandbox, Studio artifacts, and `/api/ai` wired to the thread (+ the log's second layer)
 7. ⬜ The Logs lens — a drill-down and a search in Settings → Logs, over one filter
 

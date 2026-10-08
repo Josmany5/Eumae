@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '../shell/icons';
 import { LOG_AREAS, useLog, type LogArea } from '../../log';
+import { useMedia } from '../../useMedia';
 
 // There are no accounts yet (§7), so there is no real name or address to show. This
 // is a placeholder on purpose: the file is public and the app is deployed, so a real
@@ -41,17 +42,6 @@ const TITLES: Record<View, string> = {
   legal: 'Legal',
   about: 'About',
 };
-
-function useMedia(query: string): boolean {
-  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
-  useEffect(() => {
-    const m = window.matchMedia(query);
-    const on = () => setMatches(m.matches);
-    m.addEventListener('change', on);
-    return () => m.removeEventListener('change', on);
-  }, [query]);
-  return matches;
-}
 
 function useStored<T>(key: string, initial: T): [T, (v: T) => void] {
   const [val, setVal] = useState<T>(() => {

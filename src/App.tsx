@@ -52,10 +52,10 @@ export default function App() {
     [],
   );
 
-  /** The one file input in the app. It lives here so the paperclip and the add
-   *  menu's "Attach a file…" row open the same node — two inputs would be two
-   *  readers, and the last time a control grew a second door to one room that
-   *  was the bug. */
+  /** The one file input in the app. It lives here so every control that attaches
+   *  opens the same node — the paperclip and the rail's "Attach an item" row
+   *  today (§4.4). Two inputs would be two readers, and the last time a control
+   *  grew a second door to one room that was the bug. */
   const fileRef = useRef<HTMLInputElement>(null);
   const pickFile = useCallback(() => fileRef.current?.click(), []);
 
@@ -82,7 +82,7 @@ export default function App() {
     logEv({ area: 'Chat', text: `Detached ${label}` });
   }, []);
 
-  /* What the paperclip and the menu's file row both land on. The mockup reads
+  /* What the paperclip and the rail's attach row both land on. The mockup reads
      the file into a data URL, downsizes anything over ~1.1MB to 1568px and sends
      it as an attachment (lines 1805-1815); the send half is the API work's, so
      what's left here is the read — enough to show you your own photo back in the
@@ -104,16 +104,11 @@ export default function App() {
     [attach],
   );
 
-  /* The two rows under the menu's Context section. Neither destination exists
-     yet, and `pickMenu` below sends every unbuilt row the same way. */
-  const openAddPage = useCallback(
-    (page: 'role' | 'projects') => {
-      notify(
-        page === 'role' ? 'Custom roles arrive with Studio' : 'Projects arrive with their screen',
-      );
-    },
-    [notify],
-  );
+  /* The `+` window's one page door, now that its Context section is retired
+     (§4.13): building a role. "Scope to a project" is the rail's row again and
+     toasts through `pickMenu` like every other unbuilt row, so there is no
+     second branch to keep in step here. */
+  const onCreateRole = useCallback(() => notify('Custom roles arrive with Studio'), [notify]);
 
   // The mockup's go(): switching tab clears the page stack.
   const goTab = useCallback((t: TabId) => {
@@ -189,16 +184,20 @@ export default function App() {
         goTab('chat');
         return;
       }
-      // The rail's Context row opens the same add menu as the composer's `+` —
-      // one sheet, so the two can't grow separate ideas of what "adding" means.
+      /* The rail's "Attach an item" opens the one file input, exactly as the
+         paperclip does — not the `+` window, which is behavior-only now (§4.13)
+         and could not attach anything if it opened. §4.4 is kept: this row and
+         the paperclip both call `pickFile`, so there is still one input and no
+         second picker. Attaching does not open the panel (§4.3); it lands in the
+         panel's Context reading, which is where it is read back. */
       if (label === 'Attach an item') {
         goTab('chat');
-        setAddOpen(true);
+        pickFile();
         return;
       }
       notify(`${label} arrives with its screen`);
     },
-    [goTab, notify],
+    [goTab, notify, pickFile],
   );
 
   const appClass = [railCollapsed ? 'railCollapsed' : '', panelOpen ? 'panelOpen' : '']
@@ -265,7 +264,7 @@ export default function App() {
           onSearch={openSearch}
         />
         <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} notify={notify} />
-        <AddSheet open={addOpen} onClose={() => setAddOpen(false)} onPage={openAddPage} />
+        <AddSheet open={addOpen} onClose={() => setAddOpen(false)} onCreateRole={onCreateRole} />
 
         {/* `accept` is what puts Photo library / Take photo / Choose file on
             screen: that list is the OS picker, not a menu we draw. */}

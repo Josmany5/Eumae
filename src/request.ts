@@ -68,7 +68,7 @@ export function buildRequest(turn: Turn, refs: readonly Ref[], text: string): Tu
  *
  *  Two deliberate departures, both because the model should be told less that
  *  is not true:
- *   - `role: ''` is Default (AddSheet.tsx:112). The mockup keeps the literal
+ *   - `role: ''` is Default (the Role section in `AddSheet.tsx`). The mockup keeps the literal
  *     string and tells the model "Role: Default." anyway (1648-1650); an empty
  *     role describes nothing a persona needs to be told, so no line is sent —
  *     the same reason its own chip hides Default (1270).

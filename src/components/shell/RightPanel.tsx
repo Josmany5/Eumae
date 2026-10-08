@@ -38,7 +38,7 @@ interface RightPanelProps {
  *  two readers of that list, and the other one is the request built when a
  *  message is sent (src/request.ts), which no prop can reach. */
 export default function RightPanel({ open, view, onView, onClose, onToggle }: RightPanelProps) {
-  const { refs, detach } = useNav();
+  const { refs, detach, turn } = useNav();
   /* The log's second reader, after Settings → Logs. Read on every render rather
      than only on the Activity reading, so the list is already correct the
      moment you switch to it and the log never has to be copied into state. */
@@ -111,7 +111,8 @@ export default function RightPanel({ open, view, onView, onClose, onToggle }: Ri
                 </div>
               ) : (
                 <p className="pEmptyN">
-                  Nothing attached. Use the <b>+</b> on the composer to bring in a file or an item.
+                  Nothing attached. The paperclip on the composer brings a photo or a PDF into
+                  this message.
                 </p>
               )}
             </div>
@@ -133,6 +134,42 @@ export default function RightPanel({ open, view, onView, onClose, onToggle }: Ri
                 </div>
               </div>
               <p className="pNote">Eumae reads these every turn, so you never have to attach them.</p>
+            </div>
+
+            {/* The five, read-only, and deliberately so (§4.13). `+` is their one
+                writer; the panel states them because "what is Eumae doing?" is
+                the same question as "what is Eumae looking at?" — and it does
+                not grow a second picker for them. The chip row above the input
+                is the glance; this is the full line. */}
+            <div className="pSec">
+              <div className="pGrp">How Eumae answers</div>
+              <div className="kv">
+                <span>Mode</span>
+                <span className="m">{turn.mode}</span>
+              </div>
+              <div className="kv">
+                <span>Role</span>
+                {/* '' is this app's spelling of the mockup's "Default" (nav.ts). */}
+                <span className="m">{turn.role || 'Default'}</span>
+              </div>
+              <div className="kv">
+                <span>Skill</span>
+                {/* No skill can be turned on yet, so "None" is the whole truth
+                    rather than the name of one this screen cannot verify. */}
+                <span className="m">{turn.skill || 'None'}</span>
+              </div>
+              <div className="kv">
+                <span>Thinking</span>
+                <span className="m">{turn.thinking}</span>
+              </div>
+              <div className="kv">
+                <span>Model</span>
+                <span className="m">{turn.model}</span>
+              </div>
+              <p className="pNote">
+                Set in the <b>+</b> window above the input. This reading states them; it never
+                changes them.
+              </p>
             </div>
           </div>
         ) : view === 'activity' ? (

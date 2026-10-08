@@ -120,7 +120,11 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
    Desktop: a centred modal with a section rail on the left and the panel on
    the right (the ChatGPT / Claude / Muse shape).
    .smodal and .spanel are wrappers that only exist on desktop; on mobile they
-   collapse with display:contents so .shead/.sbody stay direct flex children. */
+   collapse with display:contents so .shead/.sbody stay direct flex children.
+   The composer's `+` window (.addWin, below) is built from this same skeleton —
+   same wrappers, same head, same rail rows — because it is the same kind of
+   surface: a screen that opens over the app. Only its own container class
+   differs, for the name and the z-index. */
 .settings{ position:fixed; inset:0; z-index:50; background:var(--bg);
   transform:translateY(102%); transition:transform .3s cubic-bezier(.32,.72,0,1);
   display:flex; flex-direction:column; }
@@ -139,7 +143,9 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
 .ftabs button{ flex:none; border-radius:99px; font-size:14px; background:var(--card); padding:8px 15px; }
 .ftabs button.on{ background:var(--acsoft); color:var(--ac); font-weight:700; }
 
-/* Settings page pieces (ported from the mockup) */
+/* Settings page pieces (ported from the mockup) — three of these are read by more
+   than Settings now: `.sg`/`.sr` by the composer's `+` window, and `.kv` by the
+   panel's read-only "How Eumae answers" block. */
 .card{ background:var(--card); border-radius:16px; padding:14px; margin:10px 0; }
 .s{ font-size:14px; } .xs{ font-size:12px; } .m{ color:var(--mut); }
 /* A log row: the status dot, then the sentence and its house-keeping line.
@@ -192,19 +198,17 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
   font-size:16px; color:var(--tx); margin-bottom:10px; }
 .sinput::placeholder{ color:var(--mut); }
 
-/* Sheet: bottom sheet over a scrim */
-.scrim{ position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:44;
-  opacity:0; pointer-events:none; transition:opacity .3s ease; }
-.scrim.open{ opacity:1; pointer-events:auto; }
-.sheet{ position:fixed; left:50%; bottom:0; width:100%; max-width:520px; z-index:45;
-  max-height:72%; background:var(--card); border-radius:20px 20px 0 0;
-  box-shadow:0 -8px 40px rgba(0,0,0,.4); transform:translate(-50%,105%); transition:transform .3s ease;
+/* The composer's `+` window (Phase 5) — the mockup's plusSh(), "Add to this
+   chat". Settings' shape, one z-index lower: a full sheet on a phone, a scrim +
+   modal at desktop width (see the desktop block further down). It renders
+   Settings' .smodal/.stabs/.stab/.spanel/.shead/.sbody skeleton rather than its
+   own copy of twenty rules that would then have to be kept in step. The bottom
+   sheet it replaced (.sheet/.scrim and src/components/shell/Sheet.tsx) went with
+   it: that menu was their only user. */
+.addWin{ position:fixed; inset:0; z-index:49; background:var(--bg);
+  transform:translateY(102%); transition:transform .3s cubic-bezier(.32,.72,0,1);
   display:flex; flex-direction:column; }
-.sheet.open{ transform:translate(-50%,0); }
-.sheet .sh{ display:flex; align-items:center; padding:14px 16px 10px; border-bottom:1px solid var(--hair); }
-.sheet .sh .t{ flex:1; text-align:center; font-size:17px; font-weight:700; }
-.sheetBody{ overflow-y:auto; padding:12px 16px calc(16px + env(safe-area-inset-bottom)); }
-.sheet .empty{ color:var(--mut); text-align:center; padding:28px 0; font-size:15px; }
+.addWin.open{ transform:translateY(0); }
 
 /* Toast: small confirmation pill */
 .tst{ position:fixed; left:50%; bottom:170px; transform:translateX(-50%) translateY(8px);
@@ -369,6 +373,13 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
     transform:none; opacity:0; pointer-events:none; transition:opacity .18s ease; }
   .settings.open{ opacity:1; pointer-events:auto; }
 
+  /* The `+` window is the same modal, so it is dimmed and centred the same way —
+     only its container class and its z-index differ (49 to Settings' 50). */
+  .addWin{ background:rgba(0,0,0,.55); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    align-items:center; justify-content:center; padding:44px 40px;
+    transform:none; opacity:0; pointer-events:none; transition:opacity .18s ease; }
+  .addWin.open{ opacity:1; pointer-events:auto; }
+
   .smodal{ display:flex; width:min(1000px,100%); height:min(700px,100%);
     background:var(--card); border:1px solid var(--hair); border-radius:16px;
     box-shadow:0 24px 70px rgba(0,0,0,.5); overflow:hidden; }
@@ -528,11 +539,12 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
     stroke-linecap:round; stroke-linejoin:round; }
 }
 
-/* Rows in the composer's `+` menu — "Add to this chat". Shape straight off the
-   mockup's `.sr` (line 100): label left, a check on the right when it's the live
-   one, a hairline between. The group is `--card2` because the sheet is already
-   `--card`, and a `--card` group on it comes out invisible. */
-.shGroup{ background:var(--card2); border-radius:14px; overflow:hidden; }
+/* The row both surfaces use: the composer's `+` window and every Settings pane.
+   Shape straight off the mockup's `.sr` (line 100): label left, a check on the
+   right when it's the live one, a hairline between. Since Phase 5 the `+` window
+   is a sheet/modal over `--bg` like Settings, so its rows sit in `.sg`
+   (`--card`) the way Settings' do; `.shGroup` was the one-step-up group the old
+   bottom sheet (already `--card`) needed, and it went with the sheet. */
 .sr{ display:flex; align-items:center; gap:12px; width:100%; padding:12px 14px;
   text-align:left; font-size:14px; border-bottom:1px solid var(--hair); }
 .sr:last-child{ border-bottom:0; }
@@ -543,9 +555,7 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
 .sr .ch{ flex:none; display:inline-flex; color:var(--ac); }
 .sr .ch svg{ width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:2;
   stroke-linecap:round; stroke-linejoin:round; }
-/* A section with nothing to choose yet still says why, in its own voice. */
+/* A section with nothing to choose yet still says why, in its own voice. The `sh`
+   is the sheet this window used to be; the class name stayed, the sheet didn't. */
 .shEmpty{ margin:0; padding:12px 14px; font-size:12px; line-height:1.5; color:var(--mut); }
 .shTip{ margin:14px 2px 0; font-size:11px; line-height:1.6; color:var(--mut); }
-/* The menu's sections, tighter than a page's — a sheet is not a screen. */
-.sheetBody .sec{ margin:16px 0 6px; }
-.sheetBody .sec:first-child{ margin-top:2px; }

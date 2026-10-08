@@ -50,19 +50,20 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (3179 lines across src/ + api/)
+### Code map (3932 lines across src/ + api/)
 
 | File | Lines | Role |
 | --- | --- | --- |
-| `src/components/settings/Settings.tsx` | 696 | the whole Settings overlay; also owns `useStored`, export/wipe |
+| `src/components/settings/Settings.tsx` | 686 | the whole Settings overlay; also owns `useStored`, export/wipe |
 | `api/ai.ts` | 501 | the only server code; Vercel handler |
-| `src/App.tsx` | 278 | the shell: tab + page stack + panel + drawers + file input |
-| `src/request.ts` | 220 | the request `/api/ai` will be handed — the turn as prose, the model as a key |
-| `src/components/shell/AddSheet.tsx` | 183 | the composer's `+` menu ("Add to this chat") |
-| `src/components/shell/RightPanel.tsx` | 181 | the right panel (Context / Activity / Studio) |
-| `src/components/shell/pageMenu.ts` | 125 | `PAGE_MENU` — each tab's rail rows |
-| `src/components/shell/Composer.tsx` | 107 | input row, chip, `+`, paperclip, mic, send |
+| `src/App.tsx` | 277 | the shell: tab + page stack + panel + drawers + file input |
+| `src/components/shell/AddSheet.tsx` | 322 | the composer's `+` window — the five turn settings, rail + pane |
+| `src/request.ts` | 221 | the request `/api/ai` will be handed — the turn as prose, the model as a key |
+| `src/components/shell/RightPanel.tsx` | 218 | the right panel (Context / Activity / Studio) |
+| `src/useMedia.ts` | 21 | the `(min-width:900px)` hook both overlays read |
 | `src/nav.ts` | 133 | `NavContext`: go/back, goTab, panel, `turn`, `refs`, pickFile |
+| `src/components/shell/Composer.tsx` | 129 | input row, the chip pills, `+`, paperclip, mic, send |
+| `src/components/shell/pageMenu.ts` | 128 | `PAGE_MENU` — each tab's rail rows |
 | `src/components/shell/Sidebar.tsx` | 89 | desktop rail |
 | `src/log.ts` | 78 | the activity log: `LOG_AREAS`, the one writer, the read |
 | `src/pages/SearchPage.tsx` | 70 | the only real sub-page |
@@ -73,7 +74,6 @@ dependency for accounts.
 | `src/components/shell/TabBar.tsx` | 33 | phone tab bar + `TABS` |
 | `src/screens/index.tsx` | 28 | `SCREENS` + `LABELS`: TabId → screen |
 | `src/pages/index.tsx` | 24 | `PAGES`: name → page + title |
-| `src/components/shell/Sheet.tsx` | 24 | bottom-sheet primitive |
 | `src/store/store.tsx` | 23 | context skeleton; `EumaeState` is empty |
 | `src/main.tsx` | 17 | mount |
 | `src/components/shell/Toast.tsx` | 16 | transient message |
@@ -158,7 +158,7 @@ dependency for accounts.
 
 ## 3. What exists today, piece by piece
 
-### Shell — `src/App.tsx` (278), `src/nav.ts` (133)
+### Shell — `src/App.tsx` (277), `src/nav.ts` (133)
 
 `App` owns: the active tab, the page stack, rail-collapsed, drawer-open,
 settings-open, the toast, the panel (open + view), `refs` (attached items), the
@@ -329,18 +329,26 @@ Phase 4 rebuilt this file — the readings changed, the pill row survived.
 
 ### The rest of the shell
 
-- `Composer.tsx` (107): chip, `+` (openAdd), auto-growing textarea, paperclip
-  (`pickFile`), **mic (inert — no handler)**, send. A lone `/`
-  opens the add menu (mockup line 1278). Enter sends, Shift+Enter newlines.
-- `AddSheet.tsx` (179): five sections that decide *how* Eumae answers (Mode, Role,
-  Skill, Thinking, Model) plus the Context rows. Picking closes the sheet.
+- `Composer.tsx` (129): the chip row — **one pill per setting that is not at its
+  default** (Phase 5; mode is always there), every pill read-only and opening the
+  `+` window — then `+` (openAdd), the auto-growing textarea, the paperclip
+  (`pickFile`), **the mic (inert — no handler)**, send. A lone `/`
+  opens the window (mockup line 1278). Enter sends, Shift+Enter newlines.
+- `AddSheet.tsx` (322): the composer's `+` **window** — the five sections that
+  decide *how* Eumae answers (Mode, Role, Skill, Thinking, Model) and nothing else
+  since Phase 5 (§4.13). A phone gets a full sheet listing them, each row carrying
+  its live value; a desktop gets a scrim + modal built from Settings' own skeleton,
+  whose rail *is* that list. Picking closes the window.
   `ROLES = ['Default','Coach','Teacher','Sparring partner']` are the mockup's
-  ROLEDEF; user-created roles arrive with Studio.
+  ROLEDEF; user-created roles arrive with Studio. It replaced the bottom sheet of
+  five stacked sections, and `Sheet.tsx` with it — that window was its only user.
 - `Sidebar.tsx` (89): Search, the six tabs, `PAGE_MENU[active]`, Settings at the
   foot. Collapsing is CSS-only.
 - `Header.tsx` (37), `TabBar.tsx` (33, also exports `TABS`), `Drawer.tsx` (65),
-  `Sheet.tsx` (24), `Toast.tsx` (16), `icons.tsx` (69 — six icons were added last
-  phase: globe, acc, bill, shield, arch, law).
+  `Toast.tsx` (16), `icons.tsx` (73 — six icons came in Phase 1: globe, acc, bill,
+  shield, arch, law).
+- `useMedia.ts` (21): the `(min-width:900px)` hook, read by Settings and by the `+`
+  window so the two overlays cannot disagree about which shape they are in.
 
 ### Server — `api/ai.ts` (501)
 
@@ -377,10 +385,10 @@ Design tokens plus every component's styles in one file, class-named per compone
    was retired to match the mockup's row, so what's attached is read back in the
    panel — which the rail header and the phone header open. Attaching must not
    open the panel: that was the bug when two controls shared one room.
-   **Amended 2026-10-06 (§4.13):** the Context half of `+` is being retired —
-   attaching is the paperclip's job and a project scope needs a door of its own
-   (§4.7) — so once Phase 5 lands this reads "`+` sets how Eumae answers" and
-   nothing else.
+   **Amended 2026-10-06, landed in Phase 5 (§4.13):** the Context half of `+` is
+   retired — attaching is the paperclip's job (and the rail's "Attach an item" row,
+   which opens the same input), and a project scope has a door of its own again
+   (§4.7) — so this now reads "`+` sets how Eumae answers" and nothing else.
 4. **One file input.** `App.tsx` renders the only `<input type="file">` and
    `pickFile()` in the nav context opens it. Never add a second picker.
 5. **Theme lives in the `eumae:` namespace and boots pre-paint.** `main.tsx` has no
@@ -394,18 +402,20 @@ Design tokens plus every component's styles in one file, class-named per compone
    deliberately (it only ever called `goPage('projects')` and scoped nothing);
    Console's menu is "Full pages"; "New chat" is chat-scoped, not global; the
    Events row was added on purpose.
-   **Amended 2026-10-06:** that reason expires under §4.13 — the row was dropped
-   *because* the `+` menu held it, and `+` is losing it — so Phase 5 puts the rail
-   row back even though, until a project is real, it still scopes nothing: a
-   labelled row beats no door.
+   **Amended 2026-10-06, landed in Phase 5:** that reason expired under §4.13 —
+   the row was dropped *because* the `+` menu held it, and `+` lost it — so the
+   rail's Context group is `Attach an item · Scope to a project` again. Until a
+   project is real the second row still scopes nothing and toasts like the other
+   ~40 unbuilt rows, because a labelled row beats no door.
 8. **About and Legal are real pages.** The mockup left About as a
    `toast('Eumae 0.8')`; the rail row exists, so it opens a page.
 9. **Mode is inferred from the prompt** (two regexes in `ChatScreen.send`) until a
    router exists — the mockup does the same at line 878, and the chip has to keep
    up with what the mode actually is.
 10. **Onboarding/`+` choices are made, not stored per-chat.** `turn` is one piece
-    of state in the nav context, read by the chip and written by the sheet, so the
-    two ends cannot disagree.
+    of state in the nav context: the `+` window is its only writer, and the chip
+    row and the panel's Context reading both read it back, so the ends cannot
+    disagree (§4.13 — this is the "one writer each" rule in miniature).
 11. **Data controls is the one data room** (merged after Phase 1). The mockup's
     Account row "Export and backup" and its Data row "Data controls" both call
     `goPage('sDat')` — one pane behind two doors
@@ -430,17 +440,19 @@ Design tokens plus every component's styles in one file, class-named per compone
     `+` sets *how* Eumae answers (Mode/Role/Skill/Thinking/Model) and is the only
     writer of those five; the panel's Context reading holds *what Eumae is looking
     at* (attachments, a project scope, what is always in context) and is the only
-    writer of those. (Where a scope is *chosen* is still open: the rail row §4.7
-    revives may open that room, but it must not become a second writer.) The chip
-    and the panel both **read** the five back — the chip as the glance, the panel
-    in full — and neither writes them. This is §1 rule 2 at the feature level, and
-    it is why the ask that sounded contradictory is not:
+    writer of those. (Where a scope is *chosen* is the rail row §4.7 revived; it is
+    inert until a project screen exists, and it must not become a second writer.)
+    The chip and the panel both **read** the five back — the chip as the glance, the
+    panel in full — and neither writes them. This is §1 rule 2 at the feature level,
+    and it is why the ask that sounded contradictory is not:
     everything the picker sets shows as chips *and* in the panel, while the panel's
-    attach controls leave the picker entirely. It **amends §4.3** (the `+` menu's
-    Context half is retired) and **revives the rail row §4.7 dropped**. The same
-    axis is what the log's facets will name — you × Eumae, thinking × doing — so
-    both ends of a turn can say who acted instead of assuming it. Full queue, with
-    what is still open on each, in `IDEAS.md`.
+    attach controls leave the picker entirely. It **amended §4.3** (the `+` menu's
+    Context half is retired) and **revived the rail row §4.7 dropped** — both in
+    Phase 5, which is where the five became one window with a rail, the chip row
+    grew past mode · role · skill, and the panel gained its read-only block. The
+    same axis is what the log's facets will name — you × Eumae, thinking × doing —
+    so both ends of a turn can say who acted instead of assuming it. Full queue,
+    with what is still open on each, in `IDEAS.md`.
 
 ---
 
@@ -450,7 +462,7 @@ Design tokens plus every component's styles in one file, class-named per compone
 55 modules transformed and `dist/index.html` + `dist/assets/index-*.css|js`.
 Background it (`nohup … &`) and poll; it often exceeds a 30-second tool timeout.
 
-Checks 1-3 were used for the phase that landed before Phase 2, and checks 4-6 for
+Checks 1-3 were used for the phase that landed before Phase 2, and checks 4-7 for
 the phases since. They were hand-run scratch scripts and are **gone** — this is
 the recipe to rebuild them, and the strongest argument for a test suite:
 
@@ -507,16 +519,36 @@ the recipe to rebuild them, and the strongest argument for a test suite:
    **0** while the module existed but was uncalled — tree-shaking, not a bug — so
    that grep is also the fastest way to notice the module has gone unreachable
    again.
+7. **The turn window and the chip row** (added in Phase 5). Bundle a scratch TSX
+   with `./node_modules/.bin/esbuild <file> --bundle --platform=node --jsx=automatic
+   --outfile=/tmp/x.cjs` (`--format=esm` fails: `react-dom/server` is CJS and its
+   `require('util')` has no ESM shim), stub `window.matchMedia` to answer for the
+   width you are testing, and render `AddSheet`, `Composer` and `RightPanel`
+   through `renderToStaticMarkup` inside a `NavContext.Provider` with a stand-in
+   `Nav`. 28 assertions ran, 0 failures. It pins: the desktop window renders
+   Settings' own skeleton (`.stabs` + a pane) with five rail rows carrying
+   Ask / Default / Balanced / Auto and opens on Mode; the phone window renders the
+   list of five instead, with no rail, and keeps its title and tip; no row attaches
+   or scopes any more; the chip row is one pill at the defaults and four when four
+   are set, with Thinking and Model appearing for the first time; and the panel's
+   Context reading carries five `.kv` lines and a block with no `<button>` in it —
+   read-only — plus an empty state that names the paperclip rather than `+`. One
+   assertion earned its keep: the first run failed on "opens on Mode", a real
+   one-frame empty pane on desktop, fixed by seeding the view state from the width
+   instead of from `'main'`. Then the built output, as a second opinion:
+   `grep -c` in `dist/assets/index-*.js` finds `addWin`, `How Eumae answers` and
+   `Scope to a project` once each and `Attach a file` zero times, and the CSS file
+   carries `.addWin` with no `.shGroup`/`.sheetBody` left.
 
 **Never claim a UI behaviour works because it typechecks.** Build it, and open
 `dist/index.html` or `npm run preview` when the claim is visual.
 
 ---
 
-## 6. The plan — seven phases, four done
+## 6. The plan — seven phases, five done
 
 Locked with the owner. The order matters: each phase removes a lie before the next
-one adds a feature. Phases 1-4 are landed. Phases 5-7 come from the owner's own
+one adds a feature. Phases 1-5 are landed. Phases 6-7 come from the owner's own
 queue, tracked entry by entry in `IDEAS.md`, and are written out here once an
 entry became work.
 
@@ -624,21 +656,48 @@ its row removed, so the rail is 22 rows today (§4.11).
   SSR check (15 assertions with rows, 12 against an empty log) rendered all three
   readings and passed, then was deleted.
 
-**Phase 5 — the turn window, and chips that tell the truth.** Two halves of one
-change, from `IDEAS.md` I1-I4, under §4.13.
+**Phase 5 — the turn window, and chips that tell the truth. ✅ Done.**
+Two halves of one change, from `IDEAS.md` I1-I4, under §4.13.
 
-- `+` becomes the window Settings already is (`useMedia('(min-width:900px)')`,
-  `Settings.tsx:187`: a full sheet on a phone, a scrim + modal with its own rail
-  at desktop width) instead of the bottom sheet of five stacked sections it is
-  today (`AddSheet.tsx`), and each rail row carries that setting's live value the
-  way Settings' rows carry "Free" / "Dark" / "$0.00".
-- `+` stops attaching: its Context section is retired (§4.3) and "Scope to a
-  project" returns to the rail's Context group (§4.7), or scoping has no door.
-- The chip carries every setting the picker sets, hiding the ones at their
-  default — five possible chips instead of today's hardcoded three
-  (`Composer.tsx:43`, mockup 1270 for the chip itself) — and the panel's Context
-  reading states the same five read-only, replacing its line that points at `+`
-  to attach (`RightPanel.tsx:114`).
+- **`+` is the window Settings already is.** `useMedia('(min-width:900px)')` — moved
+  out of `Settings.tsx` into `src/useMedia.ts` so the two overlays read one
+  breakpoint instead of two copies — picks the shape: a full sheet on a phone, which
+  lists the five sections; a scrim + modal at desktop width, whose rail *is* that
+  list. Only the container is new (`.addWin`, z-49): the rail, head, body and pane
+  are Settings' own `.smodal/.stabs/.stab/.spanel/.shead/.sbody` rules, shared on
+  purpose rather than copied, so the two overlays cannot drift apart. Each rail row
+  carries that setting's live value (Ask / Default / — / Balanced / Auto), which is
+  what keeps the window one screen tall. The bottom sheet of five stacked sections
+  went, and `Sheet.tsx` with it: `+` was its only user, so it was dead the moment
+  the window changed shape.
+- **`+` stopped attaching** (§4.3). Its Context section is retired; "Attach a file…"
+  went with it, and so did `App.tsx`'s `openAddPage('projects')` branch — the moment
+  nothing called it, it was unreachable code. The rail's Context group is
+  `Attach an item · Scope to a project` again (§4.7). "Attach an item" now calls
+  `pickFile()` — the same one input the paperclip opens (§4.4) — instead of opening
+  a window that can no longer attach anything.
+- **The chip row tells the truth** (I4). `Composer` draws one read-only pill per
+  setting that is not at its default (Mode always, then Role / Skill / Thinking /
+  Model) instead of the hardcoded `mode · role · skill`, so Thinking and Model
+  surface on the chip for the first time. The defaults are read off `DEFAULT_TURN`,
+  so a changed default cannot leave a stale pill. Every pill opens the window and
+  none of them writes — the mockup's own later draft (`chips10HTML`, 1341) gave each
+  pill an × to clear it, which here would have been a second writer (§4.13).
+- **The panel states the five read-only.** Context gained a "How Eumae answers"
+  block (Mode / Role / Skill / Thinking / Model) and a line saying where they are
+  set; its empty state stopped pointing at `+` to attach and names the paperclip
+  (I3). It writes nothing: `+` is the only writer.
+- Verified: `npm run build` green at **55 modules** — `Sheet.tsx` out, `useMedia.ts`
+  in, so the count is unchanged — CSS **22.66 kB** (down from 23.13: the sheet's
+  rules went, the window's container is small) and JS **274.55 kB** (up ~2 kB).
+  §5 check 7 ran **28 assertions, 0 failures**; the built `dist` carries `addWin` /
+  `How Eumae answers` / `Scope to a project` once each and `Attach a file` not at
+  all. History: `3735 → 3932` lines across src + api.
+- **Handed on, not dropped:** where a project scope is actually *chosen* is still
+  the owner's call — the rail row is inert until a project screen exists, and it
+  must not become a second writer (§4.13). I3's fuller form (attaching from the
+  panel) is not built, because attaching is the paperclip's and the panel reads it
+  back. "Always in context" is still furniture (I8) and the mic is still inert (I9).
 
 **Phase 6 — sandbox, artifacts, `/api/ai`.** Studio artifacts and the panel's
 Studio reading get something real; the UI finally calls `api/ai.ts`; an auth
@@ -659,15 +718,16 @@ is the pill row again.
 
 - **The owner's open ideas live in `IDEAS.md`.** They are neither defects nor
   commitments: the file says whether each one landed in a phase or is still
-  waiting. Open as of 2026-10-06: the `+` menu still attaches (I2); the Context
-  reading does not state the turn and its empty line still points at `+` (I3);
-  the chip is still mode · role · skill (I4); the log has one dimension — area —
-  so nothing can be filtered by actor (I5); Settings → Logs is still pills-only
-  (I6); "Always in context" is still furniture (I8); the mic is still inert (I9).
-- **~40 rail rows are inert.** `MenuItem` is only `{label, icon}` (`pageMenu.ts:3-6`).
+  waiting. I1-I4 landed in Phase 5 (2026-10-07, struck through there). Still open:
+  **where a project scope is chosen** — the rail row is back but inert, and it must
+  not become a second writer (§4.13); the log has one dimension — area — so nothing
+  can be filtered by actor (I5); Settings → Logs is still pills-only (I6);
+  "Always in context" is still furniture (I8); the mic is still inert (I9).
+- **~41 rail rows are inert.** `MenuItem` is only `{label, icon}` (`pageMenu.ts:3-6`).
   Tasks, Events, Calendar, Goals, Projects, Notes, Flows, Favorites, Sources,
-  Contacts, Messages, Requests, courses, digests… all render, and clicking one
-  only toasts "…arrives with its screen" (`App.tsx:195`). To make them real,
+  Contacts, Messages, Requests, courses, digests, and "Scope to a project" all
+  render, and clicking one only toasts "…arrives with its screen" (`App.tsx:198`).
+  To make them real,
   `MenuItem` needs something like `{ page?: string; action?: string; filter?: string }`
   and every row a target; the mockup's last `pD` says which rows belong to which tab.
 - **Five tab screens are 11-line stubs** — their real structure has to come from
@@ -751,7 +811,7 @@ staging environments, PR review bots, monorepo tooling, Docker, feature flags.
 - **The build is slow in-session.** Background it and poll the log; don't block.
 - **Tool payload limits:** a single file write over ~6k characters is rejected —
   split it into chunks, as this file was.
-- **A lone `/` in the composer opens the add menu** (mockup line 1278). Intentional.
+- **A lone `/` in the composer opens the `+` window** (mockup line 1278). Intentional.
 - **`refs` are matched by `label`**, so two files with the same name collide (that
   produces a toast, deliberately).
 - **Secrets:** `api/ai.ts` must keep reading `process.env`. There is no `.env` in
