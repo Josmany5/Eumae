@@ -50,14 +50,14 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (3932 lines across src/ + api/)
+### Code map (3935 lines across src/ + api/)
 
 | File | Lines | Role |
 | --- | --- | --- |
 | `src/components/settings/Settings.tsx` | 686 | the whole Settings overlay; also owns `useStored`, export/wipe |
 | `api/ai.ts` | 501 | the only server code; Vercel handler |
 | `src/App.tsx` | 277 | the shell: tab + page stack + panel + drawers + file input |
-| `src/components/shell/AddSheet.tsx` | 322 | the composer's `+` window — the five turn settings, rail + pane |
+| `src/components/shell/AddSheet.tsx` | 323 | the composer's `+` window — the five turn settings, rail + pane |
 | `src/request.ts` | 221 | the request `/api/ai` will be handed — the turn as prose, the model as a key |
 | `src/components/shell/RightPanel.tsx` | 218 | the right panel (Context / Activity / Studio) |
 | `src/useMedia.ts` | 21 | the `(min-width:900px)` hook both overlays read |
@@ -543,6 +543,16 @@ the recipe to rebuild them, and the strongest argument for a test suite:
 **Never claim a UI behaviour works because it typechecks.** Build it, and open
 `dist/index.html` or `npm run preview` when the claim is visual.
 
+There is no headless-browser dependency in this repo, but Chrome is installed on
+this machine, so a visual claim *can* still be checked without a person in the
+loop: serve the build (`python3 -m http.server 8099 --directory dist`), start
+Chrome with `--headless=new --remote-debugging-port=9222`, and drive it over the
+DevTools protocol from a throwaway node script — Node 23 carries `WebSocket`, so
+there is nothing to install. `Emulation.setDeviceMetricsOverride` sets the width
+(which is what makes `useMedia` switch shapes), `Runtime.evaluate` clicks, and
+`Page.captureScreenshot` writes a PNG you can look at. That is how Phase 5's three
+surfaces were checked; kill both processes afterwards.
+
 ---
 
 ## 6. The plan — seven phases, five done
@@ -692,7 +702,11 @@ Two halves of one change, from `IDEAS.md` I1-I4, under §4.13.
   rules went, the window's container is small) and JS **274.55 kB** (up ~2 kB).
   §5 check 7 ran **28 assertions, 0 failures**; the built `dist` carries `addWin` /
   `How Eumae answers` / `Scope to a project` once each and `Attach a file` not at
-  all. History: `3735 → 3932` lines across src + api.
+  all. The three surfaces were then **looked at in a headless Chrome** against the
+  built `dist` (over the DevTools protocol, no new dependency): the desktop window
+  as a scrim + rail + Mode pane, the phone window as a full sheet, the panel's
+  Context reading with the rail's returned row and the chip row showing `Ask ▾`.
+  History: `3735 → 3935` lines across src + api.
 - **Handed on, not dropped:** where a project scope is actually *chosen* is still
   the owner's call — the rail row is inert until a project screen exists, and it
   must not become a second writer (§4.13). I3's fuller form (attaching from the
