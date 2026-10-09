@@ -72,6 +72,14 @@ const RUNAWAY_MAX = 4;
 /** The longest piece the speaker asks for in one request (mockup 1673). */
 const CHUNK_MAX = 420;
 
+/** iOS Safari ends the recogniser after every phrase and will not start it
+ *  again outside a fresh gesture, so on iOS the mic is one tap, one phrase.
+ *  Desktop Chrome honours `continuous` and keeps the same session alive. */
+const IS_IOS =
+  typeof navigator !== 'undefined' &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
 /* The speech API is spelled `webkitSpeechRecognition` in the browsers that have
    it (Safari and Chrome both), and TypeScript's DOM lib still does not carry it
    — it is a draft, not a standard. So the three members this file uses are
@@ -120,7 +128,6 @@ type RecognizerCtor = new () => Recognizer;
    one the mic watches; `running` is the one the button toggles off. */
 let audio: HTMLAudioElement | null = null;
 let unlocked = false;
-let unlockArmed = false;
 let queue: string[] = [];
 let running = false;
 let sounding = false;
@@ -180,7 +187,8 @@ function silence(): string {
   return silent;
 }
 
-/** `unlock` (1668), and the listener that gets it a gesture to run inside. */
+/** `unlock` (1668): a silent sound played in a gesture, which is what opens the
+ *  element for iOS Safari — everything after it can play without a gesture. */
 function unlock(): void {
   if (unlocked) return;
   /* Never over a piece that is playing. The silence goes through the same element
@@ -188,8 +196,8 @@ function unlock(): void {
      playing — and a piece stopped that way never fires `ended`, which is the only
      thing that asks for the next one. The run would then sit there "speaking" for
      ever, and `sounding` is what the mic checks before it types or sends: one tap
-     on the mic while a reply is being read would leave the microphone dead. The
-     listener stays on, so the next gesture is the one that opens the element. */
+     on the mic while a reply is being read would leave the microphone dead. A
+     later Read-aloud tap is its own gesture, and opens the element then. */
   if (running || sounding) return;
   try {
     const el = element();
@@ -211,21 +219,6 @@ function unlock(): void {
     /* No audio in this browser at all. Nothing to do here: playback below
        fails the same way and says so. */
   }
-}
-
-function arm(): void {
-  if (unlockArmed) return;
-  unlockArmed = true;
-  document.addEventListener('pointerdown', unlock);
-}
-
-/** Arm the iOS audio-unlock listener, once, before the first tap can matter.
- *  `arm` is lazy and idempotent; this is the one call the composer makes when it
- *  mounts, so the `pointerdown` that opens playback is already registered before
- *  the person reaches for the mic — which is what keeps `unlock` out of the
- *  mic's own gesture (see `toggleMic`). */
-export function armAudio(): void {
-  arm();
 }
 
 /** Cut text into sentence-sized pieces — the mockup's `chunks` (1670): code
@@ -404,7 +397,6 @@ export function speak(text: string, say?: (message: string) => void, voice?: str
      pressed, so reading it here is what makes a change land on the next thing
      read — this line's whole job. */
   speakRate = storedSpeed();
-  arm();
   unlock();
   queue = chunks(text);
   noticed = false;
@@ -523,6 +515,21 @@ function startRec(voice: VoiceTyping): void {
 
   rec.onend = () => {
     if (listener !== voice) return;
+    /* A browser that ends the stream on its own (iOS does, after each phrase)
+       may never give the silence timer its 500ms — send anything still waiting,
+       so a phrase is never lost. */
+    if (transcript.trim()) {
+      clearTimer();
+      voiceSend(voice);
+    }
+    /* iOS: one tap, one phrase. It will not restart outside a fresh gesture, so
+       stop cleanly and let the next tap begin again. */
+    if (IS_IOS) {
+      stopListening();
+      return;
+    }
+    /* Elsewhere `continuous` holds the stream open and `onend` only arrives after
+       a long silence, so restart — bounded by the runaway guard. */
     const now = Date.now();
     const recent = restarts.filter((at) => now - at < RUNAWAY_WINDOW_MS);
     recent.push(now);
@@ -536,10 +543,8 @@ function startRec(voice: VoiceTyping): void {
     try {
       rec.start();
     } catch {
-      /* The browser will not start this recogniser again — on iOS a restart
-         outside a fresh gesture is refused. A recogniser that refuses to start
-         will never speak again, so put the button back instead of leaving it
-         lit and silent; the next tap is a fresh start. */
+      /* The browser will not start this recogniser again. Put the button back
+         rather than leaving it lit and silent; the next tap is a fresh start. */
       stopListening();
     }
   };
@@ -598,7 +603,6 @@ export function toggleMic(voice: VoiceTyping): void {
      starting an <audio> element in the same gesture (`unlock`) takes that
      session on iOS before the recogniser can claim it — the "no beep, no
      transcript" failure. The unlock belongs to the speaker and stays there
-     (`speak`), where `armAudio` has already put the listener in place so the
-     first tap anywhere does it in a gesture. */
+     (`speak`), where a Read-aloud tap does it in its own gesture. */
   startRec(voice);
 }
