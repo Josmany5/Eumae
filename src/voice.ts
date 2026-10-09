@@ -272,18 +272,19 @@ interface Spoken {
   error?: string;
 }
 
-/** One piece after the server has been asked for its audio — a ready data URI,
- *  or a refusal to fall back from. */
+/** One piece after the server has been asked for its audio — decoded bytes, or
+ *  a refusal to fall back from. */
 interface Clip {
   text: string;
-  src: string | null;
+  bytes: Uint8Array | null;
+  mimeType?: string;
   status: number;
   error?: string;
 }
 
-/** Ask for one piece's audio. Returns a playable data URI, or `src: null` when
- *  the server or the network could not produce audio, with the status `refused`
- *  can turn into a sentence. */
+/** Ask for one piece's audio. Returns the audio as bytes, or `bytes: null` when
+ *  the server or the network could not produce it, with the status `refused` can
+ *  turn into a sentence. */
 async function fetchClip(piece: string, token: string | null): Promise<Clip> {
   try {
     const response = await fetch('/api/ai', {
@@ -308,30 +309,39 @@ async function fetchClip(piece: string, token: string | null): Promise<Clip> {
       /* Not JSON. The status is what matters. */
     }
     if (!response.ok || !body.audio) {
-      return { text: piece, src: null, status: response.status, error: body.error };
+      return { text: piece, bytes: null, status: response.status, error: body.error };
     }
     return {
       text: piece,
-      src: `data:${body.mimeType || 'audio/mpeg'};base64,${body.audio}`,
+      bytes: Uint8Array.from(atob(body.audio), (c) => c.charCodeAt(0)),
+      mimeType: body.mimeType || 'audio/mpeg',
       status: response.status,
     };
   } catch {
-    return { text: piece, src: null, status: 0 };
+    return { text: piece, bytes: null, status: 0 };
   }
 }
 
-/** Play one clip through the shared element. Resolves `true` when it played out,
- *  `false` when the element would not start it at all (a refusal, a decode
- *  failure) — so the caller can say so and stop, rather than walk the rest of
- *  the queue in silence. */
-function playClip(src: string): Promise<boolean> {
+/** Play one clip through the shared element. The bytes were decoded at fetch, and
+ *  are handed to the element as a blob URL — lighter than a data URI, and revoked
+ *  the moment the clip ends. That revoke is also the cancel path: `stopSpeaking`
+ *  resolves `currentClip`, and `finish` below does the revoking, so a run cut off
+ *  mid-clip does not leave its object URL behind. Resolves `true` when it played
+ *  out, `false` when the element would not start it at all (a refusal, a decode
+ *  failure) — so the caller can say so and stop, rather than walk the rest of the
+ *  queue in silence. */
+function playClip(clip: Clip): Promise<boolean> {
+  const bytes = clip.bytes;
+  if (!bytes) return Promise.resolve(false);
   return new Promise((resolve) => {
     const el = element();
+    const url = URL.createObjectURL(new Blob([bytes], { type: clip.mimeType || 'audio/mpeg' }));
     let done = false;
     let played = false;
     const finish = () => {
       if (done) return;
       done = true;
+      URL.revokeObjectURL(url);
       if (currentClip === finish) currentClip = null;
       el.onended = null;
       el.onerror = null;
@@ -343,7 +353,7 @@ function playClip(src: string): Promise<boolean> {
       finish();
     };
     el.onerror = finish;
-    el.src = src;
+    el.src = url;
     el.play().catch(finish);
   });
 }
@@ -363,10 +373,10 @@ async function runSpeak(id: number, pieces: string[], say?: (message: string) =>
 
   for (const clip of clips) {
     if (id !== runId) return;
-    if (clip.src && (await playClip(clip.src))) continue;
+    if (clip.bytes && (await playClip(clip))) continue;
     /* A piece that will not play: say why once, and stop. There is no fallback
        voice — the reply ends unread rather than switching to one nobody chose. */
-    if (!clip.src) refused(clip.status, clip.error, say);
+    if (!clip.bytes) refused(clip.status, clip.error, say);
     else once('Read aloud failed. Try again.', say);
     break;
   }

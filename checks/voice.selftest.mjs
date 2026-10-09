@@ -224,6 +224,23 @@ check(
 );
 
 check(
+  'fails when a clip is fetched as a data URI instead of bytes',
+  failing(
+    source.replace(
+      '      bytes: Uint8Array.from(atob(body.audio), (c) => c.charCodeAt(0)),',
+      '      bytes: null,',
+    ),
+  ),
+  ['speak: a clip is fetched as bytes, not as a data URI'],
+);
+
+check(
+  'fails when a clip plays through a blob URL that is never revoked',
+  failing(source.replace('      URL.revokeObjectURL(url);', '')),
+  ['speak: a clip plays through a blob URL that is revoked when it finishes'],
+);
+
+check(
   'fails when a result that lands after the mic is off is not ignored',
   failing(
     source.replace(

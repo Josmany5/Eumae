@@ -429,6 +429,17 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
       !/playBrowserPiece/.test(source),
     'the source, which must carry no browser voice anywhere',
   );
+  const fetchBody = bodyOf('fetchClip');
+  judge(
+    'speak: a clip is fetched as bytes, not as a data URI',
+    /atob\(/.test(fetchBody),
+    fetchBody ? 'fetchClip, which decodes base64 to bytes' : 'fetchClip is not in src/voice.ts',
+  );
+  judge(
+    'speak: a clip plays through a blob URL that is revoked when it finishes',
+    /URL\.createObjectURL\(new Blob\(/.test(speakBody) && /URL\.revokeObjectURL\(/.test(speakBody),
+    speakBody ? 'playClip, which creates and revokes its own object URL' : 'playClip is not in src/voice.ts',
+  );
   const resultHead = (source.match(/rec\.onresult = \(event\) => \{([\s\S]{0,400})/) || [])[1] || '';
   judge(
     'mic: a result that lands after the mic is off is ignored',
