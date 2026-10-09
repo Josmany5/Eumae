@@ -377,6 +377,7 @@ async function runSpeak(id: number, pieces: string[], say?: (message: string) =>
     running = false;
     sounding = false;
     readingText = null;
+    resumeMic();
   }
 }
 
@@ -397,9 +398,15 @@ export function speak(text: string, say?: (message: string) => void, voice?: str
     stopSpeaking();
   }
   readingText = text;
-  /* A speaker turn owns the session: the mic goes off so the button never sits
-     lit-but-deaf, and a tap barges back in (toggleMic). */
-  turnOffMic();
+  /* A speaker turn owns the session for its duration but does not disarm the
+     mic: the button is unlit so it never sits lit-but-deaf, while the recogniser
+     stays alive and drops everything it hears (startRec and voiceSend both guard
+     on `sounding`). When the turn ends the mic comes back on its own — no re-tap,
+     and no abort-and-restart for iOS to fumble. A tap during the read still
+     barges in (toggleMic). */
+  clearTimer();
+  transcript = '';
+  listener?.lit(false);
   /* The voice for this run, settled before any piece is asked for: the caller's
      choice when it names one (Settings' sample names the row being pressed, which
      is not necessarily the row that is ticked) and the stored setting otherwise. */
@@ -409,8 +416,6 @@ export function speak(text: string, say?: (message: string) => void, voice?: str
   noticed = false;
   running = true;
   sounding = true;
-  clearTimer();
-  transcript = '';
   const id = ++runId;
   void runSpeak(id, chunks(text), say);
 }
@@ -535,6 +540,11 @@ function startRec(voice: VoiceTyping): void {
 
   rec.onend = () => {
     if (listener !== voice) return;
+    /* The speaker owns the session for its turn: a recogniser that ends while
+       the AI is reading is not a failure to revive — and restarting it would
+       loop on the AI's own voice and trip the runaway guard. `resumeMic` puts it
+       back when the turn ends. */
+    if (sounding) return;
     /* A browser that ends the stream on its own (iOS does, after each phrase)
        may never give the silence timer its 500ms — send anything still waiting,
        so a phrase is never lost. */
@@ -592,8 +602,9 @@ function startRec(voice: VoiceTyping): void {
 }
 
 /** Turn the mic off: abort the recogniser, drop the held transcript, unlight.
- *  Does not touch the speaker — `stopListening`'s extra job. A speaker turn does
- *  this as it begins, so the button never sits lit-but-deaf while the AI reads. */
+ *  Does not touch the speaker — `stopListening`'s extra job. A deliberate stop,
+ *  not a speaker turn: while the AI reads the mic is soft-muted instead (the
+ *  recogniser stays alive and drops results), so it can come back on its own. */
 function turnOffMic(): void {
   const voice = listener;
   listener = null;
@@ -641,12 +652,36 @@ function startMic(voice: VoiceTyping): void {
   transcript = '';
   listener = voice;
   voice.lit(true);
+  /* Unlock the audio element here, inside the tap gesture, so the read-aloud
+     that follows a voice message can play without a gesture of its own (iOS
+     refuses a first play that no gesture began). */
+  unlock();
   startRec(voice);
 }
 
+/** Put the mic back when a speaker turn ends, if it is still armed: relight the
+ *  button and restart the recogniser it left running (or that ended on its own
+ *  mid-read, since the speaker's turn suppresses the revive). The delay is the
+ *  same one the revive uses — iOS refuses an immediate start. */
+function resumeMic(): void {
+  if (!listener || sounding) return;
+  listener.lit(true);
+  if (recognizer) {
+    setTimeout(() => {
+      if (!listener || sounding || !recognizer) return;
+      try {
+        recognizer.start();
+      } catch {
+        /* Already running, or the browser will not restart it — the next tap is
+           a fresh start. */
+      }
+    }, RESTART_DELAY_MS);
+  }
+}
+
 /** The tap — `micTap` (1786): on if it is off, off if it is on. While the AI is
- *  reading, the mic is lit but deaf; a tap then means "shut up, I'm talking" —
- *  stop the reading and start listening in one tap, not two. */
+ *  reading the button is unlit (the speaker owns the session); a tap then means
+ *  "shut up, I'm talking" — stop the reading and start listening in one tap. */
 export function toggleMic(voice: VoiceTyping): void {
   if (sounding) {
     stopSpeaking();
