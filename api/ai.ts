@@ -1,6 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
+/* The two sentences a caller can be told when a provider fails. Neither is the
+ * provider's own words: these end up in front of a person, and Google's error
+ * body is written for whoever holds the key — it names endpoints and request
+ * ids, and it is not ours to republish. The body itself goes to the function
+ * log, where it is actually useful. */
+const UPSTREAM_ERROR = 'No reply came back. Try again.';
+const EMPTY_REPLY = 'The reply came back empty.';
+const SPEAK_FAILED = 'Read aloud failed. Try again.';
+
 interface Attachment {
   mimeType: string;
   data: string;
@@ -83,14 +92,45 @@ function buildGeminiBody(
   };
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+/** Whether a cross-origin caller is one this endpoint answers.
+ *
+ *  A browser only sends a preflight, and only reveals the answer, when the page
+ *  sits on another origin — the app itself is served by the same project as
+ *  this function, so its own calls are same-origin and need none of this. What
+ *  is left is the dev case: `npm run dev` on Vite's port talking to a deployed
+ *  API. So an origin is answered when it is this very host, or when it is
+ *  localhost.
+ *
+ *  It used to be `*`, which cannot work: a wildcard origin and
+ *  `Allow-Credentials: true` contradict each other, and the header list never
+ *  mentioned `Authorization` — the one header this endpoint cannot do without.
+ *  A browser sent the preflight, read a list without it, and refused to send
+ *  the token. Cross-origin sign-in could not have worked. */
+function isOurOwnOrigin(origin: string, host: string | undefined): boolean {
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return false;
+  }
+  if (host && url.host === host) return true;
+  return url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+}
+
+function applyCors(req: VercelRequest, res: VercelResponse): void {
+  const origin = req.headers.origin;
+  const host = Array.isArray(req.headers.host) ? req.headers.host[0] : req.headers.host;
+  // The answer depends on who asked, so anything caching it must know that.
+  res.setHeader('Vary', 'Origin');
+  if (typeof origin !== 'string' || !isOurOwnOrigin(origin, host)) return;
+  res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  applyCors(req, res);
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -146,8 +186,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Gemini API error: ${response.statusText} - ${errorText}`);
+        const detail = await response.text().catch(() => '');
+        console.error('Gemini chat failed:', response.status, detail.slice(0, 500));
+        return res.status(502).json({ error: UPSTREAM_ERROR });
       }
 
       const result = (await response.json()) as {
@@ -196,8 +237,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
 
       if (!geminiRes.ok || !geminiRes.body) {
-        const errorText = await geminiRes.text().catch(() => '');
-        return res.status(502).json({ error: `Gemini stream error: ${geminiRes.statusText} - ${errorText}` });
+        const detail = await geminiRes.text().catch(() => '');
+        console.error('Gemini stream refused:', geminiRes.status, detail.slice(0, 500));
+        /* Not one byte has been sent yet, so this is still an ordinary failed
+           request: the caller reads it off `res.ok` and never has to hunt for
+           an error inside a stream that never opened. */
+        return res.status(502).json({ error: UPSTREAM_ERROR });
       }
 
       res.setHeader('Content-Type', 'text/event-stream');
@@ -209,12 +254,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const decoder = new TextDecoder();
       let buf = '';
       let sawDataEvents = false;
+      /* What the relay managed to say, and what went wrong if it did. Both
+         exist for one reason: a stream that dies halfway must not look like a
+         reply that finished. The client is told, inside the stream, that the
+         rest is missing. */
+      let emittedAnything = false;
+      let streamError: string | null = null;
       const extractText = (chunk: { candidates?: { content?: { parts?: { text?: string }[] } }[] }) => {
         const parts = chunk?.candidates?.[0]?.content?.parts || [];
         return parts.map((p) => p?.text || '').join('');
       };
       const emitText = (text: string) => {
-        if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        if (!text) return;
+        emittedAnything = true;
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
       };
       let openCall: { name: string; args: Record<string, unknown> } | null = null;
       let streamGrounding: unknown = null;
@@ -229,6 +282,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       };
       const emitFunctionCall = (call: { name: string; args: Record<string, unknown> }) => {
+        emittedAnything = true;
         res.write(`data: ${JSON.stringify({ functionCall: { name: call.name, args: call.args } })}\n\n`);
       };
       const flushOpenCall = () => {
@@ -250,10 +304,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
       const handlePayload = (payload: string) => {
         if (!payload || payload === '[DONE]') return;
-        let chunk: { candidates?: { content?: { parts?: { text?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }[] }; groundingMetadata?: unknown }[] };
+        let chunk: {
+          error?: { message?: string; status?: string };
+          candidates?: { content?: { parts?: { text?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }[] }; groundingMetadata?: unknown }[];
+        };
         try {
           chunk = JSON.parse(payload);
         } catch {
+          return;
+        }
+        /* A stream can fail in the middle, and Gemini reports that the same way
+           it reports everything else: as one more event. It used to be parsed
+           straight past — an error payload has no `candidates`, so it read as an
+           empty chunk, and the reply simply stopped mid-sentence with nothing
+           said about it. */
+        if (chunk.error) {
+          console.error('Gemini stream error event:', JSON.stringify(chunk.error).slice(0, 500));
+          streamError = UPSTREAM_ERROR;
           return;
         }
         const c = chunk?.candidates?.[0];
@@ -313,8 +380,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       } catch (e) {
         console.error('chatStream relay error:', e);
+        streamError = UPSTREAM_ERROR;
       }
       flushOpenCall();
+      /* Nothing came back at all and nothing said why. An empty reply is not a
+         silent success either. */
+      if (!emittedAnything && !streamError) streamError = EMPTY_REPLY;
+      if (streamError) res.write(`data: ${JSON.stringify({ error: { message: streamError } })}\n\n`);
       if (streamGrounding) res.write(`data: ${JSON.stringify({ grounding: streamGrounding })}\n\n`);
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
       res.end();
@@ -334,7 +406,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const serverStart = Date.now();
 
       if (!GOOGLE_CLOUD_TTS_KEY) {
-        return res.status(200).json({ audio: null });
+        /* 200 with no audio is indistinguishable from a working voice that
+           chose to say nothing, so nobody can tell whether to fix the deploy or
+           to try again. 501 says the server was never given this ability,
+           which is exactly what is true. */
+        return res.status(501).json({ error: 'Read aloud is not set up on this server.' });
       }
 
       try {
@@ -384,17 +460,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               timing: { serverMs: Date.now() - serverStart, googleMs },
             });
           }
-          console.error('TTS diagnostic: Google returned 200 but no audioContent');
-        } else {
-          let errBody = '';
-          try { errBody = await ttsResponse.text(); } catch { errBody = '(unreadable)'; }
-          console.error('TTS diagnostic: Google rejected request, status', ttsResponse.status, 'body:', errBody.substring(0, 500));
+          console.error('TTS: Google returned 200 but no audioContent');
+          return res.status(502).json({ error: SPEAK_FAILED });
         }
+        let errBody = '';
+        try { errBody = await ttsResponse.text(); } catch { errBody = '(unreadable)'; }
+        console.error('TTS: Google rejected the request, status', ttsResponse.status, 'body:', errBody.substring(0, 500));
       } catch (err) {
         console.error('TTS error:', err);
       }
 
-      return res.status(200).json({ audio: null });
+      return res.status(502).json({ error: SPEAK_FAILED });
     }
 
     if (action === 'mintLiveToken') {
@@ -495,7 +571,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(400).json({ error: 'Unknown action' });
   } catch (error) {
+    /* Whatever it was, it is ours to read and not the caller's — the messages
+       thrown above carry provider status text and provider bodies. */
     console.error('AI API Error:', error);
-    return res.status(500).json({ error: (error as Error).message });
+    return res.status(500).json({ error: 'Something went wrong on the server.' });
   }
 }
