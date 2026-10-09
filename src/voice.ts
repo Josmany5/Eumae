@@ -69,8 +69,10 @@ const SILENCE_MS = 800;
 const BUSY_RETRY_MS = 800;
 const RUNAWAY_WINDOW_MS = 5000;
 const RUNAWAY_MAX = 4;
-/** The longest piece the speaker asks for in one request (mockup 1673). */
-const CHUNK_MAX = 420;
+/** The longest piece the speaker asks for in one request. The mockup's own was
+ *  420 (1673); this app asks for 4500 — just under Google's per-request text cap
+ *  of ~5000 bytes, so one ordinary reply is one request instead of several. */
+const CHUNK_MAX = 4500;
 
 /** How long after `onend` before the recogniser is started again. iOS refuses a
  *  restart issued inside the end event itself, and accepts the same call half a
@@ -227,7 +229,8 @@ function unlock(): void {
 /** Cut text into sentence-sized pieces — the mockup's `chunks` (1670): code
  *  fences are dropped, because there is nothing in them to hear, the rest splits
  *  on sentence ends and line breaks, and the pieces are glued back together so
- *  none is longer than `CHUNK_MAX` (its own 420, at 1673). */
+ *  none is longer than `CHUNK_MAX` (4500, not the mockup's 420 at 1673, so one
+ *  reply is one request instead of several). */
 export function chunks(text: string): string[] {
   const parts = text.replace(/```[\s\S]*?```/g, ' ').match(/[^.!?\n]+[.!?\n]*/g) ?? [text];
   const out: string[] = [];

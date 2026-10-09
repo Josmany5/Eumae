@@ -53,13 +53,13 @@ check('passes on the real src/voice.ts', failing(source), []);
 
 check(
   'names the limit it read out of the source, not one written here',
-  limitVerdict(source.replace('const CHUNK_MAX = 420;', 'const CHUNK_MAX = 99999;')).name,
+  limitVerdict(source.replace('const CHUNK_MAX = 4500;', 'const CHUNK_MAX = 99999;')).name,
   'chunks: a long reply splits into pieces of at most 99999',
 );
 
 check(
   'fails when that limit grows past the text this check uses',
-  failing(source.replace('const CHUNK_MAX = 420;', 'const CHUNK_MAX = 99999;')),
+  failing(source.replace('const CHUNK_MAX = 4500;', 'const CHUNK_MAX = 99999;')),
   ['chunks: a long reply splits into pieces of at most 99999'],
 );
 
@@ -101,7 +101,7 @@ check(
 
 check(
   'says so when a line it depends on has been removed',
-  failing(source.replace('const CHUNK_MAX = 420;', '')),
+  failing(source.replace('const CHUNK_MAX = 4500;', '')),
   ['the two functions can be lifted out and called'],
 );
 

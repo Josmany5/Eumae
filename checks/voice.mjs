@@ -306,7 +306,7 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     JSON.stringify(fenced),
   );
 
-  const long = 'Sentence number one is here. '.repeat(40);
+  const long = 'Sentence number one is here. '.repeat(200);
   const pieces = chunks(long);
   const longest = Math.max(...pieces.map((piece) => piece.length));
   judge(
