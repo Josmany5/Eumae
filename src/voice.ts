@@ -65,7 +65,7 @@ export interface VoiceTyping {
 /* The mockup's own numbers: half a second of quiet sends (1774), and a busy
    reply is retried after 800ms (1757). Then the runaway guard's — a five second
    window (1777), and more than four restarts inside it. */
-const SILENCE_MS = 500;
+const SILENCE_MS = 800;
 const BUSY_RETRY_MS = 800;
 const RUNAWAY_WINDOW_MS = 5000;
 const RUNAWAY_MAX = 4;
@@ -125,9 +125,12 @@ type RecognizerCtor = new () => Recognizer;
    one the mic watches; `running` is the one the button toggles off. */
 let audio: HTMLAudioElement | null = null;
 let unlocked = false;
-let queue: string[] = [];
 let running = false;
 let sounding = false;
+/** Bumped on every stop, so an in-flight run can see it was cancelled and bail. */
+let runId = 0;
+/** Resolves the clip currently playing, so a stop can interrupt it mid-play. */
+let currentClip: (() => void) | null = null;
 /** What the speaker is reading now, so "Read aloud" can tell a toggle-off (same
  *  text) from a switch (a different message). */
 let readingText: string | null = null;
@@ -252,19 +255,19 @@ function refused(status: number, message: string | undefined, say?: (m: string) 
   else say('The server could not read this — using the browser voice');
 }
 
-/** The browser's own voice, which is the mockup's fallback when the server sends
- *  no audio (1685). It advances the run on `error` as well as on `end`: an
- *  utterance that failed without ending would leave `sounding` true for ever,
- *  and a mic that never comes back is worse than a stalled sentence. */
-function browserVoice(text: string, next: () => void): void {
-  try {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onend = next;
-    utterance.onerror = next;
-    window.speechSynthesis.speak(utterance);
-  } catch {
-    next();
-  }
+/** The browser's own voice, the fallback when the server sends no audio (1685).
+ *  Resolves on end or error, so the run can carry on rather than stall. */
+function playBrowserPiece(text: string): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onend = () => resolve();
+      utterance.onerror = () => resolve();
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      resolve();
+    }
+  });
 }
 
 /** What the speak action answers with (api/ai.ts): base64 audio, or a sentence
@@ -275,107 +278,103 @@ interface Spoken {
   error?: string;
 }
 
-/** `speakNext` (1677): one piece per request, each one chaining the next.
- *
- *  The token is asked for here, per piece, rather than taken once when the run
- *  started: the lock on `/api/ai` is checked on every request (api/ai.ts:158) and
- *  `accessToken` reads the stored session rather than a copy kept in a variable —
- *  the library refreshes an expiring token in the background, and a reply can take
- *  minutes to read out. A signed-out run sends no header at all and gets the 401
- *  that `refused` below turns into a sentence. */
-async function speakNext(say?: (message: string) => void): Promise<void> {
-  if (!queue.length) {
-    running = false;
-    sounding = false;
-    return;
-  }
-  running = true;
-  sounding = true;
-  /* The two lines the mockup keeps beside those (1679: `ACC=""` and the silence
-     timer cleared). Clearing the timer is what stops a send that was already
-     counting down from firing into a muzzled mic — `sounding` above is exactly
-     what turns it away (1756) — where it would be spent on nothing and leave the
-     words sitting in the field for good. */
-  clearTimer();
-  transcript = '';
-  const piece = queue.shift() as string;
+/** One piece after the server has been asked for its audio — a ready data URI,
+ *  or a refusal to fall back from. */
+interface Clip {
+  text: string;
+  src: string | null;
+  status: number;
+  error?: string;
+}
 
+/** Ask for one piece's audio. Returns a playable data URI, or `src: null` when
+ *  the server or the network could not produce audio, with the status `refused`
+ *  can turn into a sentence. */
+async function fetchClip(piece: string, token: string | null): Promise<Clip> {
+  try {
+    const response = await fetch('/api/ai', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        action: 'speak',
+        data: {
+          text: piece,
+          voice: speakVoice ?? voiceName(storedVoice()),
+          rate: String(speakRate),
+        },
+      }),
+    });
+    let body: Spoken = {};
+    try {
+      body = (await response.json()) as Spoken;
+    } catch {
+      /* Not JSON. The status is what matters. */
+    }
+    if (!response.ok || !body.audio) {
+      return { text: piece, src: null, status: response.status, error: body.error };
+    }
+    return {
+      text: piece,
+      src: `data:${body.mimeType || 'audio/mpeg'};base64,${body.audio}`,
+      status: response.status,
+    };
+  } catch {
+    return { text: piece, src: null, status: 0 };
+  }
+}
+
+/** Play one clip through the shared element. Resolves when it ends or fails, so
+ *  the next clip starts immediately — no network wait between pieces. */
+function playClip(src: string): Promise<void> {
+  return new Promise((resolve) => {
+    const el = element();
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (currentClip === finish) currentClip = null;
+      el.onended = null;
+      el.onerror = null;
+      resolve();
+    };
+    currentClip = finish;
+    el.onended = finish;
+    el.onerror = finish;
+    el.src = src;
+    el.play().catch(finish);
+  });
+}
+
+/** One run: fetch every piece in parallel up front, then play them back to back
+ *  with no gaps. `id` is the run's generation — a stop bumps `runId`, so an
+ *  in-flight run sees it has been cancelled and bails at the next await. */
+async function runSpeak(id: number, pieces: string[], say?: (message: string) => void): Promise<void> {
   let token: string | null = null;
   try {
     token = await accessToken();
   } catch {
-    /* No session could be read: the request goes unsigned, which is a state the
-       server already has an answer for. */
     token = null;
   }
+  const clips = await Promise.all(pieces.map((piece) => fetchClip(piece, token)));
+  if (id !== runId) return;
 
-  fetch('/api/ai', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    /* `{ text, voice, rate }` — the mockup posts `{ text }` and nothing else
-       (1681), which is why its four names made no difference to what anyone
-       heard. The name sent here is the one Google answers to (`voices.ts`), fixed
-       when the run started: the server's `speak` (api/ai.ts:446) takes it as the
-       voice to synthesize with, so the row that is ticked is the voice that is
-       heard. The rate is the same story from the other end — the server has
-       parsed and clamped one since it was written (api/ai.ts:437) and this is the
-       first caller to send it, which is why every reply before now was read at
-       1.0 (src/voices.ts, `storedSpeed`). */
-    body: JSON.stringify({
-      action: 'speak',
-      data: {
-        text: piece,
-        voice: speakVoice ?? voiceName(storedVoice()),
-        rate: String(speakRate),
-      },
-    }),
-  })
-    .then(async (response) => {
-      let body: Spoken = {};
-      try {
-        body = (await response.json()) as Spoken;
-      } catch {
-        /* Not JSON. The status is what matters. */
-      }
-      if (!response.ok || !body.audio) {
-        refused(response.status, body.error, say);
-        browserVoice(piece, () => speakNext(say));
-        return;
-      }
-      const el = element();
-      el.src = `data:${body.mimeType || 'audio/mpeg'};base64,${body.audio}`;
-      el.onended = () => speakNext(say);
-      /* And a piece that fails outright — a decode error, usually. `ended` never
-         arrives for one, and the mockup has no answer for that at all (1694): the
-         run stays "speaking" for ever, which makes the mic stop typing and stop
-         sending, so a reply that could not be played takes the microphone with
-         it. That is the same trade `browserVoice` refuses to make in the other
-         direction, so it is refused here too: the browser's voice reads the piece
-         instead. `onended` is dropped first, because both callbacks on this one
-         element have to lead somewhere. */
-      el.onerror = () => {
-        el.onended = null;
-        if (running) browserVoice(piece, () => speakNext(say));
-      };
-      try {
-        await el.play();
-      } catch {
-        /* The browser refused to start it: no gesture opened the element, or the
-           device has no audio. Stop, rather than walk the rest of the queue in
-           silence. */
-        stopSpeaking();
-        if (say) say('Could not play that here');
-      }
-    })
-    .catch(() => {
-      /* Nothing came back at all — the connection, not the server. Same
-         fallback, because the person pressed "read this" and not "try again
-         later". */
-      browserVoice(piece, () => speakNext(say));
-    });
+  for (const clip of clips) {
+    if (id !== runId) return;
+    if (clip.src) {
+      await playClip(clip.src);
+    } else {
+      refused(clip.status, clip.error, say);
+      await playBrowserPiece(clip.text);
+    }
+  }
+  if (id === runId) {
+    running = false;
+    sounding = false;
+    readingText = null;
+  }
 }
 
 /** Read this aloud — the mockup's `wxSpeak` (1689), which is a toggle: called
@@ -394,31 +393,37 @@ export function speak(text: string, say?: (message: string) => void, voice?: str
     stopSpeaking();
   }
   readingText = text;
-  /* The voice for this run, settled before the first piece is asked for: the
-     caller's choice when it names one (Settings' sample names the row being
-     pressed, which is not necessarily the row that is ticked) and the stored
-     setting otherwise. */
+  /* The voice for this run, settled before any piece is asked for: the caller's
+     choice when it names one (Settings' sample names the row being pressed, which
+     is not necessarily the row that is ticked) and the stored setting otherwise. */
   speakVoice = voice ?? voiceName(storedVoice());
-  /* And the speed for this run, from the setting rather than from a caller: the
-     row in Settings is the only place it is chosen, and it writes as it is
-     pressed, so reading it here is what makes a change land on the next thing
-     read — this line's whole job. */
   speakRate = storedSpeed();
   unlock();
-  queue = chunks(text);
   noticed = false;
-  speakNext(say);
+  running = true;
+  sounding = true;
+  clearTimer();
+  transcript = '';
+  const id = ++runId;
+  void runSpeak(id, chunks(text), say);
 }
 
 /** Stop — the mockup's own stop (1690): the queue is dropped, the element is
  *  paused and the browser's voice is cancelled, so pressing again cannot leave
  *  either of them still talking. */
 export function stopSpeaking(): void {
-  queue = [];
   running = false;
   sounding = false;
   noticed = false;
   readingText = null;
+  /* Cancel the run in flight: bump the generation and resolve the clip that is
+     playing, so the loop bails instead of hanging on a paused clip. */
+  runId++;
+  if (currentClip) {
+    const finish = currentClip;
+    currentClip = null;
+    finish();
+  }
   if (audio) {
     try {
       audio.pause();
@@ -557,9 +562,13 @@ function startRec(voice: VoiceTyping): void {
 
   rec.onerror = (event) => {
     const reason = event?.error;
+    if (reason) console.warn('Speech recognition error:', reason);
     if (reason === 'not-allowed' || reason === 'service-not-allowed') {
       stopListening();
       voice.say('Microphone access was denied.');
+    } else if (reason === 'audio-capture' || reason === 'network' || reason === 'language-not-supported') {
+      stopListening();
+      voice.say(`Microphone failed: ${reason}`);
     }
     /* `no-speech` and `aborted` are not fatal: the browser stopped on its own,
        and `onend` follows and restarts. */
@@ -590,21 +599,14 @@ export function stopListening(): void {
   }
   transcript = '';
   /* Turning the mic off ends the whole voice session, not just the recogniser:
-     stop any read-aloud and clear whatever a dead mic left in the field, so
-     nothing keeps talking and nothing sits stranded. */
+     stop any read-aloud. The field is left alone — a deliberate stop keeps the
+     words for editing; the auto-restart flushes on its own. */
   stopSpeaking();
-  if (voice) {
-    voice.write('');
-    voice.lit(false);
-  }
+  if (voice) voice.lit(false);
 }
 
-/** The tap — `micTap` (1786): on if it is off, off if it is on. */
-export function toggleMic(voice: VoiceTyping): void {
-  if (listener) {
-    stopListening();
-    return;
-  }
+/** Start the mic fresh: the browser check, then light the button and begin. */
+function startMic(voice: VoiceTyping): void {
   if (!recognizerCtor()) {
     voice.say('Voice typing is not available in this browser.');
     return;
@@ -612,10 +614,30 @@ export function toggleMic(voice: VoiceTyping): void {
   transcript = '';
   listener = voice;
   voice.lit(true);
-  /* No audio here. The mic is speech recognition, which needs its own session;
-     starting an <audio> element in the same gesture (`unlock`) takes that
-     session on iOS before the recogniser can claim it — the "no beep, no
-     transcript" failure. The unlock belongs to the speaker and stays there
-     (`speak`), where a Read-aloud tap does it in its own gesture. */
   startRec(voice);
+}
+
+/** The tap — `micTap` (1786): on if it is off, off if it is on. While the AI is
+ *  reading, the mic is lit but deaf; a tap then means "shut up, I'm talking" —
+ *  stop the reading and start listening in one tap, not two. */
+export function toggleMic(voice: VoiceTyping): void {
+  if (sounding) {
+    stopSpeaking();
+    if (recognizer) {
+      try {
+        recognizer.abort();
+      } catch {
+        /* Already ended. */
+      }
+      recognizer = null;
+    }
+    clearTimer();
+    startMic(voice);
+    return;
+  }
+  if (listener) {
+    stopListening();
+    return;
+  }
+  startMic(voice);
 }
