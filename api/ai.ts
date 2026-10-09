@@ -493,35 +493,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(502).json({ error: SPEAK_FAILED });
     }
 
-    if (action === 'mintLiveToken') {
-      const now = Date.now();
-      const tokenResponse = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/auth_tokens',
-        {
-          method: 'POST',
-          headers: {
-            'x-goog-api-key': GEMINI_API_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            uses: 1,
-            expireTime: new Date(now + 30 * 60 * 1000).toISOString(),
-            newSessionExpireTime: new Date(now + 60 * 1000).toISOString(),
-          }),
-        }
-      );
-
-      if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text();
-        throw new Error(`Token mint failed: ${tokenResponse.statusText} - ${errorText}`);
-      }
-
-      const tokenResult = (await tokenResponse.json()) as { name?: string };
-      if (!tokenResult.name) {
-        throw new Error('Token endpoint returned no token name');
-      }
-      return res.status(200).json({ token: tokenResult.name });
-    }
+    /* A live-voice action (`mintLiveToken`, a Gemini Live session token) used to
+       sit here. It is gone because nothing anywhere asked for it: the mockup
+       — the design source for this app's voice — has no live session in it at
+       all. Its voice is voice *typing* in (1786) and cloud TTS out (1677), and
+       this server's `speak` is that TTS. Keeping an endpoint no screen can
+       reach is how a deployment grows an attack surface nobody is watching, and
+       this one's failure was also the only branch that could not be made honest
+       on its own terms — it threw the provider's own text at a 500. */
 
     if (action === 'generateImage') {
       const { prompt, aspectRatio, images } = (data || {}) as {
