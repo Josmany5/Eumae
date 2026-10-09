@@ -1,3 +1,5 @@
+import { accessToken } from './auth';
+
 /* The mic — voice typing, from the mockup.
  *
  *  The mockup's composer ships the mic as a stub: `onclick="toast('Voice
@@ -252,8 +254,15 @@ interface Spoken {
   error?: string;
 }
 
-/** `speakNext` (1677): one piece per request, each one chaining the next. */
-function speakNext(say?: (message: string) => void): void {
+/** `speakNext` (1677): one piece per request, each one chaining the next.
+ *
+ *  The token is asked for here, per piece, rather than taken once when the run
+ *  started: the lock on `/api/ai` is checked on every request (api/ai.ts:158) and
+ *  `accessToken` reads the stored session rather than a copy kept in a variable —
+ *  the library refreshes an expiring token in the background, and a reply can take
+ *  minutes to read out. A signed-out run sends no header at all and gets the 401
+ *  that `refused` below turns into a sentence. */
+async function speakNext(say?: (message: string) => void): Promise<void> {
   if (!queue.length) {
     running = false;
     sounding = false;
@@ -263,9 +272,21 @@ function speakNext(say?: (message: string) => void): void {
   sounding = true;
   const piece = queue.shift() as string;
 
+  let token: string | null = null;
+  try {
+    token = await accessToken();
+  } catch {
+    /* No session could be read: the request goes unsigned, which is a state the
+       server already has an answer for. */
+    token = null;
+  }
+
   fetch('/api/ai', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     /* `{ text }` alone, exactly as the mockup posts it (1681) — no voice name
        travels. Settings' four names are the mockup's own labels and this server
        speaks Google's Chirp3-HD voices; which of the two wins is still an open
