@@ -50,26 +50,28 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (4598 lines across src/ + api/)
+### Code map (5014 lines across src/ + api/)
 
 That number is `find src api -type f | xargs wc -l | tail -1` — every TS, TSX and
-CSS line under the two directories, counted rather than remembered. It was 4036
-before the voice commits, which added `src/voice.ts` (495, new) and 84 lines to
-the files that call it — `Composer.tsx` (+54), `Settings.tsx` (+18), `nav.ts`
-(+8), `App.tsx` (+2), `ChatScreen.tsx` (+2), `tokens.css` (+4) — while taking 21
-back out of `api/ai.ts` (the live-voice action, deleted). `checks/` is not counted
-here and never has been: the map is the app.
+CSS line under the two directories, counted rather than remembered. It was 4598
+before the sign-in work, which added `src/auth.ts` (242, new),
+`src/vite-env.d.ts` (13, new), 140 lines to Settings — the Security pane and the
+two account cards (704 → 844) — and 21 to `src/voice.ts` (495 → 516, the token on
+the read-aloud request). `checks/` is not counted here and never has been: the map
+is the app.
 
 | File | Lines | Role |
 | --- | --- | --- |
-| `src/components/settings/Settings.tsx` | 704 | the whole Settings overlay; also owns `useStored`, export/wipe |
+| `src/components/settings/Settings.tsx` | 844 | the whole Settings overlay; also owns `useStored`, export/wipe, the sign-in pane |
 | `api/ai.ts` | 581 | the only server code; Vercel handler |
-| `src/voice.ts` | 495 | the voice layer: voice typing in, read aloud out (from the mockup) |
+| `src/voice.ts` | 516 | the voice layer: voice typing in, read aloud out (from the mockup) |
 | `src/components/shell/AddSheet.tsx` | 323 | the composer's `+` window — the five turn settings, rail + pane |
 | `src/App.tsx` | 279 | the shell: tab + page stack + panel + drawers + file input |
+| `src/auth.ts` | 242 | who is signed in, and the token `/api/ai` checks |
 | `src/request.ts` | 221 | the request `/api/ai` will be handed — the turn as prose, the model as a key |
 | `src/components/shell/RightPanel.tsx` | 218 | the right panel (Context / Activity / Studio) |
 | `src/useMedia.ts` | 21 | the `(min-width:900px)` hook both overlays read |
+| `src/vite-env.d.ts` | 13 | the two `VITE_SUPABASE_*` variables, typed |
 | `src/nav.ts` | 143 | `NavContext`: go/back, goTab, panel, `turn`, `refs`, pickFile, `notify` |
 | `src/components/shell/Composer.tsx` | 183 | input row, the chip pills, `+`, paperclip, mic (live), send |
 | `src/components/shell/pageMenu.ts` | 128 | `PAGE_MENU` — each tab's rail rows |
@@ -328,7 +330,52 @@ heard until there are replies to read.
 check 9). Two things are deliberately left open, both in §7: which voice names
 Settings should offer, and the lock.
 
-### Settings — `src/components/settings/Settings.tsx` (704)
+### Signing in — `src/auth.ts` (242) + Settings' Security pane
+
+The last pane that was still pretending, and the thing the server had been waiting
+for since the AI layer landed: `api/ai.ts:158` — "every action requires a signed-in
+caller" — with no way to become one. **There is no design source for this screen**,
+and that is written into the file rather than worked around: the mockup has no
+sign-in anywhere, and its Security page invents a password, a passkey and two
+active sessions (1039). Its Account group has exactly two rows, and this added no
+third — the pane *is* the screen, so §5 check 1's numbers (22 rows ↔ 23 titles ↔
+23 panes) still hold, which was the deciding argument.
+
+- **Supabase, because the check is already Supabase's.** The server reads
+  `Authorization: Bearer <token>` and calls `supabase.auth.getUser(token)`
+  (ai.ts:39-45). The browser's half is the same library — and it was already a
+  dependency, for the function.
+- **The variables are `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`**: the same
+  project as the server's pair, named again because Vite inlines anything with that
+  prefix. The anon key is *designed* to be published, and row-level security is
+  what protects the data. `.env.example` names six variables now — the four
+  server-side ones plus these two, which it had promised to add once browser code
+  read them.
+- **The library is fetched, not imported** (228kB of it). A static import put the
+  app's bundle at 510kB in one file and Vite began warning about the chunk; on a
+  dynamic import the app's own chunk is 284kB and the library arrives when a token
+  is first asked for or when this screen mounts.
+- **A session is not an `eumae:` key.** The library keeps it under its own name, so
+  Export skips it — which is why Delete everything now signs out explicitly.
+  "Everything" has to mean everything.
+- **`unconfigured` is a state, not an error.** A build made without those two
+  variables cannot sign anyone in, so the pane says exactly that rather than showing
+  a form that can only fail.
+- **Supabase's own sentences are passed through** — "Invalid login credentials",
+  "Email not confirmed" — because they are addressed to the person typing, which is
+  the opposite of why Google's error body never reaches a reply (ai.ts:4-11). One
+  exception: a network failure is not a wrong password, so "Failed to fetch" became
+  "Could not reach the sign-in service. Check the connection and try again." Both
+  the rule and the exception were checked in a browser rather than assumed.
+
+Where it is wired: both account cards show the address Supabase holds (the
+`ACCOUNT` constant covers only the signed-out state, and a real name or address
+never goes into this public file); the two "Sign out" buttons that offered to sign
+out somebody who had never signed in now say "Sign in" and open this pane; and
+`src/voice.ts` asks for the token on every read-aloud request, which is what makes
+the cloud voice audible to a signed-in person.
+
+### Settings — `src/components/settings/Settings.tsx` (844)
 
 An overlay (`open` / `onClose` / `notify` props): a rail of rows in five groups
 (Eumae, App, Account, Data, Support), 22 rows → 23 titles → 23 panes. The extra
@@ -351,7 +398,7 @@ What is real versus named-out-loud-gap:
 | --- | --- |
 | Appearance, Voice, Notifications, Language, Accessibility, Personalization | genuinely write state; Voice also carries a **Play sample** that really speaks, through the voice layer (§3) |
 | Billing | "No charge today"; Model spend lives in Usage, shown never blocking |
-| Security | "Signed in as: This device", "Local only", "there is no password to leak" |
+| Security | real as of the sign-in screen: who is signed in, the form, and Sign out |
 | Data controls | really downloads the JSON as one file (Export my data); Restore notifies "arrives in a later stage"; Delete everything wipes and reloads |
 | **Logs** | real: the seven `LOG_AREAS` pills filter `src/log.ts`, newest first. Each row is a status dot, the sentence, then `area · time`. Empty until something happens, and the pane says so in its own words |
 | Legal | three rows, each notifying "publishes with the first release" |
@@ -555,7 +602,11 @@ Design tokens plus every component's styles in one file, class-named per compone
 ## 5. How to verify (do it this way)
 
 **Primary gate:** `npm run build` — types, then bundle. Green looks like
-56 modules transformed and `dist/index.html` + `dist/assets/index-*.css|js`.
+101 modules transformed and **two** JS files: `dist/assets/index-*.js` (the app,
+~284kB) plus a second `index-*.js` (~228kB) that is `@supabase/supabase-js`,
+fetched on demand by `src/auth.ts` rather than loaded with the app. Seeing one JS
+file means the lazy import was turned back into a static one, and the app's own
+chunk is about 510kB again with Vite warning about it.
 Background it (`nohup … &`) and poll; it often exceeds a 30-second tool timeout.
 
 Checks 1-3 were used for the phase that landed before Phase 2, and checks 4-9 for
@@ -854,17 +905,19 @@ second layer lands here too** (`IDEAS.md` I5): `LogEntry` grows `who`, `phase` a
 `type`, and Eumae's own rows appear for the first time — which is also the first
 moment anything in the log is not the owner acting.
 
-Two pieces of this phase have already landed, and they narrow it rather than
-being part of it: **the voice layer** (§3 — the mic types and read aloud speaks,
-both from the mockup) and **the request** (Phase 3's `src/request.ts`). What that
-leaves is exactly three things, and the first is the one that unblocks the rest:
-the **sign-in screen** (without it `speak` answers 401 and chat would too), the
-**sender** (the `fetch` to `/api/ai` plus the SSE reader for `chatStream`), and
-whatever the stream then needs — an assistant message on screen, the "Read aloud"
-button on it (the mockup's `rowA`, 1642, which also needs a speaker glyph: the
-mockup's own `IC_SPK` at 1639 is not in `icons.tsx` yet), and `speak` called on
-that reply when the turn came in by voice (1902). The voice layer already carries
-the flag across `send` for it.
+Two pieces of this phase have already landed, and they narrow it rather than being
+part of it: **the voice layer** (§3 — the mic types and read aloud speaks, both from
+the mockup) and **the request** (Phase 3's `src/request.ts`). A third landed after
+them: **the sign-in screen** (§3, `src/auth.ts` + Settings' Security pane), so the
+401 is no longer the end of the story — read aloud sends a real token and a
+configured deployment can be signed into. What that leaves is the **sender** — the
+`fetch` to `/api/ai` plus the SSE reader for `chatStream` — and whatever the stream
+then needs: an assistant message on screen, the "Read aloud" button on it (the
+mockup's `rowA`, 1642, which also needs a speaker glyph; the mockup's own `IC_SPK`
+at 1639 is not in `icons.tsx` yet), and `speak` called on that reply when the turn
+came in by voice (1902), for which the voice layer already carries the flag across
+`send`. That is the whole of Phase 6's AI half, and it is small: the body, the
+header and the reader.
 
 **Phase 7 — the Logs lens.** The deep dive, in Settings rather than the panel
 (`IDEAS.md` I6-I7): one filter object (`{ who?, phase?, type?, area?, q? }`)
@@ -901,22 +954,32 @@ is the pill row again.
   `Actor` / `ActionStamp` / `SavedItem` exist unused — a hint at the intended shape
   (every saved item has an owner, timestamps and a history of actions).
 - **No chat persistence.** `ChatScreen`'s messages die with the tab.
-- **`api/ai.ts` is unreachable from the UI, and requires a signed-in caller.** This
-  single gap explains the most, and it is worth saying in plain words: the
-  endpoint's first act is `verifyCaller` (ai.ts:158-168 — "The lock: every action
-  requires a signed-in caller"), and there is no sign-in screen, so no token can
-  exist in the browser and every real call comes back **401 by design**. It is not
-  a missing key and not a deployment problem — the keys are set in Vercel and the
-  function reads them. Chat and read aloud both stop here, which is the whole
-  reason the voice layer speaks with the browser's voice today (§3). One screen
-  turns on both features.
+- **The server is reachable now, for exactly one action, and only on a configured
+  deployment.** The lock is still the endpoint's first act (`ai.ts:158`,
+  `verifyCaller` at 158-168), and `src/auth.ts` is how a person gets past it. Two
+  clauses matter here and neither is a defect:
+  - **A deployment has to carry the two `VITE_` variables.** They are read at build
+    time, so a site built without them shows "This build has no sign-in configured"
+    and can sign nobody in. The four server-side keys were already in Vercel; these
+    two are the same Supabase project and need adding there as well.
+  - **Chat still does not post.** Read aloud is the only action the UI calls —
+    `src/voice.ts` sends the token with every request — while `src/request.ts`
+    builds a body on every send and nothing fetches with it. So a signed-in person
+    can hear the cloud voice today and cannot yet get a reply.
 - **The request is built but never posted.** `ChatScreen.send` builds the body
   (`toApiBody`, `src/request.ts`) and keeps it on the message, so the mapping runs
   on every send and stays in the bundle; what is missing is the sender — the
-  `fetch` to `/api/ai`, the SSE reader for `chatStream`, and the auth screen the
-  endpoint requires. Until then §5 check 6 is the other guard on the mapping
-  (`modelKey` above all), and a PDF ref (a label with no bytes) still cannot
-  become an attachment.
+  `fetch` to `/api/ai`, the SSE reader for `chatStream`, and the assistant turn
+  that gets an `spk` glyph for its Read aloud row (the mockup's `rowA`, 1642; the
+  glyph itself is at 1639 and is not in `icons.tsx`). Until then §5 check 6 is the
+  other guard on the mapping (`modelKey` above all), and a PDF ref (a label with no
+  bytes) still cannot become an attachment.
+- **Nothing on this machine can test the signed-in path.** There is no Supabase
+  project, no key and no `.env.local` here, so the token is built and sent but the
+  grant-or-refuse has never been watched: the browser work verified the run-up — the
+  form, the request leaving, and the sentence that comes back when it fails — and
+  not the voice itself. Hearing Google's voice needs the deployment plus one
+  sign-in, and that is the owner's half.
 - **The panel's "Always in context" list is static furniture.**
 - **Which voice names Settings offers is the owner's call, and nothing else is
   waiting on it.** The pane lists Nova, Alloy, Onyx and Shimmer — the mockup's own
@@ -933,11 +996,11 @@ is the pill row again.
   instead of the owner's real name and email. If a profile editor ever lands, keep
   the value out of the source; this file ships to the public.
 - **No `.nvmrc`.** This entry used to say there was no `.env.example` and no
-  `vercel.json` either; both landed with the AI-layer guardrails (all four
-  variables named with no values; `maxDuration: 60`), so what is left is the one
-  file. The `VITE_SUPABASE_*` pair is deliberately *not* in `.env.example` until
-  browser code reads it — a file naming a variable nothing reads is a file that
-  lies.
+  `vercel.json` either; both landed with the AI-layer guardrails (`maxDuration: 60`),
+  so what is left is the one file. `.env.example` names six variables now: the four
+  server-side ones, plus the `VITE_SUPABASE_*` pair that it had deliberately left out
+  until browser code read it. `src/auth.ts` reads them, so they are named — and
+  anything secret must never carry that prefix, because Vite inlines it.
 - **No `main` branch** — the default is `stage/0-foundation`.
 - Fixed in `6cb3f4d`, listed so it isn't "fixed" twice: `.gitignore`'s `.DS_Store/`
   had a trailing slash, so it only ever matched a *directory* of that name and the
@@ -973,12 +1036,13 @@ it yet. In priority order for a solo pre-alpha project:
 **Later — when it actually deploys**
 
 4. **`.env.example` + boot-time validation** — **mostly landed** with the
-   AI-layer guardrails: `.env.example` names all four keys with no values, and each
-   one now fails loudly with its own name where it is read (a missing Gemini key is
-   a 500 saying so, a missing TTS key a 501 saying so, an unconfigured Supabase a
-   500 saying so) instead of a vague 500. What is left is one validation pass over
-   all four at boot rather than three checks down inside the handler, and the
-   `VITE_*` pair when the auth screen reads it.
+   AI-layer guardrails: `.env.example` names six keys with no values, and each
+   server-side one now fails loudly with its own name where it is read (a missing
+   Gemini key is a 500 saying so, a missing TTS key a 501 saying so, an
+   unconfigured Supabase a 500 saying so) instead of a vague 500. The `VITE_*` pair
+   is named too since `src/auth.ts` reads it, and its absence is a *screen* saying
+   so rather than an error. What is left is one validation pass over the four at
+   boot rather than three checks down inside the handler.
 5. **An error boundary**: one component around `<App />` with a message and a
    reload button; today a render error is a white screen.
 6. **`vercel.json`'s rewrites**: the file itself landed with the AI layer

@@ -30,8 +30,9 @@ with neither key nor network.
 
 No environment variables are needed to run the UI. `api/ai.ts` reads four — and
 `vite dev` does **not** serve that file, so the AI path currently runs only under
-`vercel dev` or on Vercel. `.env.example` names all four and nothing else; copy it
-to `.env.local` (git-ignored) or let `vercel env pull .env.local` write it.
+`vercel dev` or on Vercel. The browser reads two more of its own, for signing in.
+`.env.example` names all six; copy it to `.env.local` (git-ignored) or let
+`vercel env pull .env.local` write it.
 
 | Variable | Used for |
 | --- | --- |
@@ -39,9 +40,14 @@ to `.env.local` (git-ignored) or let `vercel env pull .env.local` write it.
 | `GOOGLE_CLOUD_TTS_KEY` | voice |
 | `SUPABASE_URL` | session / account lookup |
 | `SUPABASE_ANON_KEY` | the same, as the client key |
+| `VITE_SUPABASE_URL` | the same project again, for the sign-in screen |
+| `VITE_SUPABASE_ANON_KEY` | the same, as the browser key |
 
 Every action in `api/ai.ts` requires a signed-in caller *before* the API key is
-ever touched.
+ever touched. The `VITE_` pair is what lets a person become one — and because Vite
+inlines that prefix into the built JavaScript, a deployment needs both as its own
+Vercel variables. A build made without them says so on its sign-in screen rather
+than failing obscurely, and nothing secret may ever carry that prefix.
 
 ## Layout
 
@@ -56,6 +62,8 @@ src/request.ts             the request /api/ai will be handed — the turn as pr
                            the model as a server key, the thread as its window
 src/voice.ts               the voice layer — voice typing in, read aloud out, both
                            from the mockup: no SDK, no live session, no dependency
+src/auth.ts                who is signed in, and the token /api/ai checks (Supabase)
+src/vite-env.d.ts          the two VITE_SUPABASE_* variables, typed
 src/useMedia.ts            the (min-width:900px) hook Settings and the `+` window share
 src/store/store.tsx        state skeleton (EumaeState is still empty)
 src/store/types.ts         Actor / ActionStamp / SavedItem
@@ -129,12 +137,17 @@ IDEAS.md                   the owner's idea queue — tracked, not committed
   half a second of quiet sends it — mockup 1763-1779), and read aloud asks your
   server for one sentence at a time so the first words arrive quickly (1670, 1677).
   The two interlock: while sound is coming out, the mic neither types nor sends.
-  The mic is live today; read aloud is reachable from Settings → Voice → **Play
-  sample**, because its other door is a reply to read and nothing replies yet. Both
-  go through `/api/ai`, so both meet the same wall — the endpoint requires a
-  signed-in caller and there is no sign-in screen, so read aloud says that in one
-  sentence and reads in the browser's voice rather than pretending (`AGENTS.md`
-  §3, §7).
+  The mic is live today, and read aloud is reachable from Settings → Voice → **Play
+  sample** — its other door is a reply to read, and nothing replies yet. Both go
+  through `/api/ai`, which answers a signed-in caller and nobody else.
+- **Signing in is real, and it is the switch for the AI.** `src/auth.ts` (Supabase)
+  plus Settings → Account → Security: email and password, create an account, or an
+  emailed link. The pane is the screen — no new rail row — and both account cards
+  show the address Supabase holds. What it turns on: read aloud sends the token
+  with every request, so a signed-in person hears Google's voice instead of the
+  browser's. What it does not: chat still does not post, so no reply is behind any
+  of this yet. A deployment needs the `VITE_SUPABASE_*` pair as its own variables,
+  or the screen says the build has no sign-in configured (`AGENTS.md` §3, §7).
 - **Honesty rule.** Where the mockup invents data — a password, active sessions, a
   spend figure, fake log rows — this codebase shows the real state and names the
   gap instead. Keep it that way.
@@ -161,8 +174,8 @@ several times and only the *last* definition is live. `AGENTS.md` explains.
 5. ✅ The `+` window — its five choices in a pop-up shaped like Settings, with a rail
    row carrying each live value, and a chip row that shows everything that is set
 6. ⬜ Sandbox, Studio artifacts, and `/api/ai` wired to the thread (+ the log's second layer)
-   — the **voice layer** (mic + read aloud, from the mockup) has landed inside this item;
-   what the thread still needs is the sender and the sign-in screen. `AGENTS.md` §3, §7.
+   — the **voice layer** (mic + read aloud) and the **sign-in screen** have landed inside this
+   item; what the thread still needs is the sender. `AGENTS.md` §3, §6, §7.
 7. ⬜ The Logs lens — a drill-down and a search in Settings → Logs, over one filter
 
 Items 5-7 come from the owner's own list in **`IDEAS.md`**, which says where each
@@ -185,11 +198,11 @@ is exotic, and all of it is explained in `AGENTS.md` §8.
 - **Persistence.** Messages and the activity log both live in memory: a reload
   forgets them, and neither is in an export.
 - **The POST.** `src/request.ts` defines the body `/api/ai` will receive, and
-  every message already builds and keeps its own — but nothing sends one yet. The
-  fetch, the streaming reader for `chatStream`, and the auth screen the endpoint
-  requires are Phase 6. Read aloud already posts for real, and it is the quickest
-  way to see what the missing screen costs: the endpoint answers **401** until
-  there is a signed-in caller, so it says so once and reads in the browser's voice.
+  every message already builds and keeps its own — but nothing sends one yet. What
+  is left of Phase 6 is the sender: the `fetch`, the streaming reader for
+  `chatStream`, and the assistant turn it produces. Read aloud already posts with a
+  real token, so the endpoint is no longer the wall it was — sign in, then
+  Settings → Voice → **Play sample** is the one place the cloud path runs today.
 - **`.nvmrc`.** `.env.example` and errors that name a missing key landed with the AI
   layer, and so did `vercel.json`; this list is down to the one file.
 - **An error boundary**, so a crash is a message and not a white screen.
