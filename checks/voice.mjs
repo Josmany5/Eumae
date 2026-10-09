@@ -252,7 +252,7 @@ function tableVerdicts(table, server, speaker, settings) {
   judge(
     'speed: the rate is settled when the run starts and travels on the request',
     /speakRate = storedSpeed\(\)/.test(speaker) && /rate: String\(speakRate\)/.test(speaker),
-    'src/voice.ts — `speak` reads it, `speakNext` sends it',
+    'src/voice.ts — `speak` reads it, `fetchClip` sends it',
   );
 
   return out;
@@ -416,11 +416,11 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     /if \(running \|\| sounding\) return;/.test(unlockBody),
     unlockBody ? 'unlock, which plays through the element the reply comes out of' : 'unlock is not in src/voice.ts',
   );
-  const speakBody = bodyOf('speakNext');
+  const speakBody = bodyOf('playClip');
   judge(
     'speak: a piece that fails to play still advances the run',
-    /el\.onerror = /.test(speakBody),
-    speakBody ? "the run's own answer to a piece it cannot play" : 'speakNext is not in src/voice.ts',
+    /el\.onerror = finish/.test(speakBody),
+    speakBody ? "the run's own answer to a piece it cannot play" : 'playClip is not in src/voice.ts',
   );
 
   return out;

@@ -213,7 +213,7 @@ check(
 
 check(
   'fails when a piece that cannot be played leaves the run speaking',
-  failing(source.replace('      el.onerror = () => {', '      el.onstalled = () => {')),
+  failing(source.replace('    el.onerror = finish;', '    el.onstalled = finish;')),
   ['speak: a piece that fails to play still advances the run'],
 );
 
