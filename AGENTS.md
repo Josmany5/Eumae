@@ -108,28 +108,33 @@ new), 109 lines to `ChatScreen.tsx` (99 → 208, the send and the thread it draw
   he asks for work to land on main, he means whichever branch is current here.
   Push to the default branch and nowhere else. (`feat/web-shell` was the only other
   branch ever pushed; it mirrored the default and was retired on 2026-10-06.)
-- **Two lines descend from `0560cdd`, and they are not ancestors of each other**,
-  so neither can be pushed over the other without a force that deletes commits:
-  - **`rebuild/0-foundation`** — this worktree's line, and the default. It keeps
-    sign-in: `src/chat.ts`, `src/voices.ts`, and `accessToken()` out of `src/auth.ts`.
-  - **`stage/0-foundation`** — the other answer, pushed from a clone that is not on
-    this machine: `src/ai.ts` plus `ChatMarkdown.tsx`, then **sign-in removed**
-    (`12ebf0b` dropped the gate, `9a19872` deleted `src/components/auth/SignIn.tsx`
-    and `src/supabase.ts`). It is **kept, not rewritten**: it holds the one thing
-    this line lacks (a markdown renderer) and lacks the one thing this line added
-    (the real voice list — its pane still offers Nova/Alloy/Onyx/Shimmer, and its
-    `api/ai.ts` still treats every name but Achird/Algieba/Alnilam as female).
-  - Merging the two is **not** a fast-forward: eight files conflict (`api/ai.ts`,
-    `package.json`, `src/App.tsx`, `src/components/settings/Settings.tsx`,
-    `src/components/shell/Composer.tsx`, `src/components/shell/icons.tsx`,
-    `src/screens/ChatScreen.tsx`, `src/styles/tokens.css` — `git merge-tree` counts
-    22 conflict markers) and the login question would have to be answered again.
-    Nobody has asked for that merge.
-- **Two worktrees, one repository.** `~/Desktop/eumae` owns the `.git` and has
-  `stage/0-foundation` checked out (`0560cdd`, four behind `origin`, with an
-  uncommitted `IDEAS.md`); `~/Desktop/eumae-rebuild` is a linked worktree on the
-  default branch, and everything in this file was written there. Never move a ref
-  that another worktree has checked out, and leave its uncommitted files alone.
+- **One line, two names — settled 2026-10-08.** There used to be a second line
+  here, pushed from a clone that is not on this machine: `src/ai.ts` plus
+  `ChatMarkdown.tsx`, and then sign-in removed (`12ebf0b` dropped the gate,
+  `9a19872` deleted `src/components/auth/SignIn.tsx` and `src/supabase.ts`). The
+  owner decided this line stands and the other was not worth keeping, so
+  `stage/0-foundation` was **force-pushed onto this line's commit**: its old tip
+  `9a19872` is referenced nowhere on GitHub now, no tag was kept, and the only
+  label it has is the **local-only** `backup/stage-0-foundation` (never pushed,
+  safe to delete — and the only surviving copy of that markdown renderer). Both
+  remote branches point at the same commit on purpose: the branch Vercel's
+  Production Branch setting is most likely pinned to now builds this line without
+  anyone opening the dashboard. The merge that was never done is still not done —
+  eight files used to conflict (`api/ai.ts`, `package.json`, `src/App.tsx`,
+  `src/components/settings/Settings.tsx`, `src/components/shell/Composer.tsx`,
+  `src/components/shell/icons.tsx`, `src/screens/ChatScreen.tsx`,
+  `src/styles/tokens.css`, 22 markers), and the login question is now answered one
+  way: this line keeps sign-in.
+- **Two worktrees, one repository, and the other one is stale on purpose.**
+  `~/Desktop/eumae` owns the `.git` and has `stage/0-foundation` checked out at
+  `0560cdd` — four commits behind the tip that name used to have (`9a19872`) and
+  sixteen behind the commit it points at now — with an uncommitted `IDEAS.md`;
+  `~/Desktop/eumae-rebuild` is a linked worktree on the default branch, and
+  everything in this file was written there. A plain `git pull` in the other folder
+  is no longer a clean update, because that name was rewritten: getting it onto this
+  line means a fetch and a `reset --hard`, which **would discard the uncommitted
+  `IDEAS.md`** — commit or stash it first. Never move a ref another worktree has
+  checked out, and leave its uncommitted files alone.
 - `backup/pre-rewrite` is **local-only** and stays that way: it is the way back
   from the identity rewrite, so every commit on it predates that rewrite. Never
   push it, and delete it once the scrub is confirmed good.
@@ -1118,17 +1123,18 @@ is the pill row again.
     sending rather than keeping one), so a signed-in person on a configured
     deployment gets a reply and can hear it. Nothing on this machine can watch that
     happen — see the next entry.
-- **The default branch is the line that needs sign-in, so configuring it is now a
-  deployment requirement rather than a someday item.** `rebuild/0-foundation` sends
-  `accessToken()`, so a signed-out visitor gets the 401 sentence. For the live site
-  to work at all the Vercel project must build with `VITE_SUPABASE_URL` and
-  `VITE_SUPABASE_ANON_KEY` set (Vite inlines them at build time) and Supabase must
-  allow the deployment's URL as a redirect. Without both, the sign-in screen cannot
-  sign anyone in and every send answers "Sign in to get a reply". The other line
-  (`stage/0-foundation`) trades the opposite way: it needs no account and no keys.
-  **Check Vercel's own *Production Branch* setting too** — it is separate from the
-  repo's default branch and may still be pinned to `stage/0-foundation`, in which
-  case the next deploy still builds the other line.
+- **Every branch needs sign-in configured now, so this is a deployment requirement
+  rather than a someday item.** This line sends `accessToken()`, so a signed-out
+  visitor gets the 401 sentence. For the live site to work at all the Vercel project
+  must build with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` set (Vite inlines
+  them at build time) and Supabase must allow the deployment's URL as a redirect.
+  Without both, the sign-in screen cannot sign anyone in and every send answers
+  "Sign in to get a reply" — there is no login-free branch to fall back on, since
+  `stage/0-foundation` carries this same commit. **Check Vercel's own *Production
+  Branch* setting too** — it lives in Vercel, not in Git, and does not follow a
+  change of the repo's default branch. Which of the two names it holds no longer
+  matters, but it has to be one of them: a third name, or a deleted one, means
+  pushes stop triggering production deploys.
 - **The reply is not persisted, and no tool runs.** `ChatScreen`'s messages die with
   the tab, and a `{ functionCall }` frame is returned by `src/chat.ts` and drawn
   nowhere, because there is no harness — the mockup declares `generate_image` and
@@ -1161,8 +1167,9 @@ is the pill row again.
   server-side ones, plus the `VITE_SUPABASE_*` pair that it had deliberately left out
   until browser code read it. `src/auth.ts` reads them, so they are named — and
   anything secret must never carry that prefix, because Vite inlines it.
-- **No `main` branch** — the default is `rebuild/0-foundation` since 2026-10-08
-  (`stage/0-foundation` is the other line; §7, Branches).
+- **No `main` branch** — the default is `rebuild/0-foundation` since 2026-10-08, and
+  `stage/0-foundation` carries the same commit since the force-push that ended the
+  second line (§7, Branches).
 - Fixed in `6cb3f4d`, listed so it isn't "fixed" twice: `.gitignore`'s `.DS_Store/`
   had a trailing slash, so it only ever matched a *directory* of that name and the
   file was never ignored.
