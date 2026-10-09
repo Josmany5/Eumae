@@ -218,9 +218,9 @@ check(
 );
 
 check(
-  'fails when a piece that cannot be played is walked past in silence',
-  failing(source.replace('      resolve(played);', '      resolve(true);')),
-  ['speak: a piece the element cannot play is read in the browser voice, and said so'],
+  'fails when a browser voice is slipped back in',
+  failing(`${source}\nwindow.speechSynthesis.speak(new SpeechSynthesisUtterance('x'));\n`),
+  ['speak: a piece that fails is not read in the browser voice'],
 );
 
 check(

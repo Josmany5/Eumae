@@ -246,37 +246,22 @@ export function chunks(text: string): string[] {
   return out.length ? out : [''];
 }
 
-/** One sentence per run about why the server's voice is not the one speaking —
- *  however many pieces it takes to notice that (`noticed`). */
+/** One sentence per run about why the reading stopped — however many pieces it
+ *  takes to notice that (`noticed`). */
 function once(message: string, say?: (m: string) => void): void {
   if (noticed) return;
   noticed = true;
   if (say) say(message);
 }
 
-/** Why the sound is not the server's voice: said once per run, in the server's
- *  own terms where it gave any, because the alternative — the mockup's silent
- *  fallback (1685) — is a voice that "just sounds different" for reasons nobody
- *  can see. The reading continues either way, in the browser's voice. */
+/** Why the reading stopped: said once per run, in the server's own terms where
+ *  it gave any. There is no browser-voice fallback on purpose — a reply that
+ *  cannot be read stays unread and says why, rather than switching to a voice
+ *  the person did not choose. */
 function refused(status: number, message: string | undefined, say?: (m: string) => void): void {
-  if (status === 401) once('Signed out — reading with the browser voice', say);
+  if (status === 401) once('Signed out — read aloud needs a sign-in', say);
   else if (status === 501) once(message || 'Read aloud is not set up on this server', say);
-  else once('The server could not read this — using the browser voice', say);
-}
-
-/** The browser's own voice, the fallback when the server sends no audio (1685).
- *  Resolves on end or error, so the run can carry on rather than stall. */
-function playBrowserPiece(text: string): Promise<void> {
-  return new Promise((resolve) => {
-    try {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.onend = () => resolve();
-      utterance.onerror = () => resolve();
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      resolve();
-    }
-  });
+  else once(message || 'Read aloud failed. Try again.', say);
 }
 
 /** What the speak action answers with (api/ai.ts): base64 audio, or a sentence
@@ -337,8 +322,8 @@ async function fetchClip(piece: string, token: string | null): Promise<Clip> {
 
 /** Play one clip through the shared element. Resolves `true` when it played out,
  *  `false` when the element would not start it at all (a refusal, a decode
- *  failure) — so the caller can fall back to the browser's voice rather than
- *  walk the rest of the queue in silence. */
+ *  failure) — so the caller can say so and stop, rather than walk the rest of
+ *  the queue in silence. */
 function playClip(src: string): Promise<boolean> {
   return new Promise((resolve) => {
     const el = element();
@@ -379,9 +364,11 @@ async function runSpeak(id: number, pieces: string[], say?: (message: string) =>
   for (const clip of clips) {
     if (id !== runId) return;
     if (clip.src && (await playClip(clip.src))) continue;
+    /* A piece that will not play: say why once, and stop. There is no fallback
+       voice — the reply ends unread rather than switching to one nobody chose. */
     if (!clip.src) refused(clip.status, clip.error, say);
-    else once('Could not play that here', say);
-    await playBrowserPiece(clip.text);
+    else once('Read aloud failed. Try again.', say);
+    break;
   }
   if (id === runId) {
     running = false;
@@ -430,9 +417,8 @@ export function speak(text: string, say?: (message: string) => void, voice?: str
   void runSpeak(id, chunks(text), say);
 }
 
-/** Stop — the mockup's own stop (1690): the queue is dropped, the element is
- *  paused and the browser's voice is cancelled, so pressing again cannot leave
- *  either of them still talking. */
+/** Stop — the mockup's own stop (1690): the queue is dropped and the element is
+ *  paused, so pressing again cannot leave it still talking. */
 export function stopSpeaking(): void {
   running = false;
   sounding = false;
@@ -452,11 +438,6 @@ export function stopSpeaking(): void {
     } catch {
       /* Nothing was playing. */
     }
-  }
-  try {
-    window.speechSynthesis.cancel();
-  } catch {
-    /* No synthesizer in this browser. */
   }
 }
 

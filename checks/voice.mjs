@@ -422,15 +422,12 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     /el\.onerror = finish/.test(speakBody),
     speakBody ? "the run's own answer to a piece it cannot play" : 'playClip is not in src/voice.ts',
   );
-  const runBody = bodyOf('runSpeak');
   judge(
-    'speak: a piece the element cannot play is read in the browser voice, and said so',
-    /resolve\(played\)/.test(speakBody) &&
-      /playBrowserPiece\(clip\.text\)/.test(runBody) &&
-      /Could not play that here/.test(source),
-    speakBody && runBody
-      ? 'playClip reports it, runSpeak falls back and says so'
-      : 'playClip or runSpeak is not in src/voice.ts',
+    'speak: a piece that fails is not read in the browser voice',
+    !/speechSynthesis/i.test(source) &&
+      !/SpeechSynthesisUtterance/.test(source) &&
+      !/playBrowserPiece/.test(source),
+    'the source, which must carry no browser voice anywhere',
   );
   const resultHead = (source.match(/rec\.onresult = \(event\) => \{([\s\S]{0,400})/) || [])[1] || '';
   judge(
