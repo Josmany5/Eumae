@@ -74,6 +74,13 @@ export interface Nav {
   goTab: (tab: TabId) => void;
   openSettings: () => void;
 
+  /** Say something small and short-lived — the mockup's one global `toast()`,
+   *  which it reaches for from everywhere. App owns the one that exists; the mic
+   *  is its newest caller, and it has two sentences it must be able to say
+   *  ("Voice typing is not available in this browser.", "Voice stopped. Tap the
+   *  mic to start again." — 1789, 1777), neither of which can be silent. */
+  notify: (message: string) => void;
+
   /** Right panel. `openPanel` sets the view as it opens, so a doorway can point
    *  straight at the reading it means instead of opening on whatever was last
    *  looked at. */
@@ -117,6 +124,7 @@ export const NavContext = createContext<Nav>({
   depth: 0,
   goTab: () => {},
   openSettings: () => {},
+  notify: () => {},
   panelOpen: false,
   panelView: 'context',
   togglePanel: () => {},

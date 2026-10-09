@@ -1,9 +1,12 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from './icons';
 import { useNav, DEFAULT_TURN } from '../../nav';
+import { stopListening, toggleMic, type VoiceTyping } from '../../voice';
 
 interface ComposerProps {
-  onSend: (text: string) => void;
+  /** `byVoice` is true when the mic sent this rather than the keyboard — the
+   *  mockup carries the same flag on to reading the reply aloud (1857, 1902). */
+  onSend: (text: string, byVoice?: boolean) => void;
   placeholder?: string;
 }
 
@@ -25,17 +28,63 @@ interface ComposerProps {
  *  time round: `+` sets the chat up and never attaches anything, and the
  *  paperclip brings a photo or PDF into this message. */
 export default function Composer({ onSend, placeholder = 'Ask Eumae' }: ComposerProps) {
-  const { turn, openAdd, pickFile } = useNav();
-  const [text, setText] = useState('');
+  const { turn, openAdd, pickFile, notify } = useNav();
+  const [text, setTextState] = useState('');
+  const [micOn, setMicOn] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+  /* The field, and a copy of it the mic can read. `VoiceTyping.read` is called
+     from a speech event rather than from a render, so it cannot be handed the
+     state variable — which is the mockup reading `#cin.value` off the DOM
+     (1758), with one difference: a ref, not the node. */
+  const field = useRef('');
 
-  const send = () => {
+  const setText = (value: string) => {
+    field.current = value;
+    setTextState(value);
+  };
+
+  /** Grow the field to its content — the same rule the typing below applies,
+   *  and needed here too, because the mic writes without a keystroke. */
+  const fit = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  };
+
+  const send = (byVoice = false) => {
     const value = text.trim();
-    if (!value) return;
-    onSend(value);
+    if (!value) return false;
+    onSend(value, byVoice);
     setText('');
     if (ref.current) ref.current.style.height = 'auto';
+    return true;
   };
+
+  /* The mic's tap (mockup `micTap`, 1786). This button used to be the mockup's
+     own stub — `onclick="toast('Voice mode')"` on line 391 — and `inject()`
+     (1833) is the thing that swaps that handler for this one. So the stub's
+     toast text is gone and the markup's own `aria-label="Mic"` stays. */
+  const micTap = () => {
+    const voice: VoiceTyping = {
+      read: () => field.current,
+      write: (value) => {
+        setText(value);
+        fit();
+      },
+      send: (byVoice) => send(byVoice),
+      /* A reply is never in flight yet — nothing answers (Phase 6). Constant
+         false rather than a guess, and the reason the flag exists survives: the
+         mockup's mic waits for the reply instead of talking over it (1757). */
+      busy: () => false,
+      lit: setMicOn,
+      say: notify,
+    };
+    toggleMic(voice);
+  };
+
+  /* Losing the composer is losing the mic's only reason to be listening. */
+  useEffect(() => stopListening, []);
 
   /* The chip row — the mockup's `chipsHTML` (line 1270) taken one step further.
      That one always shows the mode, adds the role unless it is Default and the
@@ -117,10 +166,15 @@ export default function Composer({ onSend, placeholder = 'Ask Eumae' }: Composer
           <Icon name="clp" />
         </button>
 
-        <button className="cmpIcon" aria-label="Voice mode" title="Voice mode">
+        <button
+          className={`cmpIcon${micOn ? ' on' : ''}`}
+          onClick={micTap}
+          aria-label="Mic"
+          title="Mic"
+        >
           <Icon name="mic" />
         </button>
-        <button className="cmpSend" onClick={send} aria-label="Send" disabled={!text.trim()}>
+        <button className="cmpSend" onClick={() => send()} aria-label="Send" disabled={!text.trim()}>
           <Icon name="up" />
         </button>
       </div>

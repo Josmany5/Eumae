@@ -33,7 +33,7 @@ export default function ChatScreen() {
 
   // Stage: pages first, backend later. This is local-only until the
   // memory + harness land and /api/ai is wired to the thread.
-  const send = (text: string) => {
+  const send = (text: string, byVoice = false) => {
     // The mockup reads the mode off what you asked for (line 878), and the add
     // menu's own tip promises it — so the chip has to keep up. It only ever
     // moves to Build or Learn: an ordinary ask leaves the mode where it is.
@@ -56,9 +56,11 @@ export default function ChatScreen() {
 
     // What happened is a message landing in this thread — there is no reply to
     // record yet, because nothing answers (Phase 6 wires /api/ai). The clip is
-    // the opening of it: a log row is a sentence, not a transcript.
+    // the opening of it: a log row is a sentence, not a transcript. Where the
+    // mic sent it the row says so — the same flag the mockup reads back to have
+    // the answer spoken aloud (1857 → 1902), which needs a reply to read.
     const clip = text.length > 60 ? `${text.slice(0, 60)}…` : text;
-    logEv({ area: 'Chat', text: `Sent: ${clip}` });
+    logEv({ area: 'Chat', text: byVoice ? `Sent by voice: ${clip}` : `Sent: ${clip}` });
   };
 
   return (
