@@ -125,16 +125,16 @@ new), 109 lines to `ChatScreen.tsx` (99 → 208, the send and the thread it draw
   `src/components/shell/icons.tsx`, `src/screens/ChatScreen.tsx`,
   `src/styles/tokens.css`, 22 markers), and the login question is now answered one
   way: this line keeps sign-in.
-- **Two worktrees, one repository, and the other one is stale on purpose.**
+- **Two worktrees, one repository, and the other one is stale by design.**
   `~/Desktop/eumae` owns the `.git` and has `stage/0-foundation` checked out at
-  `0560cdd` — four commits behind the tip that name used to have (`9a19872`) and
-  sixteen behind the commit it points at now — with an uncommitted `IDEAS.md`;
+  `0560cdd` — 18 commits behind that name now — with an uncommitted `IDEAS.md`;
   `~/Desktop/eumae-rebuild` is a linked worktree on the default branch, and
-  everything in this file was written there. A plain `git pull` in the other folder
-  is no longer a clean update, because that name was rewritten: getting it onto this
-  line means a fetch and a `reset --hard`, which **would discard the uncommitted
-  `IDEAS.md`** — commit or stash it first. Never move a ref another worktree has
-  checked out, and leave its uncommitted files alone.
+  everything in this file was written there. Its pull is a plain **fast-forward**
+  (`0560cdd` is an ancestor of this line, and none of these commits touch
+  `IDEAS.md`), so that local edit survives it. That is not true of a clone left at
+  their old tip `9a19872`, which is an ancestor of nothing here: it is diverged and
+  would need a reset. Never move a ref another worktree has checked out, and leave
+  its uncommitted files alone.
 - `backup/pre-rewrite` is **local-only** and stays that way: it is the way back
   from the identity rewrite, so every commit on it predates that rewrite. Never
   push it, and delete it once the scrub is confirmed good.
