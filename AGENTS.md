@@ -234,18 +234,18 @@ the shape without either one saying it out loud.
   clause, the role, the skill, and the one thinking line that asks for brevity or
   care (Balanced asks for neither, which is what makes it the default rather than
   a third instruction).
-- The server reads `{ action, data }` (ai.ts:124) and, for `chatStream`, exactly
+- The server reads `{ action, data }` (ai.ts:178) and, for `chatStream`, exactly
   `systemPrompt / conversationHistory / message / attachments /
   functionDeclarations / model` — and nothing else, *silently*.
 - Which is what made writing it down worth doing: `model` is the trap. The chip
-  shows `Fast`/`Best`, the server's table (ai.ts:39) is keyed `lite`/`best`, and an
+  shows `Fast`/`Best`, the server's table (ai.ts:62) is keyed `lite`/`best`, and an
   unrecognised key is not an error there — it is the default. `modelKey` is the
   only place that translation happens, and `Auto` sends no key at all (the mockup
   does the same, 1874): with two entries in the table, Auto and Fast resolve to
   the same model today, so "The router picks" is still a promise and the file
   says so.
 - Our two role names must not travel either. The server maps everything that is
-  not exactly `user` to `model` (ai.ts:54) — so `historyOf` translates `you` and
+  not exactly `user` to `model` (ai.ts:77) — so `historyOf` translates `you` and
   `eumae`, or the person's own sentences come back to the model as Eumae's.
 - `BASE_PROMPT` is written fresh instead of copied: the mockup's paragraph (1626)
   names the owner, and this repo carries no real name (§3). Same job, nobody's
@@ -429,7 +429,7 @@ Design tokens plus every component's styles in one file, class-named per compone
     had been settled by two different ends without either saying so: the settings
     travel as *prose* inside `systemPrompt` (`directives()`, mockup 1644-1661,
     composed at 1872) rather than as five fields; and the chip's `Fast`/`Best` are
-    not the server's keys (`lite`/`best`, `api/ai.ts:39`) — an unrecognised key
+    not the server's keys (`lite`/`best`, `api/ai.ts:62`) — an unrecognised key
     there is not an error but a silent fallback to the default, so sending our
     labels would quietly hand you a different model than the one you picked.
     `Auto` sends no key at all. §5 check 6 scans the server for its own table and

@@ -45,9 +45,23 @@ async function verifyCaller(req: VercelRequest): Promise<string | null> {
   return data.user.id;
 }
 
+/* The two models the picker can reach, and the reason for each.
+ *
+ * `best` was `gemini-2.5-flash`: a model released in June 2025, which Google
+ * now serves only to accounts that used the 2.5 generation while it was
+ * current — "we are limiting access to the 2.5 models to users who have
+ * actively used them in the past", with new projects pointed at 3.5 Flash-Lite
+ * or 3.8 Flash (ai.google.dev/gemini-api/docs/deprecations, read 2026-10-08).
+ * A new deployment is precisely the account that note excludes, so Best would
+ * have failed on its first turn, and the label promising the most would have
+ * been the one that never answered.
+ *
+ * `checks/models.mjs` asks Google whether these IDs are still served, so the
+ * next retirement is found by running a command rather than by a broken reply.
+ */
 const MODEL_IDS: Record<string, string> = {
   lite: 'gemini-3.5-flash-lite',
-  best: 'gemini-2.5-flash',
+  best: 'gemini-3.8-flash',
 };
 
 interface ChatMessage {
@@ -172,7 +186,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         functionDeclarations?: unknown[];
         model?: string;
       };
-      const modelId = MODEL_IDS[(data as { model?: string }).model || ''] || 'gemini-3.5-flash-lite';
+      /* The fallback is the table's own default rather than a copy of it: a
+         literal here is a second thing to remember to change, and one was
+         sitting on this line until checks/models.mjs went looking for it. */
+      const modelId = MODEL_IDS[(data as { model?: string }).model || ''] || MODEL_IDS.lite;
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GEMINI_API_KEY}`,
@@ -223,7 +240,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         functionDeclarations?: unknown[];
         model?: string;
       };
-      const modelId = MODEL_IDS[(data as { model?: string }).model || ''] || 'gemini-3.5-flash-lite';
+      /* The fallback is the table's own default rather than a copy of it: a
+         literal here is a second thing to remember to change, and one was
+         sitting on this line until checks/models.mjs went looking for it. */
+      const modelId = MODEL_IDS[(data as { model?: string }).model || ''] || MODEL_IDS.lite;
 
       const geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`,
@@ -523,8 +543,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const validRatios = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'];
       const ratio = validRatios.includes(aspectRatio || '') ? aspectRatio : undefined;
 
+      /* `gemini-2.5-flash-image` carries a shutdown date of March 15, 2027, and
+         the same page names this model as its replacement (read 2026-10-08), so
+         the countdown is removed now instead of waited out later. */
       const imgRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

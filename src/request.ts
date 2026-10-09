@@ -4,7 +4,7 @@ import type { Mode, Model, Ref, Turn } from './nav';
  *
  *  Two ends meet here and neither of them owns the shape on its own. The `+`
  *  menu writes the turn (nav.ts), and the server reads a body of
- *  `{ action, data }` (api/ai.ts:124). The third end is the mockup, and it is
+ *  `{ action, data }` (api/ai.ts:178). The third end is the mockup, and it is
  *  the reason none of this is guesswork — it builds exactly this at line 1872:
  *
  *    {action:"chatStream",data:{systemPrompt:PROMPT+directives(),
@@ -95,9 +95,9 @@ export function directives(req: TurnRequest): string {
 
 /** The label the chip shows is *not* the key the server reads.
  *
- *  `MODEL_IDS` (api/ai.ts:39) has two entries, `lite` and `best`, and the two chat
- *  branches resolve anything they do not recognise to the default (ai.ts:135 for
- *  `chat`, 185 for `chatStream`). So 'Fast' travelling
+ *  `MODEL_IDS` (api/ai.ts:62) has two entries, `lite` and `best`, and the two chat
+ *  branches resolve anything they do not recognise to the default (ai.ts:192 for
+ *  `chat`, 246 for `chatStream`). So 'Fast' travelling
  *  as 'Fast' would not fail — it would quietly hand you the cheapest model under
  *  a label that promised a choice. Auto travels as *no key at all* (the mockup
  *  does the same, 1874) and lets the server default apply; note that with two
@@ -113,7 +113,7 @@ export function modelKey(model: Model): string | undefined {
   return MODEL_KEYS[model];
 }
 
-/** Bytes on the wire, in the shape the server sanitizes (api/ai.ts:4, 9):
+/** Bytes on the wire, in the shape the server sanitizes (api/ai.ts:22-27):
  *  base64, image / PDF / plain text only, 3 MB in total. */
 export interface Attachment {
   mimeType: string;
@@ -146,7 +146,7 @@ export interface ThreadTurn {
 }
 
 /** The same thing in the wire's own spelling. The server reads
- *  `msg.role === 'user' ? 'user' : 'model'` (api/ai.ts:54), so anything that is
+ *  `msg.role === 'user' ? 'user' : 'model'` (api/ai.ts:77), so anything that is
  *  not exactly `user` becomes a past *reply* — our two names must not travel,
  *  or the person's own sentences come back to the model as Eumae's. */
 export interface WireMessage {
@@ -172,7 +172,7 @@ export function historyOf(
 }
 
 /** What the thread posts to /api/ai. The server reads exactly these keys
- *  (ai.ts:124-135) and nothing else, so an unrecognised one is not an error —
+ *  (ai.ts:178-192) and nothing else, so an unrecognised one is not an error —
  *  it is silence. That is why the shape is a type here instead of an object
  *  literal assembled at the call site. */
 export interface ApiChatBody {
