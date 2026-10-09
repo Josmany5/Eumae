@@ -218,6 +218,34 @@ check(
 );
 
 check(
+  'fails when a piece that cannot be played is walked past in silence',
+  failing(source.replace('      resolve(played);', '      resolve(true);')),
+  ['speak: a piece the element cannot play is read in the browser voice, and said so'],
+);
+
+check(
+  'fails when a result that lands after the mic is off is not ignored',
+  failing(
+    source.replace(
+      "    if (listener !== voice) return;\n    /* Nor is anything typed while it is speaking (1768). */",
+      "    /* Nor is anything typed while it is speaking (1768). */",
+    ),
+  ),
+  ['mic: a result that lands after the mic is off is ignored'],
+);
+
+check(
+  'fails when a dropped connection stops the mic instead of riding the restart',
+  failing(
+    source.replace(
+      "reason === 'audio-capture' || reason === 'language-not-supported'",
+      "reason === 'audio-capture' || reason === 'network' || reason === 'language-not-supported'",
+    ),
+  ),
+  ['mic: a dropped connection rides the restart, not the stop'],
+);
+
+check(
   'a comment change is not an alarm',
   failing(`${source}\n/* a new note, which changes nothing that runs */\n`),
   [],

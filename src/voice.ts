@@ -15,8 +15,8 @@ import { storedSpeed, storedVoice, voiceName } from './voices';
  *    micTap (1786)    toggle. No recogniser in this browser? Say so, don't sit
  *                     there looking armed.
  *    startRec (1763)  continuous recognition; finals accumulate, the interim
- *                     text shows in the field as you speak, and half a second
- *                     of quiet sends it.
+ *                     text shows in the field as you speak, and a beat of quiet
+ *                     (800ms) sends it.
  *    voiceSend (1755) the send itself, deferred while a reply is streaming.
  *    voiceOff (1781)  off, and stop listening.
  *
@@ -34,8 +34,8 @@ import { storedSpeed, storedVoice, voiceName } from './voices';
  *
  *  The other half is the speaker, and it is the same story from the mockup's
  *  other end: `wxSpeak` (1689) is what the "Read aloud" button calls, `chunks`
- *  (1670) and `speakNext` (1677) are how a reply becomes sound, `unlock` (1668)
- *  is how iOS is persuaded to allow it, and the two halves meet at one variable
+ *  (1670) and `playClip` are how a reply becomes sound, `unlock` (1668) is how
+ *  iOS is persuaded to allow it, and the two halves meet at one variable
  *  — while sound is coming out, the mic does not type and does not send (1756,
  *  1768). It is the microphone that yields, because a person hearing an answer
  *  is not, at that moment, talking to it.
@@ -62,16 +62,19 @@ export interface VoiceTyping {
   say: (message: string) => void;
 }
 
-/* The mockup's own numbers: half a second of quiet sends (1774), and a busy
-   reply is retried after 800ms (1757). Then the runaway guard's — a five second
-   window (1777), and more than four restarts inside it. */
+/* The mockup's own numbers, nudged: the mockup sent on half a second of quiet
+   (1774), and this app waits a fuller 800ms — the time a sentence needs to
+   finish. A busy reply is retried after the same 800ms (1757). Then the runaway
+   guard's — a five second window (1777), and more than four restarts inside it. */
 const SILENCE_MS = 800;
 const BUSY_RETRY_MS = 800;
 const RUNAWAY_WINDOW_MS = 5000;
 const RUNAWAY_MAX = 4;
-/** The longest piece the speaker asks for in one request. The mockup's own was
- *  420 (1673); this app asks for 4500 — just under Google's per-request text cap
- *  of ~5000 bytes, so one ordinary reply is one request instead of several. */
+/** The longest piece the speaker asks for in one request, in UTF-8 bytes. The
+ *  mockup's own was 420 characters (1673); this app asks for 4500 bytes — just
+ *  under Google's per-request text cap of ~5000 bytes, so one ordinary reply is
+ *  one request instead of several, and an emoji or a CJK character still counts
+ *  the three or four bytes it takes, not the one it looks like. */
 const CHUNK_MAX = 4500;
 
 /** How long after `onend` before the recogniser is started again. iOS refuses a
@@ -108,11 +111,11 @@ interface Recognizer {
 type RecognizerCtor = new () => Recognizer;
 
 /* ── The speaker ─────────────────────────────────────────────────────────────
-   Read aloud, from the mockup. `speakNext` (1677) is the loop that makes it feel
-   immediate: the text is cut into sentence-sized pieces (`chunks`, 1670), each is
-   asked for as its own short request, and the next one is asked for while the
-   last is still playing — so the first words arrive after one small synthesis
-   rather than after the whole reply has been synthesized.
+   Read aloud, from the mockup. The text is cut into sentence-sized pieces
+   (`chunks`, 1670), every piece is asked for at once, and then they are played
+   back to back through one element (`playClip`) — so the first words arrive as
+   soon as the first short synthesis is done, rather than after the whole reply
+   has been synthesized.
 
    The audio element is one element, reused (1669), and it is also how iOS
    decides: Safari will not start a sound that no gesture began, and the answer
@@ -149,11 +152,6 @@ let speakVoice: string | null = null;
    read and never on the sentence already coming out of the speaker, which would
    sound like a fault rather than a setting. */
 let speakRate = 1;
-
-/** Is sound coming out? The mic's own guard (1756, 1768). */
-export function speaking(): boolean {
-  return sounding;
-}
 
 function element(): HTMLAudioElement {
   if (!audio) audio = new Audio();
@@ -229,14 +227,17 @@ function unlock(): void {
 /** Cut text into sentence-sized pieces — the mockup's `chunks` (1670): code
  *  fences are dropped, because there is nothing in them to hear, the rest splits
  *  on sentence ends and line breaks, and the pieces are glued back together so
- *  none is longer than `CHUNK_MAX` (4500, not the mockup's 420 at 1673, so one
- *  reply is one request instead of several). */
+ *  none is longer than `CHUNK_MAX` UTF-8 bytes (4500, not the mockup's 420 at
+ *  1673, so one reply is one request instead of several). The count is bytes, not
+ *  characters: Google's cap is ~5000 bytes, and an emoji or a CJK character is
+ *  the three or four bytes it takes, not the one it looks like. */
 export function chunks(text: string): string[] {
+  const bytes = (s: string) => new TextEncoder().encode(s).length;
   const parts = text.replace(/```[\s\S]*?```/g, ' ').match(/[^.!?\n]+[.!?\n]*/g) ?? [text];
   const out: string[] = [];
   let current = '';
   for (const part of parts) {
-    if ((current + part).length > CHUNK_MAX) {
+    if (bytes(current + part) > CHUNK_MAX) {
       if (current) out.push(current);
       current = part;
     } else current += part;
@@ -245,17 +246,22 @@ export function chunks(text: string): string[] {
   return out.length ? out : [''];
 }
 
+/** One sentence per run about why the server's voice is not the one speaking —
+ *  however many pieces it takes to notice that (`noticed`). */
+function once(message: string, say?: (m: string) => void): void {
+  if (noticed) return;
+  noticed = true;
+  if (say) say(message);
+}
+
 /** Why the sound is not the server's voice: said once per run, in the server's
  *  own terms where it gave any, because the alternative — the mockup's silent
  *  fallback (1685) — is a voice that "just sounds different" for reasons nobody
  *  can see. The reading continues either way, in the browser's voice. */
 function refused(status: number, message: string | undefined, say?: (m: string) => void): void {
-  if (noticed) return;
-  noticed = true;
-  if (!say) return;
-  if (status === 401) say('Signed out — reading with the browser voice');
-  else if (status === 501) say(message || 'Read aloud is not set up on this server');
-  else say('The server could not read this — using the browser voice');
+  if (status === 401) once('Signed out — reading with the browser voice', say);
+  else if (status === 501) once(message || 'Read aloud is not set up on this server', say);
+  else once('The server could not read this — using the browser voice', say);
 }
 
 /** The browser's own voice, the fallback when the server sends no audio (1685).
@@ -329,22 +335,28 @@ async function fetchClip(piece: string, token: string | null): Promise<Clip> {
   }
 }
 
-/** Play one clip through the shared element. Resolves when it ends or fails, so
- *  the next clip starts immediately — no network wait between pieces. */
-function playClip(src: string): Promise<void> {
+/** Play one clip through the shared element. Resolves `true` when it played out,
+ *  `false` when the element would not start it at all (a refusal, a decode
+ *  failure) — so the caller can fall back to the browser's voice rather than
+ *  walk the rest of the queue in silence. */
+function playClip(src: string): Promise<boolean> {
   return new Promise((resolve) => {
     const el = element();
     let done = false;
+    let played = false;
     const finish = () => {
       if (done) return;
       done = true;
       if (currentClip === finish) currentClip = null;
       el.onended = null;
       el.onerror = null;
-      resolve();
+      resolve(played);
     };
     currentClip = finish;
-    el.onended = finish;
+    el.onended = () => {
+      played = true;
+      finish();
+    };
     el.onerror = finish;
     el.src = src;
     el.play().catch(finish);
@@ -366,12 +378,10 @@ async function runSpeak(id: number, pieces: string[], say?: (message: string) =>
 
   for (const clip of clips) {
     if (id !== runId) return;
-    if (clip.src) {
-      await playClip(clip.src);
-    } else {
-      refused(clip.status, clip.error, say);
-      await playBrowserPiece(clip.text);
-    }
+    if (clip.src && (await playClip(clip.src))) continue;
+    if (!clip.src) refused(clip.status, clip.error, say);
+    else once('Could not play that here', say);
+    await playBrowserPiece(clip.text);
   }
   if (id === runId) {
     running = false;
@@ -518,6 +528,10 @@ function startRec(voice: VoiceTyping): void {
   const restarts: number[] = [];
 
   rec.onresult = (event) => {
+    /* A result that arrives after the mic was put away belongs to nobody: without
+       this the words of a stream the mic already let go land in the field from
+       nowhere. */
+    if (listener !== voice) return;
     /* Nor is anything typed while it is speaking (1768). */
     if (sounding) return;
     /* Words arrived — whatever loop `onend` is in, it is producing results, so
@@ -583,12 +597,15 @@ function startRec(voice: VoiceTyping): void {
     if (reason === 'not-allowed' || reason === 'service-not-allowed') {
       stopListening();
       voice.say('Microphone access was denied.');
-    } else if (reason === 'audio-capture' || reason === 'network' || reason === 'language-not-supported') {
+    } else if (reason === 'audio-capture' || reason === 'language-not-supported') {
       stopListening();
       voice.say(`Microphone failed: ${reason}`);
     }
-    /* `no-speech` and `aborted` are not fatal: the browser stopped on its own,
-       and `onend` follows and restarts. */
+    /* `no-speech`, `aborted` and `network` are not fatal: the browser stopped on
+       its own (a dropped connection is routine on a phone — a tunnel, a WiFi
+       handoff), and `onend` follows and restarts. A connection that is truly down
+       is what the runaway guard is for: it stops the mic and says so after four
+       tries, rather than the blip costing the person a re-tap. */
   };
 
   try {

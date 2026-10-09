@@ -422,6 +422,28 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     /el\.onerror = finish/.test(speakBody),
     speakBody ? "the run's own answer to a piece it cannot play" : 'playClip is not in src/voice.ts',
   );
+  const runBody = bodyOf('runSpeak');
+  judge(
+    'speak: a piece the element cannot play is read in the browser voice, and said so',
+    /resolve\(played\)/.test(speakBody) &&
+      /playBrowserPiece\(clip\.text\)/.test(runBody) &&
+      /Could not play that here/.test(source),
+    speakBody && runBody
+      ? 'playClip reports it, runSpeak falls back and says so'
+      : 'playClip or runSpeak is not in src/voice.ts',
+  );
+  const resultHead = (source.match(/rec\.onresult = \(event\) => \{([\s\S]{0,400})/) || [])[1] || '';
+  judge(
+    'mic: a result that lands after the mic is off is ignored',
+    /if \(listener !== voice\) return;/.test(resultHead),
+    resultHead ? 'onresult, which must check the session the way onend does' : 'rec.onresult is not in src/voice.ts',
+  );
+  const stopBranch = (source.match(/reason === 'audio-capture'[^\n]*/) || [''])[0];
+  judge(
+    'mic: a dropped connection rides the restart, not the stop',
+    stopBranch.includes('audio-capture') && !stopBranch.includes('network'),
+    stopBranch || 'the fatal-error branch is not in src/voice.ts',
+  );
 
   return out;
 }
