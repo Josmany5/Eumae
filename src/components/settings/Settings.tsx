@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Icon } from '../shell/icons';
 import { LOG_AREAS, useLog, type LogArea } from '../../log';
 import { useMedia } from '../../useMedia';
+import { speak } from '../../voice';
 
 // There are no accounts yet (§7), so there is no real name or address to show. This
 // is a placeholder on purpose: the file is public and the app is deployed, so a real
@@ -9,6 +10,11 @@ import { useMedia } from '../../useMedia';
 // desktop rail card and the phone account card cannot drift apart.
 const ACCOUNT = { name: 'Guest', email: 'Not signed in — this device only' };
 const ACCOUNT_INITIAL = ACCOUNT.name.slice(0, 1).toUpperCase();
+
+/* What the Voice pane's sample says. The mockup's button exists (613, 692) but
+   only toasts "Playing sample…" — the one thing a sample button must not do. The
+   words are ours and are about the only thing the button is for. */
+const VOICE_SAMPLE = 'This is how I sound when I read an answer aloud.';
 
 type View =
   | 'main' | 'personalization' | 'memory' | 'permissions' | 'skills'
@@ -462,14 +468,26 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
         )}
 
         {view === 'voice' && (
-          <div className="sg">
-            {['Nova', 'Alloy', 'Onyx', 'Shimmer'].map((v) => (
-              <button className="sr" key={v} onClick={() => setVoice(v)}>
-                <span className="g">{v}</span>
-                {v === voice ? <span className="ch" style={{ color: 'var(--ac)' }}>✓</span> : null}
+          <>
+            <div className="sg">
+              {['Nova', 'Alloy', 'Onyx', 'Shimmer'].map((v) => (
+                <button className="sr" key={v} onClick={() => setVoice(v)}>
+                  <span className="g">{v}</span>
+                  {v === voice ? <span className="ch" style={{ color: 'var(--ac)' }}>✓</span> : null}
+                </button>
+              ))}
+            </div>
+            {/* Where `.btns` sits in the mockup (613): outside the list, its own
+                row, one primary button. Ours really speaks — through the voice
+                layer, which is the only way anyone can hear which voice their
+                server has, and the only place read-aloud is reachable until
+                there are replies to read. */}
+            <div className="btns">
+              <button className="pri" onClick={() => speak(VOICE_SAMPLE, notify)}>
+                Play sample
               </button>
-            ))}
-          </div>
+            </div>
+          </>
         )}
 
         {view === 'notifications' && (
