@@ -54,6 +54,8 @@ src/nav.ts                 NavContext — go/back, goTab, panel, turn, refs, pic
 src/log.ts                 the activity log — LOG_AREAS, logEv (the one writer), useLog
 src/request.ts             the request /api/ai will be handed — the turn as prose,
                            the model as a server key, the thread as its window
+src/voice.ts               the voice layer — voice typing in, read aloud out, both
+                           from the mockup: no SDK, no live session, no dependency
 src/useMedia.ts            the (min-width:900px) hook Settings and the `+` window share
 src/store/store.tsx        state skeleton (EumaeState is still empty)
 src/store/types.ts         Actor / ActionStamp / SavedItem
@@ -64,8 +66,10 @@ src/components/shell/      Header, TabBar, Sidebar (desktop rail), Drawer (phone
                            Toast, icons
 src/components/settings/   Settings.tsx — the whole overlay
 src/styles/tokens.css      design tokens + every component's styles
-checks/models.mjs          the one committed check — are the model IDs still served.
-                           Its selftest needs no key: models.selftest.mjs
+checks/models.mjs          are the model IDs still served? (asks Google; needs a key)
+checks/models.selftest.mjs nine cases over that check, no key
+checks/voice.mjs           do the voice's two pure functions still behave? no key
+checks/voice.selftest.mjs  eleven cases over that check, ten deliberate breaks
 AGENTS.md                  the handoff — read it first: state, decisions, next steps
 IDEAS.md                   the owner's idea queue — tracked, not committed
 ```
@@ -120,6 +124,17 @@ IDEAS.md                   the owner's idea queue — tracked, not committed
   than an error. `Auto` sends no key. Each message keeps the body it was sent
   with — built at send, so changing your mind later cannot rewrite how an earlier
   message was asked. Nothing posts it yet; that is Phase 6.
+- **One voice layer, two halves.** `src/voice.ts` is the mockup's voice in both
+  directions: the mic types what you say into the field (continuous recognition,
+  half a second of quiet sends it — mockup 1763-1779), and read aloud asks your
+  server for one sentence at a time so the first words arrive quickly (1670, 1677).
+  The two interlock: while sound is coming out, the mic neither types nor sends.
+  The mic is live today; read aloud is reachable from Settings → Voice → **Play
+  sample**, because its other door is a reply to read and nothing replies yet. Both
+  go through `/api/ai`, so both meet the same wall — the endpoint requires a
+  signed-in caller and there is no sign-in screen, so read aloud says that in one
+  sentence and reads in the browser's voice rather than pretending (`AGENTS.md`
+  §3, §7).
 - **Honesty rule.** Where the mockup invents data — a password, active sessions, a
   spend figure, fake log rows — this codebase shows the real state and names the
   gap instead. Keep it that way.
@@ -146,6 +161,8 @@ several times and only the *last* definition is live. `AGENTS.md` explains.
 5. ✅ The `+` window — its five choices in a pop-up shaped like Settings, with a rail
    row carrying each live value, and a chip row that shows everything that is set
 6. ⬜ Sandbox, Studio artifacts, and `/api/ai` wired to the thread (+ the log's second layer)
+   — the **voice layer** (mic + read aloud, from the mockup) has landed inside this item;
+   what the thread still needs is the sender and the sign-in screen. `AGENTS.md` §3, §7.
 7. ⬜ The Logs lens — a drill-down and a search in Settings → Logs, over one filter
 
 Items 5-7 come from the owner's own list in **`IDEAS.md`**, which says where each
@@ -158,8 +175,11 @@ is exotic, and all of it is explained in `AGENTS.md` §8.
 
 - **A CI robot.** Nothing runs the build on push today. About 15 lines of YAML.
 - **Tests.** Nearly every check so far was a throwaway script; the ones worth
-  keeping are named in `AGENTS.md` §5, and the first is no longer a throwaway:
-  `npm run check:models:selftest`, nine cases, no key and no network.
+  keeping are named in `AGENTS.md` §5, and two are no longer throwaways:
+  `npm run check:models:selftest` (nine cases) and `npm run check:voice` with
+  `check:voice:selftest` — nine verdicts over the real voice functions, and eleven
+  cases proving the check can fail. The last two need no key, no network and no
+  browser.
 - **A linter / formatter** (ESLint + Prettier), so style stops being something
   anyone thinks about.
 - **Persistence.** Messages and the activity log both live in memory: a reload
@@ -167,7 +187,9 @@ is exotic, and all of it is explained in `AGENTS.md` §8.
 - **The POST.** `src/request.ts` defines the body `/api/ai` will receive, and
   every message already builds and keeps its own — but nothing sends one yet. The
   fetch, the streaming reader for `chatStream`, and the auth screen the endpoint
-  requires are Phase 6.
+  requires are Phase 6. Read aloud already posts for real, and it is the quickest
+  way to see what the missing screen costs: the endpoint answers **401** until
+  there is a signed-in caller, so it says so once and reads in the browser's voice.
 - **`.nvmrc`.** `.env.example` and errors that name a missing key landed with the AI
   layer, and so did `vercel.json`; this list is down to the one file.
 - **An error boundary**, so a crash is a message and not a white screen.

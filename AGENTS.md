@@ -50,30 +50,33 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (4036 lines across src/ + api/)
+### Code map (4598 lines across src/ + api/)
 
 That number is `find src api -type f | xargs wc -l | tail -1` — every TS, TSX and
-CSS line under the two directories, counted rather than remembered. It was 3935
-before the AI-layer commits, which added 101 lines to `api/ai.ts` and no net lines
-anywhere else (`src/request.ts`'s citations were re-pointed in place, which is 14
-changed lines and 0 of them new).
+CSS line under the two directories, counted rather than remembered. It was 4036
+before the voice commits, which added `src/voice.ts` (495, new) and 84 lines to
+the files that call it — `Composer.tsx` (+54), `Settings.tsx` (+18), `nav.ts`
+(+8), `App.tsx` (+2), `ChatScreen.tsx` (+2), `tokens.css` (+4) — while taking 21
+back out of `api/ai.ts` (the live-voice action, deleted). `checks/` is not counted
+here and never has been: the map is the app.
 
 | File | Lines | Role |
 | --- | --- | --- |
-| `src/components/settings/Settings.tsx` | 686 | the whole Settings overlay; also owns `useStored`, export/wipe |
-| `api/ai.ts` | 602 | the only server code; Vercel handler |
-| `src/App.tsx` | 277 | the shell: tab + page stack + panel + drawers + file input |
+| `src/components/settings/Settings.tsx` | 704 | the whole Settings overlay; also owns `useStored`, export/wipe |
+| `api/ai.ts` | 581 | the only server code; Vercel handler |
+| `src/voice.ts` | 495 | the voice layer: voice typing in, read aloud out (from the mockup) |
 | `src/components/shell/AddSheet.tsx` | 323 | the composer's `+` window — the five turn settings, rail + pane |
+| `src/App.tsx` | 279 | the shell: tab + page stack + panel + drawers + file input |
 | `src/request.ts` | 221 | the request `/api/ai` will be handed — the turn as prose, the model as a key |
 | `src/components/shell/RightPanel.tsx` | 218 | the right panel (Context / Activity / Studio) |
 | `src/useMedia.ts` | 21 | the `(min-width:900px)` hook both overlays read |
-| `src/nav.ts` | 135 | `NavContext`: go/back, goTab, panel, `turn`, `refs`, pickFile |
-| `src/components/shell/Composer.tsx` | 129 | input row, the chip pills, `+`, paperclip, mic, send |
+| `src/nav.ts` | 143 | `NavContext`: go/back, goTab, panel, `turn`, `refs`, pickFile, `notify` |
+| `src/components/shell/Composer.tsx` | 183 | input row, the chip pills, `+`, paperclip, mic (live), send |
 | `src/components/shell/pageMenu.ts` | 128 | `PAGE_MENU` — each tab's rail rows |
 | `src/components/shell/Sidebar.tsx` | 89 | desktop rail |
 | `src/log.ts` | 78 | the activity log: `LOG_AREAS`, the one writer, the read |
 | `src/pages/SearchPage.tsx` | 70 | the only real sub-page |
-| `src/screens/ChatScreen.tsx` | 97 | the only real tab screen; builds each message's request |
+| `src/screens/ChatScreen.tsx` | 99 | the only real tab screen; builds each message's request |
 | `src/components/shell/icons.tsx` | 73 | the icon registry |
 | `src/components/shell/Drawer.tsx` | 65 | phone drawer |
 | `src/components/shell/Header.tsx` | 37 | title, hamburger, activity, back |
@@ -166,7 +169,7 @@ changed lines and 0 of them new).
 
 ## 3. What exists today, piece by piece
 
-### Shell — `src/App.tsx` (277), `src/nav.ts` (133)
+### Shell — `src/App.tsx` (279), `src/nav.ts` (143)
 
 `App` owns: the active tab, the page stack, rail-collapsed, drawer-open,
 settings-open, the toast, the panel (open + view), `refs` (attached items), the
@@ -276,7 +279,56 @@ the shape without either one saying it out loud.
   reader and the auth screen are Phase 6 (§7). §5 check 6 is what keeps the
   mapping correct in the meantime.
 
-### Settings — `src/components/settings/Settings.tsx` (696)
+### The voice — `src/voice.ts` (495)
+
+The mockup's voice is two halves, and this is both of them, because they
+interlock: while sound is coming out, the mic neither types nor sends (1756,
+1768). It came from the design source rather than from a dependency — no SDK, no
+live session, nothing to install. The live voice this project once had an endpoint
+for (`mintLiveToken`) is gone: the mockup never had one.
+
+**In — the mic.** The mockup's composer ships the mic as a stub:
+`onclick="toast('Voice mode')"` (391). What makes it real is `inject()`
+(1831-1833), which finds that stub by its own toast text and swaps the handler for
+`micTap` (1786) — so *that injection* is what landed, and our button keeps the
+markup's own `aria-label="Mic"` rather than the toast the stub used to say. Then
+`startRec` (1763): continuous `SpeechRecognition`, finals accumulated, the interim
+text typed into the field as you speak, and half a second of quiet sends
+(`SILENCE_MS`, 1774). Its two survivable details are kept: the runaway guard (more
+than four restarts inside five seconds is a loop, not a mistake — 1777) and the
+denied microphone, which is not a retry (1778). `voiceSend` (1755) empties the
+transcript as it sends (1759), so the next sentence does not arrive appended to the
+last, and the mic keeps listening afterwards — which is why you can speak twice
+without tapping twice.
+
+**Out — read aloud.** `chunks` (1670) cuts text into sentence-sized pieces and
+drops code fences; `speakNext` (1677) asks for one piece at a time and chains
+them, so the first words arrive after one small synthesis rather than after the
+whole reply; `wxSpeak` (1689) is the toggle that stops it. One audio element is
+reused (1669), and `silence` — for `unlock` (1668) — is a WAV built in code, where
+the mockup inlines about 1.4kB of base64 MP3 for the same job: Safari will not
+start a sound that no gesture began, and the server's answer arrives long after
+the tap did.
+
+**What it does not decide.** `VoiceTyping` is handed over at the tap, so this
+module reads no React state and the composer reads no speech API. The speech API's
+types are declared in the file itself — TypeScript's DOM lib still does not carry
+`SpeechRecognition` — and neither half touches `window` or `document` at import
+time, because a server render imports this module (§5).
+
+**The honest part.** `speak` sits behind the same lock as chat (ai.ts:158) and
+there is no sign-in screen, so today that request is a 401. Where the mockup falls
+back to the browser's voice silently (1685), this says one short sentence first —
+"Signed out — reading with the browser voice" — and then reads it in the browser's
+voice. Settings → Voice's **Play sample** (the mockup's own button, 613 and 692,
+which only toasts "Playing sample…" there) is the one place read-aloud can be
+heard until there are replies to read.
+
+`npm run check:voice` runs the two functions that can run outside a browser (§5
+check 9). Two things are deliberately left open, both in §7: which voice names
+Settings should offer, and the lock.
+
+### Settings — `src/components/settings/Settings.tsx` (704)
 
 An overlay (`open` / `onClose` / `notify` props): a rail of rows in five groups
 (Eumae, App, Account, Data, Support), 22 rows → 23 titles → 23 panes. The extra
@@ -297,7 +349,7 @@ What is real versus named-out-loud-gap:
 
 | Pane | Behaviour |
 | --- | --- |
-| Appearance, Voice, Notifications, Language, Accessibility, Personalization | genuinely write state |
+| Appearance, Voice, Notifications, Language, Accessibility, Personalization | genuinely write state; Voice also carries a **Play sample** that really speaks, through the voice layer (§3) |
 | Billing | "No charge today"; Model spend lives in Usage, shown never blocking |
 | Security | "Signed in as: This device", "Local only", "there is no password to leak" |
 | Data controls | really downloads the JSON as one file (Export my data); Restore notifies "arrives in a later stage"; Delete everything wipes and reloads |
@@ -337,11 +389,14 @@ Phase 4 rebuilt this file — the readings changed, the pill row survived.
 
 ### The rest of the shell
 
-- `Composer.tsx` (129): the chip row — **one pill per setting that is not at its
+- `Composer.tsx` (183): the chip row — **one pill per setting that is not at its
   default** (Phase 5; mode is always there), every pill read-only and opening the
   `+` window — then `+` (openAdd), the auto-growing textarea, the paperclip
-  (`pickFile`), **the mic (inert — no handler)**, send. A lone `/`
-  opens the window (mockup line 1278). Enter sends, Shift+Enter newlines.
+  (`pickFile`), **the mic (live — voice typing; §3, "The voice")**, send. A lone `/`
+  opens the window (mockup line 1278). Enter sends, Shift+Enter newlines. The mic
+  writes into the field as you speak and sends after half a second of quiet, which
+  is why the field's own value is mirrored in a ref the voice layer can read — a
+  speech event is not a render.
 - `AddSheet.tsx` (322): the composer's `+` **window** — the five sections that
   decide *how* Eumae answers (Mode, Role, Skill, Thinking, Model) and nothing else
   since Phase 5 (§4.13). A phone gets a full sheet listing them, each row carrying
@@ -358,13 +413,22 @@ Phase 4 rebuilt this file — the readings changed, the pill row survived.
 - `useMedia.ts` (21): the `(min-width:900px)` hook, read by Settings and by the `+`
   window so the two overlays cannot disagree about which shape they are in.
 
-### Server — `api/ai.ts` (602)
+### Server — `api/ai.ts` (581)
 
 One default-exported handler: `OPTIONS` → CORS preflight, anything but `POST` →
 rejected, and the caller is authenticated (Supabase URL + anon key) *before*
-`GEMINI_API_KEY` / `GOOGLE_CLOUD_TTS_KEY` are read. **Nothing in the UI calls it
-yet**, and there is no auth screen — so today a real call would be rejected by
-design.
+`GEMINI_API_KEY` / `GOOGLE_CLOUD_TTS_KEY` are read. **The UI now calls it for
+exactly one action** — `speak`, from the voice layer's read aloud (§3) — and even
+that comes back **401**, because there is no auth screen: the lock is checked
+before any key is read, so a missing screen rather than a missing key is what
+stands in the way.
+
+- **No live voice.** A `mintLiveToken` action used to sit here, minting a Gemini
+  Live session token. Nothing called it and the design source never had one — its
+  voice is voice *typing* in and cloud TTS out — so it was deleted instead of
+  dressed up: an endpoint no screen can reach is surface nobody is watching, and
+  its failure was the one branch that could not be made honest on its own terms
+  (it threw the provider's own text at a 500).
 
 - **A failure answers as a failure.** Five endings used to fail and still answer
   `200` as though they had not — `speak` with no TTS key, a TTS reply carrying no
@@ -491,13 +555,14 @@ Design tokens plus every component's styles in one file, class-named per compone
 ## 5. How to verify (do it this way)
 
 **Primary gate:** `npm run build` — types, then bundle. Green looks like
-55 modules transformed and `dist/index.html` + `dist/assets/index-*.css|js`.
+56 modules transformed and `dist/index.html` + `dist/assets/index-*.css|js`.
 Background it (`nohup … &`) and poll; it often exceeds a 30-second tool timeout.
 
-Checks 1-3 were used for the phase that landed before Phase 2, and checks 4-8 for
+Checks 1-3 were used for the phase that landed before Phase 2, and checks 4-9 for
 the work since. Checks 1-7 were hand-run scratch scripts and are **gone** — for
 those this is the recipe to rebuild them, and the strongest argument for a test
-suite. Check 8 is the exception: it was worth keeping, so it is in the repo.
+suite. Checks 8 and 9 are the exceptions: they were worth keeping, so they are in
+the repo, under `checks/`.
 
 1. **Rail ↔ title ↔ pane integrity.** 22 rail rows ↔ 22 of the 23 titles in the
    titles map ↔ 23 `view === '…'` panes (the extra title and pane are `main`).
@@ -573,8 +638,8 @@ suite. Check 8 is the exception: it was worth keeping, so it is in the repo.
    `Scope to a project` once each and `Attach a file` zero times, and the CSS file
    carries `.addWin` with no `.shGroup`/`.sheetBody` left.
 
-8. **The models are served** (added with the AI layer). The only one of the eight
-   that is committed, and the cheapest to run: `checks/models.mjs` reads every
+8. **The models are served** (added with the AI layer). One of the two that live in
+   the repo, and the cheapest to run: `checks/models.mjs` reads every
    quoted `gemini-*` ID out of `api/ai.ts` (plus any `models/<id>:generateContent`
    URL), asks Google which of them it serves for `generateContent`, and exits **1**
    if any ID cannot answer, **2** if there is no key to ask with, **0** if all are
@@ -586,8 +651,27 @@ suite. Check 8 is the exception: it was worth keeping, so it is in the repo.
    two pure parts (`idsIn`, `judge`), including the ones that would have caught the
    real defects — an ID surviving only in a comment, a hard-coded literal beside
    the table, and an ID that is listed but not for `generateContent`. Run it when a
-   model is added and after any Google retirement notice; none of the other seven
+   model is added and after any Google retirement notice; none of the other eight
    checks covers this, and its failure mode is a reply that never arrives.
+
+9. **The voice's two pure functions** (added with the voice layer). Also
+   committed, also needs nothing: `npm run check:voice` lifts `chunks` and
+   `silence` out of `src/voice.ts` by name, transpiles them with the project's own
+   esbuild, and calls them — which is only possible because neither touches
+   `window` or `document`, and this check is now what keeps that true. Nine
+   verdicts: a short paragraph stays one piece, empty is still one piece, a code
+   fence is never read aloud, a long reply splits within the limit **read out of
+   the source** (the verdict is named with the number it found), and the silence is
+   a real WAV — RIFF/WAVE, PCM, mono, 8-bit, 8000 Hz, sizes that agree, a payload
+   at 128. Exit **1** if any verdict fails, **0** if all hold.
+   `npm run check:voice:selftest` is the part that makes it worth having: eleven
+   cases, ten of them deliberate breaks text-substituted into the real file (the
+   limit raised, fences no longer dropped, RIFF misspelled, the rate moved to
+   44.1kHz, the declared depth changed, the payload made non-silent, the function
+   renamed, the limit line deleted) and one comment-only change that must **not**
+   raise an alarm. Neither script is wired into `build`: the build is what a deploy
+   runs, and a voice regression should not be able to stop a deploy that has
+   nothing to do with voice.
 
 **Never claim a UI behaviour works because it typechecks.** Build it, and open
 `dist/index.html` or `npm run preview` when the claim is visual.
@@ -760,7 +844,8 @@ Two halves of one change, from `IDEAS.md` I1-I4, under §4.13.
   the owner's call — the rail row is inert until a project screen exists, and it
   must not become a second writer (§4.13). I3's fuller form (attaching from the
   panel) is not built, because attaching is the paperclip's and the panel reads it
-  back. "Always in context" is still furniture (I8) and the mic is still inert (I9).
+  back. "Always in context" is still furniture (I8). **I9 landed afterwards, as a
+  separate piece of work** — the mic and read aloud are live (§3, "The voice").
 
 **Phase 6 — sandbox, artifacts, `/api/ai`.** Studio artifacts and the panel's
 Studio reading get something real; the UI finally calls `api/ai.ts`; an auth
@@ -768,6 +853,18 @@ screen exists, since the API rejects every unsigned call by design. **The log's
 second layer lands here too** (`IDEAS.md` I5): `LogEntry` grows `who`, `phase` and
 `type`, and Eumae's own rows appear for the first time — which is also the first
 moment anything in the log is not the owner acting.
+
+Two pieces of this phase have already landed, and they narrow it rather than
+being part of it: **the voice layer** (§3 — the mic types and read aloud speaks,
+both from the mockup) and **the request** (Phase 3's `src/request.ts`). What that
+leaves is exactly three things, and the first is the one that unblocks the rest:
+the **sign-in screen** (without it `speak` answers 401 and chat would too), the
+**sender** (the `fetch` to `/api/ai` plus the SSE reader for `chatStream`), and
+whatever the stream then needs — an assistant message on screen, the "Read aloud"
+button on it (the mockup's `rowA`, 1642, which also needs a speaker glyph: the
+mockup's own `IC_SPK` at 1639 is not in `icons.tsx` yet), and `speak` called on
+that reply when the turn came in by voice (1902). The voice layer already carries
+the flag across `send` for it.
 
 **Phase 7 — the Logs lens.** The deep dive, in Settings rather than the panel
 (`IDEAS.md` I6-I7): one filter object (`{ who?, phase?, type?, area?, q? }`)
@@ -785,7 +882,8 @@ is the pill row again.
   **where a project scope is chosen** — the rail row is back but inert, and it must
   not become a second writer (§4.13); the log has one dimension — area — so nothing
   can be filtered by actor (I5); Settings → Logs is still pills-only (I6);
-  "Always in context" is still furniture (I8); the mic is still inert (I9).
+  "Always in context" is still furniture (I8). **I9 landed**: the mic is live, and
+  so is read aloud (§3, "The voice").
 - **~41 rail rows are inert.** `MenuItem` is only `{label, icon}` (`pageMenu.ts:3-6`).
   Tasks, Events, Calendar, Goals, Projects, Notes, Flows, Favorites, Sources,
   Contacts, Messages, Requests, courses, digests, and "Scope to a project" all
@@ -803,8 +901,15 @@ is the pill row again.
   `Actor` / `ActionStamp` / `SavedItem` exist unused — a hint at the intended shape
   (every saved item has an owner, timestamps and a history of actions).
 - **No chat persistence.** `ChatScreen`'s messages die with the tab.
-- **`api/ai.ts` is unreachable from the UI** and requires a signed-in caller; with
-  no auth screen, today every real call would be rejected.
+- **`api/ai.ts` is unreachable from the UI, and requires a signed-in caller.** This
+  single gap explains the most, and it is worth saying in plain words: the
+  endpoint's first act is `verifyCaller` (ai.ts:158-168 — "The lock: every action
+  requires a signed-in caller"), and there is no sign-in screen, so no token can
+  exist in the browser and every real call comes back **401 by design**. It is not
+  a missing key and not a deployment problem — the keys are set in Vercel and the
+  function reads them. Chat and read aloud both stop here, which is the whole
+  reason the voice layer speaks with the browser's voice today (§3). One screen
+  turns on both features.
 - **The request is built but never posted.** `ChatScreen.send` builds the body
   (`toApiBody`, `src/request.ts`) and keeps it on the message, so the mapping runs
   on every send and stays in the bundle; what is missing is the sender — the
@@ -813,6 +918,17 @@ is the pill row again.
   (`modelKey` above all), and a PDF ref (a label with no bytes) still cannot
   become an attachment.
 - **The panel's "Always in context" list is static furniture.**
+- **Which voice names Settings offers is the owner's call, and nothing else is
+  waiting on it.** The pane lists Nova, Alloy, Onyx and Shimmer — the mockup's own
+  labels (613, 692) — while the server speaks Google's Chirp3-HD voices
+  (`en-US-Chirp3-HD-Achird` for male, `-Achernar` by default — ai.ts:449, 452) and
+  maps anything it does not recognise onto that default. So all four names sound
+  the same today, and
+  the sample deliberately sends no voice at all rather than send one that would be
+  ignored. Either the list becomes the real Chirp3 names, or the four labels get a
+  mapping someone has agreed to instead of one an agent invented — a product
+  decision, not a defect, and the only thing between the pane and a sample that
+  matches what it says.
 - **Personal data — fixed.** The account cards render an `ACCOUNT` placeholder
   instead of the owner's real name and email. If a profile editor ever lands, keep
   the value out of the source; this file ships to the public.
@@ -843,8 +959,8 @@ it yet. In priority order for a solo pre-alpha project:
 2. **ESLint + Prettier.** `typescript-eslint` plus `eslint-plugin-react-hooks`
    (`rules-of-hooks` matters: this codebase calls `useStored` inside a component
    body), then Prettier for formatting. Add `npm run lint` and call it from CI.
-3. **Tests (vitest).** Promote §5's eight checks (check 8 is already a script in
-   `checks/`, and leaves no scratch copy behind, so it is the shape the others
+3. **Tests (vitest).** Promote §5's nine checks (checks 8 and 9 are already scripts
+   in `checks/`, and leave no scratch copy behind, so they are the shape the others
    should land in). Cheapest high-value order: the
    theme boot cases, the settings integrity check, `useStored` round-trip plus the
    export/wipe prefix behaviour, then `logEv` from Phase 2, then check 6 from
