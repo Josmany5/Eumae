@@ -52,6 +52,12 @@ const PATHS: Record<string, JSX.Element> = {
   'tab-classroom': <><path d="M12 4L2 9l10 5 10-5-10-5z" /><path d="M6 11v4c0 1.5 3 3 6 3s6-1.5 6-3v-4" /><path d="M22 9v5" /></>,
   'tab-guild': <path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" />,
 
+  /* The thread's own glyph, taken from the mockup's icon set rather than from the
+     tab bar's: `IC_SPK` (1639) is a speaker cone with one wave, drawn on the row
+     under a reply (rowA, 1642). Not `mic` — that one belongs to the composer, and
+     a reply wearing it would look like it was listening. */
+  spk: <><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></>,
+
   /* The six settings-only glyphs. Each is here because the nearest existing
      icon would have said something untrue: `lnk` is an attach, not a language;
      `db` is storage, not a backup; `doc` already means "report a problem" in

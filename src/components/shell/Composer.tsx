@@ -7,6 +7,10 @@ interface ComposerProps {
   /** `byVoice` is true when the mic sent this rather than the keyboard — the
    *  mockup carries the same flag on to reading the reply aloud (1857, 1902). */
   onSend: (text: string, byVoice?: boolean) => void;
+  /** Is a reply in flight? The mic asks before sending, because the mockup's own
+   *  mic waits for the answer instead of talking over it (1757). Defaults to
+   *  "no", which is what a composer with nothing behind it can honestly say. */
+  busy?: () => boolean;
   placeholder?: string;
 }
 
@@ -27,7 +31,7 @@ interface ComposerProps {
  *  The doors that remain do different jobs, which is what went wrong the first
  *  time round: `+` sets the chat up and never attaches anything, and the
  *  paperclip brings a photo or PDF into this message. */
-export default function Composer({ onSend, placeholder = 'Ask Eumae' }: ComposerProps) {
+export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: ComposerProps) {
   const { turn, openAdd, pickFile, notify } = useNav();
   const [text, setTextState] = useState('');
   const [micOn, setMicOn] = useState(false);
@@ -73,10 +77,11 @@ export default function Composer({ onSend, placeholder = 'Ask Eumae' }: Composer
         fit();
       },
       send: (byVoice) => send(byVoice),
-      /* A reply is never in flight yet — nothing answers (Phase 6). Constant
-         false rather than a guess, and the reason the flag exists survives: the
-         mockup's mic waits for the reply instead of talking over it (1757). */
-      busy: () => false,
+      /* Answered by the screen that owns the thread: while a reply is streaming
+         the mic waits rather than sending into it (1757), which is the one part
+         of the mockup's behaviour that needs something the mic cannot see. A
+         composer without a `busy` says no, which is all it can know. */
+      busy: () => busy?.() ?? false,
       lit: setMicOn,
       say: notify,
     };
