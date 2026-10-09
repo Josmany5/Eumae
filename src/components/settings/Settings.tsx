@@ -3,13 +3,14 @@ import { Icon } from '../shell/icons';
 import { LOG_AREAS, useLog, type LogArea } from '../../log';
 import { useMedia } from '../../useMedia';
 import { speak } from '../../voice';
+import { createAccount, emailLink, signIn, signOutUser, useAuth } from '../../auth';
 
-// There are no accounts yet (§7), so there is no real name or address to show. This
-// is a placeholder on purpose: the file is public and the app is deployed, so a real
-// name or email must never be written here. The avatar derives from the name, so the
-// desktop rail card and the phone account card cannot drift apart.
+// Who the cards show when nobody is signed in. The placeholder is deliberate: this
+// file is public and the app is deployed, so a real name or address must never be
+// written here — and now that `src/auth.ts` exists, the signed-in address is the one
+// Supabase holds rather than a value typed into this file. The avatar derives from
+// whichever name is in use, so the rail card and the phone card cannot drift apart.
 const ACCOUNT = { name: 'Guest', email: 'Not signed in — this device only' };
-const ACCOUNT_INITIAL = ACCOUNT.name.slice(0, 1).toUpperCase();
 
 /* What the Voice pane's sample says. The mockup's button exists (613, 692) but
    only toasts "Playing sample…" — the one thing a sample button must not do. The
@@ -178,6 +179,15 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
   // lives in src/log.ts, which is not Settings' to keep.
   const logRows = useLog(logArea);
 
+  /* Who is signed in (src/auth.ts). Three things in this file read it — the two
+     account cards and the Security pane — which is why that state lives in its
+     own module instead of here. */
+  const account = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
   // Mobile: a full-page sheet opened from the list. Desktop: a modal whose left
   // rail *is* the list, so it opens on the first section instead.
   const isDesktop = useMedia('(min-width:900px)');
@@ -222,23 +232,46 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
     notify('Export ready');
   };
 
-  const wipeData = () => {
-    if (window.confirm('Delete everything?')) {
-      const keys: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith('eumae:')) keys.push(k);
-      }
-      keys.forEach((k) => localStorage.removeItem(k));
-      location.reload();
+  const wipeData = async () => {
+    if (!window.confirm('Delete everything? This erases what is stored on this device and signs you out.')) return;
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('eumae:')) keys.push(k);
     }
+    keys.forEach((k) => localStorage.removeItem(k));
+    /* The session is not an `eumae:` key — the library keeps it under its own
+       name — so deleting the prefixed keys alone would leave someone signed in
+       with everything else gone. "Everything" has to mean everything. */
+    await signOutUser();
+    location.reload();
   };
 
   const back = () => (isDesktop || view === 'main' ? onClose() : setView('main'));
   const onBackdrop = (e: React.MouseEvent) => {
     if (isDesktop && e.target === e.currentTarget) onClose();
   };
-  const signOut = () => notify('Sign-in arrives in a later stage');
+  /* Signing out is real as of the sign-in screen. It is deliberately not written
+     to the activity log: every area in `src/log.ts` belongs to a tab, and an
+     account is not one — a row about credentials does not belong in a log about
+     conversations. */
+  const signOut = async () => {
+    await signOutUser();
+    notify('Signed out');
+  };
+
+  /* One runner for the three things this pane can do. Each answers `null` for
+     success and one sentence otherwise (src/auth.ts), and the sentence is shown
+     in the pane rather than in a toast: a toast is gone in two seconds and a
+     wrong password is worth being able to read twice. */
+  const attempt = async (what: () => Promise<string | null>, done: string) => {
+    if (busy) return;
+    setBusy(true);
+    setNote(null);
+    const problem = await what();
+    setBusy(false);
+    setNote(problem ?? done);
+  };
 
   // One source for both the mobile list and the desktop rail.
   const sections: { group: string; items: { key: View; icon: string; title: string; value?: string }[] }[] = [
@@ -297,16 +330,23 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
     },
   ];
 
+  /* What both cards show. The signed-in address is whatever Supabase holds; the
+     placeholder only covers the state before there is one. */
+  const accountName = account.email ? account.email.split('@')[0] || account.email : ACCOUNT.name;
+  const accountEmail = account.email ?? ACCOUNT.email;
+  const accountInitial = accountName.slice(0, 1).toUpperCase();
+  const signedIn = account.status === 'signed-in';
+
   return (
     <div className={`settings${open ? ' open' : ''}`} onClick={onBackdrop}>
       <div className="smodal">
         {isDesktop && (
           <aside className="stabs">
             <div className="stAccount">
-              <div className="fi av">{ACCOUNT_INITIAL}</div>
+              <div className="fi av">{accountInitial}</div>
               <div className="g">
-                <b>{ACCOUNT.name}</b>
-                <div className="xs m">{ACCOUNT.email}</div>
+                <b>{accountName}</b>
+                <div className="xs m">{accountEmail}</div>
               </div>
             </div>
             <div className="stScroll">
@@ -327,8 +367,14 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
                 </div>
               ))}
             </div>
+            {/* The rail's foot button says what it will actually do. It used to
+                offer "Sign out" to somebody who had never signed in. */}
             <div className="stFoot">
-              <button className="stab danger" onClick={signOut}>Sign out</button>
+              {signedIn ? (
+                <button className="stab danger" onClick={signOut}>Sign out</button>
+              ) : (
+                <button className="stab" onClick={() => setView('security')}>Sign in</button>
+              )}
             </div>
           </aside>
         )}
@@ -345,9 +391,15 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
             {view === 'main' && !isDesktop && (
               <>
                 <div className="card acctCard">
-                  <div className="fi av">{ACCOUNT_INITIAL}</div>
-                  <div className="g"><b>{ACCOUNT.name}</b><div className="xs m">{ACCOUNT.email}</div></div>
-                  <button className="fb" onClick={() => notify('Profile editor arrives in a later stage')}>Edit</button>
+                  <div className="fi av">{accountInitial}</div>
+                  <div className="g"><b>{accountName}</b><div className="xs m">{accountEmail}</div></div>
+                  {/* The card's own door. The mockup's opened a profile editor;
+                      with no account there is nothing to edit, so it opens the
+                      sign-in screen instead — the one thing in this app that
+                      turns the AI on (src/auth.ts). */}
+                  <button className="fb" onClick={() => setView('security')}>
+                    {signedIn ? 'Account' : 'Sign in'}
+                  </button>
                 </div>
                 {sections.map((s) => (
                   <Group key={s.group} title={s.group}>
@@ -357,7 +409,11 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
                   </Group>
                 ))}
                 <div className="btns">
-                  <button className="gho" style={{ color: 'var(--rd)' }} onClick={signOut}>Sign out</button>
+                  {signedIn ? (
+                    <button className="gho" style={{ color: 'var(--rd)' }} onClick={signOut}>Sign out</button>
+                  ) : (
+                    <button className="pri" onClick={() => setView('security')}>Sign in</button>
+                  )}
                 </div>
               </>
             )}
@@ -635,13 +691,97 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
         {view === 'security' && (
           <>
             <div className="card" style={{ padding: '6px 14px' }}>
-              <div className="kv"><span className="m">Signed in as</span><span>This device</span></div>
+              <div className="kv">
+                <span className="m">Signed in as</span>
+                <span>
+                  {signedIn
+                    ? account.email
+                    : account.status === 'checking'
+                      ? 'Checking…'
+                      : account.status === 'unconfigured'
+                        ? 'Nothing to sign in to'
+                        : 'No one yet'}
+                </span>
+              </div>
               <div className="kv"><span className="m">Where your work lives</span><span>Local only</span></div>
             </div>
-            <div className="btns">
-              <button className="gho" style={{ color: 'var(--rd)' }} onClick={signOut}>Sign out</button>
-            </div>
-            <div className="s m">Passwords, two-factor and active sessions arrive with accounts. Until then there is no password to leak.</div>
+
+            {/* The mockup's Security page invents a password, a passkey and two
+                active sessions (1039). This is the same pane without the fiction:
+                the state that is actually true, and the one control this app has
+                that a person needs — the door itself. */}
+            {account.status === 'unconfigured' ? (
+              <div className="s m">
+                This build has no sign-in configured, so it cannot reach its own server. It was built
+                without VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY — both belong in the
+                deployment's environment, and a build reads them as it is built.
+              </div>
+            ) : signedIn ? (
+              <>
+                <div className="btns">
+                  <button className="gho" style={{ color: 'var(--rd)' }} onClick={signOut}>Sign out</button>
+                </div>
+                <div className="s m">
+                  Resetting a password by email, two-factor and a list of active sessions are not
+                  built yet. No password is stored on this device: the session is kept by Supabase in
+                  this browser, and signing out is the only way to end it here.
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="card">
+                  <input
+                    className="sinput"
+                    type="email"
+                    value={email}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    aria-label="Email"
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <input
+                    className="sinput"
+                    type="password"
+                    value={password}
+                    placeholder="Password"
+                    autoComplete="current-password"
+                    aria-label="Password"
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <div className="btns">
+                    <button
+                      className="pri"
+                      disabled={busy || !email.trim() || !password}
+                      onClick={() => attempt(() => signIn(email, password), 'Signed in')}
+                    >
+                      Sign in
+                    </button>
+                    <button
+                      disabled={busy || !email.trim() || !password}
+                      onClick={() => attempt(() => createAccount(email, password), 'Account created — you are signed in')}
+                    >
+                      Create account
+                    </button>
+                  </div>
+                  <div className="btns">
+                    <button
+                      className="gho"
+                      disabled={busy || !email.trim()}
+                      onClick={() => attempt(() => emailLink(email), 'Check your email for the link')}
+                    >
+                      Email me a link instead
+                    </button>
+                  </div>
+                </div>
+                {note ? <div className="s m">{note}</div> : null}
+                <div className="s m">
+                  Eumae's server answers a signed-in person and nobody else — that check is the first
+                  thing it does, before it reads any key. So this is the one screen that turns the AI
+                  on, for chat and for read aloud both. Passwords are Supabase's; nothing here stores
+                  one.
+                </div>
+              </>
+            )}
           </>
         )}
 
