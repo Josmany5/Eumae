@@ -3,6 +3,7 @@ import { Icon } from '../shell/icons';
 import { LOG_AREAS, useLog, type LogArea } from '../../log';
 import { useMedia } from '../../useMedia';
 import { speak } from '../../voice';
+import { DEFAULT_VOICE, VOICES, voiceById } from '../../voices';
 import { createAccount, emailLink, signIn, signOutUser, useAuth } from '../../auth';
 
 // Who the cards show when nobody is signed in. The placeholder is deliberate: this
@@ -14,7 +15,8 @@ const ACCOUNT = { name: 'Guest', email: 'Not signed in — this device only' };
 
 /* What the Voice pane's sample says. The mockup's button exists (613, 692) but
    only toasts "Playing sample…" — the one thing a sample button must not do. The
-   words are ours and are about the only thing the button is for. */
+   words are ours, and they are the only thing a sample can honestly be: a
+   sentence about what the voice is for, in the voice you chose. */
 const VOICE_SAMPLE = 'This is how I sound when I read an answer aloud.';
 
 type View =
@@ -164,7 +166,12 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
   // whatever boot applied in index.html — when nothing is stored yet, that value
   // already followed the OS, so the pane can't disagree with the screen.
   const [theme, setTheme] = useStored('theme', document.documentElement.dataset.theme || 'dark');
-  const [voice, setVoice] = useStored('voice', 'Nova');
+  /* The voice is stored as the name a request sends (`voices.ts`) rather than as
+     the row's label: the old value was the mockup's `Nova`, which this server
+     cannot speak, and `voiceById` turns anything it does not recognise into the
+     default — so an install that chose one of the four old names reads as the
+     default voice now, and never fails. */
+  const [voice, setVoice] = useStored('voice', DEFAULT_VOICE.id);
   const [notif, setNotif] = useStored('notif', { allow: true, proposals: true });
   const [websearch, setWebsearch] = useStored('skill-websearch', true);
   const [style, setStyle] = useStored('personalization', '');
@@ -290,7 +297,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
       group: 'App',
       items: [
         { key: 'appearance', icon: 'img', title: 'Appearance', value: theme === 'dark' ? 'Dark' : 'Light' },
-        { key: 'voice', icon: 'mic', title: 'Voice', value: voice },
+        { key: 'voice', icon: 'mic', title: 'Voice', value: voiceById(voice).name },
         { key: 'notifications', icon: 'bel', title: 'Notifications', value: notif.allow ? 'On' : 'Off' },
         { key: 'connectors', icon: 'lnk', title: 'Connectors', value: '2 connected' },
         { key: 'language', icon: 'globe', title: 'Language and region', value: LANG_FACTS.label },
@@ -526,22 +533,36 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
         {view === 'voice' && (
           <>
             <div className="sg">
-              {['Nova', 'Alloy', 'Onyx', 'Shimmer'].map((v) => (
-                <button className="sr" key={v} onClick={() => setVoice(v)}>
-                  <span className="g">{v}</span>
-                  {v === voice ? <span className="ch" style={{ color: 'var(--ac)' }}>✓</span> : null}
+              {VOICES.map((v) => (
+                <button className="sr" key={v.id} onClick={() => setVoice(v.id)}>
+                  <span className="g">
+                    {v.name}
+                    {/* Google gives a voice a name, a gender and a recording, and
+                        nothing else — so the row says those two facts and where the
+                        name comes from, and the sample button below is where "how
+                        does it sound" is answered. */}
+                    <div className="d">
+                      {v.gender} · {v.about}
+                    </div>
+                  </span>
+                  {v.id === voice ? <span className="ch" style={{ color: 'var(--ac)' }}>✓</span> : null}
                 </button>
               ))}
             </div>
             {/* Where `.btns` sits in the mockup (613): outside the list, its own
-                row, one primary button. Ours really speaks — through the voice
-                layer, which is the only way anyone can hear which voice their
-                server has, and the only place read-aloud is reachable until
-                there are replies to read. */}
+                row, one primary button. It speaks in the row that is ticked, which
+                is the difference between this button and the mockup's: that one
+                said "Playing sample…" and played the same voice whichever row you
+                had chosen, because no voice name ever left the browser (1681). */}
             <div className="btns">
-              <button className="pri" onClick={() => speak(VOICE_SAMPLE, notify)}>
+              <button className="pri" onClick={() => speak(VOICE_SAMPLE, notify, voiceById(voice).id)}>
                 Play sample
               </button>
+            </div>
+            <div className="s m" style={{ marginTop: 8 }}>
+              Read aloud uses the voice that is ticked. These six are part of Google&apos;s Chirp 3: HD set —
+              the voices its speech API offers for US English — and every one of them is named after a star,
+              a moon or a figure from myth.
             </div>
           </>
         )}

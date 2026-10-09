@@ -453,7 +453,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ssmlGender = 'FEMALE';
         }
         if (ssmlGender !== 'MALE' && ssmlGender !== 'FEMALE') {
-          ssmlGender = /-(Achird|Algieba|Alnilam)$/.test(voiceName || '') ? 'MALE' : 'FEMALE';
+          /* A name handed over without a gender — the client sends the name alone
+             (src/voices.ts) — gets Google's own for that name, taken from the
+             voice list on cloud.google.com/text-to-speech/docs/chirp3-hd (read
+             2026-10-08): those sixteen are the male voices of the Chirp 3: HD set
+             for en-US, and every other name in it is female. The two branches
+             above are for *labels* — `male`, `female`, anything that is not a
+             Chirp 3: HD name — and a real name is not one of them, so defaulting
+             it to female would make Puck and Fenrir sound like Achernar. */
+          ssmlGender = /-(Achird|Algenib|Algieba|Alnilam|Charon|Enceladus|Fenrir|Iapetus|Orus|Puck|Rasalgethi|Sadachbia|Sadaltager|Schedar|Umbriel|Zubenelgenubi)$/.test(
+            voiceName || '',
+          )
+            ? 'MALE'
+            : 'FEMALE';
         }
 
         const googleStart = Date.now();

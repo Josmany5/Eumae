@@ -1,4 +1,5 @@
 import { accessToken } from './auth';
+import { storedVoice, voiceName } from './voices';
 
 /* The mic — voice typing, from the mockup.
  *
@@ -126,6 +127,10 @@ let sounding = false;
 /** One refusal is said out loud per run, not one per piece (see `refused`). */
 let noticed = false;
 let silent: string | null = null;
+/* Which voice this run speaks in, as the name Google answers to (src/voices.ts).
+   Held per run rather than read per piece, so changing the setting halfway
+   through a reply changes the next thing said, not the sentence being said. */
+let speakVoice: string | null = null;
 
 /** Is sound coming out? The mic's own guard (1756, 1768). */
 export function speaking(): boolean {
@@ -287,12 +292,15 @@ async function speakNext(say?: (message: string) => void): Promise<void> {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    /* `{ text }` alone, exactly as the mockup posts it (1681) — no voice name
-       travels. Settings' four names are the mockup's own labels and this server
-       speaks Google's Chirp3-HD voices; which of the two wins is still an open
-       question, and guessing it here would make the sample a different voice
-       from the one it names. */
-    body: JSON.stringify({ action: 'speak', data: { text: piece } }),
+    /* `{ text, voice }` — the mockup posts `{ text }` and nothing else (1681),
+       which is why its four names made no difference to what anyone heard. The
+       name sent here is the one Google answers to (`voices.ts`), fixed when the
+       run started: the server's `speak` (api/ai.ts:446) takes it as the voice to
+       synthesize with, so the row that is ticked is the voice that is heard. */
+    body: JSON.stringify({
+      action: 'speak',
+      data: { text: piece, voice: speakVoice ?? voiceName(storedVoice()) },
+    }),
   })
     .then(async (response) => {
       let body: Spoken = {};
@@ -331,11 +339,16 @@ async function speakNext(say?: (message: string) => void): Promise<void> {
  *  while it is already reading, it stops instead of starting again. `say` is
  *  optional because reading is not always started by something that can show a
  *  message; where it is, the one sentence about a refusal goes there. */
-export function speak(text: string, say?: (message: string) => void): void {
+export function speak(text: string, say?: (message: string) => void, voice?: string): void {
   if (running) {
     stopSpeaking();
     return;
   }
+  /* The voice for this run, settled before the first piece is asked for: the
+     caller's choice when it names one (Settings' sample names the row being
+     pressed, which is not necessarily the row that is ticked) and the stored
+     setting otherwise. */
+  speakVoice = voice ?? voiceName(storedVoice());
   arm();
   unlock();
   queue = chunks(text);

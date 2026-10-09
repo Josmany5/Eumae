@@ -1,14 +1,15 @@
-/* The cases behind checks/voice.mjs, run against the real src/voice.ts.
+/* The cases behind checks/voice.mjs, run against the real sources it reads.
  *
  *   node checks/voice.selftest.mjs        (or: npm run check:voice:selftest)
  *
- * Needs no browser, no key and no network. Every case but the first is a
- * deliberate break, and each one has to be caught: a check that passes on a file
- * it cannot see through is worse than no check, because it says "verified".
+ * Needs no browser, no key and no network. Every case but the first and the last
+ * is a deliberate break, and each one has to be caught: a check that passes on a
+ * file it cannot see through is worse than no check, because it says "verified".
  *
- * The breaks are text substitutions into the real file, so they exercise the
- * real functions — the same way checks/models.selftest.mjs feeds `idsIn` source
- * it made up.
+ * The breaks are text substitutions into the real files — src/voice.ts, and the
+ * three the table is checked against (src/voices.ts, api/ai.ts and the Settings
+ * pane) — so they exercise the real code, the same way checks/models.selftest.mjs
+ * feeds `idsIn` source it made up.
  *
  * Exit codes: 0 all cases hold, 1 one does not.
  */
@@ -19,12 +20,27 @@ import { verdicts } from './voice.mjs';
 const SOURCE = fileURLToPath(new URL('../src/voice.ts', import.meta.url));
 const source = readFileSync(SOURCE, 'utf8');
 
+/* The three other files this check reads (checks/voice.mjs), so a break can be
+   made in any of them the same way it is made in src/voice.ts. */
+const VOICES = readFileSync(fileURLToPath(new URL('../src/voices.ts', import.meta.url)), 'utf8');
+const SERVER = readFileSync(fileURLToPath(new URL('../api/ai.ts', import.meta.url)), 'utf8');
+const SETTINGS = readFileSync(
+  fileURLToPath(new URL('../src/components/settings/Settings.tsx', import.meta.url)),
+  'utf8',
+);
+
 const cases = [];
 const check = (name, got, expect) => cases.push({ name, got, expect });
 
 /** The names of the verdicts that fail on a given source — what a person would
  *  see, so asserting on it asserts on the output and not on a private detail. */
 const failing = (text) => verdicts(text).filter((verdict) => !verdict.pass).map((verdict) => verdict.name);
+
+/** The same, for a break made in one of the other files. */
+const failingWith = (voices = VOICES, server = SERVER, settings = SETTINGS) =>
+  verdicts(source, voices, server, settings)
+    .filter((verdict) => !verdict.pass)
+    .map((verdict) => verdict.name);
 
 const limitVerdict = (text) => verdicts(text).find((verdict) => verdict.name.startsWith('chunks: a long'));
 
@@ -82,6 +98,49 @@ check(
   'says so when a line it depends on has been removed',
   failing(source.replace('const CHUNK_MAX = 420;', '')),
   ['the two functions can be lifted out and called'],
+);
+
+check(
+  'fails when a row names a voice Google does not speak',
+  failingWith(VOICES.replace("name: 'Kore',", "name: 'Nova',")),
+  [
+    'voices: six rows, each one naming the voice Google answers to',
+    'voices: every name is one Google lists for US English',
+    /* And a third: with a row named Nova, `voiceById('Nova')` is no longer a name
+       this app dropped — it is a row. That probe is meaningless in exactly the
+       state this break creates, which is the bug itself. */
+    'voices: a name this app no longer offers lands on the default',
+  ],
+);
+
+check(
+  "fails when a gender is not the one Google lists for that name",
+  failingWith(VOICES.replace("name: 'Puck',\n    gender: 'Male',", "name: 'Puck',\n    gender: 'Female',")),
+  ["voices: every gender is Google's own for that name"],
+);
+
+check(
+  'fails when the client and the server disagree about the default voice',
+  failingWith(VOICES, SERVER.replace("voiceName = 'en-US-Chirp3-HD-Achernar'", "voiceName = 'en-US-Chirp3-HD-Achird'")),
+  ['voices: the default is the voice the server falls back to'],
+);
+
+check(
+  'fails when the speaker stops naming the voice it is speaking in',
+  failing(source.replace('voice: speakVoice ?? voiceName(storedVoice())', '')),
+  ['voices: the speaker sends the name it is speaking in'],
+);
+
+check(
+  "fails when the pane goes back to the mockup's four names",
+  failingWith(VOICES, SERVER, SETTINGS.replace('VOICES.map', "['Nova', 'Alloy', 'Onyx', 'Shimmer'].map")),
+  ['voices: the pane is drawn from the table, not from four names of its own'],
+);
+
+check(
+  'says so when the table itself cannot be read',
+  failingWith('export const VOICES = ;'),
+  ['voices: the table can be lifted out and read'],
 );
 
 check(

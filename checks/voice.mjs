@@ -1,14 +1,23 @@
 #!/usr/bin/env node
-/* Run the two pure parts of the voice layer: the sentence cutter and the silence
- * the audio element is opened with.
+/* Run the pure parts of the voice layer: the sentence cutter, the silence the
+ * audio element is opened with, and the table of voices.
  *
- * Both are the kind of code that fails quietly. `chunks` decides how much text
- * goes into one request to the voice server: let a piece grow past the limit and
- * the request is refused, and the symptom is a reply that stops being read aloud
- * halfway. `silence` exists only to open an audio element inside a gesture so
- * iOS will allow the real sound later: get one header byte wrong and nothing
- * complains — the unlock simply never happens, and read aloud is broken on an
- * iPhone while working perfectly on a laptop.
+ * The first two are the kind of code that fails quietly. `chunks` decides how
+ * much text goes into one request to the voice server: let a piece grow past the
+ * limit and the request is refused, and the symptom is a reply that stops being
+ * read aloud halfway. `silence` exists only to open an audio element inside a
+ * gesture so iOS will allow the real sound later: get one header byte wrong and
+ * nothing complains — the unlock simply never happens, and read aloud is broken
+ * on an iPhone while working perfectly on a laptop.
+ *
+ * The third is not a function at all: it is src/voices.ts, the table of voices
+ * the app offers. The bug it exists to catch is in this repo's own history — four
+ * rows labelled Nova, Alloy, Onyx and Shimmer, which are another company's voice
+ * names, so every one of them sounded like the same voice and nothing said so. So
+ * every claim that file makes is checked against a source that has to agree with
+ * it: the names against Google's own list (written below, with the page and the
+ * date it was read), the default against the name the server falls back to, and
+ * the fact that the speaker sends the name it is speaking in.
  *
  * So this check runs them for real rather than reading them. Both live in
  * src/voice.ts, which as a whole cannot be imported here: it is TypeScript and
@@ -31,6 +40,15 @@
  */
 import { readFileSync } from 'node:fs';
 import { transformSync } from 'esbuild';
+
+/** The three other sources this check reads: the table of voices, the server that
+ *  has to fall back to the same voice, and the pane that draws the list. Read
+ *  from disk here and overridable per call, so checks/voice.selftest.mjs can break
+ *  them the same way it breaks src/voice.ts. */
+const real = (relative) => readFileSync(new URL(relative, import.meta.url), 'utf8');
+const VOICES = real('../src/voices.ts');
+const SERVER = real('../api/ai.ts');
+const SETTINGS = real('../src/components/settings/Settings.tsx');
 
 /** How long the silence is: two numbers this file does state itself, because
  *  they are its claim about the shape of the audio rather than the source's. */
@@ -80,10 +98,121 @@ export function lift(source) {
   return transformSync(code, { loader: 'ts', format: 'cjs' }).code;
 }
 
+/** Google's Chirp 3: HD voices for US English and the gender each one is listed
+ *  with — the voice list on cloud.google.com/text-to-speech/docs/chirp3-hd, read
+ *  2026-10-08. Written out here rather than fetched: a check that needs a network
+ *  is a check that stops running, and then stops being a check. */
+const GOOGLE = {
+  Achernar: 'Female',
+  Achird: 'Male',
+  Algenib: 'Male',
+  Algieba: 'Male',
+  Alnilam: 'Male',
+  Aoede: 'Female',
+  Autonoe: 'Female',
+  Callirrhoe: 'Female',
+  Charon: 'Male',
+  Despina: 'Female',
+  Enceladus: 'Male',
+  Erinome: 'Female',
+  Fenrir: 'Male',
+  Gacrux: 'Female',
+  Iapetus: 'Male',
+  Kore: 'Female',
+  Laomedeia: 'Female',
+  Leda: 'Female',
+  Orus: 'Male',
+  Puck: 'Male',
+  Pulcherrima: 'Female',
+  Rasalgethi: 'Male',
+  Sadachbia: 'Male',
+  Sadaltager: 'Male',
+  Schedar: 'Male',
+  Sulafat: 'Female',
+  Umbriel: 'Male',
+  Vindemiatrix: 'Female',
+  Zephyr: 'Female',
+  Zubenelgenubi: 'Male',
+};
+
+/** The table's own verdicts. The table is *run*, not read: src/voices.ts is a
+ *  data file and three small functions, and none of them touches the DOM until it
+ *  is called (`storedVoice` does, and this check does not call it) — so the whole
+ *  file can be transpiled and evaluated, and the claims made about it are made
+ *  against the objects it exports rather than against its spelling. */
+function tableVerdicts(table, server, speaker, settings) {
+  const out = [];
+  const judge = (name, pass, detail) => out.push({ name, pass, detail });
+
+  const rows = table.VOICES;
+  const unknown = rows.filter((row) => !(row.name in GOOGLE)).map((row) => row.name);
+  const misgendered = rows
+    .filter((row) => row.name in GOOGLE && row.gender !== GOOGLE[row.name])
+    .map((row) => `${row.name}=${row.gender}, Google says ${GOOGLE[row.name]}`);
+  const misnamed = rows.filter((row) => row.id !== `en-US-Chirp3-HD-${row.name}`).map((row) => row.id);
+  const duplicate = new Set(rows.map((row) => row.id)).size !== rows.length;
+  const lead = table.DEFAULT_VOICE;
+
+  judge(
+    'voices: six rows, each one naming the voice Google answers to',
+    rows.length === 6 && !duplicate && misnamed.length === 0,
+    `${rows.length} rows${misnamed.length ? ` — ${misnamed.join(', ')}` : ''}${duplicate ? ' — a duplicate id' : ''}`,
+  );
+  judge(
+    'voices: every name is one Google lists for US English',
+    unknown.length === 0,
+    unknown.length ? unknown.join(', ') : `${Object.keys(GOOGLE).length} names on Google's list`,
+  );
+  judge(
+    "voices: every gender is Google's own for that name",
+    misgendered.length === 0,
+    misgendered.length ? misgendered.join('; ') : rows.map((row) => `${row.name}=${row.gender}`).join(' '),
+  );
+  /* The client and the server each name a default, and a request that names no
+     voice is answered by the server's — so they have to be the same voice, or the
+     row that is ticked is not the one that speaks. The server's name is read out
+     of api/ai.ts rather than written here. */
+  judge(
+    'voices: the default is the voice the server falls back to',
+    lead != null && lead === rows[0] && server.includes(`voiceName = '${lead.id}'`),
+    `${lead ? lead.id : 'no DEFAULT_VOICE'}`,
+  );
+  /* The stored value on an install that chose one of the four old names, or a
+     value written by hand: it becomes the default voice, never a failure. Both
+     probes are rows of the table itself, so changing which voices this app offers
+     cannot make this verdict fail for the wrong reason. */
+  const other = rows[rows.length - 1];
+  judge(
+    'voices: a name this app no longer offers lands on the default',
+    typeof table.voiceById === 'function' &&
+      table.voiceById('Nova') === lead &&
+      table.voiceById(undefined) === lead &&
+      table.voiceById(other.id) === other &&
+      table.voiceById(other.name) === other,
+    `Nova and undefined → the default; ${other.name} and its full id → its own row`,
+  );
+  judge(
+    'voices: the speaker sends the name it is speaking in',
+    /voice: speakVoice/.test(speaker),
+    'the speak request in src/voice.ts',
+  );
+  /* The mockup's four names must not come back through the pane: that is the bug
+     as the person met it — a list offering what the server cannot speak. */
+  judge(
+    'voices: the pane is drawn from the table, not from four names of its own',
+    /VOICES\.map/.test(settings) &&
+      /voiceById\(voice\)\.id/.test(settings) &&
+      !/'(Nova|Alloy|Onyx|Shimmer)'/.test(settings),
+    'src/components/settings/Settings.tsx',
+  );
+
+  return out;
+}
+
 /** Judge a source. Returning the verdicts instead of printing them is what lets
  *  checks/voice.selftest.mjs hand this text it has broken on purpose and assert
  *  that every break is caught. */
-export function verdicts(source) {
+export function verdicts(source, voices = VOICES, server = SERVER, settings = SETTINGS) {
   const lifted = {};
   try {
     const host = { exports: {} };
@@ -166,6 +295,32 @@ export function verdicts(source) {
     payload.length > 0 && payload.every((byte) => byte === 128),
     `first=${payload[0]} last=${payload[payload.length - 1]}`,
   );
+
+  /* ── The table ─────────────────────────────────────────────────────────────
+     Lifted and called rather than pattern-matched: it is a table, and the claims
+     worth checking about a table are about what it holds. */
+  const table = {};
+  let tableError = null;
+  try {
+    const host = { exports: {} };
+    new Function('module', 'exports', transformSync(voices, { loader: 'ts', format: 'cjs' }).code)(
+      host,
+      host.exports,
+    );
+    Object.assign(table, host.exports);
+  } catch (error) {
+    tableError = String(error && error.message);
+  }
+  if (tableError || !Array.isArray(table.VOICES)) {
+    judge(
+      'voices: the table can be lifted out and read',
+      false,
+      tableError ?? 'it lifted, but no VOICES came back',
+    );
+  } else {
+    judge('voices: the table can be lifted out and read', true, `${table.VOICES.length} rows`);
+    out.push(...tableVerdicts(table, server, source, settings));
+  }
 
   return out;
 }
