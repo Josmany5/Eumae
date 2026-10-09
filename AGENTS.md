@@ -101,30 +101,35 @@ new), 109 lines to `ChatScreen.tsx` (99 → 208, the send and the thread it draw
 
 ### Branches
 
-- **Default branch: `stage/0-foundation`.** There is **no `main`** in this repo.
-  The owner thinks of the default branch as "main", so when he asks for work to
-  land on main, he means this one.
-- **One branch, and it is that one.** `feat/web-shell` mirrored it — a clean
-  fast-forward, nothing diverged, nothing to force — until 2026-10-06, when both
-  names pointed at the same commit and it was retired, local and `origin`. Push
-  to `stage/0-foundation` and nowhere else.
-- **Since 2026-10-08 that rule has one exception, and it is on the remote now.**
-  `origin/stage/0-foundation` moved from `0560cdd` to `9a19872` with four commits
-  another session pushed: `5345cdf` *Chat goes live: auth, streaming, server
-  fixes*, `e9afb50` *Auth callback, handled explicitly*, `12ebf0b` *Remove login:
-  no sign-in gate…*, `9a19872` *…delete stale auth files*. That line answered the
-  same task differently — `src/ai.ts` plus `ChatMarkdown.tsx` — and then **removed
-  sign-in**, deleting `src/components/auth/SignIn.tsx` and `src/supabase.ts`. This
-  clone's fifteen commits since `0560cdd` answered it with `src/chat.ts`,
-  `src/voices.ts` and `src/auth.ts`'s token, and did not remove sign-in. One of the
-  two lines would have had to disappear for the other to be `stage/0-foundation`,
-  so nothing was forced: the local line was pushed as **`rebuild/0-foundation`**
-  (new branch, tracking, at `bece690`) and `stage/0-foundation` was left where it
-  stood. Which line becomes the default is the owner's call; merging them means
-  resolving eight files (`api/ai.ts`, `package.json`, `src/App.tsx`,
-  `src/components/settings/Settings.tsx`, `src/components/shell/Composer.tsx`,
-  `src/components/shell/icons.tsx`, `src/screens/ChatScreen.tsx`,
-  `src/styles/tokens.css` — `git merge-tree` counts 22 conflict markers).
+- **Default branch: `rebuild/0-foundation`**, switched on 2026-10-08 on the
+  owner's instruction, in GitHub's own repo settings (`PATCH /repos/Josmany5/Eumae`
+  over the REST API — this machine has no `gh` and no `vercel` CLI). There is **no
+  `main`** in this repo. The owner thinks of the default branch as "main", so when
+  he asks for work to land on main, he means whichever branch is current here.
+  Push to the default branch and nowhere else. (`feat/web-shell` was the only other
+  branch ever pushed; it mirrored the default and was retired on 2026-10-06.)
+- **Two lines descend from `0560cdd`, and they are not ancestors of each other**,
+  so neither can be pushed over the other without a force that deletes commits:
+  - **`rebuild/0-foundation`** — this worktree's line, and the default. It keeps
+    sign-in: `src/chat.ts`, `src/voices.ts`, and `accessToken()` out of `src/auth.ts`.
+  - **`stage/0-foundation`** — the other answer, pushed from a clone that is not on
+    this machine: `src/ai.ts` plus `ChatMarkdown.tsx`, then **sign-in removed**
+    (`12ebf0b` dropped the gate, `9a19872` deleted `src/components/auth/SignIn.tsx`
+    and `src/supabase.ts`). It is **kept, not rewritten**: it holds the one thing
+    this line lacks (a markdown renderer) and lacks the one thing this line added
+    (the real voice list — its pane still offers Nova/Alloy/Onyx/Shimmer, and its
+    `api/ai.ts` still treats every name but Achird/Algieba/Alnilam as female).
+  - Merging the two is **not** a fast-forward: eight files conflict (`api/ai.ts`,
+    `package.json`, `src/App.tsx`, `src/components/settings/Settings.tsx`,
+    `src/components/shell/Composer.tsx`, `src/components/shell/icons.tsx`,
+    `src/screens/ChatScreen.tsx`, `src/styles/tokens.css` — `git merge-tree` counts
+    22 conflict markers) and the login question would have to be answered again.
+    Nobody has asked for that merge.
+- **Two worktrees, one repository.** `~/Desktop/eumae` owns the `.git` and has
+  `stage/0-foundation` checked out (`0560cdd`, four behind `origin`, with an
+  uncommitted `IDEAS.md`); `~/Desktop/eumae-rebuild` is a linked worktree on the
+  default branch, and everything in this file was written there. Never move a ref
+  that another worktree has checked out, and leave its uncommitted files alone.
 - `backup/pre-rewrite` is **local-only** and stays that way: it is the way back
   from the identity rewrite, so every commit on it predates that rewrite. Never
   push it, and delete it once the scrub is confirmed good.
@@ -1113,6 +1118,17 @@ is the pill row again.
     sending rather than keeping one), so a signed-in person on a configured
     deployment gets a reply and can hear it. Nothing on this machine can watch that
     happen — see the next entry.
+- **The default branch is the line that needs sign-in, so configuring it is now a
+  deployment requirement rather than a someday item.** `rebuild/0-foundation` sends
+  `accessToken()`, so a signed-out visitor gets the 401 sentence. For the live site
+  to work at all the Vercel project must build with `VITE_SUPABASE_URL` and
+  `VITE_SUPABASE_ANON_KEY` set (Vite inlines them at build time) and Supabase must
+  allow the deployment's URL as a redirect. Without both, the sign-in screen cannot
+  sign anyone in and every send answers "Sign in to get a reply". The other line
+  (`stage/0-foundation`) trades the opposite way: it needs no account and no keys.
+  **Check Vercel's own *Production Branch* setting too** — it is separate from the
+  repo's default branch and may still be pinned to `stage/0-foundation`, in which
+  case the next deploy still builds the other line.
 - **The reply is not persisted, and no tool runs.** `ChatScreen`'s messages die with
   the tab, and a `{ functionCall }` frame is returned by `src/chat.ts` and drawn
   nowhere, because there is no harness — the mockup declares `generate_image` and
@@ -1145,7 +1161,8 @@ is the pill row again.
   server-side ones, plus the `VITE_SUPABASE_*` pair that it had deliberately left out
   until browser code read it. `src/auth.ts` reads them, so they are named — and
   anything secret must never carry that prefix, because Vite inlines it.
-- **No `main` branch** — the default is `stage/0-foundation`.
+- **No `main` branch** — the default is `rebuild/0-foundation` since 2026-10-08
+  (`stage/0-foundation` is the other line; §7, Branches).
 - Fixed in `6cb3f4d`, listed so it isn't "fixed" twice: `.gitignore`'s `.DS_Store/`
   had a trailing slash, so it only ever matched a *directory* of that name and the
   file was never ignored.
