@@ -50,36 +50,39 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (5014 lines across src/ + api/)
+### Code map (5569 lines across src/ + api/)
 
 That number is `find src api -type f | xargs wc -l | tail -1` — every TS, TSX and
-CSS line under the two directories, counted rather than remembered. It was 4598
-before the sign-in work, which added `src/auth.ts` (242, new),
-`src/vite-env.d.ts` (13, new), 140 lines to Settings — the Security pane and the
-two account cards (704 → 844) — and 21 to `src/voice.ts` (495 → 516, the token on
-the read-aloud request). `checks/` is not counted here and never has been: the map
-is the app.
+CSS line under the two directories, counted rather than remembered. It was 5014
+before the wire, which added `src/chat.ts` (237, new) and `src/voices.ts` (114,
+new), 109 lines to `ChatScreen.tsx` (99 → 208, the send and the thread it draws),
+12 to `api/ai.ts` (581 → 593, the voices it was mis-naming), 21 to `Settings.tsx`
+(844 → 865, the real voice list), and smaller amounts to `src/voice.ts` (516 →
+529), the composer (183 → 188), the icon registry (73 → 79) and `tokens.css`.
+`checks/` is not counted here and never has been: the map is the app.
 
 | File | Lines | Role |
 | --- | --- | --- |
-| `src/components/settings/Settings.tsx` | 844 | the whole Settings overlay; also owns `useStored`, export/wipe, the sign-in pane |
-| `api/ai.ts` | 581 | the only server code; Vercel handler |
-| `src/voice.ts` | 516 | the voice layer: voice typing in, read aloud out (from the mockup) |
+| `src/components/settings/Settings.tsx` | 865 | the whole Settings overlay; also owns `useStored`, export/wipe, the sign-in pane |
+| `api/ai.ts` | 593 | the only server code; Vercel handler |
+| `src/voice.ts` | 529 | the voice layer: voice typing in, read aloud out (from the mockup) |
 | `src/components/shell/AddSheet.tsx` | 323 | the composer's `+` window — the five turn settings, rail + pane |
 | `src/App.tsx` | 279 | the shell: tab + page stack + panel + drawers + file input |
 | `src/auth.ts` | 242 | who is signed in, and the token `/api/ai` checks |
-| `src/request.ts` | 221 | the request `/api/ai` will be handed — the turn as prose, the model as a key |
+| `src/chat.ts` | 237 | the sender: the post to `/api/ai`, and the reader for its frames |
+| `src/request.ts` | 221 | the request `/api/ai` is handed — the turn as prose, the model as a key |
 | `src/components/shell/RightPanel.tsx` | 218 | the right panel (Context / Activity / Studio) |
+| `src/screens/ChatScreen.tsx` | 208 | the only real tab screen; sends the turn, streams the reply, draws the thread |
 | `src/useMedia.ts` | 21 | the `(min-width:900px)` hook both overlays read |
 | `src/vite-env.d.ts` | 13 | the two `VITE_SUPABASE_*` variables, typed |
 | `src/nav.ts` | 143 | `NavContext`: go/back, goTab, panel, `turn`, `refs`, pickFile, `notify` |
-| `src/components/shell/Composer.tsx` | 183 | input row, the chip pills, `+`, paperclip, mic (live), send |
+| `src/components/shell/Composer.tsx` | 188 | input row, the chip pills, `+`, paperclip, mic (live), send |
 | `src/components/shell/pageMenu.ts` | 128 | `PAGE_MENU` — each tab's rail rows |
 | `src/components/shell/Sidebar.tsx` | 89 | desktop rail |
 | `src/log.ts` | 78 | the activity log: `LOG_AREAS`, the one writer, the read |
+| `src/voices.ts` | 114 | the six voices the app offers — Google's names, gender and origin |
 | `src/pages/SearchPage.tsx` | 70 | the only real sub-page |
-| `src/screens/ChatScreen.tsx` | 99 | the only real tab screen; builds each message's request |
-| `src/components/shell/icons.tsx` | 73 | the icon registry |
+| `src/components/shell/icons.tsx` | 79 | the icon registry |
 | `src/components/shell/Drawer.tsx` | 65 | phone drawer |
 | `src/components/shell/Header.tsx` | 37 | title, hamburger, activity, back |
 | `src/components/shell/TabBar.tsx` | 33 | phone tab bar + `TABS` |
@@ -142,9 +145,11 @@ is the app.
 - `npm run build` = `tsc --noEmit && vite build`. Types gate the build.
 - `npm run dev` does **not** serve `api/ai.ts`; that needs `vercel dev` or Vercel.
 - No test runner, no ESLint/Prettier, no CI. Verification is manual today (§5),
-  with two exceptions that are real files: `.env.example` names the four keys the
-  server reads, and `npm run check:models:selftest` runs one committed check with
-  no key and no network.
+  with three exceptions that are real files: `.env.example` names the keys the
+  server reads, and three selftests are committed checks that need no key, no
+  network and no browser — `check:models:selftest`, `check:voice:selftest` (§5
+  check 9, which now covers the voice table too) and `check:chat:selftest` (check
+  10).
 - Verified good at `6cb3f4d`: 53 modules, 3.54s, `dist/index.html` 1.65 kB,
   CSS 22.95 kB, JS 269.63 kB (82 kB gzipped).
 - The build regularly exceeds a 30-second tool timeout in-session: launch it with
@@ -277,11 +282,73 @@ the shape without either one saying it out loud.
   deliberate absences are visible in that same grep: no `gemini-*` id (the client
   sends a *key*, the server maps it) and no "What is in this document?" (the
   attach-only branch we do not need yet).
-- **Still unwired, deliberately:** nothing *posts* the body. The fetch, the SSE
-  reader and the auth screen are Phase 6 (§7). §5 check 6 is what keeps the
-  mapping correct in the meantime.
+- **Wired now.** `ChatScreen.send` builds that body and hands it straight to
+  `streamChat` (src/chat.ts), which posts it with the bearer token and reads the
+  reply back; what the file is *for* is unchanged, and §5 check 6 still keeps the
+  mapping honest. The one thing the body still cannot carry is a tool set: `TOOLS`
+  belongs to the harness (the mockup declares exactly one, `generate_image`, at
+  1627) and nothing asks for tools yet.
 
-### The voice — `src/voice.ts` (495)
+### The sender — `src/chat.ts` (237)
+
+The other end of `src/request.ts`: it posts the body, and reads what comes back.
+It is the last piece of the mockup's own AI path to land — the mockup reads the
+same stream at 1880 — and with it the app is no longer a chat that cannot chat.
+
+- The wire is the server's, not a choice made here: `chatStream` (ai.ts:290)
+  relays Gemini as Server-Sent Events, one `data: {...}` frame per piece, five
+  shapes in all — `{ text }`, `{ functionCall }`, `{ grounding }`,
+  `{ error: { message } }` and `{ done: true }` (ai.ts:290, 306, 409, 410, 411).
+- `takeEvents` and `parseEvent` are pure on purpose, and it is not tidiness: the
+  two ways this fails are both silent. A frame can be split across two network
+  chunks, so a reader that parses what has arrived parses half a JSON object and
+  drops a piece of the answer — hence a frame counts only once the blank line
+  after it arrives (CRLF too, because a proxy may rewrite line endings). And
+  `{ error }` is not the end of the stream: it arrives *before* `done` and can
+  follow real text, so the text received is kept and the sentence is kept beside
+  it. Being pure is also what lets §5 check 10 run them with no browser.
+- `streamChat` is the only part that touches the network. The token is asked for
+  at the moment of sending (`accessToken`, auth.ts:225) rather than remembered,
+  because the library refreshes an expiring one in the background — and a reply
+  can outlive the token the run started with.
+- A refusal is the server's own sentence wherever there is one. The 401 is the one
+  case this side knows better ("Sign in to get a reply"), and a 404 names the
+  likeliest reason a POST to `/api/ai` came back as a document: no server behind
+  this build.
+- Four of its five sentences are its own, for failures that never reach the server
+  (unreachable, cut short, empty, no server). `UNKNOWN_FAILURE` is the server's own
+  `UPSTREAM_ERROR` word for word, and check 10 fails if the two ever drift apart.
+- What it deliberately does **not** do: run a tool. A `{ functionCall }` is handed
+  back to the caller and shown nowhere, because there is no harness — the mockup
+  declares `generate_image` and nothing executes it either. A `{ grounding }` frame
+  is carried and not drawn, for the same reason: nothing has asked for search yet.
+
+### The voices — `src/voices.ts` (114)
+
+Six rows: the voice list Settings shows and the name the read-aloud request sends.
+It is a data file, and it exists because that pane used to offer four names that
+were not voices at all.
+
+- The four were Nova, Alloy, Onyx and Shimmer — OpenAI's names, carried in from the
+  mockup's own list (197, 613, 692) into an app whose server speaks to Google.
+  `speak` sent no voice at all, so all four rows were one voice wearing four
+  labels, and §7 recorded "which voice names Settings offers" as the owner's call.
+  The owner's call is the real list, and this file is it.
+- The names are Google's: six of the thirty Chirp 3: HD voices its API lists for
+  en-US (`cloud.google.com/text-to-speech/docs/chirp3-hd`, read 2026-10-08 — the
+  same page the server's own table is checked against). Achernar is first because
+  it is the voice the server falls back to, so the row that is ticked is the voice
+  a request naming none is read in. §5 check 9 fails if those two ever disagree.
+- Each row carries Google's own gender for the voice and where the name comes from
+  (a star, a moon, a figure from myth), and says nothing about how it sounds: the
+  API gives a name, a gender and a recording, and how it sounds is what Play sample
+  is for.
+- `voiceById` is the safety net for the old four: anything it does not recognise,
+  including a value already stored on someone's device, becomes the default voice
+  rather than failing a reply. `storedVoice` reads the setting from where it is set
+  (`eumae:voice`, through Settings' `useStored`) so neither caller passes it in.
+
+### The voice — `src/voice.ts` (529)
 
 The mockup's voice is two halves, and this is both of them, because they
 interlock: while sound is coming out, the mic neither types nor sends (1756,
@@ -312,23 +379,33 @@ the mockup inlines about 1.4kB of base64 MP3 for the same job: Safari will not
 start a sound that no gesture began, and the server's answer arrives long after
 the tap did.
 
+**And the voice travels.** The mockup posts `{ text }` and nothing else (1681),
+which is why its four labels made no audible difference to what anyone heard. This
+sends the name Google answers to (`voices.ts`), fixed when the run starts so that
+changing the setting mid-reply changes the next sentence and not the one being
+said — and Settings' Play sample names the row being pressed rather than the row
+that is ticked.
+
 **What it does not decide.** `VoiceTyping` is handed over at the tap, so this
 module reads no React state and the composer reads no speech API. The speech API's
 types are declared in the file itself — TypeScript's DOM lib still does not carry
 `SpeechRecognition` — and neither half touches `window` or `document` at import
 time, because a server render imports this module (§5).
 
-**The honest part.** `speak` sits behind the same lock as chat (ai.ts:158) and
-there is no sign-in screen, so today that request is a 401. Where the mockup falls
-back to the browser's voice silently (1685), this says one short sentence first —
-"Signed out — reading with the browser voice" — and then reads it in the browser's
-voice. Settings → Voice's **Play sample** (the mockup's own button, 613 and 692,
-which only toasts "Playing sample…" there) is the one place read-aloud can be
-heard until there are replies to read.
+**The honest part.** `speak` sits behind the same lock as chat (ai.ts:158), and
+`src/auth.ts` is where its token comes from (§3, "Signing in") — so on a
+deployment with no sign-in configured, or signed out, that request is still a 401.
+Where the mockup falls back to the browser's voice silently (1685), this says one
+short sentence first — "Signed out — reading with the browser voice" — and then
+reads it in the browser's voice. Settings → Voice's **Play sample** (the mockup's
+own button, 613 and 692, which only toasts "Playing sample…" there) plays the voice
+that is ticked, and a reply in the thread carries the mockup's own read-aloud row
+under it (`rowA`, 1642 — with a Copy button beside this one that is not built yet,
+because copying needs a receipt to say it happened).
 
-`npm run check:voice` runs the two functions that can run outside a browser (§5
-check 9). Two things are deliberately left open, both in §7: which voice names
-Settings should offer, and the lock.
+`npm run check:voice` runs the pure parts — the two functions, and the table of
+voices itself (§5 check 9). One thing is deliberately left open, in §7: the lock,
+which nothing on this machine can test.
 
 ### Signing in — `src/auth.ts` (242) + Settings' Security pane
 
@@ -705,24 +782,56 @@ the repo, under `checks/`.
    model is added and after any Google retirement notice; none of the other eight
    checks covers this, and its failure mode is a reply that never arrives.
 
-9. **The voice's two pure functions** (added with the voice layer). Also
-   committed, also needs nothing: `npm run check:voice` lifts `chunks` and
+9. **The voice's pure parts** (added with the voice layer; the table added with the
+   wire). Committed, needs nothing: `npm run check:voice` lifts `chunks` and
    `silence` out of `src/voice.ts` by name, transpiles them with the project's own
    esbuild, and calls them — which is only possible because neither touches
    `window` or `document`, and this check is now what keeps that true. Nine
    verdicts: a short paragraph stays one piece, empty is still one piece, a code
    fence is never read aloud, a long reply splits within the limit **read out of
    the source** (the verdict is named with the number it found), and the silence is
-   a real WAV — RIFF/WAVE, PCM, mono, 8-bit, 8000 Hz, sizes that agree, a payload
-   at 128. Exit **1** if any verdict fails, **0** if all hold.
-   `npm run check:voice:selftest` is the part that makes it worth having: eleven
-   cases, ten of them deliberate breaks text-substituted into the real file (the
-   limit raised, fences no longer dropped, RIFF misspelled, the rate moved to
-   44.1kHz, the declared depth changed, the payload made non-silent, the function
-   renamed, the limit line deleted) and one comment-only change that must **not**
-   raise an alarm. Neither script is wired into `build`: the build is what a deploy
-   runs, and a voice regression should not be able to stop a deploy that has
-   nothing to do with voice.
+   a real WAV — RIFF/WAVE, PCM, mono, 8-bit, 8000 Hz, sizes that agree, a payload at
+   128. Then eight more over `src/voices.ts`, which is *run* rather than read (its
+   whole file transpiles: a table and three small functions): six rows, each id the
+   name Google answers to, every name on Google's own en-US list and carrying
+   Google's gender for it (the list is in the check, with the page and the date),
+   the default the same voice `api/ai.ts` falls back to **read out of the server**,
+   an old name like `Nova` landing on the default rather than failing, the speaker
+   sending the name it speaks in, and the Settings pane drawn from the table rather
+   than from the mockup's four names. Exit **1** if any verdict fails, **0** if all
+   hold. `npm run check:voice:selftest` is the part that makes it worth having:
+   seventeen cases, sixteen of them deliberate breaks text-substituted into the
+   real files (the limit raised, fences no longer dropped, RIFF misspelled, the
+   rate moved to 44.1kHz, the declared depth changed, the payload made non-silent,
+   the function renamed, the limit line deleted, a row renamed to a voice Google
+   does not have, a gender flipped, the server's default moved, the voice dropped
+   from the speak request, the pane put back to the four names, the table made
+   unreadable) and one comment-only change that must **not** raise an alarm.
+   Neither script is wired into `build`: the build is what a deploy runs, and a
+   voice regression should not be able to stop a deploy that has nothing to do with
+   voice.
+
+10. **The sender's two pure functions** (added with the wire). `npm run check:chat`
+    does for `src/chat.ts` what check 9 does for the voice: `takeEvents` and
+    `parseEvent` are lifted by name, transpiled and called, because the ways the SSE
+    reader fails are all silent — and this check is what keeps them testable without
+    a browser or a network. Fifteen verdicts: two frames in one chunk, a frame with
+    no blank line after it not yet being a frame, CRLF counting, pieces coming back
+    as one reply, a frame split across three chunks read once and whole, a
+    keep-alive and an unknown frame skipped rather than thrown on, the tail frame
+    with no blank line read anyway, the server's failure sentence passed through in
+    both its spellings, a nameless failure still saying something, an error after
+    real text **not** throwing that text away, a tool request carried with its
+    arguments, a grounded answer saying so, junk (`data: {oops`, `data: [1,2]`,
+    `: ping`, `data: `) ignored rather than thrown — and the cross-file one: **every
+    frame it parses is one `api/ai.ts` writes**, matched out of the server's own
+    `res.write` lines. Exit **1** if any verdict fails, **0** if all hold.
+    `npm run check:chat:selftest` runs nine cases, eight of them breaks (a frame
+    read before its blank line arrives, one spelling of a failure dropped, the two
+    ends' sentence for a nameless failure drifted apart, a tool request's arguments
+    dropped, grounding dropped, the function renamed, the sentence const deleted)
+    plus a comment-only change that must not raise an alarm. Run it when the frame
+    shapes change, or when `api/ai.ts` learns a sixth one.
 
 **Never claim a UI behaviour works because it typechecks.** Build it, and open
 `dist/index.html` or `npm run preview` when the claim is visual.
@@ -823,9 +932,11 @@ its row removed, so the rail is 22 rows today (§4.11).
   assertions were shown to have teeth: the scans extract `['lite','best']` from
   `MODEL_IDS` and exactly six keys from the `chatStream` branch, so a renamed key
   fails the check instead of passing it.
-- **Handed on, not dropped:** nothing posts the body yet (the fetch, the SSE
-  reader and the auth screen are Phase 6 — named in §7); and Thinking/Model are
-  still invisible on the chip, which is Phase 5's own item.
+- **Handed on, not dropped:** the body *is* posted now — the sender landed in
+  Phase 6 (§3, "The sender") — and what is still handed on is everything the model
+  would *do* with it: no tool set travels, because nothing asks for tools, and a PDF
+  ref is still a label with no bytes. Thinking/Model are still invisible on the
+  chip, which is Phase 5's own item.
 
 **Phase 4 — panel rebuild. ✅ Done.**
 
@@ -905,19 +1016,37 @@ second layer lands here too** (`IDEAS.md` I5): `LogEntry` grows `who`, `phase` a
 `type`, and Eumae's own rows appear for the first time — which is also the first
 moment anything in the log is not the owner acting.
 
-Two pieces of this phase have already landed, and they narrow it rather than being
-part of it: **the voice layer** (§3 — the mic types and read aloud speaks, both from
-the mockup) and **the request** (Phase 3's `src/request.ts`). A third landed after
-them: **the sign-in screen** (§3, `src/auth.ts` + Settings' Security pane), so the
-401 is no longer the end of the story — read aloud sends a real token and a
-configured deployment can be signed into. What that leaves is the **sender** — the
-`fetch` to `/api/ai` plus the SSE reader for `chatStream` — and whatever the stream
-then needs: an assistant message on screen, the "Read aloud" button on it (the
-mockup's `rowA`, 1642, which also needs a speaker glyph; the mockup's own `IC_SPK`
-at 1639 is not in `icons.tsx` yet), and `speak` called on that reply when the turn
-came in by voice (1902), for which the voice layer already carries the flag across
-`send`. That is the whole of Phase 6's AI half, and it is small: the body, the
-header and the reader.
+Two pieces of this phase had already landed before it, and they narrowed it rather
+than being part of it: **the voice layer** (§3 — the mic types and read aloud
+speaks, both from the mockup) and **the request** (Phase 3's `src/request.ts`). A
+third landed after them: **the sign-in screen** (§3, `src/auth.ts` + Settings'
+Security pane), so the 401 is no longer the end of the story — read aloud sends a
+real token and a configured deployment can be signed into.
+
+**The AI half has landed too.** The sender is `src/chat.ts` (§3): the body from
+`src/request.ts` posted to `/api/ai` with the caller's token, the SSE frames read
+back, the reply drawn in the thread as it arrives — with the mockup's own three
+dots (`.wxpill`, 1836/1866) while it is on the way and a sentence under it when it
+did not arrive whole — and the mockup's read-aloud row beneath each reply (`rowA`,
+1642), whose speaker glyph (`IC_SPK`, 1639) is in `icons.tsx` as `spk` now.
+`ChatScreen` calls `speak` on a reply when the turn came in by voice (1902), which
+is the flag the voice layer already carried across `send`. What is left of Phase 6
+is everything that is not chat: Studio artifacts, the panel's Studio reading, and
+the log's second layer (I5).
+
+**Verified**, because a UI claim that only typechecks is not a claim (§5): `npm run
+build` green at **103 modules** (CSS 23.62 kB, JS 227.81 kB plus the 288.76 kB auth
+chunk), `check:chat` 15 of 15, `check:chat:selftest` 9 of 9, `check:voice` 17 of
+17, `check:voice:selftest` 17 of 17, `check:models:selftest` 9 of 9. Then the built
+app, driven in headless Chrome over the DevTools protocol (§5): a send posted, the
+thread drew the reply's own failure sentence under it ("No reply came back. Try
+again." — what a static file server answers a POST with), and Settings → Logs held
+both rows, `Sent: …` with the ok dot and `No reply: …` with the bad one.
+Settings → Voice listed the six real voices with Google's gender and each name's
+origin, Achernar ticked. **What that run could not show**, and nothing on this
+machine can: a real reply (no key, no signed-in account), so the read-aloud row was
+never seen rendered — it is drawn only for a reply that has text — and the three
+dots were not caught mid-stream, because a static server refuses the POST at once.
 
 **Phase 7 — the Logs lens.** The deep dive, in Settings rather than the panel
 (`IDEAS.md` I6-I7): one filter object (`{ who?, phase?, type?, area?, q? }`)
@@ -954,7 +1083,7 @@ is the pill row again.
   `Actor` / `ActionStamp` / `SavedItem` exist unused — a hint at the intended shape
   (every saved item has an owner, timestamps and a history of actions).
 - **No chat persistence.** `ChatScreen`'s messages die with the tab.
-- **The server is reachable now, for exactly one action, and only on a configured
+- **The server is reachable now, for two actions, and only on a configured
   deployment.** The lock is still the endpoint's first act (`ai.ts:158`,
   `verifyCaller` at 158-168), and `src/auth.ts` is how a person gets past it. Two
   clauses matter here and neither is a defect:
@@ -962,18 +1091,18 @@ is the pill row again.
     time, so a site built without them shows "This build has no sign-in configured"
     and can sign nobody in. The four server-side keys were already in Vercel; these
     two are the same Supabase project and need adding there as well.
-  - **Chat still does not post.** Read aloud is the only action the UI calls —
-    `src/voice.ts` sends the token with every request — while `src/request.ts`
-    builds a body on every send and nothing fetches with it. So a signed-in person
-    can hear the cloud voice today and cannot yet get a reply.
-- **The request is built but never posted.** `ChatScreen.send` builds the body
-  (`toApiBody`, `src/request.ts`) and keeps it on the message, so the mapping runs
-  on every send and stays in the bundle; what is missing is the sender — the
-  `fetch` to `/api/ai`, the SSE reader for `chatStream`, and the assistant turn
-  that gets an `spk` glyph for its Read aloud row (the mockup's `rowA`, 1642; the
-  glyph itself is at 1639 and is not in `icons.tsx`). Until then §5 check 6 is the
-  other guard on the mapping (`modelKey` above all), and a PDF ref (a label with no
-  bytes) still cannot become an attachment.
+  - **Chat posts now.** `chatStream` and `speak` are the two actions the UI calls
+    (`src/chat.ts` and `src/voice.ts`, both asking for the token at the moment of
+    sending rather than keeping one), so a signed-in person on a configured
+    deployment gets a reply and can hear it. Nothing on this machine can watch that
+    happen — see the next entry.
+- **The reply is not persisted, and no tool runs.** `ChatScreen`'s messages die with
+  the tab, and a `{ functionCall }` frame is returned by `src/chat.ts` and drawn
+  nowhere, because there is no harness — the mockup declares `generate_image` and
+  nothing executes it either (`{ grounding }` is carried for the same reason:
+  nothing asks for search yet). §5 check 6 is still the other guard on the mapping
+  (`modelKey` above all), and a PDF ref (a label with no bytes) still cannot become
+  an attachment.
 - **Nothing on this machine can test the signed-in path.** There is no Supabase
   project, no key and no `.env.local` here, so the token is built and sent but the
   grant-or-refuse has never been watched: the browser work verified the run-up — the
@@ -981,17 +1110,15 @@ is the pill row again.
   not the voice itself. Hearing Google's voice needs the deployment plus one
   sign-in, and that is the owner's half.
 - **The panel's "Always in context" list is static furniture.**
-- **Which voice names Settings offers is the owner's call, and nothing else is
-  waiting on it.** The pane lists Nova, Alloy, Onyx and Shimmer — the mockup's own
-  labels (613, 692) — while the server speaks Google's Chirp3-HD voices
-  (`en-US-Chirp3-HD-Achird` for male, `-Achernar` by default — ai.ts:449, 452) and
-  maps anything it does not recognise onto that default. So all four names sound
-  the same today, and
-  the sample deliberately sends no voice at all rather than send one that would be
-  ignored. Either the list becomes the real Chirp3 names, or the four labels get a
-  mapping someone has agreed to instead of one an agent invented — a product
-  decision, not a defect, and the only thing between the pane and a sample that
-  matches what it says.
+- **The voice list — settled, and it was the owner's call.** The pane used to list
+  Nova, Alloy, Onyx and Shimmer (the mockup's own labels, 613 and 692) while the
+  server speaks Google's Chirp 3: HD voices, so all four sounded the same: the
+  sample sent no voice at all rather than send one that would be ignored. The call
+  was the real list — six of the thirty Google lists for US English, in
+  `src/voices.ts` (§3, "The voices") — Achernar first because the server falls back
+  to it, and the name now travels with the speak request. §5 check 9 is what keeps
+  the list, Google's own genders and the server's default in agreement. Which six
+  they are is still a product decision; it is now a one-word edit in that file.
 - **Personal data — fixed.** The account cards render an `ACCOUNT` placeholder
   instead of the owner's real name and email. If a profile editor ever lands, keep
   the value out of the source; this file ships to the public.
