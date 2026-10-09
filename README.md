@@ -19,14 +19,19 @@ npm run dev        # vite dev server on http://localhost:5173
 npm run build      # tsc --noEmit && vite build  ->  dist/
 npm run preview    # serve the built dist/
 npm run typecheck  # types only
+npm run check:models:selftest   # the model IDs in api/ai.ts — no key, no network
 ```
 
 `build` gates on types: `tsc --noEmit` runs first, so a type error fails the build
-instead of shipping.
+instead of shipping. `check:models` is the one check that talks to Google — it asks
+whether the model IDs in `api/ai.ts` are still ones it serves, exits 2 without a
+`GEMINI_API_KEY` and 1 if an ID cannot answer; the selftest above covers its logic
+with neither key nor network.
 
 No environment variables are needed to run the UI. `api/ai.ts` reads four — and
 `vite dev` does **not** serve that file, so the AI path currently runs only under
-`vercel dev` or on Vercel.
+`vercel dev` or on Vercel. `.env.example` names all four and nothing else; copy it
+to `.env.local` (git-ignored) or let `vercel env pull .env.local` write it.
 
 | Variable | Used for |
 | --- | --- |
@@ -59,6 +64,8 @@ src/components/shell/      Header, TabBar, Sidebar (desktop rail), Drawer (phone
                            Toast, icons
 src/components/settings/   Settings.tsx — the whole overlay
 src/styles/tokens.css      design tokens + every component's styles
+checks/models.mjs          the one committed check — are the model IDs still served.
+                           Its selftest needs no key: models.selftest.mjs
 AGENTS.md                  the handoff — read it first: state, decisions, next steps
 IDEAS.md                   the owner's idea queue — tracked, not committed
 ```
@@ -150,8 +157,9 @@ What stands between this and something you could hand to a paying user. None of 
 is exotic, and all of it is explained in `AGENTS.md` §8.
 
 - **A CI robot.** Nothing runs the build on push today. About 15 lines of YAML.
-- **Tests.** Every check so far was a throwaway script. The ones worth keeping are
-  named in `AGENTS.md` §5.
+- **Tests.** Nearly every check so far was a throwaway script; the ones worth
+  keeping are named in `AGENTS.md` §5, and the first is no longer a throwaway:
+  `npm run check:models:selftest`, nine cases, no key and no network.
 - **A linter / formatter** (ESLint + Prettier), so style stops being something
   anyone thinks about.
 - **Persistence.** Messages and the activity log both live in memory: a reload
@@ -160,7 +168,8 @@ is exotic, and all of it is explained in `AGENTS.md` §8.
   every message already builds and keeps its own — but nothing sends one yet. The
   fetch, the streaming reader for `chatStream`, and the auth screen the endpoint
   requires are Phase 6.
-- **`.env.example`**, and an error that names a missing key instead of a 500.
+- **`.nvmrc`.** `.env.example` and errors that name a missing key landed with the AI
+  layer, and so did `vercel.json`; this list is down to the one file.
 - **An error boundary**, so a crash is a message and not a white screen.
 - **No `main` branch** — the default branch is `stage/0-foundation`.
 

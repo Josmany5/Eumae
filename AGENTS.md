@@ -50,24 +50,30 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (3935 lines across src/ + api/)
+### Code map (4036 lines across src/ + api/)
+
+That number is `find src api -type f | xargs wc -l | tail -1` — every TS, TSX and
+CSS line under the two directories, counted rather than remembered. It was 3935
+before the AI-layer commits, which added 101 lines to `api/ai.ts` and no net lines
+anywhere else (`src/request.ts`'s citations were re-pointed in place, which is 14
+changed lines and 0 of them new).
 
 | File | Lines | Role |
 | --- | --- | --- |
 | `src/components/settings/Settings.tsx` | 686 | the whole Settings overlay; also owns `useStored`, export/wipe |
-| `api/ai.ts` | 501 | the only server code; Vercel handler |
+| `api/ai.ts` | 602 | the only server code; Vercel handler |
 | `src/App.tsx` | 277 | the shell: tab + page stack + panel + drawers + file input |
 | `src/components/shell/AddSheet.tsx` | 323 | the composer's `+` window — the five turn settings, rail + pane |
 | `src/request.ts` | 221 | the request `/api/ai` will be handed — the turn as prose, the model as a key |
 | `src/components/shell/RightPanel.tsx` | 218 | the right panel (Context / Activity / Studio) |
 | `src/useMedia.ts` | 21 | the `(min-width:900px)` hook both overlays read |
-| `src/nav.ts` | 133 | `NavContext`: go/back, goTab, panel, `turn`, `refs`, pickFile |
+| `src/nav.ts` | 135 | `NavContext`: go/back, goTab, panel, `turn`, `refs`, pickFile |
 | `src/components/shell/Composer.tsx` | 129 | input row, the chip pills, `+`, paperclip, mic, send |
 | `src/components/shell/pageMenu.ts` | 128 | `PAGE_MENU` — each tab's rail rows |
 | `src/components/shell/Sidebar.tsx` | 89 | desktop rail |
 | `src/log.ts` | 78 | the activity log: `LOG_AREAS`, the one writer, the read |
 | `src/pages/SearchPage.tsx` | 70 | the only real sub-page |
-| `src/screens/ChatScreen.tsx` | 93 | the only real tab screen; builds each message's request |
+| `src/screens/ChatScreen.tsx` | 97 | the only real tab screen; builds each message's request |
 | `src/components/shell/icons.tsx` | 73 | the icon registry |
 | `src/components/shell/Drawer.tsx` | 65 | phone drawer |
 | `src/components/shell/Header.tsx` | 37 | title, hamburger, activity, back |
@@ -130,8 +136,10 @@ dependency for accounts.
   unused import is a build failure. React 19.
 - `npm run build` = `tsc --noEmit && vite build`. Types gate the build.
 - `npm run dev` does **not** serve `api/ai.ts`; that needs `vercel dev` or Vercel.
-- No test runner, no ESLint/Prettier, no CI, no `.env.example`. Verification is
-  manual today (§5).
+- No test runner, no ESLint/Prettier, no CI. Verification is manual today (§5),
+  with two exceptions that are real files: `.env.example` names the four keys the
+  server reads, and `npm run check:models:selftest` runs one committed check with
+  no key and no network.
 - Verified good at `6cb3f4d`: 53 modules, 3.54s, `dist/index.html` 1.65 kB,
   CSS 22.95 kB, JS 269.63 kB (82 kB gzipped).
 - The build regularly exceeds a 30-second tool timeout in-session: launch it with
@@ -350,13 +358,37 @@ Phase 4 rebuilt this file — the readings changed, the pill row survived.
 - `useMedia.ts` (21): the `(min-width:900px)` hook, read by Settings and by the `+`
   window so the two overlays cannot disagree about which shape they are in.
 
-### Server — `api/ai.ts` (501)
+### Server — `api/ai.ts` (602)
 
 One default-exported handler: `OPTIONS` → CORS preflight, anything but `POST` →
 rejected, and the caller is authenticated (Supabase URL + anon key) *before*
 `GEMINI_API_KEY` / `GOOGLE_CLOUD_TTS_KEY` are read. **Nothing in the UI calls it
 yet**, and there is no auth screen — so today a real call would be rejected by
 design.
+
+- **A failure answers as a failure.** Five endings used to fail and still answer
+  `200` as though they had not — `speak` with no TTS key, a TTS reply carrying no
+  audio, a refused TTS request, a refused `chat`, and a stream cut off
+  mid-sentence. They are 501/502 with one sentence each (`UPSTREAM_ERROR`,
+  `EMPTY_REPLY`, `SPEAK_FAILED` at the top of the file) and **never the provider's
+  own words**: Google's error body names endpoints and request ids and is written
+  for whoever holds the key, so it goes to the function log and not into the
+  reply. A stream that opened and then failed says so *inside* the stream, as an
+  `error` event ahead of `done` — a reply that stops mid-sentence must not read as
+  a reply that finished.
+- **CORS answers own origins only.** `*` beside `Allow-Credentials: true` is
+  contradictory and browsers reject the pair outright, and the old header list
+  never named `Authorization` — the one header this endpoint exists to receive, so
+  cross-origin sign-in could not have worked. An origin is answered when it is
+  this host or localhost, with `Vary: Origin`, and the list is
+  `Authorization, Content-Type`.
+- **The three model IDs are ones Google actually serves**, which they were not:
+  `best` was `gemini-2.5-flash`, a model Google limits to accounts that used it
+  while it was current, so `Best` would have failed for a new deployment while
+  `Auto` and `Fast` worked. `npm run check:models` is what keeps this from
+  recurring (§5.8); the table's own comment carries the dates.
+- `vercel.json` gives the function `maxDuration: 60`: a stream still being written
+  is not a slow request to be cut off.
 
 ### Styles — `src/styles/tokens.css`
 
@@ -462,9 +494,10 @@ Design tokens plus every component's styles in one file, class-named per compone
 55 modules transformed and `dist/index.html` + `dist/assets/index-*.css|js`.
 Background it (`nohup … &`) and poll; it often exceeds a 30-second tool timeout.
 
-Checks 1-3 were used for the phase that landed before Phase 2, and checks 4-7 for
-the phases since. They were hand-run scratch scripts and are **gone** — this is
-the recipe to rebuild them, and the strongest argument for a test suite:
+Checks 1-3 were used for the phase that landed before Phase 2, and checks 4-8 for
+the work since. Checks 1-7 were hand-run scratch scripts and are **gone** — for
+those this is the recipe to rebuild them, and the strongest argument for a test
+suite. Check 8 is the exception: it was worth keeping, so it is in the repo.
 
 1. **Rail ↔ title ↔ pane integrity.** 22 rail rows ↔ 22 of the 23 titles in the
    titles map ↔ 23 `view === '…'` panes (the extra title and pane are `main`).
@@ -539,6 +572,22 @@ the recipe to rebuild them, and the strongest argument for a test suite:
    `grep -c` in `dist/assets/index-*.js` finds `addWin`, `How Eumae answers` and
    `Scope to a project` once each and `Attach a file` zero times, and the CSS file
    carries `.addWin` with no `.shGroup`/`.sheetBody` left.
+
+8. **The models are served** (added with the AI layer). The only one of the eight
+   that is committed, and the cheapest to run: `checks/models.mjs` reads every
+   quoted `gemini-*` ID out of `api/ai.ts` (plus any `models/<id>:generateContent`
+   URL), asks Google which of them it serves for `generateContent`, and exits **1**
+   if any ID cannot answer, **2** if there is no key to ask with, **0** if all are
+   served. `npm run check:models` needs `GEMINI_API_KEY` — either
+   `vercel env pull .env.local && set -a && . ./.env.local && set +a` first, or
+   export it (the keys live in Vercel; nothing local has them). Without it the run
+   still prints the three IDs it *would* have asked about, which is the useful
+   half. `npm run check:models:selftest` needs nothing at all: nine cases over the
+   two pure parts (`idsIn`, `judge`), including the ones that would have caught the
+   real defects — an ID surviving only in a comment, a hard-coded literal beside
+   the table, and an ID that is listed but not for `generateContent`. Run it when a
+   model is added and after any Google retirement notice; none of the other seven
+   checks covers this, and its failure mode is a reply that never arrives.
 
 **Never claim a UI behaviour works because it typechecks.** Build it, and open
 `dist/index.html` or `npm run preview` when the claim is visual.
@@ -767,7 +816,12 @@ is the pill row again.
 - **Personal data — fixed.** The account cards render an `ACCOUNT` placeholder
   instead of the owner's real name and email. If a profile editor ever lands, keep
   the value out of the source; this file ships to the public.
-- **No `.env.example`, no `.nvmrc`, no `vercel.json`.**
+- **No `.nvmrc`.** This entry used to say there was no `.env.example` and no
+  `vercel.json` either; both landed with the AI-layer guardrails (all four
+  variables named with no values; `maxDuration: 60`), so what is left is the one
+  file. The `VITE_SUPABASE_*` pair is deliberately *not* in `.env.example` until
+  browser code reads it — a file naming a variable nothing reads is a file that
+  lies.
 - **No `main` branch** — the default is `stage/0-foundation`.
 - Fixed in `6cb3f4d`, listed so it isn't "fixed" twice: `.gitignore`'s `.DS_Store/`
   had a trailing slash, so it only ever matched a *directory* of that name and the
@@ -781,13 +835,17 @@ it yet. In priority order for a solo pre-alpha project:
 **Soon — an afternoon, high payoff**
 
 1. **CI.** `.github/workflows/ci.yml`: checkout, `actions/setup-node` (Node 24 or
-   `node-version-file: package.json`), `npm ci`, `npm run build`. Nothing else. Its
-   only job is to stop the branch rotting and make "it builds" a fact instead of a
+   `node-version-file: package.json`), `npm ci`, `npm run build`, `npm run
+   check:models:selftest`. Nothing else — the selftest is the one check that needs
+   no network, no key and no browser, so it can run there from day one. Its only
+   job is to stop the branch rotting and make "it builds" a fact instead of a
    memory.
 2. **ESLint + Prettier.** `typescript-eslint` plus `eslint-plugin-react-hooks`
    (`rules-of-hooks` matters: this codebase calls `useStored` inside a component
    body), then Prettier for formatting. Add `npm run lint` and call it from CI.
-3. **Tests (vitest).** Promote §5's six checks. Cheapest high-value order: the
+3. **Tests (vitest).** Promote §5's eight checks (check 8 is already a script in
+   `checks/`, and leaves no scratch copy behind, so it is the shape the others
+   should land in). Cheapest high-value order: the
    theme boot cases, the settings integrity check, `useStored` round-trip plus the
    export/wipe prefix behaviour, then `logEv` from Phase 2, then check 6 from
    Phase 3 — which is the cheapest of the lot, because `src/request.ts` has no
@@ -798,11 +856,18 @@ it yet. In priority order for a solo pre-alpha project:
 
 **Later — when it actually deploys**
 
-4. **`.env.example` + boot-time validation**: name the four keys, and make a
-   missing key fail loudly with its own name instead of a vague 500.
+4. **`.env.example` + boot-time validation** — **mostly landed** with the
+   AI-layer guardrails: `.env.example` names all four keys with no values, and each
+   one now fails loudly with its own name where it is read (a missing Gemini key is
+   a 500 saying so, a missing TTS key a 501 saying so, an unconfigured Supabase a
+   500 saying so) instead of a vague 500. What is left is one validation pass over
+   all four at boot rather than three checks down inside the handler, and the
+   `VITE_*` pair when the auth screen reads it.
 5. **An error boundary**: one component around `<App />` with a message and a
    reload button; today a render error is a white screen.
-6. **`vercel.json`**: build/output config and SPA rewrites so deep links don't 404.
+6. **`vercel.json`'s rewrites**: the file itself landed with the AI layer
+   (`maxDuration: 60`); what it still needs is the SPA rewrite so a deep link does
+   not 404 on Vercel.
 7. **Build hygiene**: sourcemaps in production, `manualChunks` to split React out
    (one 270 kB chunk today), and a size ceiling.
 8. **Monitoring**: error and performance reporting; matters only once strangers
