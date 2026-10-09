@@ -108,6 +108,23 @@ new), 109 lines to `ChatScreen.tsx` (99 → 208, the send and the thread it draw
   fast-forward, nothing diverged, nothing to force — until 2026-10-06, when both
   names pointed at the same commit and it was retired, local and `origin`. Push
   to `stage/0-foundation` and nowhere else.
+- **Since 2026-10-08 that rule has one exception, and it is on the remote now.**
+  `origin/stage/0-foundation` moved from `0560cdd` to `9a19872` with four commits
+  another session pushed: `5345cdf` *Chat goes live: auth, streaming, server
+  fixes*, `e9afb50` *Auth callback, handled explicitly*, `12ebf0b` *Remove login:
+  no sign-in gate…*, `9a19872` *…delete stale auth files*. That line answered the
+  same task differently — `src/ai.ts` plus `ChatMarkdown.tsx` — and then **removed
+  sign-in**, deleting `src/components/auth/SignIn.tsx` and `src/supabase.ts`. This
+  clone's fifteen commits since `0560cdd` answered it with `src/chat.ts`,
+  `src/voices.ts` and `src/auth.ts`'s token, and did not remove sign-in. One of the
+  two lines would have had to disappear for the other to be `stage/0-foundation`,
+  so nothing was forced: the local line was pushed as **`rebuild/0-foundation`**
+  (new branch, tracking, at `bece690`) and `stage/0-foundation` was left where it
+  stood. Which line becomes the default is the owner's call; merging them means
+  resolving eight files (`api/ai.ts`, `package.json`, `src/App.tsx`,
+  `src/components/settings/Settings.tsx`, `src/components/shell/Composer.tsx`,
+  `src/components/shell/icons.tsx`, `src/screens/ChatScreen.tsx`,
+  `src/styles/tokens.css` — `git merge-tree` counts 22 conflict markers).
 - `backup/pre-rewrite` is **local-only** and stays that way: it is the way back
   from the identity rewrite, so every commit on it predates that rewrite. Never
   push it, and delete it once the scrub is confirmed good.
