@@ -58,6 +58,16 @@ const PATHS: Record<string, JSX.Element> = {
      a reply wearing it would look like it was listening. */
   spk: <><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></>,
 
+  /* The row's other two, from the same place: `IC_COPY` and `IC_EDIT`, drawn at
+     1636 and hung on the two rows above (1642 is the reply's Copy and Read
+     aloud, 1643 is your own Copy and Edit). `tick` is its `IC_CHECK`, which is
+     what a Copy button becomes for a moment after it has copied something —
+     the only receipt wove has, and cheaper than a toast that covers the text
+     you just copied. */
+  cp: <><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></>,
+  ed: <path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />,
+  tick: <path d="M5 13l4 4L19 7" />,
+
   /* The six settings-only glyphs. Each is here because the nearest existing
      icon would have said something untrue: `lnk` is an attach, not a language;
      `db` is storage, not a backup; `doc` already means "report a problem" in

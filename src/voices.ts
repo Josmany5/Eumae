@@ -15,11 +15,17 @@
  *  server already spoke: Achernar was its fallback and Achird its `male`, so the
  *  default is unchanged and a stored name from the old four lands on it.
  *
- *  What the page gives per voice is a name, a gender and a recording, and nothing
- *  else — no adjectives at all. So each row says the two things that are facts
- *  (Google's own gender for it, and where the name is from: every one of the
- *  thirty is a star, a moon, or a figure out of myth) and claims nothing about how
- *  the voice sounds. How it sounds is what Play sample is for.
+ *  What that page gives per voice is a name, a gender and a recording — no
+ *  adjectives at all. So each row used to say where the name came from (every one
+ *  of the thirty is a star, a moon, or a figure out of myth) and claimed nothing
+ *  about the sound. The owner asked for the sound (2026-10-08), and he is right
+ *  about the picker: six names and six star stories is a list about Google's
+ *  naming, not about the only question this pane has to answer — which of these
+ *  do I want to listen to. So `sound` says that, and it is the one line in this
+ *  file that Google's page does not contain: written here, by this app, as a
+ *  guide to how each voice reads. `gender` beside it stays Google's own column,
+ *  which checks/voice.mjs holds it to, and Play sample is still where any
+ *  description can be checked against the thing itself.
  */
 
 export interface Voice {
@@ -30,8 +36,9 @@ export interface Voice {
   name: string;
   /** Google's column for this voice, not a guess (§ api/ai.ts, same table). */
   gender: 'Female' | 'Male';
-  /** Where the name comes from. Nothing here describes how it sounds. */
-  about: string;
+  /** How this voice is to listen to — this app's own guide, since Google
+   *  publishes none, and the reason the row is worth reading at all. */
+  sound: string;
 }
 
 /** The six, in the order the pane shows them. The default is first, and it is
@@ -42,37 +49,37 @@ export const VOICES: Voice[] = [
     id: 'en-US-Chirp3-HD-Achernar',
     name: 'Achernar',
     gender: 'Female',
-    about: 'A star — the end of the river Eridanus.',
+    sound: 'Warm and even, unhurried — the calm one for a long answer.',
   },
   {
     id: 'en-US-Chirp3-HD-Achird',
     name: 'Achird',
     gender: 'Male',
-    about: 'A star in Cassiopeia, sharing its light with a companion.',
+    sound: 'Low and steady, with a narrator\u2019s edge.',
   },
   {
     id: 'en-US-Chirp3-HD-Kore',
     name: 'Kore',
     gender: 'Female',
-    about: 'Persephone under her oldest name: the maiden of the mysteries.',
+    sound: 'Bright and clear, a little brisk — facts read quickly.',
   },
   {
     id: 'en-US-Chirp3-HD-Puck',
     name: 'Puck',
     gender: 'Male',
-    about: 'A moon of Uranus, and the sprite who meddles in midsummer.',
+    sound: 'Light and young, with a lift at the end of a sentence.',
   },
   {
     id: 'en-US-Chirp3-HD-Leda',
     name: 'Leda',
     gender: 'Female',
-    about: 'A moon of Jupiter, and the mother of Helen.',
+    sound: 'Soft and close, slower than the rest — the bedtime one.',
   },
   {
     id: 'en-US-Chirp3-HD-Fenrir',
     name: 'Fenrir',
     gender: 'Male',
-    about: 'The wolf of Norse myth, spoken as one of Google\u2019s voices.',
+    sound: 'Deep and heavy, the slowest read of the six.',
   },
 ];
 
@@ -111,4 +118,57 @@ export function storedVoice(): Voice {
  *  send a bare `name` (which Google would not know) or a label like `female`. */
 export function voiceName(voice: Voice): string {
   return voice.id;
+}
+
+/* ── How fast it is read ──────────────────────────────────────────────────────
+ *
+ *  The server has taken a `rate` since `speak` was written (api/ai.ts:437): it
+ *  parses the string, clamps it to 0.25–4.0 and hands it to Google as
+ *  `speakingRate`. Nothing ever sent one, so every reply was read at 1.0 and the
+ *  parameter was a promise with no caller — which is what the owner found when he
+ *  went looking for the speed control (2026-10-08).
+ *
+ *  The four steps are the ones a person actually reaches for, and they double as
+ *  the labels, so nothing here has to be translated into what the row shows.
+ *  Anything else the setting could hold — a hand-edited file, a value from a
+ *  build that had different steps — is treated as the default rather than
+ *  clamped to whatever is nearest: a reading rate is not something to guess at,
+ *  and 1× is the one speed that is never wrong.
+ */
+
+export interface Speed {
+  /** What the speak request sends as `rate`, and what `speakRate` compares to. */
+  rate: number;
+  /** What the row shows. The same number, spelled the way a person writes it. */
+  label: string;
+}
+
+export const SPEEDS: Speed[] = [
+  { rate: 0.75, label: '0.75×' },
+  { rate: 1, label: '1×' },
+  { rate: 1.25, label: '1.25×' },
+  { rate: 1.5, label: '1.5×' },
+];
+
+/** The step a missing or unreadable setting lands on: the middle one, and the
+ *  speed every reply was read at before this setting existed. */
+export const DEFAULT_SPEED = SPEEDS[1];
+
+/** The setting lives under `eumae:voiceSpeed`, written by Settings through
+ *  `useStored` (Settings.tsx:55) — which stores JSON, so the value on disk is a
+ *  bare number and an old install holds nothing at all. Read here, in the module
+ *  the voice settings live in, for the same reason `storedVoice` is: `voice.ts`
+ *  asks for it at the start of a run and has no value to hand in. */
+const SPEED_KEY = 'eumae:voiceSpeed';
+
+/** The speed to read at, or the default. A rate that is not one of the four is
+ *  the default — see the note above about not guessing. */
+export function storedSpeed(): number {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SPEED_KEY) ?? 'null') as unknown;
+    return SPEEDS.find((s) => s.rate === stored)?.rate ?? DEFAULT_SPEED.rate;
+  } catch {
+    /* No storage, or a value that is not JSON. Either way: the middle step. */
+    return DEFAULT_SPEED.rate;
+  }
 }

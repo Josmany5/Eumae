@@ -1,5 +1,5 @@
 import { accessToken } from './auth';
-import { storedVoice, voiceName } from './voices';
+import { storedSpeed, storedVoice, voiceName } from './voices';
 
 /* The mic — voice typing, from the mockup.
  *
@@ -131,6 +131,12 @@ let silent: string | null = null;
    Held per run rather than read per piece, so changing the setting halfway
    through a reply changes the next thing said, not the sentence being said. */
 let speakVoice: string | null = null;
+/* And how fast, in the same shape and for the same reason: `speakVoice`'s
+   paragraph applies to the rate word for word — settled once when the run starts
+   (src/voices.ts `storedSpeed`), so moving the setting lands on the next thing
+   read and never on the sentence already coming out of the speaker, which would
+   sound like a fault rather than a setting. */
+let speakRate = 1;
 
 /** Is sound coming out? The mic's own guard (1756, 1768). */
 export function speaking(): boolean {
@@ -177,6 +183,14 @@ function silence(): string {
 /** `unlock` (1668), and the listener that gets it a gesture to run inside. */
 function unlock(): void {
   if (unlocked) return;
+  /* Never over a piece that is playing. The silence goes through the same element
+     the reply is coming out of (140), so setting `src` on it stops what was
+     playing — and a piece stopped that way never fires `ended`, which is the only
+     thing that asks for the next one. The run would then sit there "speaking" for
+     ever, and `sounding` is what the mic checks before it types or sends: one tap
+     on the mic while a reply is being read would leave the microphone dead. The
+     listener stays on, so the next gesture is the one that opens the element. */
+  if (running || sounding) return;
   try {
     const el = element();
     el.src = silence();
@@ -203,6 +217,15 @@ function arm(): void {
   if (unlockArmed) return;
   unlockArmed = true;
   document.addEventListener('pointerdown', unlock);
+}
+
+/** Arm the iOS audio-unlock listener, once, before the first tap can matter.
+ *  `arm` is lazy and idempotent; this is the one call the composer makes when it
+ *  mounts, so the `pointerdown` that opens playback is already registered before
+ *  the person reaches for the mic — which is what keeps `unlock` out of the
+ *  mic's own gesture (see `toggleMic`). */
+export function armAudio(): void {
+  arm();
 }
 
 /** Cut text into sentence-sized pieces — the mockup's `chunks` (1670): code
@@ -275,6 +298,13 @@ async function speakNext(say?: (message: string) => void): Promise<void> {
   }
   running = true;
   sounding = true;
+  /* The two lines the mockup keeps beside those (1679: `ACC=""` and the silence
+     timer cleared). Clearing the timer is what stops a send that was already
+     counting down from firing into a muzzled mic — `sounding` above is exactly
+     what turns it away (1756) — where it would be spent on nothing and leave the
+     words sitting in the field for good. */
+  clearTimer();
+  transcript = '';
   const piece = queue.shift() as string;
 
   let token: string | null = null;
@@ -292,14 +322,22 @@ async function speakNext(say?: (message: string) => void): Promise<void> {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    /* `{ text, voice }` — the mockup posts `{ text }` and nothing else (1681),
-       which is why its four names made no difference to what anyone heard. The
-       name sent here is the one Google answers to (`voices.ts`), fixed when the
-       run started: the server's `speak` (api/ai.ts:446) takes it as the voice to
-       synthesize with, so the row that is ticked is the voice that is heard. */
+    /* `{ text, voice, rate }` — the mockup posts `{ text }` and nothing else
+       (1681), which is why its four names made no difference to what anyone
+       heard. The name sent here is the one Google answers to (`voices.ts`), fixed
+       when the run started: the server's `speak` (api/ai.ts:446) takes it as the
+       voice to synthesize with, so the row that is ticked is the voice that is
+       heard. The rate is the same story from the other end — the server has
+       parsed and clamped one since it was written (api/ai.ts:437) and this is the
+       first caller to send it, which is why every reply before now was read at
+       1.0 (src/voices.ts, `storedSpeed`). */
     body: JSON.stringify({
       action: 'speak',
-      data: { text: piece, voice: speakVoice ?? voiceName(storedVoice()) },
+      data: {
+        text: piece,
+        voice: speakVoice ?? voiceName(storedVoice()),
+        rate: String(speakRate),
+      },
     }),
   })
     .then(async (response) => {
@@ -317,6 +355,18 @@ async function speakNext(say?: (message: string) => void): Promise<void> {
       const el = element();
       el.src = `data:${body.mimeType || 'audio/mpeg'};base64,${body.audio}`;
       el.onended = () => speakNext(say);
+      /* And a piece that fails outright — a decode error, usually. `ended` never
+         arrives for one, and the mockup has no answer for that at all (1694): the
+         run stays "speaking" for ever, which makes the mic stop typing and stop
+         sending, so a reply that could not be played takes the microphone with
+         it. That is the same trade `browserVoice` refuses to make in the other
+         direction, so it is refused here too: the browser's voice reads the piece
+         instead. `onended` is dropped first, because both callbacks on this one
+         element have to lead somewhere. */
+      el.onerror = () => {
+        el.onended = null;
+        if (running) browserVoice(piece, () => speakNext(say));
+      };
       try {
         await el.play();
       } catch {
@@ -349,6 +399,11 @@ export function speak(text: string, say?: (message: string) => void, voice?: str
      pressed, which is not necessarily the row that is ticked) and the stored
      setting otherwise. */
   speakVoice = voice ?? voiceName(storedVoice());
+  /* And the speed for this run, from the setting rather than from a caller: the
+     row in Settings is the only place it is chosen, and it writes as it is
+     pressed, so reading it here is what makes a change land on the next thing
+     read — this line's whole job. */
+  speakRate = storedSpeed();
   arm();
   unlock();
   queue = chunks(text);
@@ -438,9 +493,21 @@ function startRec(voice: VoiceTyping): void {
   rec.continuous = true;
   rec.interimResults = true;
 
+  /* The restart count lives on the recogniser, as it does in the mockup (1776):
+     a restart reuses this same object, so the window survives it, and a fresh
+     tap starts a fresh count. It is cleared again whenever a result arrives:
+     recognition that is producing words is not runaway, so the guard only ever
+     fires on a stream that ends over and over with nothing to show. */
+  const restarts: number[] = [];
+
   rec.onresult = (event) => {
     /* Nor is anything typed while it is speaking (1768). */
     if (sounding) return;
+    /* Words arrived — whatever loop `onend` is in, it is producing results, so
+       the runaway window starts over. This is what lets one utterance be read,
+       then the next, without the guard tripping on a browser that ends the
+       stream after every phrase. */
+    restarts.length = 0;
     let settled = '';
     let pending = '';
     for (let i = event.resultIndex ?? 0; i < event.results.length; i++) {
@@ -454,10 +521,6 @@ function startRec(voice: VoiceTyping): void {
     timer = setTimeout(() => voiceSend(voice), SILENCE_MS);
   };
 
-  /* The restart count lives on the recogniser, as it does in the mockup (1776):
-     a restart reuses this same object, so the window survives it, and a fresh
-     tap starts a fresh count. */
-  const restarts: number[] = [];
   rec.onend = () => {
     if (listener !== voice) return;
     const now = Date.now();
@@ -473,20 +536,31 @@ function startRec(voice: VoiceTyping): void {
     try {
       rec.start();
     } catch {
-      /* Already restarting — the end event will come round again. */
+      /* The browser will not start this recogniser again — on iOS a restart
+         outside a fresh gesture is refused. A recogniser that refuses to start
+         will never speak again, so put the button back instead of leaving it
+         lit and silent; the next tap is a fresh start. */
+      stopListening();
     }
   };
 
   rec.onerror = (event) => {
     const reason = event?.error;
-    if (reason === 'not-allowed' || reason === 'service-not-allowed') stopListening();
+    if (reason === 'not-allowed' || reason === 'service-not-allowed') {
+      stopListening();
+      voice.say('Microphone access was denied.');
+    }
+    /* `no-speech` and `aborted` are not fatal: the browser stopped on its own,
+       and `onend` follows and restarts. */
   };
 
   try {
     rec.start();
   } catch {
-    /* The browser refused to open the stream. Nothing to say here: if it was
-       the microphone being refused, `onerror` is what reports it. */
+    /* The browser refused to open the stream synchronously — not an `onerror`
+       report but a refusal right here. Leave nothing lit and silent. */
+    stopListening();
+    voice.say('Could not open the microphone.');
   }
 }
 
@@ -520,10 +594,11 @@ export function toggleMic(voice: VoiceTyping): void {
   transcript = '';
   listener = voice;
   voice.lit(true);
-  /* A tap on the mic is a gesture too, and often the first one — arming the
-     unlock here as well as at `speak` is what lets a spoken answer be read back
-     when the app has not made a sound yet (1668). */
-  arm();
-  unlock();
+  /* No audio here. The mic is speech recognition, which needs its own session;
+     starting an <audio> element in the same gesture (`unlock`) takes that
+     session on iOS before the recogniser can claim it — the "no beep, no
+     transcript" failure. The unlock belongs to the speaker and stays there
+     (`speak`), where `armAudio` has already put the listener in place so the
+     first tap anywhere does it in a gesture. */
   startRec(voice);
 }

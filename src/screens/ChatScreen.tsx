@@ -24,6 +24,45 @@ interface Msg extends ThreadTurn {
 
 const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'What am I forgetting?'];
 
+/** How long a Copy button stays a tick. wove's own 1500ms (1704). */
+const COPIED_MS = 1500;
+
+/** Put this text on the clipboard, and say whether it got there.
+ *
+ *  Two paths, because one is not enough: `navigator.clipboard` needs a secure
+ *  context and, on Safari, a live gesture — and a copy button that quietly copies
+ *  nothing is worse than no button at all, which is why Copy was left off the row
+ *  until now. The second path is wove's own (1703): a scratch textarea, selected,
+ *  `execCommand('copy')`. Whatever happens, the answer is returned rather than
+ *  assumed, and the caller is the one that decides what to say about a failure. */
+async function copyText(text: string): Promise<boolean> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      /* Refused — no secure context, or no permission. The other path, below. */
+    }
+  }
+  try {
+    const scratch = document.createElement('textarea');
+    scratch.value = text;
+    scratch.setAttribute('readonly', '');
+    /* Off-screen rather than hidden: a `display:none` textarea cannot be
+       selected, and `select()` on one copies nothing. */
+    scratch.style.position = 'fixed';
+    scratch.style.top = '0';
+    scratch.style.opacity = '0';
+    document.body.appendChild(scratch);
+    scratch.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(scratch);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 /** The thread.
  *
  *  What Eumae is holding is not shown here — it lives in the right panel, which
@@ -57,6 +96,16 @@ export default function ChatScreen() {
      re-render the whole thread on every frame of a stream. */
   const inFlight = useRef(0);
   const scroller = useRef<HTMLDivElement>(null);
+  /* The box open over a message, so its height can follow what is in it
+     (below). Only one message is ever being edited, so one ref is enough. */
+  const editRef = useRef<HTMLTextAreaElement>(null);
+  /* Which message is being rewritten, and what is in the box. One at a time, and
+     `null` for none — wove keeps the same single `EDITSTATE` (1711). */
+  const [editing, setEditing] = useState<{ id: number; text: string } | null>(null);
+  /* The id whose Copy just worked, so that button can be a tick for a moment
+     (wove swaps the icon the same way, 1704). Zero is no message: ids are
+     `Date.now()`, so no real one is ever 0. */
+  const [copied, setCopied] = useState(0);
 
   /* Keep the newest line in view as pieces land. The mockup scrolls its thread
      the same way (1882); the trigger here is the thread itself, since a piece of
@@ -66,7 +115,27 @@ export default function ChatScreen() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [msgs]);
 
-  const send = (text: string, byVoice = false) => {
+  /* The edit box fits what it holds, capped the way the composer is and for the
+     same reasons (Composer.tsx: 160px, then it scrolls): a message of a
+     paragraph shows as a paragraph, and the box never takes the thread to do
+     it. It is fitted on the next frame because this runs on the render that
+     opened the box, when React has not put the text in the node yet — measure
+     there and it measures an empty field. */
+  useEffect(() => {
+    const el = editRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.style.height = 'auto';
+      el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    });
+  }, [editing]);
+
+  /* `history` is the thread this message belongs to. It is an argument — rather
+     than always `msgs` — because one caller cannot wait for the state to catch
+     up: an edit cuts the thread and re-sends in the same breath (`sendEdit`), and
+     on that render `msgs` is still the list with the old message and its reply
+     in it. Everything else leaves it out and sends the thread as it stands. */
+  const send = (text: string, byVoice = false, history?: Msg[]) => {
     // The mockup reads the mode off what you asked for (line 878), and the add
     // menu's own tip promises it — so the chip has to keep up. It only ever
     // moves to Build or Learn: an ordinary ask leaves the mode where it is.
@@ -83,7 +152,7 @@ export default function ChatScreen() {
        applied here by hand instead of being read back a render too late, and the
        history is the thread as it stands *before* this message, which is what the
        mockup's own `slice(0,-1)` is doing (1871). */
-    const body = toApiBody(buildRequest({ ...turn, mode: moved ?? turn.mode }, refs, text), msgs);
+    const body = toApiBody(buildRequest({ ...turn, mode: moved ?? turn.mode }, refs, text), history ?? msgs);
 
     /* Two ids from one reading of the clock — the turn, and the reply it is
        waiting for — so the reply can still be found in the list while pieces of
@@ -137,6 +206,51 @@ export default function ChatScreen() {
     });
   };
 
+  /** Copy one message. The receipt is wove's: the button becomes a tick for a
+   *  moment and nothing is said, because a toast over the text you just copied is
+   *  in the way of the thing you copied it for. A failure is the one case that
+   *  gets a sentence — silence there is a button that looks like it worked. */
+  const copy = (text: string, id: number) => {
+    void copyText(text).then((ok) => {
+      if (!ok) {
+        notify('Could not copy that');
+        return;
+      }
+      setCopied(id);
+      window.setTimeout(() => setCopied((current) => (current === id ? 0 : current)), COPIED_MS);
+    });
+  };
+
+  /** Open the box on one of your own messages — wove's `wxEdit` (1711). Not while
+   *  a reply is arriving, and it says why rather than doing nothing: an edit cuts
+   *  the thread from that message on, and a thread being written from two
+   *  directions at once is not something either end can make sense of. */
+  const startEdit = (m: Msg) => {
+    if (inFlight.current > 0) {
+      notify('Wait for the reply to finish.');
+      return;
+    }
+    setEditing({ id: m.id, text: m.text });
+  };
+
+  /** Send the rewritten message. Everything from it on goes — the reply it got,
+   *  and anything after that — because the edit is a different question and an
+   *  answer to the old one has nothing to stand on (wove truncates the same way,
+   *  1722). The thread without them is handed to `send` directly: the state has
+   *  not rendered yet, and asking the model about a message that is being
+   *  deleted is exactly the bug this argument exists to avoid. */
+  const sendEdit = () => {
+    const draft = editing;
+    if (!draft) return;
+    setEditing(null);
+    const text = draft.text.trim();
+    if (!text) return;
+    const at = msgs.findIndex((m) => m.id === draft.id);
+    const kept = at < 0 ? msgs : msgs.slice(0, at);
+    setMsgs(kept);
+    send(text, false, kept);
+  };
+
   return (
     <div className="chat">
       <div className="chatScroll" ref={scroller}>
@@ -158,8 +272,44 @@ export default function ChatScreen() {
           <div className="thread">
             {msgs.map((m) => (
               <div key={m.id} className={`msg ${m.role}`}>
-                <div className="msgCol">
-                  {m.streaming && !m.text ? (
+                <div className={`msgCol${editing?.id === m.id ? ' editing' : ''}`}>
+                  {editing?.id === m.id ? (
+                    /* Your own message, open for rewriting — wove's inline box
+                       (1715): the text where the bubble was, Cancel, Send. It sits
+                       in `.msgCol`, which on your side is already right-aligned and
+                       is given the width the box fills while it is open
+                       (tokens.css), so it lands over the message it is replacing
+                       and takes the room a bubble is allowed. Escape is Cancel,
+                       because the browser offers that reflex to anything holding a
+                       draft; Enter sends and Shift+Enter breaks the line, which is
+                       what the field at the bottom of the thread already does
+                       (Composer.tsx). */
+                    <div className="editBox">
+                      <textarea
+                        className="editIn"
+                        ref={editRef}
+                        rows={3}
+                        value={editing.text}
+                        autoFocus
+                        onChange={(e) => setEditing({ id: m.id, text: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') setEditing(null);
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            sendEdit();
+                          }
+                        }}
+                      />
+                      <div className="editBtns">
+                        <button className="editCancel" onClick={() => setEditing(null)}>
+                          Cancel
+                        </button>
+                        <button className="editSend" onClick={sendEdit}>
+                          Send
+                        </button>
+                      </div>
+                    </div>
+                  ) : m.streaming && !m.text ? (
                     /* Three dots while the answer is on its way — the mockup's own
                        waiting row (1866; its `.wxpill` in the style block at 1836). */
                     <div className="wxpill">
@@ -173,22 +323,48 @@ export default function ChatScreen() {
                       {m.note ? <div className="bubbleNote">{m.note}</div> : null}
                     </div>
                   )}
-                  {/* Read aloud, under the reply it reads — the mockup's `rowA`
-                      (1642), which carries a Copy button and this one beside it.
-                      Copy is not here: it needs a clipboard path and a receipt to
-                      say it happened, and a button that copies nothing is worse
-                      than no button. The speaker is real (voice.ts), and it reads
-                      whatever arrived, including a reply cut short. */}
-                  {m.role === 'eumae' && !m.streaming && m.text ? (
+                  {/* The two buttons under a message, from wove's two rows: `rowA`
+                      (1642) is Copy then Read aloud under a reply, `rowU` (1643) is
+                      Copy then Edit under your own. Copy is on both, because both
+                      are text you might want elsewhere; Edit is only on yours,
+                      because a reply is not something you can rewrite. The tick
+                      replacing the copy icon for a moment is wove's receipt too
+                      (1704), and it is the only one: it says it happened without
+                      covering the words that were copied.
+
+                      No row while a reply is still arriving, and none while the box
+                      is open: the buttons belong to a message, and mid-stream there
+                      is no message yet — just the dots — and mid-edit the message is
+                      the box. */}
+                  {!m.streaming && m.text && editing?.id !== m.id ? (
                     <div className="mrow">
                       <button
-                        className="mrowBtn"
-                        onClick={() => speak(m.text, notify)}
-                        aria-label="Read aloud"
-                        title="Read aloud"
+                        className={`mrowBtn${copied === m.id ? ' ok' : ''}`}
+                        onClick={() => copy(m.text, m.id)}
+                        aria-label="Copy"
+                        title="Copy"
                       >
-                        <Icon name="spk" />
+                        <Icon name={copied === m.id ? 'tick' : 'cp'} />
                       </button>
+                      {m.role === 'eumae' ? (
+                        <button
+                          className="mrowBtn"
+                          onClick={() => speak(m.text, notify)}
+                          aria-label="Read aloud"
+                          title="Read aloud"
+                        >
+                          <Icon name="spk" />
+                        </button>
+                      ) : (
+                        <button
+                          className="mrowBtn"
+                          onClick={() => startEdit(m)}
+                          aria-label="Edit"
+                          title="Edit"
+                        >
+                          <Icon name="ed" />
+                        </button>
+                      )}
                     </div>
                   ) : null}
                 </div>

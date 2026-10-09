@@ -45,21 +45,38 @@ async function verifyCaller(req: VercelRequest): Promise<string | null> {
   return data.user.id;
 }
 
-/* The two models the picker can reach, and the reason for each.
+/* The three models this server can send to, and the reason for each.
  *
- * `best` was `gemini-2.5-flash`: a model released in June 2025, which Google
- * now serves only to accounts that used the 2.5 generation while it was
- * current — "we are limiting access to the 2.5 models to users who have
- * actively used them in the past", with new projects pointed at 3.5 Flash-Lite
- * or 3.8 Flash (ai.google.dev/gemini-api/docs/deprecations, read 2026-10-08).
- * A new deployment is precisely the account that note excludes, so Best would
- * have failed on its first turn, and the label promising the most would have
- * been the one that never answered.
+ * `auto` is the entry two things read: a request that names no model at all —
+ * which is what Auto sends, since `MODEL_KEYS.Auto` is undefined
+ * (src/request.ts) — and a request naming something this table does not have.
+ * Both chat branches fall back to `MODEL_IDS.auto`, so this line is the answer
+ * to "what answers by default", and the owner set it to `gemini-2.5-flash-lite`
+ * (2026-10-08): Auto is the quick reply, and Fast and Best are the two rungs
+ * above it.
+ *
+ * One caution belongs beside that choice. Google's deprecation page says the 2.5
+ * generation is served only to accounts that used it while it was current — "we
+ * are limiting access to the 2.5 models to users who have actively used them in
+ * the past" (ai.google.dev/gemini-api/docs/deprecations, read 2026-10-08) — and
+ * a project standing up today is exactly the account that never did. That is the
+ * note which moved Best off `gemini-2.5-flash` (below). If Auto's first reply
+ * fails against the model URL, this is why, and `npm run check:models` with the
+ * project's own key says so without sending a message. Fast and Best are both
+ * 3.x, so neither depends on that history.
+ *
+ * `best` was `gemini-2.5-flash`: a model released in June 2025, which Google now
+ * serves only to accounts that used the 2.5 generation while it was current,
+ * with new projects pointed at 3.5 Flash-Lite or 3.8 Flash. A new deployment is
+ * precisely the account that note excludes, so Best would have failed on its
+ * first turn, and the label promising the most would have been the one that
+ * never answered.
  *
  * `checks/models.mjs` asks Google whether these IDs are still served, so the
  * next retirement is found by running a command rather than by a broken reply.
  */
 const MODEL_IDS: Record<string, string> = {
+  auto: 'gemini-2.5-flash-lite',
   lite: 'gemini-3.5-flash-lite',
   best: 'gemini-3.8-flash',
 };
@@ -186,10 +203,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         functionDeclarations?: unknown[];
         model?: string;
       };
-      /* The fallback is the table's own default rather than a copy of it: a
+      /* The fallback is the table's own `auto` entry rather than a copy of it: a
          literal here is a second thing to remember to change, and one was
-         sitting on this line until checks/models.mjs went looking for it. */
-      const modelId = MODEL_IDS[(data as { model?: string }).model || ''] || MODEL_IDS.lite;
+         sitting on this line until checks/models.mjs went looking for it. It is
+         also what a request with no model at all gets, which is Auto. */
+      const modelId = MODEL_IDS[(data as { model?: string }).model || ''] || MODEL_IDS.auto;
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GEMINI_API_KEY}`,
@@ -240,10 +258,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         functionDeclarations?: unknown[];
         model?: string;
       };
-      /* The fallback is the table's own default rather than a copy of it: a
+      /* The fallback is the table's own `auto` entry rather than a copy of it: a
          literal here is a second thing to remember to change, and one was
-         sitting on this line until checks/models.mjs went looking for it. */
-      const modelId = MODEL_IDS[(data as { model?: string }).model || ''] || MODEL_IDS.lite;
+         sitting on this line until checks/models.mjs went looking for it. It is
+         also what a request with no model at all gets, which is Auto. */
+      const modelId = MODEL_IDS[(data as { model?: string }).model || ''] || MODEL_IDS.auto;
 
       const geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`,

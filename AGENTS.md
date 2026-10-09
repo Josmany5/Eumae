@@ -65,7 +65,7 @@ new), 109 lines to `ChatScreen.tsx` (99 → 208, the send and the thread it draw
 | --- | --- | --- |
 | `src/components/settings/Settings.tsx` | 865 | the whole Settings overlay; also owns `useStored`, export/wipe, the sign-in pane |
 | `api/ai.ts` | 593 | the only server code; Vercel handler |
-| `src/voice.ts` | 529 | the voice layer: voice typing in, read aloud out (from the mockup) |
+| `src/voice.ts` | 556 | the voice layer: voice typing in, read aloud out (from the mockup) |
 | `src/components/shell/AddSheet.tsx` | 323 | the composer's `+` window — the five turn settings, rail + pane |
 | `src/App.tsx` | 279 | the shell: tab + page stack + panel + drawers + file input |
 | `src/auth.ts` | 242 | who is signed in, and the token `/api/ai` checks |
@@ -76,7 +76,7 @@ new), 109 lines to `ChatScreen.tsx` (99 → 208, the send and the thread it draw
 | `src/useMedia.ts` | 21 | the `(min-width:900px)` hook both overlays read |
 | `src/vite-env.d.ts` | 13 | the two `VITE_SUPABASE_*` variables, typed |
 | `src/nav.ts` | 143 | `NavContext`: go/back, goTab, panel, `turn`, `refs`, pickFile, `notify` |
-| `src/components/shell/Composer.tsx` | 188 | input row, the chip pills, `+`, paperclip, mic (live), send |
+| `src/components/shell/Composer.tsx` | 209 | input row, the chip pills, `+`, paperclip, mic (live), send |
 | `src/components/shell/pageMenu.ts` | 128 | `PAGE_MENU` — each tab's rail rows |
 | `src/components/shell/Sidebar.tsx` | 89 | desktop rail |
 | `src/log.ts` | 78 | the activity log: `LOG_AREAS`, the one writer, the read |
@@ -366,16 +366,32 @@ were not voices at all.
   same page the server's own table is checked against). Achernar is first because
   it is the voice the server falls back to, so the row that is ticked is the voice
   a request naming none is read in. §5 check 9 fails if those two ever disagree.
-- Each row carries Google's own gender for the voice and where the name comes from
-  (a star, a moon, a figure from myth), and says nothing about how it sounds: the
-  API gives a name, a gender and a recording, and how it sounds is what Play sample
-  is for.
+- Each row carries Google's own gender for the voice and one sentence this app
+  wrote about **how that voice is to listen to**. Not where the name comes from:
+  that is what the rows said until the owner read them (2026-10-08 — the
+  descriptions were the thing wrong with the picker, in his words), and a
+  mythology note about Achernar tells you nothing about the voice you are choosing
+  between. Google publishes a name, a gender and a recording and no words at all,
+  so the sentence is this repo's own reading of the six, and Play sample is how to
+  check it against your ears. §5 check 9 reads the field by name, so a row that
+  goes back to describing a star fails the check rather than the reader.
+- **Speed is a setting, not a per-reply control**: 0.75× / 1× / 1.25× / 1.5×, with
+  1× the default, as a segmented row above the six voices in the same pane
+  (`eumae:voiceSpeed`). It was not a control at all before 2026-10-08: the server
+  had parsed and clamped a `rate` since `speak` was written and **no caller ever
+  sent one**, so every reply this app has ever read was read at 1.0 while the
+  parameter sat there looking implemented. `storedSpeed` is read once, in `speak`,
+  before the first piece is asked for (`voice.ts`) — so a change lands on the next
+  thing read rather than mid-sentence — and a value that is not one of the four
+  becomes the default rather than the nearest step, because a reading rate is not
+  something to guess at. §5 check 9 fails if a step leaves the range the server
+  clamps to, since the server would silently correct it.
 - `voiceById` is the safety net for the old four: anything it does not recognise,
   including a value already stored on someone's device, becomes the default voice
   rather than failing a reply. `storedVoice` reads the setting from where it is set
   (`eumae:voice`, through Settings' `useStored`) so neither caller passes it in.
 
-### The voice — `src/voice.ts` (529)
+### The voice — `src/voice.ts` (556)
 
 The mockup's voice is two halves, and this is both of them, because they
 interlock: while sound is coming out, the mic neither types nor sends (1756,
@@ -396,6 +412,36 @@ denied microphone, which is not a retry (1778). `voiceSend` (1755) empties the
 transcript as it sends (1759), so the next sentence does not arrive appended to the
 last, and the mic keeps listening afterwards — which is why you can speak twice
 without tapping twice.
+
+**The seam, and the bug that was in it** — found by driving the real composer in
+headless Chrome with a stand-in recogniser, which is the only way to see it: the
+words appeared in the field and the send that should have gone half a second later
+never went, with nothing anywhere saying why. `voice.ts` keeps the `VoiceTyping`
+the composer hands it for the whole dictation (`let listener`), so every callback
+on that object is the one React built on the render that switched the mic on, while
+React makes a fresh `send` on every render after that — and none of them can reach
+the mic. A `send` reading the composer's *state* therefore read the field as it was
+when the mic came on: empty, on a cold mic, for ever. The mockup cannot have this,
+because it reads `#cin.value` off the DOM at both ends (1758, 1854), and its
+`voiceSend` empties the field as it sends (1759) — so with a `send` that returned
+early, the *next* sentence wiped the field instead of adding to it. The composer now
+keeps the field in a ref (`field`) that every writer writes and both ends read;
+`mic:` in checks/voice.mjs is what holds that shape. The speaker's half had the
+same shape of hazard, and both were fixed with it: `unlock` (1668) plays its silence
+through the very element the reply comes out of, so it may not run while a piece is
+playing — a piece stopped that way never fires `ended`, and a run that never ends
+holds the mic's send off (1756) for good; and a piece that fails to decode fires
+`error` rather than `ended`, which `speakNext` now answers instead of staying
+"speaking" for ever. `speakNext` also does what the mockup does beside `SPEAKING`:
+clears the pending silence timer and the transcript (1679), so a send already
+counting down cannot be spent on a muzzled mic.
+
+Checked both ways round in the built app, which is the only reason the first
+claim above is a fact rather than a reading of the code: with the bug in place the
+run recorded `sent: []` with `"make me a poster"` still in the field, and with the
+fix `sent: [{ text: "make me a poster", byVoice: true }]` with the field empty —
+while the keyboard's own send worked in both runs, which is why the mic looked
+broken rather than the composer.
 
 **Out — read aloud.** `chunks` (1670) cuts text into sentence-sized pieces and
 drops code fences; `speakNext` (1677) asks for one piece at a time and chains
@@ -426,9 +472,16 @@ Where the mockup falls back to the browser's voice silently (1685), this says on
 short sentence first — "Signed out — reading with the browser voice" — and then
 reads it in the browser's voice. Settings → Voice's **Play sample** (the mockup's
 own button, 613 and 692, which only toasts "Playing sample…" there) plays the voice
-that is ticked, and a reply in the thread carries the mockup's own read-aloud row
-under it (`rowA`, 1642 — with a Copy button beside this one that is not built yet,
-because copying needs a receipt to say it happened).
+that is ticked, and a reply in the thread carries the mockup's own row under it
+(`rowA`, 1642 / `rowU`, 1643 — **Copy + Read aloud** under a reply, **Copy + Edit**
+under your own message; Copy and Edit landed 2026-10-08, and the receipt for a
+copy is wove's own: the icon becomes a green tick for 1500ms and nothing is said,
+because a toast over the text you just copied is in the way of the thing you
+copied it for. Edit's box is the composer's field where the bubble was: `resize:none`,
+grown from `scrollHeight` up to the same 160px, as wide as a bubble may be in the
+thread — which the column underneath has to be told, since a percentage of a
+shrink-to-fit column is 85% of nothing — with Enter sending it and Shift+Enter
+breaking the line).
 
 `npm run check:voice` runs the pure parts — the two functions, and the table of
 voices itself (§5 check 9). One thing is deliberately left open, in §7: the lock,
@@ -802,12 +855,17 @@ the repo, under `checks/`.
    `vercel env pull .env.local && set -a && . ./.env.local && set +a` first, or
    export it (the keys live in Vercel; nothing local has them). Without it the run
    still prints the three IDs it *would* have asked about, which is the useful
-   half. `npm run check:models:selftest` needs nothing at all: nine cases over the
+   half. `npm run check:models:selftest` needs nothing at all: eleven cases over the
    two pure parts (`idsIn`, `judge`), including the ones that would have caught the
    real defects — an ID surviving only in a comment, a hard-coded literal beside
-   the table, and an ID that is listed but not for `generateContent`. Run it when a
-   model is added and after any Google retirement notice; none of the other eight
-   checks covers this, and its failure mode is a reply that never arrives.
+   the table, and an ID that is listed but not for `generateContent`. Two of the
+   eleven are about `Auto` rather than about an ID: which entry it names, and that
+   **both** chat branches fall back to that entry, read straight off the source —
+   because the entry can be right while the request that names no model still
+   lands somewhere else, and the symptom is a first message that never answers.
+   Run it when a model is added and after any Google retirement notice; none of
+   the other eight checks covers this, and its failure mode is a reply that never
+   arrives.
 
 9. **The voice's pure parts** (added with the voice layer; the table added with the
    wire). Committed, needs nothing: `npm run check:voice` lifts `chunks` and
@@ -818,22 +876,38 @@ the repo, under `checks/`.
    fence is never read aloud, a long reply splits within the limit **read out of
    the source** (the verdict is named with the number it found), and the silence is
    a real WAV — RIFF/WAVE, PCM, mono, 8-bit, 8000 Hz, sizes that agree, a payload at
-   128. Then eight more over `src/voices.ts`, which is *run* rather than read (its
-   whole file transpiles: a table and three small functions): six rows, each id the
+   128. Then twelve more over `src/voices.ts`, which is *run* rather than read (its
+   whole file transpiles: a table and four small functions): six rows, each id the
    name Google answers to, every name on Google's own en-US list and carrying
    Google's gender for it (the list is in the check, with the page and the date),
    the default the same voice `api/ai.ts` falls back to **read out of the server**,
    an old name like `Nova` landing on the default rather than failing, the speaker
    sending the name it speaks in, and the Settings pane drawn from the table rather
-   than from the mockup's four names. Exit **1** if any verdict fails, **0** if all
-   hold. `npm run check:voice:selftest` is the part that makes it worth having:
-   seventeen cases, sixteen of them deliberate breaks text-substituted into the
-   real files (the limit raised, fences no longer dropped, RIFF misspelled, the
-   rate moved to 44.1kHz, the declared depth changed, the payload made non-silent,
-   the function renamed, the limit line deleted, a row renamed to a voice Google
-   does not have, a gender flipped, the server's default moved, the voice dropped
-   from the speak request, the pane put back to the four names, the table made
-   unreadable) and one comment-only change that must **not** raise an alarm.
+   than from the mockup's four names. Four of the twelve are the speed, added with
+   it: the four steps with 1× the default and **every step inside the range the
+   server clamps to** (that range read out of `api/ai.ts`, not written here),
+   `storedSpeed` handing back one of those steps and not a raw number, the pane
+   drawing the steps from the table, and the rate settled in `speak` and sent on the
+   request — the last one is the whole defect, since the server had always taken a
+   `rate` that nothing ever sent. Four more over the seam between the composer
+   and the mic, which is where the mic actually went silent: the send takes its text
+   off the field rather than off the render it was built on, the field the mic reads
+   is the one every writer writes, the silence is never played over a piece that is
+   playing, and a piece that cannot be played still advances the run. Exit **1** if
+   any verdict fails, **0** if all hold. `npm run check:voice:selftest` is the part
+   that makes it worth having: twenty-five cases, twenty-four of them deliberate
+   breaks text-substituted into the real files (the limit raised, fences no longer
+   dropped, RIFF misspelled, the rate moved to 44.1kHz, the declared depth changed,
+   the payload made non-silent, the function renamed, the limit line deleted, a row
+   renamed to a voice Google does not have, a gender flipped, the server's default
+   moved, the voice dropped from the speak request, the pane put back to the four
+   names, a speed step pushed past the server's ceiling, the speed fallback made a
+   number that is not a step, the speed row dropped from the pane, the `rate` line
+   deleted from the speak request, the table made unreadable, the mic's send put
+   back to reading the render,
+   the mic handed a read of the render, the speaker allowed to play over itself, and
+   the failed piece left un-answered) and one comment-only change that must **not**
+   raise an alarm.
    Neither script is wired into `build`: the build is what a deploy runs, and a
    voice regression should not be able to stop a deploy that has nothing to do with
    voice.
@@ -872,6 +946,34 @@ there is nothing to install. `Emulation.setDeviceMetricsOverride` sets the width
 (which is what makes `useMedia` switch shapes), `Runtime.evaluate` clicks, and
 `Page.captureScreenshot` writes a PNG you can look at. That is how Phase 5's three
 surfaces were checked; kill both processes afterwards.
+
+For a claim about a **streamed** reply, `python3 -m http.server` is not enough: it
+answers the POST at once, so the reply has no text, and every row worth looking at is
+drawn only for a message that has text — which is why the phase-6 run below could see
+no rows at all. A twenty-line stand-in for `/api/ai` that serves `dist/` and writes
+`data: {"text": …}` frames is enough, and its frames must carry **pieces**, never the
+reply so far: `src/chat.ts` appends what a frame brings, so cumulative frames make the
+app look like it draws its own reply twice. Two more requirements, an hour each: a
+copy only succeeds with `Emulation.setFocusEmulationEnabled` (a real window is focused
+when a button is clicked) **and** `Browser.grantPermissions` for `clipboardReadWrite`
+on the origin; and anything typed has to go through the prototype's own `value` setter
+plus an `input` event, because React reads `value` off the event and `field.value = …`
+is invisible to it. Aim the assertions at the whole value: a `includes()` on a reply
+passes happily while the reply is being drawn twice. The driver itself is thrown away
+at the end, as the earlier ones were — but this is the script to rebuild first if the
+rows ever regress.
+
+A voice claim needs one more trick, because headless Chrome has no microphone and
+its recogniser never produces anything: put a stand-in on `window` **before the
+app's bundle loads** — `window.__recs = []; window.SpeechRecognition =
+window.webkitSpeechRecognition = function () { window.__recs.push(this) }` — and
+then call `rec.onresult({ resultIndex: 0, results: { length: 1, 0: { isFinal:
+true, 0: { transcript: '…' } } } })` and wait longer than `SILENCE_MS`. It works
+because the voice layer looks the constructor up when the mic is tapped rather than
+at import, so a stand-in installed in the page is enough. `file://` will not load an
+ESM bundle, so build one `iife` bundle of `src/main.tsx` with the project's own
+esbuild first, and define `import.meta.env` for it — Vite defines that, esbuild does
+not, and `src/auth.ts` reads it while the module is still evaluating.
 
 ---
 
@@ -1054,26 +1156,48 @@ real token and a configured deployment can be signed into.
 `src/request.ts` posted to `/api/ai` with the caller's token, the SSE frames read
 back, the reply drawn in the thread as it arrives — with the mockup's own three
 dots (`.wxpill`, 1836/1866) while it is on the way and a sentence under it when it
-did not arrive whole — and the mockup's read-aloud row beneath each reply (`rowA`,
-1642), whose speaker glyph (`IC_SPK`, 1639) is in `icons.tsx` as `spk` now.
-`ChatScreen` calls `speak` on a reply when the turn came in by voice (1902), which
-is the flag the voice layer already carried across `send`. What is left of Phase 6
-is everything that is not chat: Studio artifacts, the panel's Studio reading, and
-the log's second layer (I5).
+did not arrive whole — and the mockup's row beneath every message (`rowA`/`rowU`,
+1642/1643): Copy on both, Read aloud under a reply, Edit under your own. Copy's
+receipt is wove's and is the only one — the tick — because a toast covers the words
+just copied; Edit is this side's own two messages short of wove's, since the box
+replaces the bubble in place and the thread is cut from that message on. Read aloud
+speaks the reply whatever its length, and `ChatScreen` also calls `speak` on a reply
+when the turn came in by voice (1902), which is the flag the voice layer already
+carried across `send`. What is left of Phase 6 is everything that is not chat:
+Studio artifacts, the panel's Studio reading, and the log's second layer (I5).
 
 **Verified**, because a UI claim that only typechecks is not a claim (§5): `npm run
-build` green at **103 modules** (CSS 23.62 kB, JS 227.81 kB plus the 288.76 kB auth
-chunk), `check:chat` 15 of 15, `check:chat:selftest` 9 of 9, `check:voice` 17 of
-17, `check:voice:selftest` 17 of 17, `check:models:selftest` 9 of 9. Then the built
-app, driven in headless Chrome over the DevTools protocol (§5): a send posted, the
-thread drew the reply's own failure sentence under it ("No reply came back. Try
-again." — what a static file server answers a POST with), and Settings → Logs held
-both rows, `Sent: …` with the ok dot and `No reply: …` with the bad one.
-Settings → Voice listed the six real voices with Google's gender and each name's
-origin, Achernar ticked. **What that run could not show**, and nothing on this
-machine can: a real reply (no key, no signed-in account), so the read-aloud row was
-never seen rendered — it is drawn only for a reply that has text — and the three
-dots were not caught mid-stream, because a static server refuses the POST at once.
+build` green at **103 modules** (CSS 24.35 kB, JS 227.81 kB plus the 292.34 kB auth
+chunk), `check:chat` 15 of 15, `check:chat:selftest` 9 of 9, `check:voice` 25 of
+25, `check:voice:selftest` 25 of 25, `check:models:selftest` 11 of 11 — and then the
+built app itself, driven in headless Chrome over the DevTools protocol (§5),
+**23 of 23 verdicts holding** on 2026-10-08. That driver is a throwaway script: it
+serves `dist/` behind a twenty-line stand-in for `/api/ai` (a real file server
+refuses the POST, and every row this phase is about is drawn only for a message
+that has text), posts one message, and then watches — the three dots caught
+mid-stream, the reply arriving piece by piece, the row appearing under it only once
+it is whole, `rowU` reading Copy then Edit and `rowA` Copy then Read aloud, the tick
+where the copy was, the clipboard actually holding the message, the edit box opening
+on the words with that message's row stepping out of the way, the box's own
+geometry, Escape closing it with the message untouched, Send cutting the thread from
+that message on and re-sending in one breath, and Enter doing what Send does while
+Shift+Enter keeps the box open. A PNG at every step. Settings → Logs and
+Settings → Voice were the previous run's findings and still stand.
+
+**Two things that run found, and both were real.** The edit box came out **185px
+wide in a 720px thread, with the browser's own drag grip in its bottom corner**: it
+is sized as a percentage, and `.msgCol` is a flex item — sized to its text, so it
+has no width for a percentage to resolve against, and 85% came out as `auto`, the
+width of an empty textarea's twenty columns. Opening the box now gives the column a
+width (`.msgCol.editing`, 80%, the same rule a bubble has), the box fills it up to
+520, `resize` is `none`, and `ChatScreen` grows the field from `scrollHeight` the way
+`Composer.tsx` does, capped at the same 160px. And the reply arrived **with its
+first sentences written twice**, which read exactly like the app appending frames it
+had already appended — and was the harness: the stand-in sent the whole reply so far
+in every frame while `src/chat.ts` appends what a frame brings, as the real server
+does (§5). The first run's 17 verdicts were green through all of it, because the one
+reading the reply asked whether it *contained* the right words; it compares the whole
+text now. A check that cannot fail is not a check.
 
 **Phase 7 — the Logs lens.** The deep dive, in Settings rather than the panel
 (`IDEAS.md` I6-I7): one filter object (`{ who?, phase?, type?, area?, q? }`)

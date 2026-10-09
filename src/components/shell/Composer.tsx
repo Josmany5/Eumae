@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from './icons';
 import { useNav, DEFAULT_TURN } from '../../nav';
-import { stopListening, toggleMic, type VoiceTyping } from '../../voice';
+import { armAudio, stopListening, toggleMic, type VoiceTyping } from '../../voice';
 
 interface ComposerProps {
   /** `byVoice` is true when the mic sent this rather than the keyboard — the
@@ -48,16 +48,37 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
   };
 
   /** Grow the field to its content — the same rule the typing below applies,
-   *  and needed here too, because the mic writes without a keystroke. */
+   *  and needed here too, because the mic writes without a keystroke.
+   *
+   *  Fitted on the next frame rather than inside the handler that asked: the
+   *  handler runs before React has put the new value in the node, so measuring
+   *  there measures the *previous* text and the field ends up one step behind
+   *  what it holds — a dictation several sentences long stays one sentence tall.
+   *  Deferring is also what keeps the mockup's own rule exact — it sets `.value`
+   *  and resizes in the same breath (1841), which in a DOM that already holds the
+   *  text is what "measure after the write" means. */
   const fit = () => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    requestAnimationFrame(() => {
+      el.style.height = 'auto';
+      el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    });
   };
 
   const send = (byVoice = false) => {
-    const value = text.trim();
+    /* Read off the field, not off the state variable — and this is the whole
+       reason `field` exists. `send` is handed to `voice.ts` inside the `VoiceTyping`
+       the mic builds (below, and voice.ts:394), and that module holds the object
+       for the entire dictation: every later render makes a *new* `send`, and none
+       of them can reach the one the mic is holding. So a `send` that closed over
+       `text` would still be reading the field as it was when the mic was switched
+       on — empty, on a cold mic — and the half-second-quiet send would return
+       early without a word, for ever. `field.current` is written on every change
+       from either side (typing, `/`, the mic, this function), so it is one value
+       with one writer, and it is the same reading the mockup takes straight off
+       `#cin.value` at both ends (1758, 1854). */
+    const value = field.current.trim();
     if (!value) return false;
     onSend(value, byVoice);
     setText('');
@@ -89,7 +110,13 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
   };
 
   /* Losing the composer is losing the mic's only reason to be listening. */
-  useEffect(() => stopListening, []);
+  useEffect(() => {
+    /* Register the iOS audio-unlock listener before any tap, so the first
+       gesture unlocks playback without the mic having to touch audio in its own
+       gesture (voice.ts `armAudio`). */
+    armAudio();
+    return stopListening;
+  }, []);
 
   /* The chip row — the mockup's `chipsHTML` (line 1270) taken one step further.
      That one always shows the mode, adds the role unless it is Default and the

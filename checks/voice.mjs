@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* Run the pure parts of the voice layer: the sentence cutter, the silence the
- * audio element is opened with, and the table of voices.
+ * audio element is opened with, the table of voices, and the seam the microphone
+ * is wired through.
  *
  * The first two are the kind of code that fails quietly. `chunks` decides how
  * much text goes into one request to the voice server: let a piece grow past the
@@ -18,6 +19,17 @@
  * it: the names against Google's own list (written below, with the page and the
  * date it was read), the default against the name the server falls back to, and
  * the fact that the speaker sends the name it is speaking in.
+ *
+ * The fourth is a seam rather than a file. The composer hands the mic a
+ * `VoiceTyping` once, when the button goes on, and src/voice.ts holds that object
+ * for the whole dictation — while React builds a fresh `send` on every render
+ * afterwards. So a `send` that reads the composer's *state* reads the field as it
+ * was when the mic came on: empty, on a cold mic. That was a real bug in this repo,
+ * the one that made the mic look broken, and it is invisible from either file on
+ * its own: the composer's own code looks right, and so does the voice layer's. Four
+ * verdicts over the two files' shared contract, because the failure they describe
+ * is silent — no error, no reply, nothing on screen but the words you just spoke,
+ * sitting in the box.
  *
  * So this check runs them for real rather than reading them. Both live in
  * src/voice.ts, which as a whole cannot be imported here: it is TypeScript and
@@ -41,14 +53,16 @@
 import { readFileSync } from 'node:fs';
 import { transformSync } from 'esbuild';
 
-/** The three other sources this check reads: the table of voices, the server that
- *  has to fall back to the same voice, and the pane that draws the list. Read
- *  from disk here and overridable per call, so checks/voice.selftest.mjs can break
- *  them the same way it breaks src/voice.ts. */
+/** The four other sources this check reads: the table of voices, the server that
+ *  has to fall back to the same voice, the pane that draws the list, and the
+ *  composer the mic is actually wired into. Read from disk here and overridable
+ *  per call, so checks/voice.selftest.mjs can break them the same way it breaks
+ *  src/voice.ts. */
 const real = (relative) => readFileSync(new URL(relative, import.meta.url), 'utf8');
 const VOICES = real('../src/voices.ts');
 const SERVER = real('../api/ai.ts');
 const SETTINGS = real('../src/components/settings/Settings.tsx');
+const COMPOSER = real('../src/components/shell/Composer.tsx');
 
 /** How long the silence is: two numbers this file does state itself, because
  *  they are its claim about the shape of the audio rather than the source's. */
@@ -206,13 +220,48 @@ function tableVerdicts(table, server, speaker, settings) {
     'src/components/settings/Settings.tsx',
   );
 
+  /* ── How fast it is read ───────────────────────────────────────────────────
+     Three things have to agree before a speed is real, and each of them was
+     missing until 2026-10-08 — the server parsed and clamped a `rate` that no
+     caller ever sent (api/ai.ts:442), and the pane had no row for it. So: the
+     steps about to be offered, the row that offers them, and the number that
+     leaves for the server. The range is read out of the server's own clamp
+     rather than written here, because a step outside it would be silently
+     corrected on the way and the setting would read as broken. */
+  const range = server.match(/Math\.min\(([\d.]+), Math\.max\(([\d.]+), speakingRate\)\)/);
+  const steps = (table.SPEEDS || []).map((s) => s.rate);
+  judge(
+    `speed: four steps, 1× the default, all inside the server's own ${range ? `${range[2]}–${range[1]}` : 'range'}`,
+    !!range &&
+      steps.join(',') === '0.75,1,1.25,1.5' &&
+      table.DEFAULT_SPEED.rate === 1 &&
+      (table.SPEEDS || []).every((s) => typeof s.label === 'string' && s.label.length > 0) &&
+      steps.every((rate) => rate >= Number(range[2]) && rate <= Number(range[1])),
+    `steps=${steps.join(', ')} default=${table.DEFAULT_SPEED.rate} storedSpeed() with nothing stored=${table.storedSpeed()}`,
+  );
+  judge(
+    'speed: the setting the reader asks for is one of those steps, not the raw number',
+    typeof table.storedSpeed === 'function' && steps.includes(table.storedSpeed()),
+    'src/voices.ts, `storedSpeed` — the default when nothing is stored',
+  );
+  judge(
+    'speed: the pane draws the steps from the table, not from a list of its own',
+    /SPEEDS\.map/.test(settings) && /setSpeed/.test(settings),
+    'src/components/settings/Settings.tsx',
+  );
+  judge(
+    'speed: the rate is settled when the run starts and travels on the request',
+    /speakRate = storedSpeed\(\)/.test(speaker) && /rate: String\(speakRate\)/.test(speaker),
+    'src/voice.ts — `speak` reads it, `speakNext` sends it',
+  );
+
   return out;
 }
 
 /** Judge a source. Returning the verdicts instead of printing them is what lets
  *  checks/voice.selftest.mjs hand this text it has broken on purpose and assert
  *  that every break is caught. */
-export function verdicts(source, voices = VOICES, server = SERVER, settings = SETTINGS) {
+export function verdicts(source, voices = VOICES, server = SERVER, settings = SETTINGS, composer = COMPOSER) {
   const lifted = {};
   try {
     const host = { exports: {} };
@@ -321,6 +370,58 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     judge('voices: the table can be lifted out and read', true, `${table.VOICES.length} rows`);
     out.push(...tableVerdicts(table, server, source, settings));
   }
+
+  /* ── The microphone ────────────────────────────────────────────────────────
+     The mic is two files: this one, which runs the recogniser, and the composer,
+     which owns the field. Where they meet is a single object — `VoiceTyping`,
+     handed to `toggleMic` when the button goes on — and that is the seam that
+     failed: voice.ts holds the object for the whole dictation (`let listener`,
+     below), so every callback on it is the one built on the render that switched
+     the mic on, while React makes a new copy of the composer's `send` on every
+     render after that. A `send` reading the composer's *state* therefore reads
+     the field as it was when the mic came on — empty, on a cold mic — and the
+     dictation never leaves the box, with nothing anywhere saying why. The field
+     ref is the one value every writer writes, which is why the send and the read
+     both have to come off it. Asserted on the line that decides it rather than on
+     the presence of a name, so a rewrite that keeps the meaning keeps passing. */
+  const sendStart = composer.indexOf('const send = (byVoice = false) => {');
+  const sendBody = sendStart < 0 ? '' : composer.slice(sendStart, composer.indexOf('\n  };', sendStart));
+  const fromField = /const value = ([^;]+);/.exec(sendBody);
+  judge(
+    'mic: the send takes its text off the field, not off the render',
+    !!fromField && fromField[1].trim() === 'field.current.trim()',
+    fromField ? `const value = ${fromField[1].trim()};` : "no `const value = ...;` in the composer's send",
+  );
+  judge(
+    'mic: the field the mic reads is the one every writer writes',
+    /read: \(\) => field\.current/.test(composer) && /field\.current = value;/.test(composer),
+    'the read the mic is given, and the write behind every change',
+  );
+
+  /* And the speaker's half of the same seam: while it is reading, it holds the
+     mic's send off (1756) — so a run that never finishes is a microphone that
+     never types again. These two are the ways out. A renamed function is the same
+     answer as a missing line: an empty body fails the verdict instead of throwing
+     through the one that has to report it. */
+  const bodyOf = (name) => {
+    try {
+      return snippet(source, name);
+    } catch {
+      return '';
+    }
+  };
+  const unlockBody = bodyOf('unlock');
+  judge(
+    'speak: the silence is never played over a piece that is playing',
+    /if \(running \|\| sounding\) return;/.test(unlockBody),
+    unlockBody ? 'unlock, which plays through the element the reply comes out of' : 'unlock is not in src/voice.ts',
+  );
+  const speakBody = bodyOf('speakNext');
+  judge(
+    'speak: a piece that fails to play still advances the run',
+    /el\.onerror = /.test(speakBody),
+    speakBody ? "the run's own answer to a piece it cannot play" : 'speakNext is not in src/voice.ts',
+  );
 
   return out;
 }

@@ -32,20 +32,48 @@ export const BASE_PROMPT =
   'else in the app; if they ask you to do something inside the app, say plainly that this ' +
   'thread is not wired to do that yet. Answer everything else normally.';
 
-/** What each mode asks for, from the mockup's own clauses (1647). The sentences
- *  are the mockup's; the pronouns are not — it addressed one man by name. */
+/** What each mode asks for. The mockup's clauses (1647) are one short sentence
+ *  each and this keeps that length — but the three are now three different
+ *  *jobs* rather than three tones, because the two that were thin were failing in
+ *  ways the owner met (2026-10-08):
+ *
+ *   - Ask answered the question and then, sometimes, made something. Nothing
+ *     asked it to; the always-on line below did (it used to be pushed on every
+ *     reply), which is how a question about a country came back with a page.
+ *   - Build dropped the code into the chat and left it there: a wall of html with
+ *     the guide somewhere inside it, when what a person wants first is what was
+ *     made and how to use it. This clause says which comes first. It cannot yet
+ *     say where the thing should *land* — nothing renders an artifact (§7), so
+ *     the code block is still the only way a built thing leaves a reply, and that
+ *     is a gap in the app rather than a shortcoming of this sentence.
+ *   - Learn taught in fragments — a fact, then another fact, then an idea nobody
+ *     asked for. The shape below is a lesson, in the order a lesson goes, and the
+ *     last line is what keeps it on the subject that was asked about.
+ */
 const MODE_CLAUSE: Record<Mode, string> = {
-  Ask: '. Talk, plan, and decide with them.',
-  Build: '. If you make something visual, return it as one complete html code block.',
-  Learn: '. Teach clearly, with short examples.',
+  Ask: '. Talk, plan, and decide with them. Answer in prose, on the thing they asked about, and keep code out of the reply unless they ask for code.',
+  Build:
+    '. Make the thing they asked for. Open with what you made and how to use it — a short guide, ' +
+    'not a second copy of the thing — and put the thing itself at the end, once.',
+  Learn:
+    '. Teach it as a lesson rather than a set of facts: what it is, why it matters, how it works ' +
+    'step by step, one worked example, and one thing to try next. Stay on what they asked about: ' +
+    'no detours, and no extra ideas they did not ask for.',
 };
 
-/** The always-on line (mockup 1655): Studio's whole premise, told to the model
- *  before anyone has built Studio. It stays because it is what makes a built
- *  thing land in one shape instead of five. */
+/** Studio's premise (mockup 1655), and since 2026-10-08 Build's alone.
+ *
+ *  It used to be pushed onto every reply, and that is where the trouble started:
+ *  "return it as one complete html code block" is an instruction to make
+ *  something, and it was being given on every turn — including in Ask and Learn,
+ *  where nobody had asked for a thing to be made. The sentence is Studio's, so it
+ *  now travels only with the mode that builds for it. It stays in that mode
+ *  because it is what makes a built thing land in one shape instead of five, and
+ *  one shape is what makes it findable later, when something renders it (§7). */
 const VISUAL =
   'If you make something visual for them to use (a page, widget, calculator, game, document ' +
-  'layout), return it as one complete html code block.';
+  'layout), return it as one complete html code block: whole, working on its own, and at the ' +
+  'end of the reply. The words above the block are a guide to it — never a second copy.';
 
 /** How this one message was asked: the chat's turn, plus the two things that
  *  belong to the message rather than to the chat — what was attached, and what
@@ -84,7 +112,11 @@ export function directives(req: TurnRequest): string {
      instruction. */
   if (req.thinking === 'Quick') lines.push('Keep the reply brief.');
   if (req.thinking === 'Deep') lines.push('Think it through and give a fuller, more careful answer.');
-  lines.push(VISUAL);
+  /* The premise only where it can be acted on: Build is the mode that makes a
+     thing, so it is the mode that is told what shape to make it in. Every other
+     mode gets a clause that fits what it is for (above), rather than a standing
+     invitation to start building. */
+  if (req.mode === 'Build') lines.push(VISUAL);
   return [
     '',
     '',

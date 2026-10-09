@@ -3,7 +3,7 @@ import { Icon } from '../shell/icons';
 import { LOG_AREAS, useLog, type LogArea } from '../../log';
 import { useMedia } from '../../useMedia';
 import { speak } from '../../voice';
-import { DEFAULT_VOICE, VOICES, voiceById } from '../../voices';
+import { DEFAULT_SPEED, DEFAULT_VOICE, SPEEDS, VOICES, voiceById } from '../../voices';
 import { createAccount, emailLink, signIn, signOutUser, useAuth } from '../../auth';
 
 // Who the cards show when nobody is signed in. The placeholder is deliberate: this
@@ -172,6 +172,11 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
      default — so an install that chose one of the four old names reads as the
      default voice now, and never fails. */
   const [voice, setVoice] = useStored('voice', DEFAULT_VOICE.id);
+  /* How fast a reply is read. The key has to be this one: `storedSpeed`
+     (src/voices.ts) reads `eumae:voiceSpeed`, and `useStored` writes `eumae:`
+     in front of whatever it is handed — so the row here and the request there
+     are the same setting rather than two that happen to look alike. */
+  const [speed, setSpeed] = useStored('voiceSpeed', DEFAULT_SPEED.rate);
   const [notif, setNotif] = useStored('notif', { allow: true, proposals: true });
   const [websearch, setWebsearch] = useStored('skill-websearch', true);
   const [style, setStyle] = useStored('personalization', '');
@@ -532,17 +537,37 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
 
         {view === 'voice' && (
           <>
+            {/* Speed, above the list because it changes how every one of these
+                reads. Four steps and no more: a rate read out to two decimal
+                places is a number, not a choice, and the four are the ones a
+                person actually reaches for. `useStored` writes as the button is
+                pressed, which is what lets this and the next reading agree
+                without a Save — and the sample button below is the quickest way
+                to hear what the difference is. */}
+            <div className="seg" style={{ padding: '12px 16px 0' }}>
+              {SPEEDS.map((s) => (
+                <button className={speed === s.rate ? 'on' : ''} key={s.rate} onClick={() => setSpeed(s.rate)}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <div className="s m" style={{ padding: '8px 16px 12px' }}>
+              Speed — how fast a reply is read out loud.
+            </div>
             <div className="sg">
               {VOICES.map((v) => (
                 <button className="sr" key={v.id} onClick={() => setVoice(v.id)}>
                   <span className="g">
                     {v.name}
                     {/* Google gives a voice a name, a gender and a recording, and
-                        nothing else — so the row says those two facts and where the
-                        name comes from, and the sample button below is where "how
-                        does it sound" is answered. */}
+                        no adjectives at all — so the second line is how this one
+                        sounds, written here rather than quoted, because a list of
+                        six names is a list of six names and this pane's only real
+                        question is which of them to listen to. The gender stays
+                        Google's own column (checks/voice.mjs holds it there), and
+                        Play sample is where the description can be checked. */}
                     <div className="d">
-                      {v.gender} · {v.about}
+                      {v.gender} · {v.sound}
                     </div>
                   </span>
                   {v.id === voice ? <span className="ch" style={{ color: 'var(--ac)' }}>✓</span> : null}
@@ -560,9 +585,11 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
               </button>
             </div>
             <div className="s m" style={{ marginTop: 8 }}>
-              Read aloud uses the voice that is ticked. These six are part of Google&apos;s Chirp 3: HD set —
-              the voices its speech API offers for US English — and every one of them is named after a star,
-              a moon or a figure from myth.
+              Read aloud uses the voice that is ticked, at the speed above it. These six are part of
+              Google&apos;s Chirp 3: HD set — the voices its speech API offers for US English — and every one
+              of them is named after a star, a moon or a figure from myth. The line under each name is how
+              it sounds, which is this app&apos;s own description rather than Google&apos;s; Play sample is
+              where to check it.
             </div>
           </>
         )}

@@ -23,8 +23,20 @@ const check = (name, got, expect) => cases.push({ name, got, expect });
 check(
   'finds every model the code sends, and only those',
   names,
-  ['gemini-3.1-flash-lite-image', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'].sort(),
+  ['gemini-2.5-flash-lite', 'gemini-3.1-flash-lite-image', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'].sort(),
 );
+
+/* Which entry a request that names no model lands on is the whole of Auto, and
+   nothing about an ID makes it true — the fallback does. Read off the source, so
+   a third chat branch, or a literal put back on those two lines, is caught here
+   rather than by the person whose first message never answers. */
+check(
+  'both chat branches fall back to the same table entry, and it is Auto',
+  [...source.matchAll(/\|\| MODEL_IDS\.(\w+);/g)].map((m) => m[1]),
+  ['auto', 'auto'],
+);
+
+check('knows which entry Auto is', ids.get('gemini-2.5-flash-lite'), 'MODEL_IDS.auto');
 
 check(
   'ignores the retired IDs that only appear in comments',
@@ -58,6 +70,7 @@ check(
 );
 
 const served = new Map([
+  ['gemini-2.5-flash-lite', ['generateContent']],
   ['gemini-3.5-flash-lite', ['generateContent']],
   ['gemini-3.8-flash', ['generateContent', 'countTokens']],
   ['gemini-3.1-flash-lite-image', ['generateContent']],

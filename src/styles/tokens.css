@@ -45,6 +45,16 @@ body{
 }
 #root{ height:100%; }
 button{ font:inherit; color:inherit; background:none; border:none; padding:0; cursor:pointer; }
+/* What the user types has to be the same typeface as what Eumae says. It was
+   not: `body` sets Inter and `button` takes `font:inherit`, but the browser's own
+   stylesheet hands a `textarea` a *fixed* font — monospace in Chrome, `-moz-fixed`
+   in Firefox — and none of the app's fields set a family of their own, so the
+   composer, the settings fields (`.sinput`) and the edit box each typed in a
+   different face from the chat they were writing into (found by the owner,
+   2026-10-08: "input text is in script font but chat text is different"). Family
+   only, not `font:inherit`: the size on each control is deliberate — 16px on the
+   fields, because anything smaller makes iOS zoom the page on focus. */
+input,textarea,select{ font-family:inherit; }
 
 /* App shell: one column on mobile; rail + content on desktop.
    Defined once — no screen touches this, so no screen can resize the chrome.
@@ -325,7 +335,34 @@ button{ font:inherit; color:inherit; background:none; border:none; padding:0; cu
 .mrow{ display:flex; gap:14px; padding:5px 2px 0; }
 .mrowBtn{ color:var(--mut); padding:4px; line-height:0; }
 .mrowBtn:hover{ color:var(--tx); }
-.mrowBtn svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.7; }
+.mrowBtn svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.7; }
+/* Copied. wove's own receipt (1704) is a green tick in place of the icon for a
+   moment and nothing else — no toast, because a toast covers the words you just
+   copied. Its green, so the two are recognisable as the same answer. */
+.mrowBtn.ok{ color:#30d158; }
+/* The edit box, over the message it is rewriting — wove's inline textarea (1715):
+   the same card the bubble sits in, the same radius, the text inheriting so the
+   box is not a different typeface from the sentence being corrected. */
+/* The width is a percentage, so the parent needs a width to measure it against —
+   and `.msgCol` is a flex item, which means it is sized to its text and has
+   none. At 85% of nothing the box came out as wide as an empty textarea's own
+   twenty columns (185px), a stamp in the corner of a 720px thread. Opening the
+   box is the one moment that column should be as wide as a bubble may be, so it
+   is given one here — the same 80% the bubble and the column already carry —
+   and the box fills it, up to the 520 a comfortable line ends at. */
+.msgCol.editing{ width:100%; }
+.editBox{ width:100%; max-width:520px; background:var(--card);
+  border:1px solid color-mix(in srgb, var(--ac) 35%, transparent); border-radius:18px; padding:12px; }
+/* Same field as the composer's, and same rules for it: no browser resize grip
+   (a drag handle in the corner of a card is not what wove's 1715 draws), grown
+   to the text by ChatScreen up to 160px and scrolled past that. */
+.editIn{ width:100%; background:transparent; border:none; outline:none; resize:none;
+  max-height:160px; overflow-y:auto;
+  color:inherit; font-family:inherit; font-size:16px; line-height:1.5; }
+.editBtns{ display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+.editCancel{ background:none; border:none; color:inherit; opacity:.7; font-size:14px; padding:7px 10px; }
+.editCancel:hover{ opacity:1; }
+.editSend{ background:var(--ac); color:#fff; border:none; border-radius:10px; padding:7px 16px; font-size:14px; }
 /* While a reply is on its way (mockup 1866): three dots in a card-coloured pill,
    each one bouncing a seventh of a second after the one before (its `.wxpill`
    and `@keyframes wxdot`, 1836). The only keyframes in the shell — which is why

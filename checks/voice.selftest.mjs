@@ -21,11 +21,16 @@ const SOURCE = fileURLToPath(new URL('../src/voice.ts', import.meta.url));
 const source = readFileSync(SOURCE, 'utf8');
 
 /* The three other files this check reads (checks/voice.mjs), so a break can be
-   made in any of them the same way it is made in src/voice.ts. */
+   made in any of them the same way it is made in src/voice.ts — and the composer,
+   where the mic is wired up. */
 const VOICES = readFileSync(fileURLToPath(new URL('../src/voices.ts', import.meta.url)), 'utf8');
 const SERVER = readFileSync(fileURLToPath(new URL('../api/ai.ts', import.meta.url)), 'utf8');
 const SETTINGS = readFileSync(
   fileURLToPath(new URL('../src/components/settings/Settings.tsx', import.meta.url)),
+  'utf8',
+);
+const COMPOSER = readFileSync(
+  fileURLToPath(new URL('../src/components/shell/Composer.tsx', import.meta.url)),
   'utf8',
 );
 
@@ -37,8 +42,8 @@ const check = (name, got, expect) => cases.push({ name, got, expect });
 const failing = (text) => verdicts(text).filter((verdict) => !verdict.pass).map((verdict) => verdict.name);
 
 /** The same, for a break made in one of the other files. */
-const failingWith = (voices = VOICES, server = SERVER, settings = SETTINGS) =>
-  verdicts(source, voices, server, settings)
+const failingWith = (voices = VOICES, server = SERVER, settings = SETTINGS, composer = COMPOSER) =>
+  verdicts(source, voices, server, settings, composer)
     .filter((verdict) => !verdict.pass)
     .map((verdict) => verdict.name);
 
@@ -137,10 +142,79 @@ check(
   ['voices: the pane is drawn from the table, not from four names of its own'],
 );
 
+/* ── How fast it is read. One break per thing that has to agree: the steps, the
+      raw value `storedSpeed` hands back, the row that offers them, and the number
+      that leaves on the request. The range in the first verdict's own name is read
+      out of the server's clamp, here as well as there, so a change to that clamp
+      fails this file by name instead of silently testing a range nobody uses. */
+const RANGE = SERVER.match(/Math\.min\(([\d.]+), Math\.max\(([\d.]+), speakingRate\)\)/);
+const SPEED_STEPS = `speed: four steps, 1× the default, all inside the server's own ${RANGE[2]}–${RANGE[1]}`;
+
+check(
+  'fails when a step is outside the range the server clamps to',
+  failingWith(VOICES.replace("{ rate: 0.75, label: '0.75×' }", "{ rate: 0.6, label: '0.6×' }")),
+  [SPEED_STEPS],
+);
+
+/* The break is in the catch, not the `find`: this file runs in Node, where there
+   is no `localStorage`, so `storedSpeed` can only ever return through its fallback
+   path here — which is also the path a browser takes on a first visit. A break put
+   in the `find` would be swallowed by the `catch` and this case would pass while
+   testing nothing. */
+check(
+  'fails when the reader is handed something that is not one of the steps',
+  failingWith(VOICES.replace('return DEFAULT_SPEED.rate;', 'return 1.9;')),
+  ['speed: the setting the reader asks for is one of those steps, not the raw number'],
+);
+
+check(
+  'fails when the pane stops drawing the steps from the table',
+  failingWith(VOICES, SERVER, SETTINGS.replace('SPEEDS.map', "['1×'].map")),
+  ['speed: the pane draws the steps from the table, not from a list of its own'],
+);
+
+check(
+  'fails when the rate stops travelling on the speak request',
+  failing(source.replace('        rate: String(speakRate),\n', '')),
+  ['speed: the rate is settled when the run starts and travels on the request'],
+);
+
 check(
   'says so when the table itself cannot be read',
   failingWith('export const VOICES = ;'),
   ['voices: the table can be lifted out and read'],
+);
+
+/* ── The microphone. Each of these is the failure the composer and the speaker
+      were actually fixed for, put back on purpose: the seam between a component
+      that re-renders and a module that holds the object it was handed. */
+check(
+  'fails when the mic sends what the render remembered instead of the field',
+  failingWith(
+    VOICES,
+    SERVER,
+    SETTINGS,
+    COMPOSER.replace('const value = field.current.trim();', 'const value = text.trim();'),
+  ),
+  ['mic: the send takes its text off the field, not off the render'],
+);
+
+check(
+  'fails when the mic is handed a read of the render instead of the field',
+  failingWith(VOICES, SERVER, SETTINGS, COMPOSER.replace('read: () => field.current,', 'read: () => text,')),
+  ['mic: the field the mic reads is the one every writer writes'],
+);
+
+check(
+  'fails when the silence may play over a piece that is being read',
+  failing(source.replace('  if (running || sounding) return;\n', '')),
+  ['speak: the silence is never played over a piece that is playing'],
+);
+
+check(
+  'fails when a piece that cannot be played leaves the run speaking',
+  failing(source.replace('      el.onerror = () => {', '      el.onstalled = () => {')),
+  ['speak: a piece that fails to play still advances the run'],
 );
 
 check(
