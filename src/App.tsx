@@ -270,7 +270,7 @@ export default function App() {
 
         {/* `accept` is what puts Photo library / Take photo / Choose file on
             screen: that list is the OS picker, not a menu we draw. */}
-        <input ref={fileRef} type="file" accept="image/*,.pdf" onChange={onFile} hidden />
+        <input id="file-input" ref={fileRef} type="file" accept="image/*,.pdf" onChange={onFile} hidden />
 
         <Toast message={toast} onDone={() => setToast(null)} />
       </div>

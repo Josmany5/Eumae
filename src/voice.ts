@@ -72,13 +72,10 @@ const RUNAWAY_MAX = 4;
 /** The longest piece the speaker asks for in one request (mockup 1673). */
 const CHUNK_MAX = 420;
 
-/** iOS Safari ends the recogniser after every phrase and will not start it
- *  again outside a fresh gesture, so on iOS the mic is one tap, one phrase.
- *  Desktop Chrome honours `continuous` and keeps the same session alive. */
-const IS_IOS =
-  typeof navigator !== 'undefined' &&
-  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+/** How long after `onend` before the recogniser is started again. iOS refuses a
+ *  restart issued inside the end event itself, and accepts the same call half a
+ *  second later — the revive Wove used. */
+const RESTART_DELAY_MS = 500;
 
 /* The speech API is spelled `webkitSpeechRecognition` in the browsers that have
    it (Safari and Chrome both), and TypeScript's DOM lib still does not carry it
@@ -131,6 +128,9 @@ let unlocked = false;
 let queue: string[] = [];
 let running = false;
 let sounding = false;
+/** What the speaker is reading now, so "Read aloud" can tell a toggle-off (same
+ *  text) from a switch (a different message). */
+let readingText: string | null = null;
 /** One refusal is said out loud per run, not one per piece (see `refused`). */
 let noticed = false;
 let silent: string | null = null;
@@ -383,10 +383,17 @@ async function speakNext(say?: (message: string) => void): Promise<void> {
  *  optional because reading is not always started by something that can show a
  *  message; where it is, the one sentence about a refusal goes there. */
 export function speak(text: string, say?: (message: string) => void, voice?: string): void {
-  if (running) {
+  /* Same text already reading → toggle it off. A different text → cut the current
+     one and start this, so a tap on message B while A reads starts B instead of
+     being swallowed as "stop". */
+  if (running && readingText === text) {
     stopSpeaking();
     return;
   }
+  if (running) {
+    stopSpeaking();
+  }
+  readingText = text;
   /* The voice for this run, settled before the first piece is asked for: the
      caller's choice when it names one (Settings' sample names the row being
      pressed, which is not necessarily the row that is ticked) and the stored
@@ -411,6 +418,7 @@ export function stopSpeaking(): void {
   running = false;
   sounding = false;
   noticed = false;
+  readingText = null;
   if (audio) {
     try {
       audio.pause();
@@ -522,14 +530,9 @@ function startRec(voice: VoiceTyping): void {
       clearTimer();
       voiceSend(voice);
     }
-    /* iOS: one tap, one phrase. It will not restart outside a fresh gesture, so
-       stop cleanly and let the next tap begin again. */
-    if (IS_IOS) {
-      stopListening();
-      return;
-    }
-    /* Elsewhere `continuous` holds the stream open and `onend` only arrives after
-       a long silence, so restart — bounded by the runaway guard. */
+    /* Bounded by the runaway guard, restart — but after a beat, not in the end
+       event itself: iOS refuses a restart issued synchronously and accepts the
+       same call half a second later (Wove's revive). */
     const now = Date.now();
     const recent = restarts.filter((at) => now - at < RUNAWAY_WINDOW_MS);
     recent.push(now);
@@ -540,13 +543,16 @@ function startRec(voice: VoiceTyping): void {
       voice.say('Voice stopped. Tap the mic to start again.');
       return;
     }
-    try {
-      rec.start();
-    } catch {
-      /* The browser will not start this recogniser again. Put the button back
-         rather than leaving it lit and silent; the next tap is a fresh start. */
-      stopListening();
-    }
+    setTimeout(() => {
+      if (listener !== voice) return;
+      try {
+        rec.start();
+      } catch {
+        /* The browser will not start this recogniser again. Put the button back
+           rather than leaving it lit and silent; the next tap is a fresh start. */
+        stopListening();
+      }
+    }, RESTART_DELAY_MS);
   };
 
   rec.onerror = (event) => {
@@ -583,7 +589,14 @@ export function stopListening(): void {
     recognizer = null;
   }
   transcript = '';
-  if (voice) voice.lit(false);
+  /* Turning the mic off ends the whole voice session, not just the recogniser:
+     stop any read-aloud and clear whatever a dead mic left in the field, so
+     nothing keeps talking and nothing sits stranded. */
+  stopSpeaking();
+  if (voice) {
+    voice.write('');
+    voice.lit(false);
+  }
 }
 
 /** The tap — `micTap` (1786): on if it is off, off if it is on. */

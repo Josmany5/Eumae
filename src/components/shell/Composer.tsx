@@ -155,6 +155,8 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
         <textarea
           ref={ref}
           className="cmpIn"
+          id="composer-input"
+          name="composer"
           rows={1}
           value={text}
           placeholder={placeholder}

@@ -44,6 +44,7 @@ export default function SearchPage() {
   return (
     <div className="page">
       <input
+        id="search-input"
         autoFocus
         className="sinput"
         placeholder="Search Eumae"

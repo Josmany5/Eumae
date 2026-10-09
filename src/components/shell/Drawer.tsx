@@ -30,6 +30,7 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch }: DrawerP
         <div className="db">
           <div className="dsearch">
             <input
+              id="drawer-search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search Eumae..."

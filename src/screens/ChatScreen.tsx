@@ -287,6 +287,8 @@ export default function ChatScreen() {
                     <div className="editBox">
                       <textarea
                         className="editIn"
+                        id="edit-message"
+                        name="edit"
                         ref={editRef}
                         rows={3}
                         value={editing.text}

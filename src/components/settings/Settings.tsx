@@ -433,7 +433,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
         {view === 'personalization' && (
           <div className="card">
             <div className="s m" style={{ marginBottom: 8 }}>How should Eumae talk to you?</div>
-            <input className="sinput" placeholder="e.g. blunt, short, no fluff" value={style} onChange={(e) => setStyle(e.target.value)} />
+            <input id="personalization" className="sinput" placeholder="e.g. blunt, short, no fluff" value={style} onChange={(e) => setStyle(e.target.value)} />
             <div className="btns">
               <button className="pri" onClick={() => { notify('Saved'); setView('main'); }}>Save</button>
             </div>
@@ -455,7 +455,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
               )}
             </div>
             <div className="card">
-              <input className="sinput" placeholder="Teach Eumae something…" value={draft} onChange={(e) => setDraft(e.target.value)} />
+              <input id="teach-input" className="sinput" placeholder="Teach Eumae something…" value={draft} onChange={(e) => setDraft(e.target.value)} />
               <div className="btns">
                 <button className="pri" onClick={() => {
                   if (draft.trim()) {
@@ -474,7 +474,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
               {Object.entries(grants).map(([k, v]) => (
                 <div className="gr" key={k}>
                   <div className="g" style={{ textTransform: 'capitalize' }}><b>{GRANT_LABELS[k] || k}</b></div>
-                  <select value={v} onChange={(e) => { setGrants({ ...grants, [k]: e.target.value }); notify('Permission updated'); }}>
+                  <select id={`grant-${k}`} value={v} onChange={(e) => { setGrants({ ...grants, [k]: e.target.value }); notify('Permission updated'); }}>
                     {['never', 'ask', 'always'].map((o) => (
                       <option key={o} value={o}>{o}</option>
                     ))}
@@ -675,7 +675,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
 
         {view === 'report' && (
           <div className="card">
-            <input className="sinput" placeholder="What went wrong?" value={report} onChange={(e) => setReport(e.target.value)} />
+            <input id="report-input" className="sinput" placeholder="What went wrong?" value={report} onChange={(e) => setReport(e.target.value)} />
             <div className="btns">
               <button className="pri" onClick={() => { setReport(''); notify('Reports arrive in a later stage'); }}>Send</button>
             </div>
@@ -781,6 +781,8 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
                   <input
                     className="sinput"
                     type="email"
+                    id="email"
+                    name="email"
                     value={email}
                     placeholder="you@example.com"
                     autoComplete="email"
@@ -790,6 +792,8 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
                   <input
                     className="sinput"
                     type="password"
+                    id="password"
+                    name="password"
                     value={password}
                     placeholder="Password"
                     autoComplete="current-password"
