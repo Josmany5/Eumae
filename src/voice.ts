@@ -382,6 +382,7 @@ async function runSpeak(id: number, pieces: string[], say?: (message: string) =>
  *  optional because reading is not always started by something that can show a
  *  message; where it is, the one sentence about a refusal goes there. */
 export function speak(text: string, say?: (message: string) => void, voice?: string): void {
+  if (!text.trim()) return;
   /* Same text already reading → toggle it off. A different text → cut the current
      one and start this, so a tap on message B while A reads starts B instead of
      being swallowed as "stop". */
@@ -393,6 +394,9 @@ export function speak(text: string, say?: (message: string) => void, voice?: str
     stopSpeaking();
   }
   readingText = text;
+  /* A speaker turn owns the session: the mic goes off so the button never sits
+     lit-but-deaf, and a tap barges back in (toggleMic). */
+  turnOffMic();
   /* The voice for this run, settled before any piece is asked for: the caller's
      choice when it names one (Settings' sample names the row being pressed, which
      is not necessarily the row that is ticked) and the stored setting otherwise. */
@@ -584,8 +588,10 @@ function startRec(voice: VoiceTyping): void {
   }
 }
 
-/** Off — `voiceOff` (1781). */
-export function stopListening(): void {
+/** Turn the mic off: abort the recogniser, drop the held transcript, unlight.
+ *  Does not touch the speaker — `stopListening`'s extra job. A speaker turn does
+ *  this as it begins, so the button never sits lit-but-deaf while the AI reads. */
+function turnOffMic(): void {
   const voice = listener;
   listener = null;
   clearTimer();
@@ -598,11 +604,29 @@ export function stopListening(): void {
     recognizer = null;
   }
   transcript = '';
-  /* Turning the mic off ends the whole voice session, not just the recogniser:
-     stop any read-aloud. The field is left alone — a deliberate stop keeps the
-     words for editing; the auto-restart flushes on its own. */
-  stopSpeaking();
   if (voice) voice.lit(false);
+}
+
+/** Off — `voiceOff` (1781): the whole voice session ends, mic and speaker. The
+ *  field is left alone — a deliberate stop keeps the words for editing; the
+ *  auto-restart flushes on its own. */
+export function stopListening(): void {
+  turnOffMic();
+  stopSpeaking();
+}
+
+/** On iOS, backgrounding Safari mid-read can leave `sounding` stuck true with a
+ *  dead audio element, which makes the mic deaf until toggled by hand. On return
+ *  to the tab, reset the voice session so nothing is left stuck. Registered once,
+ *  lazily, so the module still imports cleanly in a server render. */
+let visibilityArmed = false;
+export function armVisibility(): void {
+  if (visibilityArmed) return;
+  visibilityArmed = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (sounding || listener) stopListening();
+  });
 }
 
 /** Start the mic fresh: the browser check, then light the button and begin. */

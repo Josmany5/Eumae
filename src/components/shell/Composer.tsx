@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from './icons';
 import { useNav, DEFAULT_TURN } from '../../nav';
-import { stopListening, toggleMic, type VoiceTyping } from '../../voice';
+import { armVisibility, stopListening, toggleMic, type VoiceTyping } from '../../voice';
 
 interface ComposerProps {
   /** `byVoice` is true when the mic sent this rather than the keyboard — the
@@ -110,7 +110,10 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
   };
 
   /* Losing the composer is losing the mic's only reason to be listening. */
-  useEffect(() => stopListening, []);
+  useEffect(() => {
+    armVisibility();
+    return stopListening;
+  }, []);
 
   /* The chip row — the mockup's `chipsHTML` (line 1270) taken one step further.
      That one always shows the mode, adds the role unless it is Default and the
