@@ -394,10 +394,11 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     'the streaming read-aloud: arm, feed, end',
   );
   const speakBody = bodyOf('playClip');
+  const enqueueBody = bodyOf('enqueuePiece');
   judge(
     'speak: a piece that fails to play still advances the run',
-    /vlog\('clip would not decode'/.test(speakBody),
-    speakBody ? "the run's own answer to a piece it cannot play" : 'playClip is not in src/voice.ts',
+    /if \(!buffer\)/.test(enqueueBody),
+    enqueueBody ? "the chain's answer to a piece with no audio" : 'enqueuePiece is not in src/voice.ts',
   );
   judge(
     'speak: a piece that fails is not read in the browser voice',
@@ -414,10 +415,10 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
   );
   judge(
     'speak: a clip is decoded and played through Web Audio, never a media element',
-    /decodeAudioData/.test(speakBody) &&
+    /decodeAudioData/.test(enqueueBody) &&
       /createBufferSource/.test(speakBody) &&
-      !/createObjectURL/.test(speakBody),
-    speakBody ? 'playClip, which decodes bytes into a buffer source' : 'playClip is not in src/voice.ts',
+      !/createObjectURL/.test(source),
+    'enqueuePiece, which decodes bytes ahead, and playClip, which plays the buffer',
   );
   const resultHead = (source.match(/rec\.onresult = \(event\) => \{([\s\S]{0,600})/) || [])[1] || '';
   judge(

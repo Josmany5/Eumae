@@ -183,7 +183,7 @@ check(
 
 check(
   'fails when a piece that cannot be played leaves the run speaking',
-  failing(source.replace("        vlog('clip would not decode', true);\n        finish();", '')),
+  failing(source.replace('    if (!buffer) {', '    if (false) {')),
   ['speak: a piece that fails to play still advances the run'],
 );
 
@@ -241,7 +241,7 @@ check(
 check(
   'fails when a clip goes back through a media element',
   failing(
-    source.replace('c.decodeAudioData(copy)', 'c.decodeAudioData(copy); URL.createObjectURL(new Blob([bytes]))'),
+    source.replace('ctx.decodeAudioData(c.bytes.slice().buffer)', 'ctx.decodeAudioData(c.bytes.slice().buffer); URL.createObjectURL(new Blob([c.bytes]))'),
   ),
   ['speak: a clip is decoded and played through Web Audio, never a media element'],
 );

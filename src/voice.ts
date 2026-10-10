@@ -354,12 +354,12 @@ async function fetchClip(piece: string, token: string | null): Promise<Clip> {
   }
 }
 
-/** Play one clip through the shared AudioContext. Resolves `true` when it
- *  played out, `false` when it could not start at all — so the caller can say
- *  so and stop, rather than walk the rest of the queue in silence. */
-function playClip(clip: Clip): Promise<boolean> {
-  const bytes = clip.bytes;
-  if (!bytes) return Promise.resolve(false);
+/** Play one decoded clip through the shared AudioContext. Resolves `true` when
+ *  it played out, `false` when it could not start at all — so the caller can
+ *  say so and stop, rather than walk the rest of the queue in silence. The
+ *  buffer arrives already decoded (see enqueuePiece): decoding here, after the
+ *  previous clip ended, is the half-second seam the phone could hear. */
+function playClip(buffer: AudioBuffer): Promise<boolean> {
   const c = audioCtx();
   if (!c) return Promise.resolve(false);
   return new Promise((resolve) => {
@@ -373,41 +373,30 @@ function playClip(clip: Clip): Promise<boolean> {
     };
     currentClip = finish;
     vlog('playing clip');
-    /* decodeAudioData detaches the buffer it is given, so it decodes a copy. */
-    const copy = bytes.slice().buffer;
-    c.decodeAudioData(copy).then(
-      (buffer) => {
-        if (done) return;
-        const src = c.createBufferSource();
-        src.buffer = buffer;
-        src.connect(c.destination);
-        currentSrc = src;
-        src.onended = () => {
-          played = true;
-          vlog('clip ended');
-          if (currentSrc === src) currentSrc = null;
-          finish();
-        };
-        const start = () => {
-          if (done) return;
-          try {
-            src.start();
-          } catch {
-            finish();
-          }
-        };
-        const state = c.state as string;
-        if (state === 'suspended' || state === 'interrupted') {
-          c.resume().then(start, () => finish());
-        } else {
-          start();
-        }
-      },
-      () => {
-        vlog('clip would not decode', true);
+    const src = c.createBufferSource();
+    src.buffer = buffer;
+    src.connect(c.destination);
+    currentSrc = src;
+    src.onended = () => {
+      played = true;
+      vlog('clip ended');
+      if (currentSrc === src) currentSrc = null;
+      finish();
+    };
+    const start = () => {
+      if (done) return;
+      try {
+        src.start();
+      } catch {
         finish();
-      },
-    );
+      }
+    };
+    const state = c.state as string;
+    if (state === 'suspended' || state === 'interrupted') {
+      c.resume().then(start, () => finish());
+    } else {
+      start();
+    }
   });
 }
 
@@ -459,13 +448,22 @@ function beginRun(say?: (m: string) => void, voice?: string): number {
   return id;
 }
 
-/** Queue one piece for speaking. The fetch starts now (so sentences download in
- *  parallel); the chain plays them strictly in order. */
+/** Queue one piece for speaking. The fetch starts now, and the decode starts
+ *  the moment the bytes arrive — both in parallel, while the previous piece is
+ *  still playing. The chain plays the decoded buffers strictly in order, so by
+ *  the time a piece is due its buffer is ready and there is no seam. */
 function enqueuePiece(piece: string, id: number): void {
   const started = Date.now();
   const clip = q(piece);
   vlog(`TTS fetch: "${clip}"`);
   const clipP = tokenP.then((t) => fetchClip(piece, t));
+  const bufP: Promise<AudioBuffer | null> = clipP.then((c) => {
+    if (!c.bytes) return null;
+    const ctx = audioCtx();
+    if (!ctx) return null;
+    /* decodeAudioData detaches the buffer it is given, so it decodes a copy. */
+    return ctx.decodeAudioData(c.bytes.slice().buffer).catch(() => null);
+  });
   void clipP.then((c) => {
     if (id !== speakGen) return;
     vlog(
@@ -475,15 +473,16 @@ function enqueuePiece(piece: string, id: number): void {
   });
   chain = chain.then(async () => {
     if (id !== speakGen) return;
-    const clip = await clipP;
+    const buffer = await bufP;
     if (id !== speakGen) return;
-    if (!clip.bytes) {
-      sayOnce(refusalText(clip.status, clip.error));
+    if (!buffer) {
+      const c = await clipP;
+      sayOnce(refusalText(c.status, c.error));
       stopSpeaking();
       return;
     }
     setSessionSpeaking();
-    const played = await playClip(clip);
+    const played = await playClip(buffer);
     if (id !== speakGen) return;
     if (!played) {
       sayOnce('Read aloud failed. Try again.');
