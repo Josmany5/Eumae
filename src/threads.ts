@@ -13,14 +13,25 @@ export interface Thread {
 const KEY = 'eumae:threads';
 const CURRENT_KEY = 'eumae:currentThread';
 
+/* In-memory cache — loaded once, written through on save. Every read used
+   to parse the whole block from storage; during streaming that was dozens of
+   full parse/stringify cycles per reply. */
+let cache: Thread[] | null = null;
+
 function load(): Thread[] {
+  if (cache) return cache;
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return [];
+    if (!raw) {
+      cache = [];
+      return cache;
+    }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    cache = Array.isArray(parsed) ? parsed : [];
+    return cache;
   } catch {
-    return [];
+    cache = [];
+    return cache;
   }
 }
 
@@ -33,7 +44,7 @@ function save(threads: Thread[]): void {
 }
 
 export function getThreads(): Thread[] {
-  return load().sort((a, b) => b.updatedAt - a.updatedAt);
+  return [...load()].sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export function getThread(id: string): Thread | undefined {

@@ -173,30 +173,23 @@ export default function ChatScreen() {
   /* Which message is being rewritten, and what is in the box. One at a time, and
      `null` for none — wove keeps the same single `EDITSTATE` (1711). */
   const [editing, setEditing] = useState<{ id: number; text: string } | null>(null);
-  /* True on the render where the thread just changed — the save below must
-     skip it, or the old thread's messages overwrite the new thread before its
-     own messages load (the 2026-10-10 history corruption). */
-  const switching = useRef(false);
   /* Load the current thread's messages. App owns thread identity. */
   useEffect(() => {
     const thread = threadId ? getThread(threadId) : undefined;
     const loaded = thread ? thread.messages : [];
     seedMsgId(loaded);
-    switching.current = true;
     setMsgs(loaded);
   }, [threadId]);
 
-  /* Save messages to the current thread on every change. */
-  useEffect(() => {
+  /* Save the thread when a reply completes — not per chunk. Streaming used
+     to rewrite all of storage on every piece of the reply. The messages stay
+     in state while they stream; storage catches up when the reply lands. */
+  const saveNow = (messages: Msg[]) => {
     if (!threadId) return;
-    if (switching.current) {
-      switching.current = false;
-      return;
-    }
     const thread = getThread(threadId);
     if (!thread) return;
-    saveThread({ ...thread, messages: msgs });
-  }, [msgs, threadId]);
+    saveThread({ ...thread, messages });
+  };
   /* The id whose Copy just worked, so that button can be a tick for a moment
      (wove swaps the icon the same way, 1704). Zero is no message: ids are
      `Date.now()`, so no real one is ever 0. */
@@ -256,11 +249,15 @@ export default function ChatScreen() {
     const replyId = msgId();
     const now = Date.now();
     const isFirst = msgs.length === 0;
-    setMsgs((m) => [
-      ...m,
-      { id, role: 'you', text, body, attachments: refs.map((r) => ({ label: r.label, icon: r.icon, url: r.url })), ts: now },
-      { id: replyId, role: 'eumae', text: '', streaming: true, ts: now },
-    ]);
+    setMsgs((m) => {
+      const next: Msg[] = [
+        ...m,
+        { id, role: 'you', text, body, attachments: refs.map((r) => ({ label: r.label, icon: r.icon, url: r.url })), ts: now },
+        { id: replyId, role: 'eumae', text: '', streaming: true, ts: now },
+      ];
+      saveNow(next);
+      return next;
+    });
     /* Title the thread from the first user message. Outside the updater —
        updaters must stay pure. */
     if (isFirst && threadId && text.trim()) {
@@ -291,13 +288,15 @@ export default function ChatScreen() {
       if (byVoice) feedVoiceReply(voiceId, full);
     }).then((reply) => {
       inFlight.current -= 1;
-      setMsgs((m) =>
-        m.map((x) =>
+      setMsgs((m) => {
+        const next = m.map((x) =>
           x.id === replyId
             ? { ...x, streaming: false, text: reply.text, note: reply.error ?? undefined, sources: reply.sources }
             : x,
-        ),
-      );
+        );
+        saveNow(next);
+        return next;
+      });
 
       /* The reply is the other half of what happened, so it is logged the same way
          the message was — one row per event, with its own dot when it went badly
@@ -362,6 +361,7 @@ export default function ChatScreen() {
     const at = msgs.findIndex((m) => m.id === draft.id);
     const kept = at < 0 ? msgs : msgs.slice(0, at);
     setMsgs(kept);
+    saveNow(kept);
     send(text, false, kept);
   };
 
