@@ -348,6 +348,8 @@ input,textarea,select{ font-family:inherit; }
 .imgViewerX{ position:absolute; top:16px; left:16px; width:44px; height:44px;
   border-radius:50%; border:none; background:rgba(255,255,255,.12); color:#fff;
   display:flex; align-items:center; justify-content:center; }
+.imgViewerX svg{ width:20px; height:20px; stroke:#fff; fill:none; stroke-width:2.2;
+  stroke-linecap:round; }
 .msgAttachBtn{ padding:0; border:none; background:none; cursor:pointer; }
 /* Attachments inside a sent message — what went out with it. Thumbnails for
    images, names for the rest. */
