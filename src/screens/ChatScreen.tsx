@@ -384,11 +384,15 @@ export default function ChatScreen() {
                       <span className="wxd" />
                     </div>
                   ) : (
-                    <div className="bubble">
-                      {m.attachments && m.attachments.length > 0 ? (
-                        <div className="msgAttaches">
-                          {m.attachments.map((a) => (
-                            a.icon === 'img' && a.url ? (
+                    <>
+                      {/* Images stand alone — the picture is the bubble, not
+                          something inside it. Text and files go in the bubble
+                          below, the way every chat app does it. */}
+                      {m.attachments && m.attachments.some((a) => a.icon === 'img' && a.url) ? (
+                        <div className="msgImgs">
+                          {m.attachments
+                            .filter((a) => a.icon === 'img' && a.url)
+                            .map((a) => (
                               <button
                                 key={a.label}
                                 className="msgAttachBtn"
@@ -397,20 +401,33 @@ export default function ChatScreen() {
                               >
                                 <img className="msgAttachImg" src={a.url} alt={a.label} />
                               </button>
-                            ) : (
-                              <div key={a.label} className="msgAttach">
-                                <span className="msgAttachName">{a.label}</span>
-                              </div>
-                            )
-                          ))}
+                            ))}
                         </div>
                       ) : null}
-                      {m.text}
-                      {m.note ? <div className="bubbleNote">{m.note}</div> : null}
-                      {m.sources && m.sources.length > 0 ? (
-                        <SourcesPill sources={m.sources} />
+                      {(m.text ||
+                        (m.attachments && m.attachments.some((a) => !(a.icon === 'img' && a.url))) ||
+                        m.note ||
+                        (m.sources && m.sources.length > 0)) ? (
+                        <div className="bubble">
+                          {m.attachments && m.attachments.some((a) => !(a.icon === 'img' && a.url)) ? (
+                            <div className="msgAttaches">
+                              {m.attachments
+                                .filter((a) => !(a.icon === 'img' && a.url))
+                                .map((a) => (
+                                  <div key={a.label} className="msgAttach">
+                                    <span className="msgAttachName">{a.label}</span>
+                                  </div>
+                                ))}
+                            </div>
+                          ) : null}
+                          {m.text}
+                          {m.note ? <div className="bubbleNote">{m.note}</div> : null}
+                          {m.sources && m.sources.length > 0 ? (
+                            <SourcesPill sources={m.sources} />
+                          ) : null}
+                        </div>
                       ) : null}
-                    </div>
+                    </>
                   )}
                   {/* The two buttons under a message, from wove's two rows: `rowA`
                       (1642) is Copy then Read aloud under a reply, `rowU` (1643) is
