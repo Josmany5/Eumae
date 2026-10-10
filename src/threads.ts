@@ -36,6 +36,7 @@ function load(): Thread[] {
 }
 
 function save(threads: Thread[]): void {
+  cache = threads;
   try {
     localStorage.setItem(KEY, JSON.stringify(threads));
   } catch {
