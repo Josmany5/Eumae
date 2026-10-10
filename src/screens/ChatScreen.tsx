@@ -20,6 +20,8 @@ interface Msg extends ThreadTurn {
    *  server's own sentence, or this side's — src/chat.ts). The text above it
    *  stays: whatever arrived did arrive. */
   note?: string;
+  /** Where the reply came from, when search grounded it. */
+  sources?: { uri: string; title: string }[];
 }
 
 const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'What am I forgetting?'];
@@ -188,7 +190,7 @@ export default function ChatScreen() {
       setMsgs((m) =>
         m.map((x) =>
           x.id === replyId
-            ? { ...x, streaming: false, text: reply.text, note: reply.error ?? undefined }
+            ? { ...x, streaming: false, text: reply.text, note: reply.error ?? undefined, sources: reply.sources }
             : x,
         ),
       );
@@ -329,6 +331,16 @@ export default function ChatScreen() {
                     <div className="bubble">
                       {m.text}
                       {m.note ? <div className="bubbleNote">{m.note}</div> : null}
+                      {m.sources && m.sources.length > 0 ? (
+                        <div className="sources">
+                          <div className="sourcesHead">Sources</div>
+                          {m.sources.map((s) => (
+                            <a key={s.uri} href={s.uri} target="_blank" rel="noreferrer" className="source">
+                              {s.title}
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   )}
                   {/* The two buttons under a message, from wove's two rows: `rowA`

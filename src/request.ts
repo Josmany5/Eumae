@@ -157,9 +157,8 @@ const DATA_URL = /^data:([^;,]+);base64,(.+)$/;
 
 /** Only a ref with a `url` has bytes, and today only a photo gets one: App's
  *  reader stops at `!file.type.startsWith('image/')` (App.tsx:96) and attaches
- *  a PDF as a bare label. So a PDF ref is skipped here rather than sent as an
- *  empty part, and the mockup's behaviour for it — read the file, then ask "What
- *  is in this document?" (1863) — waits for the file work in Phase 6. */
+/** Every ref with a data URL becomes a Gemini part — images, PDFs, audio, video.
+ *  The MIME type rides along, so the model knows what it is looking at. */
 export function refsToAttachments(refs: readonly Ref[]): Attachment[] {
   const attachments: Attachment[] = [];
   for (const r of refs) {
@@ -232,6 +231,22 @@ export interface ApiChatBody {
  *  that is *only* a file — "What is in this document?" / "What is in this
  *  image?" (1863) — which we do not need yet, because the composer will not send
  *  an empty field at all (Composer.tsx:101 disables Send on empty text). */
+/** The moment this request leaves the phone, in the person's own words' frame:
+ *  the date, the time, and their timezone. Every request carries it, so the
+ *  model always knows what "now", "tonight" and "tomorrow" mean for them. */
+function timeStamp(): string {
+  const now = new Date();
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const date = now.toLocaleDateString(undefined, {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const time = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return `\n\nCurrent date and time: ${date}, ${time} (${tz}).`;
+}
+
 export function toApiBody(
   req: TurnRequest,
   history: readonly ThreadTurn[],
@@ -242,7 +257,7 @@ export function toApiBody(
   return {
     action: 'chatStream',
     data: {
-      systemPrompt: BASE_PROMPT + directives(req),
+      systemPrompt: BASE_PROMPT + directives(req) + timeStamp(),
       conversationHistory: historyOf(history),
       message: req.text,
       ...(attachments.length ? { attachments } : {}),

@@ -328,6 +328,9 @@ input,textarea,select{ font-family:inherit; }
    arrived, not instead of it (ChatScreen.tsx). Muted, because it is the footnote
    to the answer, not a second answer. */
 .bubbleNote{ margin-top:8px; font-size:13px; line-height:1.45; color:var(--mut); }
+.sources{ margin-top:10px; padding-top:8px; border-top:1px solid var(--hair); }
+.sourcesHead{ font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--mut); margin-bottom:4px; }
+.source{ display:block; font-size:12px; color:var(--link, #2563eb); text-decoration:none; padding:3px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* The actions under a reply — the mockup's rowA (1642): 14px apart, and its
    buttons bare (BTN, 1641: no background, no border, the muted colour, gone
    bright under the cursor). The padding is the mockup's, doubled: 2px made a
@@ -639,4 +642,25 @@ input,textarea,select{ font-family:inherit; }
 .shEmpty{ margin:0; padding:12px 14px; font-size:12px; line-height:1.5; color:var(--mut); }
 .shTip{ margin:14px 2px 0; font-size:11px; line-height:1.6; color:var(--mut); }
 
-/* Voice debug overlay — the phone-test log. A dot until opened. */
+/* Library — uploads with type filters. */
+.lib{ padding:12px 14px; }
+.lib-filters{ display:flex; gap:8px; overflow-x:auto; padding-bottom:10px; }
+.lib-filters button{ flex:none; padding:6px 12px; border-radius:16px; border:1px solid var(--hair); background:none; color:var(--mut); font-size:12px; }
+.lib-filters button.on{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+.lib-empty{ color:var(--mut); font-size:13px; padding:12px 2px; }
+.lib-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.lib-list li{ display:flex; align-items:center; gap:8px; }
+.lib-row{ flex:1; display:flex; align-items:center; gap:10px; padding:8px; border:1px solid var(--hair); border-radius:10px; background:var(--card); text-align:left; }
+.lib-thumb{ width:40px; height:40px; object-fit:cover; border-radius:8px; flex:none; }
+.lib-icon{ width:40px; height:40px; border-radius:8px; background:var(--hair); flex:none; }
+.lib-meta{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.lib-name{ font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lib-sub{ font-size:11px; color:var(--mut); }
+.lib-del{ width:28px; height:28px; border-radius:50%; border:none; background:none; color:var(--mut); font-size:18px; flex:none; }
+.lib-preview{ position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.6); display:flex; flex-direction:column; }
+.lib-preview-head{ display:flex; justify-content:space-between; align-items:center; padding:12px 14px; color:#fff; font-size:14px; }
+.lib-preview-head button{ background:none; border:none; color:#fff; font-size:24px; }
+.lib-preview-body{ flex:1; display:flex; align-items:center; justify-content:center; padding:0 14px 14px; min-height:0; }
+.lib-preview-body img, .lib-preview-body video{ max-width:100%; max-height:100%; border-radius:8px; }
+.lib-preview-body audio{ width:100%; }
+.lib-preview-body iframe{ width:100%; height:100%; border:none; border-radius:8px; background:#fff; }

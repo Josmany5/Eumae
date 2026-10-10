@@ -12,6 +12,7 @@ import { SCREENS, LABELS } from './screens';
 import { PAGES, pageTitle } from './pages';
 import { NavContext, DEFAULT_TURN, type Nav, type PanelView, type Ref, type Turn } from './nav';
 import { logEv } from './log';
+import { saveUpload, uploadData } from './uploads';
 
 /** A sub-page pushed on top of the current tab — the mockup's pageSt entry. */
 interface Pushed {
@@ -88,20 +89,21 @@ export default function App() {
      what's left here is the read — enough to show you your own photo back in the
      panel rather than a filename you have to trust. */
   const onFile = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
+    async (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       // Cleared first: picking the same file twice otherwise fires nothing.
       e.target.value = '';
       if (!file) return;
-      if (!file.type.startsWith('image/')) {
-        attach({ label: file.name, icon: 'doc' });
-        return;
+      try {
+        const upload = await saveUpload(file);
+        const url = await uploadData(upload.id);
+        const icon = upload.kind === 'image' ? 'img' : upload.kind === 'pdf' ? 'pdf' : 'doc';
+        attach({ label: upload.name, icon, url: url ?? undefined });
+      } catch {
+        notify('Could not read that file.');
       }
-      const reader = new FileReader();
-      reader.onload = () => attach({ label: file.name, icon: 'img', url: String(reader.result) });
-      reader.readAsDataURL(file);
     },
-    [attach],
+    [attach, notify],
   );
 
   /* The `+` window's one page door, now that its Context section is retired
@@ -269,8 +271,9 @@ export default function App() {
         <AddSheet open={addOpen} onClose={() => setAddOpen(false)} onCreateRole={onCreateRole} />
 
         {/* `accept` is what puts Photo library / Take photo / Choose file on
-            screen: that list is the OS picker, not a menu we draw. */}
-        <input id="file-input" ref={fileRef} type="file" accept="image/*,.pdf" onChange={onFile} hidden />
+            screen: that list is the OS picker, not a menu we draw. No accept
+            filter — every file type goes to the Library. */}
+        <input id="file-input" ref={fileRef} type="file" onChange={onFile} hidden />
 
         <Toast message={toast} onDone={() => setToast(null)} />
       </div>

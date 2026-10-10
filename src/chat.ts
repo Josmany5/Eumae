@@ -134,6 +134,8 @@ export interface Reply {
   error: string | null;
   /** A tool the model asked for before finishing, if it asked for one. */
   call: { name: string; args: Record<string, unknown> } | null;
+  /** Where the answer came from, when Google Search grounded it. */
+  sources: { uri: string; title: string }[];
 }
 
 /** One sentence for a response that is not a stream.
@@ -165,6 +167,21 @@ async function refusal(response: Response): Promise<string> {
  *  asked for here, at the moment of sending, because the library refreshes an
  *  expiring one in the background — a copy kept anywhere else would be the stale
  *  one exactly when it matters (auth.ts:225). */
+/** Pull the source list out of Gemini's grounding metadata. */
+function extractSources(grounding: unknown): Reply['sources'] {
+  const out: Reply['sources'] = [];
+  const chunks = (grounding as { groundingChunks?: { web?: { uri?: string; title?: string } }[] })
+    ?.groundingChunks;
+  if (!Array.isArray(chunks)) return out;
+  for (const c of chunks) {
+    const uri = c?.web?.uri;
+    if (uri && !out.some((s) => s.uri === uri)) {
+      out.push({ uri, title: c.web?.title || uri });
+    }
+  }
+  return out;
+}
+
 export async function streamChat(body: ApiChatBody, onText: (full: string) => void): Promise<Reply> {
   let token: string | null = null;
   try {
@@ -187,11 +204,11 @@ export async function streamChat(body: ApiChatBody, onText: (full: string) => vo
       body: JSON.stringify(body),
     });
   } catch {
-    return { ok: false, text: '', error: UNREACHABLE, call: null };
+    return { ok: false, text: '', error: UNREACHABLE, call: null, sources: [] };
   }
 
   if (!response.ok || !response.body) {
-    return { ok: false, text: '', error: await refusal(response), call: null };
+    return { ok: false, text: '', error: await refusal(response), call: null, sources: [] };
   }
 
   const reader = response.body.getReader();
@@ -200,6 +217,7 @@ export async function streamChat(body: ApiChatBody, onText: (full: string) => vo
   let text = '';
   let failure: string | null = null;
   let call: Reply['call'] = null;
+  let sources: Reply['sources'] = [];
 
   /** One frame into the running state on the left. */
   const apply = (frame: string) => {
@@ -212,6 +230,8 @@ export async function streamChat(body: ApiChatBody, onText: (full: string) => vo
       call = { name: event.name, args: event.args };
     } else if (event.kind === 'error') {
       failure = event.message;
+    } else if (event.kind === 'grounding') {
+      sources = extractSources(event.grounding);
     }
   };
 
@@ -227,11 +247,11 @@ export async function streamChat(body: ApiChatBody, onText: (full: string) => vo
     /* The stream threw — a dropped connection, or a body that stopped early.
        What arrived is kept: a partial reply read aloud would be worse than none,
        but a partial reply *shown* with a sentence about it is not. */
-    return { ok: false, text, error: CUT_SHORT, call };
+    return { ok: false, text, error: CUT_SHORT, call, sources: [] };
   }
   /* The last frame, if the response ended without its trailing blank line. */
   if (buffer.trim()) apply(buffer);
 
   if (!failure && !text) failure = EMPTY;
-  return { ok: !failure, text, error: failure, call };
+  return { ok: !failure, text, error: failure, call, sources };
 }
