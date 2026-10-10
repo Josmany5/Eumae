@@ -59,21 +59,23 @@ function SwipeRow({
   onExport: () => void;
 }) {
   const startX = useRef(0);
-  const [dx, setDx] = useState(0);
+  const liveDx = useRef(0);
+  const [shownDx, setShownDx] = useState(0);
 
   const onTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
+    liveDx.current = 0;
   };
   const onTouchMove = (e: React.TouchEvent) => {
     const delta = e.touches[0].clientX - startX.current;
-    if (delta < 0) setDx(Math.max(delta, -140));
+    liveDx.current = delta < 0 ? Math.max(delta, -140) : 0;
+    setShownDx(liveDx.current);
   };
   const onTouchEnd = () => {
-    if (dx < -60) onOpen();
-    else {
-      setDx(0);
-      onClose();
-    }
+    if (liveDx.current < -60) onOpen();
+    else onClose();
+    liveDx.current = 0;
+    setShownDx(0);
   };
 
   return (
@@ -92,7 +94,7 @@ function SwipeRow({
       </div>
       <div
         className={`drSwipe${current ? ' on' : ''}`}
-        style={{ transform: open ? 'translateX(-140px)' : dx ? `translateX(${dx}px)` : undefined }}
+        style={{ transform: open ? 'translateX(-140px)' : shownDx ? `translateX(${shownDx}px)` : undefined }}
         onClick={() => {
           if (open) onClose();
           else onPick();
@@ -102,6 +104,18 @@ function SwipeRow({
         <span className="drDate">
           {new Date(t.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
         </span>
+      </div>
+      <div className="drDesktop">
+        <button className="drIconBtn" onClick={onExport} aria-label="Export chat">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+          </svg>
+        </button>
+        <button className="drIconBtn danger" onClick={onDelete} aria-label="Delete chat">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
+          </svg>
+        </button>
       </div>
     </div>
   );

@@ -32,6 +32,19 @@ export interface Msg extends ThreadTurn {
 
 const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'What am I forgetting?'];
 
+/* Message IDs come from a counter, not the clock. Two sends in the same
+   millisecond used to collide — Date.now() is not an ID. The counter starts
+   above the highest saved ID so reloads never collide. */
+let nextMsgId = 1;
+function msgId(): number {
+  return nextMsgId++;
+}
+function seedMsgId(msgs: { id: number }[]): void {
+  for (const m of msgs) {
+    if (m.id >= nextMsgId) nextMsgId = m.id + 1;
+  }
+}
+
 /** How long a Copy button stays a tick. wove's own 1500ms (1704). */
 const COPIED_MS = 1500;
 
@@ -167,8 +180,10 @@ export default function ChatScreen() {
   /* Load the current thread's messages. App owns thread identity. */
   useEffect(() => {
     const thread = threadId ? getThread(threadId) : undefined;
+    const loaded = thread ? thread.messages : [];
+    seedMsgId(loaded);
     switching.current = true;
-    setMsgs(thread ? thread.messages : []);
+    setMsgs(loaded);
   }, [threadId]);
 
   /* Save messages to the current thread on every change. */
@@ -237,8 +252,8 @@ export default function ChatScreen() {
     /* Two ids from one reading of the clock — the turn, and the reply it is
        waiting for — so the reply can still be found in the list while pieces of
        it are arriving and the list is being appended to. */
-    const id = Date.now();
-    const replyId = id + 1;
+    const id = msgId();
+    const replyId = msgId();
     const now = Date.now();
     const isFirst = msgs.length === 0;
     setMsgs((m) => [
