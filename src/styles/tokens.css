@@ -722,13 +722,23 @@ input,textarea,select{ font-family:inherit; }
 .daySep span, .daySep{ font-size:12px; font-weight:600; color:var(--mut); }
 .drDate{ margin-left:auto; font-size:12px; color:var(--mut); flex:none; }
 .dr .g{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.swipeRow{ position:relative; overflow:hidden; }
+.swipeRow{ position:relative; overflow:hidden; touch-action:pan-y; }
 .swipeActions{ position:absolute; right:0; top:0; bottom:0; display:flex; align-items:stretch; }
 .swExp, .swDel{ width:70px; border:none; display:flex; align-items:center; justify-content:center; color:#fff; }
 .swExp{ background:var(--ac); }
 .swDel{ background:var(--rd); }
-.swDelConfirm{ width:70px; border:none; background:var(--rd); color:#fff; font-weight:700; font-size:14px; }
 .drSwipe{ display:flex; align-items:center; gap:12px; width:100%; background:var(--card);
   padding:12px 20px; font-size:16px; text-align:left; color:var(--tx);
   transition:transform .2s ease; position:relative; }
 .drSwipe.on{ background:var(--card2); }
+.dlgScrim{ position:fixed; inset:0; z-index:400; background:rgba(0,0,0,.4); }
+.dlg{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:401;
+  width:min(320px, 85vw); background:var(--card); border-radius:14px; padding:20px;
+  box-shadow:0 8px 32px rgba(0,0,0,.25); }
+.dlgTitle{ font-size:17px; font-weight:700; margin-bottom:8px; }
+.dlgBody{ font-size:14px; color:var(--mut); margin-bottom:20px; }
+.dlgBtns{ display:flex; gap:10px; justify-content:flex-end; }
+.dlgCancel{ border:1px solid var(--hair); background:none; border-radius:10px;
+  padding:10px 18px; font-size:15px; font-weight:600; color:var(--tx); }
+.dlgDanger{ border:none; border-radius:10px; padding:10px 18px;
+  font-size:15px; font-weight:700; background:var(--rd); color:#fff; }

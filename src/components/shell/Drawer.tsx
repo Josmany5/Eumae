@@ -43,23 +43,19 @@ function SwipeRow({
   thread: t,
   current,
   open,
-  confirming,
   onOpen,
   onClose,
   onPick,
   onDelete,
-  onConfirmDelete,
   onExport,
 }: {
   thread: { id: string; title: string; updatedAt: number };
   current: boolean;
   open: boolean;
-  confirming: boolean;
   onOpen: () => void;
   onClose: () => void;
   onPick: () => void;
   onDelete: () => void;
-  onConfirmDelete: () => void;
   onExport: () => void;
 }) {
   const startX = useRef(0);
@@ -88,17 +84,11 @@ function SwipeRow({
             <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
           </svg>
         </button>
-        {confirming ? (
-          <button className="swDelConfirm" onClick={onConfirmDelete}>
-            Sure?
-          </button>
-        ) : (
-          <button className="swDel" onClick={onDelete} aria-label="Delete chat">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
-            </svg>
-          </button>
-        )}
+        <button className="swDel" onClick={onDelete} aria-label="Delete chat">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
+          </svg>
+        </button>
       </div>
       <div
         className={`drSwipe${current ? ' on' : ''}`}
@@ -122,12 +112,12 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch, currentTh
      stale when a title updates mid-chat (the 2026-10-10 stale list). */
   const [threads, setThreads] = useState<{ id: string; title: string; updatedAt: number }[]>([]);
   const [openRow, setOpenRow] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   useEffect(() => {
     if (open && tab === 'chat') {
       setThreads(getThreads());
       setOpenRow(null);
-      setConfirmId(null);
+      setDeleteTarget(null);
     }
   }, [open, tab]);
   const [q, setQ] = useState('');
@@ -168,23 +158,10 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch, currentTh
                         thread={t}
                         current={t.id === currentThreadId}
                         open={openRow === t.id}
-                        confirming={confirmId === t.id}
-                        onOpen={() => {
-                          setOpenRow(t.id);
-                          setConfirmId(null);
-                        }}
-                        onClose={() => {
-                          setOpenRow(null);
-                          setConfirmId(null);
-                        }}
+                        onOpen={() => setOpenRow(t.id)}
+                        onClose={() => setOpenRow(null)}
                         onPick={() => onThreadPick?.(t.id)}
-                        onDelete={() => setConfirmId(t.id)}
-                        onConfirmDelete={() => {
-                          onThreadDelete?.(t.id);
-                          setConfirmId(null);
-                          setOpenRow(null);
-                          setThreads(getThreads());
-                        }}
+                        onDelete={() => setDeleteTarget({ id: t.id, title: t.title })}
                         onExport={() => {
                           exportThread(t.id);
                           setOpenRow(null);
@@ -214,6 +191,31 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch, currentTh
           </button>
         </div>
       </aside>
+      {deleteTarget ? (
+        <>
+          <div className="dlgScrim" onClick={() => setDeleteTarget(null)} />
+          <div className="dlg" role="alertdialog" aria-label="Delete chat">
+            <div className="dlgTitle">Delete this chat?</div>
+            <div className="dlgBody">"{deleteTarget.title}" will be gone for good.</div>
+            <div className="dlgBtns">
+              <button className="dlgCancel" onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </button>
+              <button
+                className="dlgDanger"
+                onClick={() => {
+                  onThreadDelete?.(deleteTarget.id);
+                  setDeleteTarget(null);
+                  setOpenRow(null);
+                  setThreads(getThreads());
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
     </>
   );
 }
