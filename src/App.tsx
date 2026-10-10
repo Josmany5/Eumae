@@ -72,7 +72,7 @@ export default function App() {
         return;
       }
       setRefs((list) => [...list, r]);
-      notify(`Attached ${r.label}`);
+      /* No toast — the thumbnail appearing in the composer is the confirmation. */
       logEv({ area: 'Chat', text: `Attached ${r.label}` });
     },
     [refs, notify],
