@@ -83,6 +83,10 @@ export default function App() {
     logEv({ area: 'Chat', text: `Detached ${label}` });
   }, []);
 
+  const clearRefs = useCallback(() => {
+    setRefs([]);
+  }, []);
+
   /* What the paperclip and the rail's attach row both land on. The mockup reads
      the file into a data URL, downsizes anything over ~1.1MB to 1568px and sends
      it as an attachment (lines 1805-1815); the send half is the API work's, so
@@ -146,6 +150,7 @@ export default function App() {
       openAdd,
       refs,
       detach,
+      clearRefs,
       turn,
       setTurn,
       pickFile,
@@ -165,6 +170,7 @@ export default function App() {
       openAdd,
       refs,
       detach,
+      clearRefs,
       turn,
       setTurn,
       pickFile,

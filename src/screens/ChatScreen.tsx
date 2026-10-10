@@ -22,6 +22,9 @@ interface Msg extends ThreadTurn {
   note?: string;
   /** Where the reply came from, when search grounded it. */
   sources?: { uri: string; title: string }[];
+  /** The files that went out with this message — snapshots of the refs at send
+   *  time, so the bubble shows what the AI saw. */
+  attachments?: { label: string; icon: string; url?: string }[];
 }
 
 const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'What am I forgetting?'];
@@ -90,7 +93,7 @@ async function copyText(text: string): Promise<boolean> {
  *    the failure look bigger than it was.
  */
 export default function ChatScreen() {
-  const { turn, setTurn, refs, notify } = useNav();
+  const { turn, setTurn, refs, clearRefs, notify } = useNav();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   /* Replies in flight. A ref rather than state because the only reader is the
      mic's guard, which is called from a speech event and not from a render
@@ -163,9 +166,12 @@ export default function ChatScreen() {
     const replyId = id + 1;
     setMsgs((m) => [
       ...m,
-      { id, role: 'you', text, body },
+      { id, role: 'you', text, body, attachments: refs.map((r) => ({ label: r.label, icon: r.icon, url: r.url })) },
       { id: replyId, role: 'eumae', text: '', streaming: true },
     ]);
+    /* Attachments belong to the message that carried them. The composer clears;
+       the message keeps them. */
+    clearRefs();
 
     /* The clip is the opening of it: a log row is a sentence, not a transcript.
        Where the mic sent it the row says so — the same flag the mockup reads
@@ -329,6 +335,18 @@ export default function ChatScreen() {
                     </div>
                   ) : (
                     <div className="bubble">
+                      {m.attachments && m.attachments.length > 0 ? (
+                        <div className="msgAttaches">
+                          {m.attachments.map((a) => (
+                            <div key={a.label} className="msgAttach">
+                              {a.url ? (
+                                <img className="msgAttachThumb" src={a.url} alt={a.label} />
+                              ) : null}
+                              <span className="msgAttachName">{a.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                       {m.text}
                       {m.note ? <div className="bubbleNote">{m.note}</div> : null}
                       {m.sources && m.sources.length > 0 ? (

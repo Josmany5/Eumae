@@ -331,6 +331,14 @@ input,textarea,select{ font-family:inherit; }
 .sources{ margin-top:10px; padding-top:8px; border-top:1px solid var(--hair); }
 .sourcesHead{ font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--mut); margin-bottom:4px; }
 .source{ display:block; font-size:12px; color:var(--link, #2563eb); text-decoration:none; padding:3px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Attachments inside a sent message — what went out with it. Thumbnails for
+   images, names for the rest. */
+.msgAttaches{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+.msgAttach{ display:flex; align-items:center; gap:8px; max-width:200px;
+  background:var(--card2); border-radius:10px; padding:6px 8px; }
+.msgAttachThumb{ width:48px; height:48px; object-fit:cover; border-radius:8px; flex:none; }
+.msgAttachName{ font-size:12px; font-weight:500; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
 /* The actions under a reply — the mockup's rowA (1642): 14px apart, and its
    buttons bare (BTN, 1641: no background, no border, the muted colour, gone
    bright under the cursor). The padding is the mockup's, doubled: 2px made a

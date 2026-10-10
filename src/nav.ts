@@ -104,6 +104,9 @@ export interface Nav {
    *  is a second reader that no prop can reach. */
   refs: Ref[];
   detach: (label: string) => void;
+  /** Empty the composer after a send — attachments belong to the message that
+   *  carried them, not to the conversation. The panel keeps its own history. */
+  clearRefs: () => void;
 
   /** How this chat answers. Set by that menu, read back by the chip above the
    *  input — the two ends of one piece of state, so it lives with both. */
@@ -133,6 +136,7 @@ export const NavContext = createContext<Nav>({
   openAdd: () => {},
   refs: [],
   detach: () => {},
+  clearRefs: () => {},
   turn: DEFAULT_TURN,
   setTurn: () => {},
   pickFile: () => {},
