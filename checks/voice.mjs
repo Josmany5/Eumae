@@ -438,6 +438,12 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     'the two stops: endMicSession (mic down) and restartRecognizer (fresh ears after a reading)',
   );
   judge(
+    'voice: the audio element releases the session when the run ends',
+    /function releaseAudio[\s\S]{0,400}removeAttribute\('src'\)/.test(source) &&
+      /releaseAudio\(\);/.test(source),
+    'releaseAudio — a played element holds iOS in playback mode and the mic stays deaf',
+  );
+  judge(
     'voice: a reply is spoken as its sentences arrive, not after it finishes',
     /export function startVoiceReply/.test(source) &&
       /export function feedVoiceReply/.test(source) &&

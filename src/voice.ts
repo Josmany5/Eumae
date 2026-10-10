@@ -420,6 +420,21 @@ function setSessionSpeaking(): void {
   if (listener) listener.lit(false);
 }
 
+/** Release the audio element after a run. A played element holds iOS's audio
+ *  session in playback mode, and speech recognition stays deaf until it lets
+ *  go — this is why the mic worked on a fresh page (no audio played yet) and
+ *  died after the first reply. Removing the source drops the claim at once. */
+function releaseAudio(): void {
+  if (!audio) return;
+  try {
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+  } catch {
+    /* Nothing held. */
+  }
+}
+
 /** The run is over: back to listening if the mic is up, off if it is not. The
  *  recogniser is replaced here — the one that lived through the reading cannot
  *  be trusted to hear afterwards. Words spoken while the answer was on its way
@@ -427,6 +442,7 @@ function setSessionSpeaking(): void {
 function settleSessionAfterSpeak(): void {
   speakActive = false;
   speakText = null;
+  releaseAudio();
   if (listener) {
     session = 'listening';
     vlog('session → listening');

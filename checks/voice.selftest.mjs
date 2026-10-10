@@ -269,6 +269,12 @@ check(
 );
 
 check(
+  'fails when the audio session is never released',
+  failing(source.replace("  releaseAudio();\n", '')),
+  ['voice: the audio element releases the session when the run ends'],
+);
+
+check(
   'fails when the streaming read-aloud loses a leg',
   failing(source.replace('export function feedVoiceReply', 'export function feedVoiceRepl')),
   ['voice: a reply is spoken as its sentences arrive, not after it finishes'],
