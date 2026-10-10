@@ -157,19 +157,32 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
         <div className="attachStrip" aria-label="Attached files">
           {refs.map((r) => (
             <div key={r.label} className="attachChip">
-              {r.url ? (
-                <img className="attachThumb" src={r.url} alt="" />
+              {r.icon === 'img' && r.url ? (
+                /* Images show as the picture itself — no filename clutter. The
+                   × floats over the corner, the way every clean attach UI does. */
+                <>
+                  <img className="attachImg" src={r.url} alt={r.label} />
+                  <button
+                    className="attachImgX"
+                    onClick={() => detach(r.label)}
+                    aria-label={`Remove ${r.label}`}
+                  >
+                    <Icon name="x" />
+                  </button>
+                </>
               ) : (
-                <Icon name={r.icon} />
+                <>
+                  <Icon name={r.icon} />
+                  <span className="attachName">{r.label}</span>
+                  <button
+                    className="attachX"
+                    onClick={() => detach(r.label)}
+                    aria-label={`Remove ${r.label}`}
+                  >
+                    <Icon name="x" />
+                  </button>
+                </>
               )}
-              <span className="attachName">{r.label}</span>
-              <button
-                className="attachX"
-                onClick={() => detach(r.label)}
-                aria-label={`Remove ${r.label}`}
-              >
-                <Icon name="x" />
-              </button>
             </div>
           ))}
         </div>

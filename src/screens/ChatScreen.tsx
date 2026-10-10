@@ -92,9 +92,59 @@ async function copyText(text: string): Promise<boolean> {
  *    relay that dies mid-answer has still said something, and dropping it makes
  *    the failure look bigger than it was.
  */
+/** Sources, collapsed by default — provenance available, not loud. A quiet pill
+ *  with the count; tap to fan out the deduped domain chips. */
+function SourcesPill({ sources }: { sources: { uri: string; title: string }[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="sources">
+      <button className="sourcesPill" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        Sources · {sources.length}
+      </button>
+      {open && (
+        <div className="sourcesChips">
+          {sources.map((s) => (
+            <a key={s.uri} href={s.uri} target="_blank" rel="noreferrer" className="sourceChip">
+              <img
+                className="sourceFav"
+                src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(s.title)}&sz=32`}
+                alt=""
+                loading="lazy"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
+              />
+              <span>{s.title}</span>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Full-screen image viewer — tap a picture in chat, see it big. Dark backdrop,
+ *  × to close, tap outside to close. */
+function ImageViewer({ url, alt, onClose }: { url: string; alt: string; onClose: () => void }) {
+  return (
+    <div className="imgViewer" role="dialog" aria-label={alt} onClick={onClose}>
+      <button className="imgViewerX" onClick={onClose} aria-label="Close">
+        <Icon name="x" />
+      </button>
+      <img
+        className="imgViewerImg"
+        src={url}
+        alt={alt}
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+}
+
 export default function ChatScreen() {
   const { turn, setTurn, refs, clearRefs, notify } = useNav();
   const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [viewing, setViewing] = useState<{ url: string; alt: string } | null>(null);
   /* Replies in flight. A ref rather than state because the only reader is the
      mic's guard, which is called from a speech event and not from a render
      (`VoiceTyping.busy`, voice.ts:55) — and because a counter in state would
@@ -338,26 +388,27 @@ export default function ChatScreen() {
                       {m.attachments && m.attachments.length > 0 ? (
                         <div className="msgAttaches">
                           {m.attachments.map((a) => (
-                            <div key={a.label} className="msgAttach">
-                              {a.url ? (
-                                <img className="msgAttachThumb" src={a.url} alt={a.label} />
-                              ) : null}
-                              <span className="msgAttachName">{a.label}</span>
-                            </div>
+                            a.icon === 'img' && a.url ? (
+                              <button
+                                key={a.label}
+                                className="msgAttachBtn"
+                                onClick={() => a.url && setViewing({ url: a.url, alt: a.label })}
+                                aria-label={`View ${a.label} full screen`}
+                              >
+                                <img className="msgAttachImg" src={a.url} alt={a.label} />
+                              </button>
+                            ) : (
+                              <div key={a.label} className="msgAttach">
+                                <span className="msgAttachName">{a.label}</span>
+                              </div>
+                            )
                           ))}
                         </div>
                       ) : null}
                       {m.text}
                       {m.note ? <div className="bubbleNote">{m.note}</div> : null}
                       {m.sources && m.sources.length > 0 ? (
-                        <div className="sources">
-                          <div className="sourcesHead">Sources</div>
-                          {m.sources.map((s) => (
-                            <a key={s.uri} href={s.uri} target="_blank" rel="noreferrer" className="source">
-                              {s.title}
-                            </a>
-                          ))}
-                        </div>
+                        <SourcesPill sources={m.sources} />
                       ) : null}
                     </div>
                   )}
@@ -417,6 +468,10 @@ export default function ChatScreen() {
             screen knows: the count is kept here (1857) and read there (1757). */}
         <Composer onSend={send} busy={() => inFlight.current > 0} />
       </div>
+
+      {viewing && (
+        <ImageViewer url={viewing.url} alt={viewing.alt} onClose={() => setViewing(null)} />
+      )}
     </div>
   );
 }

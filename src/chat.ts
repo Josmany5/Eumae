@@ -173,11 +173,20 @@ function extractSources(grounding: unknown): Reply['sources'] {
   const chunks = (grounding as { groundingChunks?: { web?: { uri?: string; title?: string } }[] })
     ?.groundingChunks;
   if (!Array.isArray(chunks)) return out;
+  const seenDomains = new Set<string>();
   for (const c of chunks) {
     const uri = c?.web?.uri;
-    if (uri && !out.some((s) => s.uri === uri)) {
-      out.push({ uri, title: c.web?.title || uri });
+    if (!uri) continue;
+    /* Dedup by domain — three nih.gov pages read as one source. */
+    let domain = '';
+    try {
+      domain = new URL(uri).hostname.replace(/^www\./, '');
+    } catch {
+      domain = uri;
     }
+    if (seenDomains.has(domain)) continue;
+    seenDomains.add(domain);
+    out.push({ uri, title: domain });
   }
   return out;
 }

@@ -331,12 +331,31 @@ input,textarea,select{ font-family:inherit; }
 .sources{ margin-top:10px; padding-top:8px; border-top:1px solid var(--hair); }
 .sourcesHead{ font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--mut); margin-bottom:4px; }
 .source{ display:block; font-size:12px; color:var(--link, #2563eb); text-decoration:none; padding:3px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Sources, collapsed — a quiet pill with the count. Tap to fan out the chips. */
+.sources{ margin-top:10px; }
+.sourcesPill{ background:none; border:1px solid var(--hair); border-radius:99px;
+  padding:4px 12px; font-size:11px; font-weight:600; color:var(--mut); }
+.sourcesChips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.sourceChip{ display:inline-flex; align-items:center; gap:6px; padding:5px 10px 5px 6px;
+  background:var(--card2); border-radius:99px; font-size:12px; color:var(--tx);
+  text-decoration:none; max-width:180px; }
+.sourceChip span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sourceFav{ width:16px; height:16px; border-radius:50%; flex:none; }
+/* Full-screen image viewer — dark backdrop, picture centered, × top-left. */
+.imgViewer{ position:fixed; inset:0; z-index:300; background:rgba(0,0,0,.92);
+  display:flex; align-items:center; justify-content:center; padding:20px; }
+.imgViewerImg{ max-width:100%; max-height:100%; border-radius:12px; object-fit:contain; }
+.imgViewerX{ position:absolute; top:16px; left:16px; width:44px; height:44px;
+  border-radius:50%; border:none; background:rgba(255,255,255,.12); color:#fff;
+  display:flex; align-items:center; justify-content:center; }
+.msgAttachBtn{ padding:0; border:none; background:none; cursor:pointer; }
 /* Attachments inside a sent message — what went out with it. Thumbnails for
    images, names for the rest. */
 .msgAttaches{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+/* Sent images: large and clean, the picture itself. No filename, no card. */
+.msgAttachImg{ max-width:100%; max-height:280px; border-radius:14px; display:block; object-fit:cover; }
 .msgAttach{ display:flex; align-items:center; gap:8px; max-width:200px;
   background:var(--card2); border-radius:10px; padding:6px 8px; }
-.msgAttachThumb{ width:48px; height:48px; object-fit:cover; border-radius:8px; flex:none; }
 .msgAttachName{ font-size:12px; font-weight:500; overflow:hidden;
   text-overflow:ellipsis; white-space:nowrap; }
 /* The actions under a reply — the mockup's rowA (1642): 14px apart, and its
@@ -416,7 +435,14 @@ input,textarea,select{ font-family:inherit; }
    you compose, until sent or detached. */
 .attachStrip{ display:flex; flex-wrap:wrap; gap:8px; padding:0 2px 8px; }
 .attachChip{ display:flex; align-items:center; gap:8px; max-width:220px;
-  background:var(--card2); border-radius:12px; padding:6px 8px; }
+  background:var(--card2); border-radius:12px; padding:6px 8px; position:relative; }
+/* Image attachments: the picture itself, no filename. The × floats over the
+   top-right corner. */
+.attachChip:has(.attachImg){ padding:0; background:none; max-width:none; }
+.attachImg{ width:88px; height:88px; object-fit:cover; border-radius:14px; display:block; }
+.attachImgX{ position:absolute; top:-8px; right:-8px; width:26px; height:26px;
+  border-radius:50%; border:none; background:rgba(0,0,0,.65); color:#fff;
+  display:flex; align-items:center; justify-content:center; }
 .attachThumb{ width:32px; height:32px; object-fit:cover; border-radius:8px; flex:none; }
 .attachName{ font-size:12px; font-weight:500; color:var(--tx);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
