@@ -219,6 +219,10 @@ export default function App() {
       turn,
       setTurn,
       pickFile,
+      threads,
+      currentThreadId,
+      newChat,
+      switchThread,
     ],
   );
 
