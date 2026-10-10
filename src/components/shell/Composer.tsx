@@ -79,7 +79,8 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
        with one writer, and it is the same reading the mockup takes straight off
        `#cin.value` at both ends (1758, 1854). */
     const value = field.current.trim();
-    if (!value) return false;
+    /* Text or attachments — a message can be files alone. */
+    if (!value && refs.length === 0) return false;
     onSend(value, byVoice);
     setText('');
     if (ref.current) ref.current.style.height = 'auto';
@@ -229,7 +230,7 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
         >
           <Icon name="mic" />
         </button>
-        <button className="cmpSend" onClick={() => send()} aria-label="Send" disabled={!text.trim()}>
+        <button className="cmpSend" onClick={() => send()} aria-label="Send" disabled={!text.trim() && refs.length === 0}>
           <Icon name="up" />
         </button>
       </div>
