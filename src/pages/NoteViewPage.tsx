@@ -60,7 +60,7 @@ function FormatPanel({ onCmd, onClose }: { onCmd: (cmd: string, val?: string) =>
 }
 
 export default function NoteViewPage({ arg }: PageProps) {
-  const { back, notify, setHeaderActions } = useNav();
+  const { back, go, notify, setHeaderActions } = useNav();
   const id = typeof arg === 'string' ? arg : '';
   const [note, setNote] = useState<Note | null>(null);
   const [title, setTitle] = useState('');
@@ -72,7 +72,8 @@ export default function NoteViewPage({ arg }: PageProps) {
   useEffect(() => {
     const n = getNote(id);
     if (!n) {
-      back();
+      /* Note gone — back to the list instead of a white page. */
+      go('notes');
       return;
     }
     const entry = startEntry();
@@ -95,7 +96,20 @@ export default function NoteViewPage({ arg }: PageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (!note) return null;
+  if (!note) {
+    return (
+      <div className="page noteView">
+        <div className="pageHead">
+          <button className="hb" onClick={back} aria-label="Back to notes">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        </div>
+        <div className="emptyNotes"><p>Loading…</p></div>
+      </div>
+    );
+  }
 
   const persist = (entries: NoteEntry[], newTitle = title) => {
     const updated: Note = { ...note, title: newTitle, entries };
