@@ -91,15 +91,16 @@ export default function NoteViewPage({ arg }: PageProps) {
     const text = `${note.title}\n\n` + note.entries
       .map((e) => `${fmtDate(e.createdAt)} ${fmtTime(e.createdAt)}\n${e.text.replace(/<[^>]+>/g, '')}`)
       .join('\n\n');
-    if (navigator.share) {
+    try {
+      await navigator.share({ title: note.title, text });
+    } catch {
+      /* Dismissed or unavailable — copy instead. */
       try {
-        await navigator.share({ title: note.title, text });
+        await navigator.clipboard.writeText(text);
+        notify('Copied to clipboard');
       } catch {
-        /* Dismissed. */
+        notify('Could not share');
       }
-    } else {
-      await navigator.clipboard.writeText(text);
-      notify('Copied to clipboard');
     }
   };
 
@@ -122,13 +123,7 @@ export default function NoteViewPage({ arg }: PageProps) {
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        <input
-          className="noteTitleInput"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => persist(note.entries, title.trim() || 'Untitled')}
-          placeholder="Title"
-        />
+        <span className="pageHeadTitle">Note</span>
         <button className="hb" onClick={toggleSort} aria-label={note.sortNewFirst ? 'Oldest first' : 'Newest first'}>
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" />
@@ -140,6 +135,15 @@ export default function NoteViewPage({ arg }: PageProps) {
           </svg>
         </button>
       </div>
+
+      <input
+        className="noteTitleField"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onBlur={() => persist(note.entries, title.trim() || 'Untitled')}
+        placeholder="Title"
+        aria-label="Note title"
+      />
 
       {shown.map((e) =>
         e.id === draftId.current ? null : (
