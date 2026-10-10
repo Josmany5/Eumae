@@ -18,7 +18,6 @@ interface DrawerProps {
 /** The phone's second level: the same per-page menu the desktop rail shows,
  *  behind the hamburger. The mockup puts the search field above everything,
  *  so it does too. */
-/** Export a thread as markdown and download it. */
 function exportThread(id: string) {
   const thread = getThread(id);
   if (!thread) return;

@@ -5,30 +5,9 @@ import { useNav, type Mode } from '../nav';
 import { logEv } from '../log';
 import { streamChat } from '../chat';
 import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice';
-import { buildRequest, toApiBody, type ApiChatBody, type ThreadTurn } from '../request';
-import { getThread, saveThread, titleFor } from '../threads';
+import { buildRequest, toApiBody } from '../request';
+import { getThread, saveThread, titleFor, type Msg } from '../threads';
 
-export interface Msg extends ThreadTurn {
-  id: number;
-  /** The request this message *is* — built when it was sent, from the turn as it
-   *  stood then (src/request.ts). Only what the person sent carries one: the
-   *  request *is* the message, and a reply is what came back from it. */
-  body?: ApiChatBody;
-  /** True from the moment the turn is posted until the reply is whole — what the
-   *  dots row is drawn from, and what the mic waits for before sending again. */
-  streaming?: boolean;
-  /** One sentence, under the text, when the reply did not arrive whole (the
-   *  server's own sentence, or this side's — src/chat.ts). The text above it
-   *  stays: whatever arrived did arrive. */
-  note?: string;
-  /** Where the reply came from, when search grounded it. */
-  sources?: { uri: string; title: string }[];
-  /** The files that went out with this message — snapshots of the refs at send
-   *  time, so the bubble shows what the AI saw. */
-  attachments?: { label: string; icon: string; url?: string }[];
-  /** When this message was sent. Shown under the bubble. */
-  ts: number;
-}
 
 const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'What am I forgetting?'];
 

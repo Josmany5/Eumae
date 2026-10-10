@@ -1,4 +1,15 @@
-import type { Msg } from './screens/ChatScreen';
+import type { ApiChatBody, ThreadTurn } from './request';
+
+/** One message in a thread. */
+export interface Msg extends ThreadTurn {
+  id: number;
+  body?: ApiChatBody;
+  streaming?: boolean;
+  note?: string;
+  sources?: { uri: string; title: string }[];
+  attachments?: { label: string; icon: string; url?: string }[];
+  ts: number;
+}
 
 /** A conversation thread — the unit of chat persistence. */
 export interface Thread {
@@ -27,7 +38,7 @@ function load(): Thread[] {
       return cache;
     }
     const parsed = JSON.parse(raw);
-    cache = Array.isArray(parsed) ? parsed : [];
+    cache = Array.isArray(parsed) ? parsed.filter(isThread) : [];
     return cache;
   } catch {
     cache = [];
@@ -98,4 +109,17 @@ export function setCurrentThreadId(id: string): void {
 export function titleFor(text: string): string {
   const clean = text.replace(/\s+/g, ' ').trim();
   return clean.length > 40 ? clean.slice(0, 40) + '…' : clean || 'New chat';
+}
+
+/** A stored thread is only usable if it has the shape we expect. */
+function isThread(t: unknown): t is Thread {
+  if (!t || typeof t !== 'object') return false;
+  const o = t as Record<string, unknown>;
+  return (
+    typeof o.id === 'string' &&
+    typeof o.title === 'string' &&
+    typeof o.createdAt === 'number' &&
+    typeof o.updatedAt === 'number' &&
+    Array.isArray(o.messages)
+  );
 }
