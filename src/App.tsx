@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import Header from './components/shell/Header';
 import TabBar, { type TabId } from './components/shell/TabBar';
 import Drawer from './components/shell/Drawer';
@@ -145,33 +145,7 @@ export default function App() {
 
   /* Chat threads — App owns them so the drawer ("New chat", "Recent chats")
      and ChatScreen read the same state. */
-  const [headerActions, setHeaderActions] = useState<ReactNode>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
-
-  /* Stay where you are on reload — tab and page stack persist. */
-  const [restored, setRestored] = useState(false);
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('eumae:nav');
-      if (raw) {
-        const { tab: t, stack: s } = JSON.parse(raw);
-        if (t) setTab(t);
-        if (Array.isArray(s)) setStack(s);
-      }
-    } catch {
-      /* Fresh start. */
-    }
-    setRestored(true);
-  }, []);
-
-  useEffect(() => {
-    if (!restored) return;
-    try {
-      localStorage.setItem('eumae:nav', JSON.stringify({ tab, stack }));
-    } catch {
-      /* Non-fatal. */
-    }
-  }, [tab, stack, restored]);
   const [currentThreadId, setCurrentId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -238,8 +212,6 @@ export default function App() {
       turn,
       setTurn,
       pickFile,
-      headerActions,
-      setHeaderActions,
       threads,
       currentThreadId,
       newChat,
@@ -265,8 +237,6 @@ export default function App() {
       turn,
       setTurn,
       pickFile,
-      headerActions,
-      setHeaderActions,
       threads,
       currentThreadId,
       newChat,
@@ -332,8 +302,6 @@ export default function App() {
             title={top ? pageTitle(top.page) : LABELS[tab]}
             onMenu={() => setDrawerOpen(true)}
             onActivity={() => openPanel('activity')}
-            actions={headerActions}
-            activityEnabled={tab === 'chat' && !top}
             onBack={top ? back : undefined}
           />
           <main id="mn">

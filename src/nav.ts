@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext } from 'react';
 import type { Thread } from './threads';
 import type { TabId } from './components/shell/TabBar';
 
@@ -120,8 +120,6 @@ export interface Nav {
    *  be two readers, and the last time a control grew a second door to the same
    *  room was the bug. */
   pickFile: () => void;
-  headerActions: ReactNode;
-  setHeaderActions: (a: ReactNode) => void;
 
   /** Chat threads — owned by App so the drawer ("New chat", "Recent chats")
    *  and the chat screen read the same state. */
@@ -151,8 +149,6 @@ export const NavContext = createContext<Nav>({
   turn: DEFAULT_TURN,
   setTurn: () => {},
   pickFile: () => {},
-  headerActions: null,
-  setHeaderActions: () => {},
   threads: [],
   currentThreadId: null,
   newChat: () => {},
