@@ -20,7 +20,7 @@ interface DrawerProps {
 export default function Drawer({ open, onClose, tab, onPick, onSearch, currentThreadId, onThreadPick }: DrawerProps) {
   /* Threads read fresh every time the drawer opens — App's cached copy goes
      stale when a title updates mid-chat (the 2026-10-10 stale list). */
-  const [threads, setThreads] = useState<{ id: string; title: string }[]>([]);
+  const [threads, setThreads] = useState<{ id: string; title: string; updatedAt: number }[]>([]);
   useEffect(() => {
     if (open && tab === 'chat') setThreads(getThreads());
   }, [open, tab]);
@@ -62,6 +62,12 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch, currentTh
                       onClick={() => onThreadPick?.(t.id)}
                     >
                       <span className="g">{t.title}</span>
+                      <span className="drDate">
+                        {new Date(t.updatedAt).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </span>
                     </button>
                   ))
                 )
