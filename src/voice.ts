@@ -167,13 +167,17 @@ function clearTimer(): void {
 }
 
 /* ── The speaker ─────────────────────────────────────────────────────────────
- * One audio element, reused. The text becomes sentences; each sentence becomes
- * a clip; the clips play in order through a chained promise, so a sentence
- * fetched while the previous one plays starts with no gap. A generation
- * counter (`speakGen`) invalidates a run the moment it is cancelled, so late
- * audio can never play over what replaced it. */
+ * Web Audio, not a media element. A played <audio> element leaves iOS's audio
+ * session claimed in playback mode and speech recognition stays deaf
+ * afterwards — a documented WebKit bug no element trick (pause, src removal)
+ * clears. An AudioContext suspended when the run ends hands the session back,
+ * so the mic hears after a reading. The text becomes sentences; each sentence
+ * becomes a clip; the clips play in order through a chained promise, so a
+ * sentence fetched while the previous one plays starts with no gap. A
+ * generation counter (`speakGen`) invalidates a run the moment it is
+ * cancelled, so late audio can never play over what replaced it. */
 
-let audio: HTMLAudioElement | null = null;
+let ctx: AudioContext | null = null;
 let unlocked = false;
 /** The current TTS run's generation. Bumped on every cancel. */
 let speakGen = 0;
@@ -194,73 +198,51 @@ let chain: Promise<void> = Promise.resolve();
 /** One refusal is said per run, not one per sentence. */
 let saidOnce = false;
 let speakSay: ((message: string) => void) | undefined;
-let silent: string | null = null;
 /** Resolves the clip currently playing, so a stop can interrupt it mid-play. */
 let currentClip: (() => void) | null = null;
+/** The buffer source playing now, so a stop can silence it at once. */
+let currentSrc: AudioBufferSourceNode | null = null;
 
-function element(): HTMLAudioElement {
-  if (!audio) audio = new Audio();
-  return audio;
+function audioCtx(): AudioContext | null {
+  if (ctx) return ctx;
+  const Ctor =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctor) return null;
+  ctx = new Ctor();
+  return ctx;
 }
 
-/** A silent WAV, built rather than inlined: 8-bit PCM silence is 128, not 0. */
-function silence(): string {
-  if (silent) return silent;
-  const rate = 8000;
-  const samples = 480; // 0.06s. Long enough to be playback; nothing to hear.
-  const bytes = new Uint8Array(44 + samples);
-  const view = new DataView(bytes.buffer);
-  const put = (at: number, text: string) => {
-    for (let i = 0; i < text.length; i++) view.setUint8(at + i, text.charCodeAt(i));
-  };
-  put(0, 'RIFF');
-  view.setUint32(4, 36 + samples, true);
-  put(8, 'WAVE');
-  put(12, 'fmt ');
-  view.setUint32(16, 16, true); // header size
-  view.setUint16(20, 1, true); // PCM
-  view.setUint16(22, 1, true); // mono
-  view.setUint32(24, rate, true);
-  view.setUint32(28, rate, true); // byte rate: 8-bit mono
-  view.setUint16(32, 1, true); // block align
-  view.setUint16(34, 8, true); // bits per sample
-  put(36, 'data');
-  view.setUint32(40, samples, true);
-  bytes.fill(128, 44);
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  silent = `data:audio/wav;base64,${btoa(binary)}`;
-  return silent;
-}
-
-/** Play a silent sound inside a tap gesture. iOS Safari will not start a sound
- *  that no gesture began; this opens the element so everything after it — the
- *  read-aloud that arrives long after the tap — can play. */
+/** Inside a tap gesture: create and resume the context, so the read-aloud
+ *  that arrives long after the tap is allowed to make sound on iOS. Resuming
+ *  is the whole unlock — no silent clip needed. */
 function unlock(): void {
-  if (unlocked) return;
-  /* Never over a piece that is playing: the silence goes through the same
-     element the reply comes out of, so setting `src` on it stops what was
-     playing — and a piece stopped that way never fires `ended`. */
-  if (session === 'speaking') return;
-  try {
-    const el = element();
-    el.src = silence();
-    const started = el.play();
-    if (started && typeof started.then === 'function') {
-      started.then(
-        () => {
-          unlocked = true;
-          vlog('audio unlocked');
-        },
-        () => {
-          vlog('audio unlock refused — next tap retries', true);
-        },
-      );
-    }
-  } catch {
-    /* No audio in this browser at all. Playback below fails the same way and
-       says so. */
+  const c = audioCtx();
+  if (!c) return;
+  const state = c.state as string;
+  if (state === 'suspended' || state === 'interrupted') {
+    c.resume().then(
+      () => {
+        unlocked = true;
+        vlog('audio unlocked');
+      },
+      () => {
+        vlog('audio unlock refused — next tap retries', true);
+      },
+    );
+  } else if (!unlocked) {
+    unlocked = true;
+    vlog('audio unlocked');
   }
+}
+
+/** Hand the audio session back when a run ends. A suspended context claims
+ *  nothing, so speech recognition can take the mic immediately. */
+function suspendAudio(): void {
+  if (!ctx || ctx.state !== 'running') return;
+  ctx.suspend().catch(() => {
+    /* Already suspending. */
+  });
 }
 
 /** Cut text into sentence-sized pieces: code fences are dropped (there is
@@ -372,40 +354,60 @@ async function fetchClip(piece: string, token: string | null): Promise<Clip> {
   }
 }
 
-/** Play one clip through the shared element, as a blob URL that is revoked the
- *  moment the clip ends. Resolves `true` when it played out, `false` when the
- *  element would not start it at all — so the caller can say so and stop,
- *  rather than walk the rest of the queue in silence. */
+/** Play one clip through the shared AudioContext. Resolves `true` when it
+ *  played out, `false` when it could not start at all — so the caller can say
+ *  so and stop, rather than walk the rest of the queue in silence. */
 function playClip(clip: Clip): Promise<boolean> {
   const bytes = clip.bytes;
   if (!bytes) return Promise.resolve(false);
+  const c = audioCtx();
+  if (!c) return Promise.resolve(false);
   return new Promise((resolve) => {
-    const el = element();
-    const url = URL.createObjectURL(new Blob([bytes], { type: clip.mimeType || 'audio/mpeg' }));
     let done = false;
     let played = false;
     const finish = () => {
       if (done) return;
       done = true;
-      URL.revokeObjectURL(url);
       if (currentClip === finish) currentClip = null;
-      el.onended = null;
-      el.onerror = null;
       resolve(played);
     };
     currentClip = finish;
     vlog('playing clip');
-    el.onended = () => {
-      played = true;
-      vlog('clip ended');
-      finish();
-    };
-    el.onerror = finish;
-    el.src = url;
-    el.play().catch(() => {
-      vlog('clip would not start', true);
-      finish();
-    });
+    /* decodeAudioData detaches the buffer it is given, so it decodes a copy. */
+    const copy = bytes.slice().buffer;
+    c.decodeAudioData(copy).then(
+      (buffer) => {
+        if (done) return;
+        const src = c.createBufferSource();
+        src.buffer = buffer;
+        src.connect(c.destination);
+        currentSrc = src;
+        src.onended = () => {
+          played = true;
+          vlog('clip ended');
+          if (currentSrc === src) currentSrc = null;
+          finish();
+        };
+        const start = () => {
+          if (done) return;
+          try {
+            src.start();
+          } catch {
+            finish();
+          }
+        };
+        const state = c.state as string;
+        if (state === 'suspended' || state === 'interrupted') {
+          c.resume().then(start, () => finish());
+        } else {
+          start();
+        }
+      },
+      () => {
+        vlog('clip would not decode', true);
+        finish();
+      },
+    );
   });
 }
 
@@ -420,29 +422,15 @@ function setSessionSpeaking(): void {
   if (listener) listener.lit(false);
 }
 
-/** Release the audio element after a run. A played element holds iOS's audio
- *  session in playback mode, and speech recognition stays deaf until it lets
- *  go — this is why the mic worked on a fresh page (no audio played yet) and
- *  died after the first reply. Removing the source drops the claim at once. */
-function releaseAudio(): void {
-  if (!audio) return;
-  try {
-    audio.pause();
-    audio.removeAttribute('src');
-    audio.load();
-  } catch {
-    /* Nothing held. */
-  }
-}
-
 /** The run is over: back to listening if the mic is up, off if it is not. The
- *  recogniser is replaced here — the one that lived through the reading cannot
- *  be trusted to hear afterwards. Words spoken while the answer was on its way
- *  get their 800ms. */
+ *  context is suspended so the audio session is handed straight back — the
+ *  mic hears immediately after a reading. The recogniser is replaced here —
+ *  the one that lived through the reading cannot be trusted to hear
+ *  afterwards. Words spoken while the answer was on its way get their 800ms. */
 function settleSessionAfterSpeak(): void {
   speakActive = false;
   speakText = null;
-  releaseAudio();
+  suspendAudio();
   if (listener) {
     session = 'listening';
     vlog('session → listening');
@@ -581,17 +569,19 @@ export function stopSpeaking(): void {
   speakGen++;
   speakActive = false;
   vlog('reading stopped');
+  if (currentSrc) {
+    const src = currentSrc;
+    currentSrc = null;
+    try {
+      src.stop();
+    } catch {
+      /* Already ended. */
+    }
+  }
   if (currentClip) {
     const finish = currentClip;
     currentClip = null;
     finish();
-  }
-  if (audio) {
-    try {
-      audio.pause();
-    } catch {
-      /* Nothing was playing. */
-    }
   }
   settleSessionAfterSpeak();
 }

@@ -1,15 +1,10 @@
 #!/usr/bin/env node
-/* Run the pure parts of the voice layer: the sentence cutter, the silence the
- * audio element is opened with, the table of voices, and the seam the microphone
- * is wired through.
+/* Run the pure parts of the voice layer: the sentence cutter, the table of
+ * voices, and the seam the microphone is wired through.
  *
- * The first two are the kind of code that fails quietly. `chunks` decides how
- * much text goes into one request to the voice server: let a piece grow past the
- * limit and the request is refused, and the symptom is a reply that stops being
- * read aloud halfway. `silence` exists only to open an audio element inside a
- * gesture so iOS will allow the real sound later: get one header byte wrong and
- * nothing complains — the unlock simply never happens, and read aloud is broken
- * on an iPhone while working perfectly on a laptop.
+ * `chunks` decides how much text goes into one request to the voice server: let
+ * a piece grow past the limit and the request is refused, and the symptom is a
+ * reply that stops being read aloud halfway.
  *
  * The third is not a function at all: it is src/voices.ts, the table of voices
  * the app offers. The bug it exists to catch is in this repo's own history — four
@@ -64,11 +59,6 @@ const SERVER = real('../api/ai.ts');
 const SETTINGS = real('../src/components/settings/Settings.tsx');
 const COMPOSER = real('../src/components/shell/Composer.tsx');
 
-/** How long the silence is: two numbers this file does state itself, because
- *  they are its claim about the shape of the audio rather than the source's. */
-const RATE = 8000;
-const BYTES = 524;
-
 /** One function, from its `export` (or its `function` keyword, when it has none)
  *  to the closing brace at column 0. The `export` is kept: that is what makes
  *  esbuild hand the function back on the module it is told to write to, and
@@ -90,25 +80,13 @@ function limitOf(source) {
   return Number(found[1]);
 }
 
-/** The two functions plus the two declarations they read, as runnable
- *  JavaScript. Nothing is copied: the limit and the state line are matched out
- *  of the source with their own spelling, so a rename is a failure and not a
- *  silent substitution. */
+/** The function plus the declaration it reads, as runnable JavaScript. Nothing
+ *  is copied: the limit line is matched out of the source with its own
+ *  spelling, so a rename is a failure and not a silent substitution. */
 export function lift(source) {
   const limit = source.match(/^const CHUNK_MAX = \d+;$/m);
-  const state = source.match(/^let silent: string \| null = null;$/m);
   if (!limit) throw new Error('const CHUNK_MAX = <n>; is not in src/voice.ts');
-  if (!state) throw new Error('the speaker state line is not in src/voice.ts');
-  const code = [
-    limit[0],
-    state[0],
-    snippet(source, 'chunks'),
-    snippet(source, 'silence'),
-    /* The one line this check adds: `chunks` is exported because the composer
-       calls it, and `silence` is not, because only `unlock` does. Asking for it
-       here is how the check gets at a function the module keeps to itself. */
-    'export { silence };',
-  ].join('\n');
+  const code = [limit[0], snippet(source, 'chunks')].join('\n');
   return transformSync(code, { loader: 'ts', format: 'cjs' }).code;
 }
 
@@ -270,22 +248,22 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
   } catch (error) {
     return [
       {
-        name: 'the two functions can be lifted out and called',
+        name: 'the function can be lifted out and called',
         pass: false,
         detail: String(error && error.message),
       },
     ];
   }
-  if (typeof lifted.chunks !== 'function' || typeof lifted.silence !== 'function') {
+  if (typeof lifted.chunks !== 'function') {
     return [
       {
-        name: 'the two functions can be lifted out and called',
+        name: 'the function can be lifted out and called',
         pass: false,
-        detail: 'lifted, but neither came back',
+        detail: 'lifted, but it never came back',
       },
     ];
   }
-  const { chunks, silence } = lifted;
+  const { chunks } = lifted;
   const out = [];
   const judge = (name, pass, detail) => out.push({ name, pass, detail });
 
@@ -313,36 +291,6 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     `chunks: a long reply splits into pieces of at most ${limitOf(source)}`,
     pieces.length > 1 && longest <= limitOf(source) && pieces.join('') === long,
     `pieces=${pieces.length} longest=${longest}`,
-  );
-
-  const uri = String(silence());
-  const bytes = Buffer.from(uri.split(',')[1] || '', 'base64');
-  const at = (from, to) => bytes.toString('ascii', from, to);
-  judge('silence: it is a base64 audio/wav data URI', uri.startsWith('data:audio/wav;base64,'), `${bytes.length} bytes`);
-  judge('silence: RIFF, and WAVE', at(0, 4) === 'RIFF' && at(8, 12) === 'WAVE', `${at(0, 4)}/${at(8, 12)}`);
-  judge(
-    `silence: PCM, mono, 8-bit, ${RATE} Hz`,
-    bytes.readUInt16LE(20) === 1 &&
-      bytes.readUInt16LE(22) === 1 &&
-      bytes.readUInt16LE(34) === 8 &&
-      bytes.readUInt32LE(24) === RATE &&
-      bytes.readUInt32LE(28) === RATE,
-    `format=${bytes.readUInt16LE(20)} channels=${bytes.readUInt16LE(22)} bits=${bytes.readUInt16LE(34)} rate=${bytes.readUInt32LE(24)}`,
-  );
-  judge(
-    'silence: the declared sizes agree with the bytes that are there',
-    at(12, 16) === 'fmt ' &&
-      at(36, 40) === 'data' &&
-      bytes.readUInt32LE(4) === bytes.length - 8 &&
-      bytes.readUInt32LE(40) === bytes.length - 44 &&
-      bytes.length === BYTES,
-    `riff=${bytes.readUInt32LE(4)} data=${bytes.readUInt32LE(40)} total=${bytes.length}`,
-  );
-  const payload = bytes.subarray(44);
-  judge(
-    'silence: the payload is silence (8-bit PCM rests at 128, not 0)',
-    payload.length > 0 && payload.every((byte) => byte === 128),
-    `first=${payload[0]} last=${payload[payload.length - 1]}`,
   );
 
   /* ── The table ─────────────────────────────────────────────────────────────
@@ -410,12 +358,6 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
       return '';
     }
   };
-  const unlockBody = bodyOf('unlock');
-  judge(
-    'speak: the silence is never played over a piece that is playing',
-    /if \(session === 'speaking'\) return;/.test(unlockBody),
-    unlockBody ? 'unlock, which plays through the element the reply comes out of' : 'unlock is not in src/voice.ts',
-  );
   /* ── The session ───────────────────────────────────────────────────────────
      One variable with four states owns the mic and the speaker, so the two
      halves cannot disagree. The recogniser starts when the mic goes up and is
@@ -431,17 +373,18 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
   );
   judge(
     'voice: the recogniser is stopped, never aborted — abort() poisons iOS',
-    (source.match(/\.stop\(\)/g) || []).length === 2 &&
+    /old\.stop\(\)/.test(source) &&
+      /rec\.stop\(\)/.test(source) &&
       (source.match(/\.abort\(\)/g) || []).length === 0 &&
       /function endMicSession[\s\S]{0,700}\.stop\(\)/.test(source) &&
       /function restartRecognizer[\s\S]{0,1100}\.stop\(\)/.test(source),
-    'the two stops: endMicSession (mic down) and restartRecognizer (fresh ears after a reading)',
+    'the two recogniser stops: endMicSession (mic down) and restartRecognizer (fresh ears after a reading)',
   );
   judge(
-    'voice: the audio element releases the session when the run ends',
-    /function releaseAudio[\s\S]{0,400}removeAttribute\('src'\)/.test(source) &&
-      /releaseAudio\(\);/.test(source),
-    'releaseAudio — a played element holds iOS in playback mode and the mic stays deaf',
+    'voice: the context is suspended when the run ends, handing the session back',
+    /function suspendAudio[\s\S]{0,200}\.suspend\(\)/.test(source) &&
+      /suspendAudio\(\);/.test(source),
+    'suspendAudio — a played <audio> element holds iOS in playback mode (WebKit bug); a suspended context claims nothing',
   );
   judge(
     'voice: a reply is spoken as its sentences arrive, not after it finishes',
@@ -453,7 +396,7 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
   const speakBody = bodyOf('playClip');
   judge(
     'speak: a piece that fails to play still advances the run',
-    /el\.onerror = finish/.test(speakBody),
+    /vlog\('clip would not decode'/.test(speakBody),
     speakBody ? "the run's own answer to a piece it cannot play" : 'playClip is not in src/voice.ts',
   );
   judge(
@@ -470,9 +413,11 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     fetchBody ? 'fetchClip, which decodes base64 to bytes' : 'fetchClip is not in src/voice.ts',
   );
   judge(
-    'speak: a clip plays through a blob URL that is revoked when it finishes',
-    /URL\.createObjectURL\(new Blob\(/.test(speakBody) && /URL\.revokeObjectURL\(/.test(speakBody),
-    speakBody ? 'playClip, which creates and revokes its own object URL' : 'playClip is not in src/voice.ts',
+    'speak: a clip is decoded and played through Web Audio, never a media element',
+    /decodeAudioData/.test(speakBody) &&
+      /createBufferSource/.test(speakBody) &&
+      !/createObjectURL/.test(speakBody),
+    speakBody ? 'playClip, which decodes bytes into a buffer source' : 'playClip is not in src/voice.ts',
   );
   const resultHead = (source.match(/rec\.onresult = \(event\) => \{([\s\S]{0,600})/) || [])[1] || '';
   judge(

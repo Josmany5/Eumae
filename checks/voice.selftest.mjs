@@ -70,39 +70,15 @@ check(
 );
 
 check(
-  'fails when the WAV is no longer recognised as one',
-  failing(source.replace("put(0, 'RIFF')", "put(0, 'RIFX')")),
-  ['silence: RIFF, and WAVE'],
-);
-
-check(
-  'fails when the format stops being 8-bit mono PCM at 8000 Hz',
-  failing(source.replace('const rate = 8000;', 'const rate = 44100;')),
-  ['silence: PCM, mono, 8-bit, 8000 Hz'],
-);
-
-check(
-  'fails when the declared depth and the real one disagree',
-  failing(source.replace("view.setUint16(34, 8, true); // bits per sample", 'view.setUint16(34, 16, true); // bits per sample')),
-  ['silence: PCM, mono, 8-bit, 8000 Hz'],
-);
-
-check(
-  'fails when the payload stops being silence',
-  failing(source.replace('bytes.fill(128, 44)', 'bytes.fill(0, 44)')),
-  ['silence: the payload is silence (8-bit PCM rests at 128, not 0)'],
-);
-
-check(
-  'says so when a function it lifts has been renamed',
-  failing(source.replace('function silence(): string {', 'function silencio(): string {')),
-  ['the two functions can be lifted out and called'],
+  'says so when the function it lifts has been renamed',
+  failing(source.replace('export function chunks', 'export function chunkz')),
+  ['the function can be lifted out and called'],
 );
 
 check(
   'says so when a line it depends on has been removed',
   failing(source.replace('const CHUNK_MAX = 4500;', '')),
-  ['the two functions can be lifted out and called'],
+  ['the function can be lifted out and called'],
 );
 
 check(
@@ -206,14 +182,8 @@ check(
 );
 
 check(
-  'fails when the silence may play over a piece that is being read',
-  failing(source.replace("  if (session === 'speaking') return;\n", '')),
-  ['speak: the silence is never played over a piece that is playing'],
-);
-
-check(
   'fails when a piece that cannot be played leaves the run speaking',
-  failing(source.replace('    el.onerror = finish;', '    el.onstalled = finish;')),
+  failing(source.replace("        vlog('clip would not decode', true);\n        finish();", '')),
   ['speak: a piece that fails to play still advances the run'],
 );
 
@@ -232,12 +202,6 @@ check(
     ),
   ),
   ['speak: a clip is fetched as bytes, not as a data URI'],
-);
-
-check(
-  'fails when a clip plays through a blob URL that is never revoked',
-  failing(source.replace('      URL.revokeObjectURL(url);', '')),
-  ['speak: a clip plays through a blob URL that is revoked when it finishes'],
 );
 
 check(
@@ -269,9 +233,17 @@ check(
 );
 
 check(
-  'fails when the audio session is never released',
-  failing(source.replace("  releaseAudio();\n", '')),
-  ['voice: the audio element releases the session when the run ends'],
+  'fails when the audio session is never handed back',
+  failing(source.replace("  suspendAudio();\n", '')),
+  ['voice: the context is suspended when the run ends, handing the session back'],
+);
+
+check(
+  'fails when a clip goes back through a media element',
+  failing(
+    source.replace('c.decodeAudioData(copy)', 'c.decodeAudioData(copy); URL.createObjectURL(new Blob([bytes]))'),
+  ),
+  ['speak: a clip is decoded and played through Web Audio, never a media element'],
 );
 
 check(
