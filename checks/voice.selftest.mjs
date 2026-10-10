@@ -275,6 +275,17 @@ check(
 );
 
 check(
+  'fails when results are kept while the answer is on its way',
+  failing(
+    source.replace(
+      "    if (session !== 'listening') return;",
+      "    if (session !== 'off') return;",
+    ),
+  ),
+  ['mic: results are only kept while it is your turn'],
+);
+
+check(
   'fails when a dropped connection stops the mic instead of riding the restart',
   failing(
     source.replace(

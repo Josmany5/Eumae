@@ -366,11 +366,6 @@ function settleSessionAfterSpeak(): void {
     session = 'listening';
     listener.lit(true);
     ensureRecognizer();
-    if ((transcript + pending).trim()) {
-      const voice = listener;
-      clearTimer();
-      timer = setTimeout(() => voiceSend(voice), SILENCE_MS);
-    }
   } else {
     session = 'off';
   }
@@ -521,11 +516,17 @@ function recognizerCtor(): RecognizerCtor | undefined {
 
 /** Make sure the recogniser is up. Called when the mic should be listening and
  *  might not be — after a reading, or after a barge-in. A fresh instance every
- *  time: iOS refuses a `start()` on one that has already ended. */
+ *  time: iOS refuses a `start()` on one that has already ended. Not immediately:
+ *  iOS fumbles a restart issued the instant the audio stops, and accepts the
+ *  same call half a second later — a mic restarted too soon lights the button
+ *  but captures nothing. */
 function ensureRecognizer(): void {
   const voice = listener;
   if (!voice || recognizer) return;
-  startRec(voice);
+  setTimeout(() => {
+    if (listener !== voice || recognizer) return;
+    startRec(voice);
+  }, RESTART_DELAY_MS);
 }
 
 function startRec(voice: VoiceTyping): void {
@@ -541,9 +542,10 @@ function startRec(voice: VoiceTyping): void {
   rec.onresult = (event) => {
     /* A result that arrives after the mic was put away belongs to nobody. */
     if (listener !== voice) return;
-    /* While the answer is coming out, the mic is deaf: the recogniser keeps
-       running, but everything it hears is dropped. */
-    if (session === 'speaking') return;
+    /* Only your turn: anything arriving while the answer is on its way or being
+       spoken is dropped. iOS delivers speech late, and keeping it is how text
+       lands in the field from nowhere and gets stuck there, unable to send. */
+    if (session !== 'listening') return;
     /* Words arrived — the revive is not failing, so its backoff starts over. */
     reviveDelay = RESTART_DELAY_MS;
     let settled = '';
@@ -696,11 +698,14 @@ export function armVisibility(): void {
 
 /** The tap: on if it is off, off if it is on. While the answer is playing the
  *  button is unlit (the speaker owns the session); a tap then means "stop
- *  talking and listen to me" — the reading stops and the mic, which never went
- *  down, is listening again in the same tap. */
+ *  talking and listen to me" — the reading stops and the mic is listening
+ *  again in the same tap. Tapped during a read-aloud with no mic session, the
+ *  mic comes on too: stopping the reading is only half the tap. */
 export function toggleMic(voice: VoiceTyping): void {
   if (session === 'speaking') {
+    const hadMic = !!listener;
     stopSpeaking();
+    if (!hadMic) startMic(voice);
     return;
   }
   if (session === 'off') {

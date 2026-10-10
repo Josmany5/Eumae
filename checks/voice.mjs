@@ -469,6 +469,13 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     /if \(listener !== voice\) return;/.test(resultHead),
     resultHead ? 'onresult, which must check the session the way onend does' : 'rec.onresult is not in src/voice.ts',
   );
+  judge(
+    'mic: results are only kept while it is your turn',
+    /if \(session !== 'listening'\) return;/.test(resultHead),
+    resultHead
+      ? 'onresult, which drops anything arriving while the answer is on its way or being spoken'
+      : 'rec.onresult is not in src/voice.ts',
+  );
   const stopBranch = (source.match(/reason === 'audio-capture'[^\n]*/) || [''])[0];
   judge(
     'mic: a dropped connection rides the restart, not the stop',
