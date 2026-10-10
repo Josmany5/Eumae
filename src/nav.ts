@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import type { Thread } from './threads';
 import type { TabId } from './components/shell/TabBar';
 
 /** The right panel's three readings, one panel rather than three.
@@ -119,6 +120,13 @@ export interface Nav {
    *  be two readers, and the last time a control grew a second door to the same
    *  room was the bug. */
   pickFile: () => void;
+
+  /** Chat threads — owned by App so the drawer ("New chat", "Recent chats")
+   *  and the chat screen read the same state. */
+  threads: Thread[];
+  currentThreadId: string | null;
+  newChat: () => void;
+  switchThread: (id: string) => void;
 }
 
 export const NavContext = createContext<Nav>({
@@ -140,6 +148,10 @@ export const NavContext = createContext<Nav>({
   turn: DEFAULT_TURN,
   setTurn: () => {},
   pickFile: () => {},
+  threads: [],
+  currentThreadId: null,
+  newChat: () => {},
+  switchThread: () => {},
 });
 
 export function useNav(): Nav {

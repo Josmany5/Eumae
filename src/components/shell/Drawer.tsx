@@ -9,12 +9,15 @@ interface DrawerProps {
   tab: TabId;
   onPick: (label: string) => void;
   onSearch: () => void;
+  threads?: { id: string; title: string }[];
+  currentThreadId?: string | null;
+  onThreadPick?: (id: string) => void;
 }
 
 /** The phone's second level: the same per-page menu the desktop rail shows,
  *  behind the hamburger. The mockup puts the search field above everything,
  *  so it does too. */
-export default function Drawer({ open, onClose, tab, onPick, onSearch }: DrawerProps) {
+export default function Drawer({ open, onClose, tab, onPick, onSearch, threads, currentThreadId, onThreadPick }: DrawerProps) {
   const [q, setQ] = useState('');
 
   const submit = () => {
@@ -40,7 +43,23 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch }: DrawerP
           {PAGE_MENU[tab].map((s, i) => (
             <div key={s.heading ?? i}>
               {s.heading ? <div className="ds">{s.heading}</div> : null}
-              {s.items.length === 0 ? (
+              {s.heading === 'Recent chats' && tab === 'chat' && threads ? (
+                threads.length === 0 ? (
+                  <div className="dr ghost">
+                    <span className="g">No chats yet</span>
+                  </div>
+                ) : (
+                  threads.map((t) => (
+                    <button
+                      key={t.id}
+                      className={`dr${t.id === currentThreadId ? ' on' : ''}`}
+                      onClick={() => onThreadPick?.(t.id)}
+                    >
+                      <span className="g">{t.title}</span>
+                    </button>
+                  ))
+                )
+              ) : s.items.length === 0 ? (
                 <div className="dr ghost">
                   <span className="g">{s.empty ?? 'Nothing here yet'}</span>
                 </div>

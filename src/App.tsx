@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import Header from './components/shell/Header';
 import TabBar, { type TabId } from './components/shell/TabBar';
 import Drawer from './components/shell/Drawer';
@@ -11,6 +11,14 @@ import { Icon } from './components/shell/icons';
 import { SCREENS, LABELS } from './screens';
 import { PAGES, pageTitle } from './pages';
 import { NavContext, DEFAULT_TURN, type Nav, type PanelView, type Ref, type Turn } from './nav';
+import {
+  createThread,
+  getCurrentThreadId,
+  getThread,
+  getThreads,
+  setCurrentThreadId,
+  type Thread,
+} from './threads';
 import { logEv } from './log';
 import { saveUpload, uploadData } from './uploads';
 
@@ -134,6 +142,39 @@ export default function App() {
   const openSettings = useCallback(() => setSettingsOpen(true), []);
   const openSearch = useCallback(() => go('search'), [go]);
 
+  /* Chat threads — App owns them so the drawer ("New chat", "Recent chats")
+     and ChatScreen read the same state. */
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [currentThreadId, setCurrentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = getCurrentThreadId();
+    const thread = id ? getThread(id) : undefined;
+    if (thread) {
+      setCurrentId(thread.id);
+    } else {
+      const fresh = createThread();
+      setCurrentThreadId(fresh.id);
+      setCurrentId(fresh.id);
+    }
+    setThreads(getThreads());
+  }, []);
+
+  const newChat = useCallback(() => {
+    const fresh = createThread();
+    setCurrentThreadId(fresh.id);
+    setCurrentId(fresh.id);
+    setThreads(getThreads());
+    goTab('chat');
+  }, [goTab]);
+
+  const switchThread = useCallback((id: string) => {
+    setCurrentThreadId(id);
+    setCurrentId(id);
+    setDrawerOpen(false);
+    goTab('chat');
+  }, [goTab]);
+
   const nav = useMemo<Nav>(
     () => ({
       go,
@@ -154,6 +195,10 @@ export default function App() {
       turn,
       setTurn,
       pickFile,
+      threads,
+      currentThreadId,
+      newChat,
+      switchThread,
     }),
     [
       go,
@@ -191,7 +236,7 @@ export default function App() {
         return;
       }
       if (label === 'New chat') {
-        goTab('chat');
+        newChat();
         return;
       }
       /* The rail's "Attach an item" opens the one file input, exactly as the
@@ -207,7 +252,7 @@ export default function App() {
       }
       notify(`${label} arrives with its screen`);
     },
-    [goTab, notify, pickFile],
+    [goTab, notify, pickFile, newChat],
   );
 
   const appClass = [railCollapsed ? 'railCollapsed' : '', panelOpen ? 'panelOpen' : '']
@@ -271,6 +316,9 @@ export default function App() {
           onClose={() => setDrawerOpen(false)}
           tab={tab}
           onPick={pickMenu}
+          threads={threads}
+          currentThreadId={currentThreadId}
+          onThreadPick={switchThread}
           onSearch={openSearch}
         />
         <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} notify={notify} />
