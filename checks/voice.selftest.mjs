@@ -278,11 +278,17 @@ check(
   'fails when results are kept while the answer is on its way',
   failing(
     source.replace(
-      "    if (session !== 'listening') return;",
-      "    if (session !== 'off') return;",
+      "    if (session !== 'listening') {\n      vlog(`result dropped — ${session}`);\n      return;\n    }",
+      "    if (session !== 'listening') {\n      /* kept: the stuck-text bug returns */\n    }",
     ),
   ),
   ['mic: results are only kept while it is your turn'],
+);
+
+check(
+  'fails when the debug log API is missing',
+  failing(source.replace('export function subscribeVoiceLog', 'function subscribeVoiceLog')),
+  ['voice: the debug log records session changes and failures'],
 );
 
 check(

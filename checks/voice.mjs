@@ -463,7 +463,7 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     /URL\.createObjectURL\(new Blob\(/.test(speakBody) && /URL\.revokeObjectURL\(/.test(speakBody),
     speakBody ? 'playClip, which creates and revokes its own object URL' : 'playClip is not in src/voice.ts',
   );
-  const resultHead = (source.match(/rec\.onresult = \(event\) => \{([\s\S]{0,400})/) || [])[1] || '';
+  const resultHead = (source.match(/rec\.onresult = \(event\) => \{([\s\S]{0,600})/) || [])[1] || '';
   judge(
     'mic: a result that lands after the mic is off is ignored',
     /if \(listener !== voice\) return;/.test(resultHead),
@@ -471,10 +471,19 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
   );
   judge(
     'mic: results are only kept while it is your turn',
-    /if \(session !== 'listening'\) return;/.test(resultHead),
+    /if \(session !== 'listening'\)/.test(resultHead) && /result dropped/.test(resultHead),
     resultHead
       ? 'onresult, which drops anything arriving while the answer is on its way or being spoken'
       : 'rec.onresult is not in src/voice.ts',
+  );
+  judge(
+    'voice: the debug log records session changes and failures',
+    /export function subscribeVoiceLog/.test(source) &&
+      /export function getVoiceLog/.test(source) &&
+      /export function clearVoiceLog/.test(source) &&
+      /export function logVoice/.test(source) &&
+      /vlog\('session → /.test(source),
+    'src/voice.ts: the vlog calls beside the session transitions, and the log API the overlay reads',
   );
   const stopBranch = (source.match(/reason === 'audio-capture'[^\n]*/) || [''])[0];
   judge(

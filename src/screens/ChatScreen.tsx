@@ -4,7 +4,7 @@ import { Icon } from '../components/shell/icons';
 import { useNav, type Mode } from '../nav';
 import { logEv } from '../log';
 import { streamChat } from '../chat';
-import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice';
+import { endVoiceReply, feedVoiceReply, logVoice, speak, startVoiceReply } from '../voice';
 import { buildRequest, toApiBody, type ApiChatBody, type ThreadTurn } from '../request';
 
 interface Msg extends ThreadTurn {
@@ -176,6 +176,7 @@ export default function ChatScreen() {
        sentence starts speaking about a second after it is complete, while the
        rest is still arriving — instead of waiting for the whole reply. */
     const voiceId = byVoice ? startVoiceReply(notify) : 0;
+    if (byVoice) logVoice('reply streaming');
     void streamChat(body, (full) => {
       /* The whole text so far, not the new piece: replacing what the bubble shows
          is the only way two pieces arriving out of order could not show up as a
@@ -209,6 +210,7 @@ export default function ChatScreen() {
          mic asked — the mockup carries `byVoice` from the send to here for
          exactly this (1902). */
       if (byVoice) endVoiceReply(voiceId, reply.ok, reply.error ?? undefined);
+      if (byVoice) logVoice(reply.ok ? 'reply stream done' : `reply stream failed: ${reply.error}`, !reply.ok);
     });
   };
 
