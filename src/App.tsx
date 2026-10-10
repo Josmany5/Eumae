@@ -262,6 +262,10 @@ export default function App() {
         newChat();
         return;
       }
+      if (label === 'Notes') {
+        go('notes');
+        return;
+      }
       /* The rail's "Attach an item" opens the one file input, exactly as the
          paperclip does — not the `+` window, which is behavior-only now (§4.13)
          and could not attach anything if it opened. §4.4 is kept: this row and

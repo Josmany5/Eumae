@@ -39,6 +39,7 @@ export const PAGE_MENU: Record<TabId, MenuSection[]> = {
     {
       heading: 'Full pages',
       items: [
+        { label: 'Notes', icon: 'doc' },
         { label: 'Tasks', icon: 'chk' },
         /* NOT in the mockup's last pD — the mockup only ever surfaces events
            inside Console's "This week" widget (`FB10.week8`: a calendar strip,
@@ -50,7 +51,6 @@ export const PAGE_MENU: Record<TabId, MenuSection[]> = {
         { label: 'Calendar', icon: 'cal' },
         { label: 'Goals', icon: 'str' },
         { label: 'Projects', icon: 'fol' },
-        { label: 'Notes', icon: 'doc' },
         { label: 'Flows', icon: 'zap' },
       ],
     },

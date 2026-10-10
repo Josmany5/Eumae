@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react';
 import SearchPage from './SearchPage';
+import NotesPage from './NotesPage';
+import NoteViewPage from './NoteViewPage';
 
 export interface PageProps {
   /** Whatever the caller passed to nav.go(name, arg). */
@@ -18,6 +20,8 @@ export interface PageDef {
  */
 export const PAGES: Record<string, PageDef> = {
   search: { title: 'Search', page: SearchPage },
+  notes: { title: 'Notes', page: NotesPage },
+  note: { title: 'Note', page: NoteViewPage },
 };
 
 export function pageTitle(name: string): string {
