@@ -776,3 +776,24 @@ input,textarea,select{ font-family:inherit; }
 .noteEditor{ min-height:200px; font-size:17px; line-height:1.6; outline:none; padding:0 20px; }
 .noteEditor:empty:before{ content:attr(data-placeholder); color:var(--mut); }
 .noteEditor ul{ margin:8px 0; padding-left:20px; }
+.fmtPanel{ position:fixed; left:16px; right:16px; bottom:16px; z-index:300;
+  background:var(--card); border-radius:16px; padding:16px;
+  box-shadow:0 8px 32px rgba(0,0,0,.3); }
+.fmtHead{ display:flex; justify-content:space-between; align-items:center;
+  font-size:17px; font-weight:700; margin-bottom:12px; }
+.fmtHead button{ border:none; background:none; font-size:18px; color:var(--mut); }
+.fmtStyles{ display:flex; gap:8px; margin-bottom:12px; overflow-x:auto; }
+.fmtStyles button{ border:1px solid var(--hair); background:none; border-radius:10px;
+  padding:8px 14px; font-size:15px; color:var(--tx); white-space:nowrap; }
+.fmtRow{ display:flex; gap:8px; margin-bottom:8px; }
+.fmtRow button{ flex:1; border:1px solid var(--hair); background:none; border-radius:10px;
+  padding:10px; font-size:16px; color:var(--tx); }
+.noteTools{ position:fixed; left:0; right:0; bottom:0; display:flex;
+  justify-content:center; padding:12px; pointer-events:none; }
+.noteToolBtn{ pointer-events:auto; width:44px; height:44px; border-radius:50%;
+  border:1px solid var(--hair); background:var(--card); font-size:18px; font-weight:700;
+  color:var(--tx); box-shadow:0 2px 12px rgba(0,0,0,.15); }
+.noteView{ min-height:100dvh; background:var(--bg); }
+.noteView .noteEditor h1{ font-size:28px; font-weight:700; margin:12px 0; }
+.noteView .noteEditor h2{ font-size:22px; font-weight:700; margin:10px 0; }
+.noteView .noteEditor h3{ font-size:18px; font-weight:600; margin:8px 0; }

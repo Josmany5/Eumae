@@ -4,6 +4,10 @@ interface HeaderProps {
   title: string;
   /** Set while a sub-page is pushed: the menu button becomes a back button. */
   onBack?: () => void;
+  /** Extra buttons at the right — pages put their actions here. */
+  actions?: React.ReactNode;
+  /** The activity button only works from chat. */
+  activityEnabled?: boolean;
 }
 
 function MenuIcon() {
@@ -22,16 +26,19 @@ function ActivityIcon() {
   );
 }
 
-export default function Header({ onMenu, onActivity, title }: HeaderProps) {
+export default function Header({ onMenu, onActivity, title, actions, activityEnabled = true }: HeaderProps) {
   return (
     <header className="hd">
       <button className="hb" onClick={onMenu} aria-label="Menu">
         <MenuIcon />
       </button>
       <div className="t">{title}</div>
-      <button className="hb" onClick={onActivity} aria-label="Activity">
-        <ActivityIcon />
-      </button>
+      {actions}
+      {activityEnabled ? (
+        <button className="hb" onClick={onActivity} aria-label="Activity">
+          <ActivityIcon />
+        </button>
+      ) : null}
     </header>
   );
 }

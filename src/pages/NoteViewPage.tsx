@@ -18,24 +18,55 @@ function fmtTime(ts: number): string {
   });
 }
 
-/** Minimal rich text toolbar — bold, italic, bullet list. */
-function Toolbar({ onCmd }: { onCmd: (cmd: string) => void }) {
+/** Apple Notes-style format panel: paragraph styles, inline, lists. */
+function FormatPanel({ onCmd, onClose }: { onCmd: (cmd: string, val?: string) => void; onClose: () => void }) {
+  const btn = (label: React.ReactNode, cmd: string, val?: string, aria?: string) => (
+    <button
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onCmd(cmd, val);
+      }}
+      aria-label={aria ?? (typeof label === 'string' ? label : undefined)}
+    >
+      {label}
+    </button>
+  );
   return (
-    <div className="rtBar">
-      <button onMouseDown={(e) => { e.preventDefault(); onCmd('bold'); }} aria-label="Bold"><b>B</b></button>
-      <button onMouseDown={(e) => { e.preventDefault(); onCmd('italic'); }} aria-label="Italic"><i>I</i></button>
-      <button onMouseDown={(e) => { e.preventDefault(); onCmd('insertUnorderedList'); }} aria-label="Bullet list">• List</button>
+    <div className="fmtPanel">
+      <div className="fmtHead">
+        <span>Format</span>
+        <button onMouseDown={(e) => { e.preventDefault(); onClose(); }} aria-label="Close format">✕</button>
+      </div>
+      <div className="fmtStyles">
+        {btn('Title', 'formatBlock', 'h1', 'Title style')}
+        {btn('Heading', 'formatBlock', 'h2', 'Heading style')}
+        {btn('Subheading', 'formatBlock', 'h3', 'Subheading style')}
+        {btn('Body', 'formatBlock', 'p', 'Body style')}
+      </div>
+      <div className="fmtRow">
+        {btn(<b>B</b>, 'bold', undefined, 'Bold')}
+        {btn(<i>I</i>, 'italic', undefined, 'Italic')}
+        {btn(<u>U</u>, 'underline', undefined, 'Underline')}
+        {btn(<s>S</s>, 'strikeThrough', undefined, 'Strikethrough')}
+      </div>
+      <div className="fmtRow">
+        {btn('• List', 'insertUnorderedList', undefined, 'Bullet list')}
+        {btn('1. List', 'insertOrderedList', undefined, 'Numbered list')}
+        {btn('→ Indent', 'indent', undefined, 'Indent')}
+        {btn('← Outdent', 'outdent', undefined, 'Outdent')}
+      </div>
     </div>
   );
 }
 
 export default function NoteViewPage({ arg }: PageProps) {
-  const { back, notify } = useNav();
+  const { back, notify, setHeaderActions } = useNav();
   const id = typeof arg === 'string' ? arg : '';
   const [note, setNote] = useState<Note | null>(null);
   const [title, setTitle] = useState('');
   const editorRef = useRef<HTMLDivElement>(null);
   const draftId = useRef('');
+  const [fmtOpen, setFmtOpen] = useState(false);
 
   /* Open the note and start a new entry — one entry per visit. */
   useEffect(() => {
@@ -104,26 +135,11 @@ export default function NoteViewPage({ arg }: PageProps) {
     }
   };
 
-  const sorted = [...note.entries].sort((a, b) =>
-    note.sortNewFirst ? b.createdAt - a.createdAt : a.createdAt - b.createdAt,
-  );
-  /* The live draft is the newest entry; show the rest. */
-  const shown = sorted.filter((e) => e.id !== draftId.current || e.text);
-
-  const exec = (cmd: string) => {
-    document.execCommand(cmd, false);
-    editorRef.current?.focus();
-  };
-
-  return (
-    <div className="page noteView">
-      <div className="pageHead">
-        <button className="hb" onClick={back} aria-label="Back to notes">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
-        <span className="pageHeadTitle">Note</span>
+  /* Share + sort live in the app header, where the activity button is. */
+  useEffect(() => {
+    if (!note) return;
+    setHeaderActions(
+      <>
         <button className="hb" onClick={toggleSort} aria-label={note.sortNewFirst ? 'Oldest first' : 'Newest first'}>
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" />
@@ -132,6 +148,26 @@ export default function NoteViewPage({ arg }: PageProps) {
         <button className="hb" onClick={share} aria-label="Share note">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+          </svg>
+        </button>
+      </>,
+    );
+    return () => setHeaderActions(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note?.sortNewFirst]);
+
+  const sorted = [...note.entries].sort((a, b) =>
+    note.sortNewFirst ? b.createdAt - a.createdAt : a.createdAt - b.createdAt,
+  );
+  /* The live draft is the newest entry; show the rest. */
+  const shown = sorted.filter((e) => e.id !== draftId.current || e.text);
+
+  return (
+    <div className="page noteView">
+      <div className="pageHead">
+        <button className="hb" onClick={back} aria-label="Back to notes">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
       </div>
@@ -155,7 +191,6 @@ export default function NoteViewPage({ arg }: PageProps) {
         <div className="noteEntryHead">
           {fmtDate(Date.now())} · {fmtTime(Date.now())}
         </div>
-        <Toolbar onCmd={exec} />
         <div
           ref={editorRef}
           className="noteEditor"
@@ -165,6 +200,20 @@ export default function NoteViewPage({ arg }: PageProps) {
           onInput={() => undefined}
         />
       </div>
+      <div className="noteTools">
+        <button className="noteToolBtn" onClick={() => setFmtOpen((v) => !v)} aria-label="Format">
+          Aa
+        </button>
+      </div>
+      {fmtOpen ? (
+        <FormatPanel
+          onCmd={(cmd, val) => {
+            document.execCommand(cmd, false, val);
+            editorRef.current?.focus();
+          }}
+          onClose={() => setFmtOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
