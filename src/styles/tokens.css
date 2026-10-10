@@ -722,7 +722,10 @@ input,textarea,select{ font-family:inherit; }
 .daySep span, .daySep{ font-size:12px; font-weight:600; color:var(--mut); }
 .drDate{ margin-left:auto; font-size:12px; color:var(--mut); flex:none; }
 .dr .g{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.drWrap{ position:relative; }
-.drDel{ position:absolute; right:8px; top:50%; transform:translateY(-50%);
-  background:var(--bad); color:#fff; border:none; border-radius:8px;
-  padding:8px 14px; font-size:13px; font-weight:600; }
+.drWrap{ position:relative; display:flex; align-items:center; }
+.drWrap .dr{ flex:1; }
+.drDel{ flex:none; width:36px; height:36px; border-radius:50%; margin-right:12px;
+  background:none; border:1px solid var(--bad); color:var(--bad);
+  display:flex; align-items:center; justify-content:center; }
+.drEditRow{ display:flex; justify-content:flex-end; padding:0 20px 4px; }
+.drEdit{ background:none; border:none; color:var(--ac); font-size:14px; font-weight:600; }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getThreads } from '../../threads';
 import type { TabId } from './TabBar';
 import { PAGE_MENU } from './pageMenu';
@@ -22,23 +22,13 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch, currentTh
   /* Threads read fresh every time the drawer opens — App's cached copy goes
      stale when a title updates mid-chat (the 2026-10-10 stale list). */
   const [threads, setThreads] = useState<{ id: string; title: string; updatedAt: number }[]>([]);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const pressTimer = useRef<number | null>(null);
+  const [editing, setEditing] = useState(false);
   useEffect(() => {
     if (open && tab === 'chat') {
       setThreads(getThreads());
-      setConfirmDelete(null);
+      setEditing(false);
     }
-  }, [open, tab ]);
-  const startPress = (id: string) => {
-    pressTimer.current = window.setTimeout(() => setConfirmDelete(id), 500);
-  };
-  const endPress = () => {
-    if (pressTimer.current) {
-      window.clearTimeout(pressTimer.current);
-      pressTimer.current = null;
-    }
-  };
+  }, [open, tab]);
   const [q, setQ] = useState('');
 
   const submit = () => {
@@ -65,47 +55,49 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch, currentTh
             <div key={s.heading ?? i}>
               {s.heading ? <div className="ds">{s.heading}</div> : null}
               {s.heading === 'Recent chats' && tab === 'chat' ? (
-                threads.length === 0 ? (
-                  <div className="dr ghost">
-                    <span className="g">No chats yet</span>
+                <>
+                  <div className="drEditRow">
+                    <button className="drEdit" onClick={() => setEditing((e) => !e)}>
+                      {editing ? 'Done' : 'Edit'}
+                    </button>
                   </div>
-                ) : (
-                  threads.map((t) => (
-                    <div key={t.id} className="drWrap">
-                      <button
-                        className={`dr${t.id === currentThreadId ? ' on' : ''}`}
-                        onClick={() => onThreadPick?.(t.id)}
-                        onTouchStart={() => startPress(t.id)}
-                        onTouchEnd={endPress}
-                        onTouchMove={endPress}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          setConfirmDelete(t.id);
-                        }}
-                      >
-                        <span className="g">{t.title}</span>
-                        <span className="drDate">
-                          {new Date(t.updatedAt).toLocaleDateString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </span>
-                      </button>
-                      {confirmDelete === t.id ? (
-                        <button
-                          className="drDel"
-                          onClick={() => {
-                            onThreadDelete?.(t.id);
-                            setConfirmDelete(null);
-                            setThreads(getThreads());
-                          }}
-                        >
-                          Delete
-                        </button>
-                      ) : null}
+                  {threads.length === 0 ? (
+                    <div className="dr ghost">
+                      <span className="g">No chats yet</span>
                     </div>
-                  ))
-                )
+                  ) : (
+                    threads.map((t) => (
+                      <div key={t.id} className="drWrap">
+                        <button
+                          className={`dr${t.id === currentThreadId ? ' on' : ''}`}
+                          onClick={() => onThreadPick?.(t.id)}
+                        >
+                          <span className="g">{t.title}</span>
+                          <span className="drDate">
+                            {new Date(t.updatedAt).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        </button>
+                        {editing ? (
+                          <button
+                            className="drDel"
+                            aria-label={`Delete ${t.title}`}
+                            onClick={() => {
+                              onThreadDelete?.(t.id);
+                              setThreads(getThreads());
+                            }}
+                          >
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
+                            </svg>
+                          </button>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </>
               ) : s.items.length === 0 ? (
                 <div className="dr ghost">
                   <span className="g">{s.empty ?? 'Nothing here yet'}</span>
