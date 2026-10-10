@@ -393,9 +393,9 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     fromField ? `const value = ${fromField[1].trim()};` : "no `const value = ...;` in the composer's send",
   );
   judge(
-    'mic: the field the mic reads is the one every writer writes',
-    /read: \(\) => field\.current/.test(composer) && /field\.current = value;/.test(composer),
-    'the read the mic is given, and the write behind every change',
+    'mic: the field the mic writes is the one the send reads',
+    /field\.current = value;/.test(composer),
+    'the write behind every change, the same ref the send reads back',
   );
 
   /* And the speaker's half of the same seam: while it is reading, it holds the
@@ -451,6 +451,17 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     'mic: a dropped connection rides the restart, not the stop',
     stopBranch.includes('audio-capture') && !stopBranch.includes('network'),
     stopBranch || 'the fatal-error branch is not in src/voice.ts',
+  );
+  const voiceSendBody = bodyOf('voiceSend');
+  judge(
+    'mic: a phrase is never sent twice — the send holds the interim tail back',
+    /let pending = '';/.test(source) && /pending/.test(voiceSendBody),
+    voiceSendBody ? 'voiceSend, which sends the settled text and keeps the tail it is still hearing' : 'voiceSend is not in src/voice.ts',
+  );
+  judge(
+    'mic: a restart is a fresh recogniser, never a restart of the dead one',
+    !/recognizer\.start\(/.test(source),
+    'the restarts, which recreate via startRec instead of start() on an ended instance',
   );
 
   return out;

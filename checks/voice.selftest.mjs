@@ -200,9 +200,9 @@ check(
 );
 
 check(
-  'fails when the mic is handed a read of the render instead of the field',
-  failingWith(VOICES, SERVER, SETTINGS, COMPOSER.replace('read: () => field.current,', 'read: () => text,')),
-  ['mic: the field the mic reads is the one every writer writes'],
+  'fails when the field is written through anything but the shared ref',
+  failingWith(VOICES, SERVER, SETTINGS, COMPOSER.replace('field.current = value;', 'field.current = text;')),
+  ['mic: the field the mic writes is the one the send reads'],
 );
 
 check(
@@ -260,6 +260,18 @@ check(
     ),
   ),
   ['mic: a dropped connection rides the restart, not the stop'],
+);
+
+check(
+  'fails when the send stops holding the interim tail back',
+  failing(source.replace("let pending = '';", '')),
+  ['mic: a phrase is never sent twice — the send holds the interim tail back'],
+);
+
+check(
+  'fails when a dead recogniser is restarted in place',
+  failing(`${source}\nrecognizer.start();\n`),
+  ['mic: a restart is a fresh recogniser, never a restart of the dead one'],
 );
 
 check(

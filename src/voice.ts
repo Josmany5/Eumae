@@ -43,8 +43,6 @@ import { storedSpeed, storedVoice, voiceName } from './voices';
 
 /** What the mic needs from the app it is typing into. */
 export interface VoiceTyping {
-  /** What is in the field now — the mockup reads `#cin.value` (1758, 1772). */
-  read: () => string;
   /** Show the running transcript while you speak (1772). */
   write: (text: string) => void;
   /** Send. `byVoice` is the mockup's `VOICESEND` flag (1761), which is what
@@ -469,9 +467,17 @@ let recognizer: Recognizer | null = null;
 /** The mockup's `ACC`: what has been heard as settled text since the mic came
  *  on — and, because the mockup clears it as it sends, since the last send. */
 let transcript = '';
+/** What is being heard but not yet settled. Shown in the field, never sent:
+ *  sending only `transcript` is what stops a phrase going out twice — once on
+ *  the silence timer, once when the same words settle a beat later. */
+let pending = '';
 /** The mockup's `SIL`, one timer doing two jobs: send after quiet, and try again
  *  after a busy reply. */
 let timer: ReturnType<typeof setTimeout> | null = null;
+/** The runaway guard's window (1777): the timestamps of recent recogniser ends.
+ *  Held at module scope, not on the recogniser, so the count survives the
+ *  recogniser being recreated on each restart. */
+let restarts: number[] = [];
 
 function clearTimer(): void {
   if (timer) {
@@ -481,23 +487,32 @@ function clearTimer(): void {
 }
 
 /** The send, from `voiceSend` (1755): nothing while a reply is streaming, and
- *  nothing at all if the field is empty. Either way the mic keeps listening —
- *  the mockup never stops it here, which is what lets you speak the next thing
- *  without reaching for the button again. */
-function voiceSend(voice: VoiceTyping): void {
+ *  nothing at all until there is settled text. Either way the mic keeps
+ *  listening — the mockup never stops it here, which is what lets you speak the
+ *  next thing without reaching for the button again.
+ *
+ *  Only the *settled* text is sent, never the tail the browser is still
+ *  hearing: sending the tail is how a phrase goes out twice — once as the
+ *  silence-timer's guess, once when the same words settle a beat later and land
+ *  in the field from nowhere. `flush` (the stream ended) sends both, because an
+ *  ended stream will never settle its tail. */
+function voiceSend(voice: VoiceTyping, flush = false): void {
   if (listener !== voice) return;
   /* The mic yields to the speaker (1756): while an answer is being read out
      nothing is sent, and the words stay in the field for a deliberate press. */
   if (sounding) return;
   if (voice.busy()) {
-    timer = setTimeout(() => voiceSend(voice), BUSY_RETRY_MS);
+    timer = setTimeout(() => voiceSend(voice, flush), BUSY_RETRY_MS);
     return;
   }
-  if (!voice.read().trim()) return;
-  /* Emptied at send time, exactly as the mockup does (1759) — otherwise the
-     next sentence arrives appended to the one just sent. */
+  const toSend = (flush ? transcript + pending : transcript).trim();
+  if (!toSend) return;
+  const keep = flush ? '' : pending;
+  voice.write(toSend);
   transcript = '';
+  pending = keep;
   voice.send(true);
+  if (keep) voice.write(keep);
 }
 
 /** `startRec` (1763). */
@@ -505,18 +520,27 @@ function startRec(voice: VoiceTyping): void {
   const Ctor = recognizerCtor();
   if (!Ctor || listener !== voice) return;
 
+  /* A fresh instance every start: iOS refuses a `start()` on an instance that
+     has already ended, so a restart is always a new object, never a reuse of the
+     dead one. The old recogniser is neutered before it is dropped, so the `onend`
+     its own abort fires cannot re-enter the runaway guard. */
+  if (recognizer) {
+    recognizer.onresult = null;
+    recognizer.onend = null;
+    recognizer.onerror = null;
+    try {
+      recognizer.abort();
+    } catch {
+      /* Already finished. */
+    }
+    recognizer = null;
+  }
+
   const rec = new Ctor();
   recognizer = rec;
   rec.lang = 'en-US';
   rec.continuous = true;
   rec.interimResults = true;
-
-  /* The restart count lives on the recogniser, as it does in the mockup (1776):
-     a restart reuses this same object, so the window survives it, and a fresh
-     tap starts a fresh count. It is cleared again whenever a result arrives:
-     recognition that is producing words is not runaway, so the guard only ever
-     fires on a stream that ends over and over with nothing to show. */
-  const restarts: number[] = [];
 
   rec.onresult = (event) => {
     /* A result that arrives after the mic was put away belongs to nobody: without
@@ -531,13 +555,16 @@ function startRec(voice: VoiceTyping): void {
        stream after every phrase. */
     restarts.length = 0;
     let settled = '';
-    let pending = '';
+    let interim = '';
     for (let i = event.resultIndex ?? 0; i < event.results.length; i++) {
       const result = event.results[i];
       if (result.isFinal) settled += result[0].transcript;
-      else pending += result[0].transcript;
+      else interim += result[0].transcript;
     }
     if (settled) transcript += settled;
+    /* The tail replaces rather than accumulates: the browser's latest guess for
+       the words still coming is the whole of what is not yet settled. */
+    pending = interim;
     voice.write(transcript + pending);
     clearTimer();
     timer = setTimeout(() => voiceSend(voice), SILENCE_MS);
@@ -551,11 +578,11 @@ function startRec(voice: VoiceTyping): void {
        back when the turn ends. */
     if (sounding) return;
     /* A browser that ends the stream on its own (iOS does, after each phrase)
-       may never give the silence timer its 500ms — send anything still waiting,
-       so a phrase is never lost. */
-    if (transcript.trim()) {
+       may never give the silence timer its 800ms — flush anything still waiting,
+       settled or not, so a phrase is never lost. */
+    if ((transcript + pending).trim()) {
       clearTimer();
-      voiceSend(voice);
+      voiceSend(voice, true);
     }
     /* Bounded by the runaway guard, restart — but after a beat, not in the end
        event itself: iOS refuses a restart issued synchronously and accepts the
@@ -571,14 +598,8 @@ function startRec(voice: VoiceTyping): void {
       return;
     }
     setTimeout(() => {
-      if (listener !== voice) return;
-      try {
-        rec.start();
-      } catch {
-        /* The browser will not start this recogniser again. Put the button back
-           rather than leaving it lit and silent; the next tap is a fresh start. */
-        stopListening();
-      }
+      if (listener !== voice || sounding) return;
+      startRec(voice);
     }, RESTART_DELAY_MS);
   };
 
@@ -626,6 +647,8 @@ function turnOffMic(): void {
     recognizer = null;
   }
   transcript = '';
+  pending = '';
+  restarts = [];
   if (voice) voice.lit(false);
 }
 
@@ -658,6 +681,8 @@ function startMic(voice: VoiceTyping): void {
     return;
   }
   transcript = '';
+  pending = '';
+  restarts = [];
   listener = voice;
   voice.lit(true);
   /* Unlock the audio element here, inside the tap gesture, so the read-aloud
@@ -674,17 +699,11 @@ function startMic(voice: VoiceTyping): void {
 function resumeMic(): void {
   if (!listener || sounding) return;
   listener.lit(true);
-  if (recognizer) {
-    setTimeout(() => {
-      if (!listener || sounding || !recognizer) return;
-      try {
-        recognizer.start();
-      } catch {
-        /* Already running, or the browser will not restart it — the next tap is
-           a fresh start. */
-      }
-    }, RESTART_DELAY_MS);
-  }
+  const voice = listener;
+  setTimeout(() => {
+    if (!listener || listener !== voice || sounding) return;
+    startRec(voice);
+  }, RESTART_DELAY_MS);
 }
 
 /** The tap — `micTap` (1786): on if it is off, off if it is on. While the AI is

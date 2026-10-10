@@ -36,10 +36,10 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
   const [text, setTextState] = useState('');
   const [micOn, setMicOn] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
-  /* The field, and a copy of it the mic can read. `VoiceTyping.read` is called
-     from a speech event rather than from a render, so it cannot be handed the
-     state variable — which is the mockup reading `#cin.value` off the DOM
-     (1758), with one difference: a ref, not the node. */
+  /* The field, and the one value every writer writes. The mic writes through
+     `setText` and this send reads the same ref, so there is exactly one place
+     the text lives — the mockup's `#cin.value` (1758), kept as a ref rather
+     than the node. */
   const field = useRef('');
 
   const setText = (value: string) => {
@@ -92,7 +92,6 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
      toast text is gone and the markup's own `aria-label="Mic"` stays. */
   const micTap = () => {
     const voice: VoiceTyping = {
-      read: () => field.current,
       write: (value) => {
         setText(value);
         fit();
