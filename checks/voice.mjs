@@ -420,20 +420,22 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
      One variable with four states owns the mic and the speaker, so the two
      halves cannot disagree. The recogniser starts when the mic goes up and is
      replaced after every reading — a phone test showed iOS leaves the survivor
-     deaf — and aborted when the mic comes down. And a reply is spoken as its
-     sentences arrive — the streaming read-aloud — rather than after the whole
-     reply has finished. */
+     deaf — and stopped when the mic comes down. `stop()`, never `abort()`: a
+     phone test showed an aborted recogniser stays deaf until the page reloads.
+     And a reply is spoken as its sentences arrive — the streaming read-aloud —
+     rather than after the whole reply has finished. */
   judge(
     'voice: one session owns the mic and the speaker',
     /type Session = 'off' \| 'listening' \| 'thinking' \| 'speaking';/.test(source),
     'the four states, in one variable',
   );
   judge(
-    'voice: the recogniser is replaced after every reading and aborted at mic-off — never mid-session',
-    (source.match(/\.abort\(\)/g) || []).length === 2 &&
-      /function endMicSession[\s\S]{0,600}\.abort\(\)/.test(source) &&
-      /function restartRecognizer[\s\S]{0,900}\.abort\(\)/.test(source),
-    'the two aborts: endMicSession (mic down) and restartRecognizer (fresh ears after a reading)',
+    'voice: the recogniser is stopped, never aborted — abort() poisons iOS',
+    (source.match(/\.stop\(\)/g) || []).length === 2 &&
+      (source.match(/\.abort\(\)/g) || []).length === 0 &&
+      /function endMicSession[\s\S]{0,700}\.stop\(\)/.test(source) &&
+      /function restartRecognizer[\s\S]{0,900}\.stop\(\)/.test(source),
+    'the two stops: endMicSession (mic down) and restartRecognizer (fresh ears after a reading)',
   );
   judge(
     'voice: a reply is spoken as its sentences arrive, not after it finishes',

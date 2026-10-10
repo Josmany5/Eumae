@@ -79,6 +79,10 @@ interface Recognizer {
   continuous: boolean;
   interimResults: boolean;
   start: () => void;
+  /** Graceful end: final results, then `onend`. Unlike `abort()`, this does not
+   *  poison iOS's speech service — a phone test showed an aborted recogniser
+   *  stays deaf until the page reloads. */
+  stop: () => void;
   abort: () => void;
   onresult: ((event: RecognitionEvent) => void) | null;
   onend: (() => void) | null;
@@ -613,7 +617,7 @@ function restartRecognizer(): void {
       old.onend = null;
       old.onerror = null;
       try {
-        old.abort();
+        old.stop();
       } catch {
         /* Already ended on its own. */
       }
@@ -784,12 +788,16 @@ function endMicSession(): void {
     restartTimer = null;
   }
   if (recognizer) {
+    const rec = recognizer;
+    recognizer = null;
+    rec.onresult = null;
+    rec.onend = null;
+    rec.onerror = null;
     try {
-      recognizer.abort();
+      rec.stop();
     } catch {
       /* Already finished. */
     }
-    recognizer = null;
   }
   transcript = '';
   pending = '';

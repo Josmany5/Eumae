@@ -263,9 +263,9 @@ check(
 );
 
 check(
-  'fails when the recogniser is aborted anywhere but mic-off or restart',
+  'fails when the recogniser is aborted or stopped anywhere unexpected',
   failing(`${source}\nrecognizer.abort();\n`),
-  ['voice: the recogniser is replaced after every reading and aborted at mic-off — never mid-session'],
+  ['voice: the recogniser is stopped, never aborted — abort() poisons iOS'],
 );
 
 check(
