@@ -434,7 +434,7 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     (source.match(/\.stop\(\)/g) || []).length === 2 &&
       (source.match(/\.abort\(\)/g) || []).length === 0 &&
       /function endMicSession[\s\S]{0,700}\.stop\(\)/.test(source) &&
-      /function restartRecognizer[\s\S]{0,900}\.stop\(\)/.test(source),
+      /function restartRecognizer[\s\S]{0,1100}\.stop\(\)/.test(source),
     'the two stops: endMicSession (mic down) and restartRecognizer (fresh ears after a reading)',
   );
   judge(
@@ -496,11 +496,20 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
       /vlog\('session → /.test(source),
     'src/voice.ts: the vlog calls beside the session transitions, and the log API the overlay reads',
   );
-  const stopBranch = (source.match(/reason === 'audio-capture'[^\n]*/) || [''])[0];
   judge(
     'mic: a dropped connection rides the restart, not the stop',
-    stopBranch.includes('audio-capture') && !stopBranch.includes('network'),
-    stopBranch || 'the fatal-error branch is not in src/voice.ts',
+    !/reason === 'network'/.test(source),
+    'onerror, where network must fall through to the non-fatal branch instead of ending the session',
+  );
+  judge(
+    'mic: audio-capture revives instead of ending the session',
+    /reason === 'audio-capture'\) \{[\s\S]{0,300}waiting for the revive/.test(source),
+    'the audio-capture branch — transient on iOS, never fatal',
+  );
+  judge(
+    'voice: the post-reading handoff never overlaps two recognizers',
+    /old\.onend = handoff/.test(source) && /restartTimer = setTimeout\(handoff, 4000\)/.test(source),
+    'restartRecognizer, which starts the new recognizer only after iOS ends the old one',
   );
   const voiceSendBody = bodyOf('voiceSend');
   judge(

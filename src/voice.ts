@@ -621,25 +621,44 @@ let restartTimer: ReturnType<typeof setTimeout> | null = null;
 function restartRecognizer(): void {
   const voice = listener;
   if (!voice) return;
-  if (restartTimer) clearTimeout(restartTimer);
-  vlog('recognizer restart in 500ms');
-  restartTimer = setTimeout(() => {
+  if (restartTimer) {
+    clearTimeout(restartTimer);
     restartTimer = null;
-    if (listener !== voice) return;
-    const old = recognizer;
-    recognizer = null;
-    if (old) {
-      old.onresult = null;
-      old.onend = null;
-      old.onerror = null;
-      try {
-        old.stop();
-      } catch {
-        /* Already ended on its own. */
-      }
-    }
+  }
+  const old = recognizer;
+  recognizer = null;
+  if (!old) {
     startRec(voice);
-  }, RESTART_DELAY_MS);
+    return;
+  }
+  /* Clean handoff: the new recognizer starts only after iOS has fully ended
+     the old one. Starting while it is still stopping leaves the new one deaf —
+     iOS reports audio-capture and the mic never recovers. This is what killed
+     the mic after every reply. */
+  vlog('handing off to a fresh recognizer');
+  let handed = false;
+  const handoff = () => {
+    if (handed) return;
+    handed = true;
+    old.onend = null;
+    if (restartTimer) {
+      clearTimeout(restartTimer);
+      restartTimer = null;
+    }
+    if (listener !== voice || recognizer) return;
+    startRec(voice);
+  };
+  old.onresult = null;
+  old.onerror = null;
+  old.onend = handoff;
+  try {
+    old.stop();
+  } catch {
+    handoff();
+  }
+  if (!handed) {
+    restartTimer = setTimeout(handoff, 4000);
+  }
 }
 
 function startRec(voice: VoiceTyping): void {
@@ -720,11 +739,16 @@ function startRec(voice: VoiceTyping): void {
       const v = listener;
       endMicSession();
       if (v) v.say('Microphone access was denied.');
-    } else if (reason === 'audio-capture' || reason === 'language-not-supported') {
+    } else if (reason === 'language-not-supported') {
       vlog(`mic error: ${reason}`, true);
       const v = listener;
       endMicSession();
       if (v) v.say(`Microphone failed: ${reason}.`);
+    } else if (reason === 'audio-capture') {
+      /* Transient on iOS when the audio session has not been handed back yet
+         after playback. Never fatal: onend follows and the revive brings a
+         fresh recognizer. Ending the session here is what stranded the mic. */
+      vlog('mic error: audio-capture — waiting for the revive', true);
     } else {
       vlog(`mic error: ${reason ?? 'unknown'} (non-fatal — onend revives)`);
     }

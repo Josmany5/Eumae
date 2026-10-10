@@ -301,11 +301,28 @@ check(
   'fails when a dropped connection stops the mic instead of riding the restart',
   failing(
     source.replace(
-      "reason === 'audio-capture' || reason === 'language-not-supported'",
-      "reason === 'audio-capture' || reason === 'network' || reason === 'language-not-supported'",
+      "} else if (reason === 'language-not-supported') {",
+      "} else if (reason === 'network' || reason === 'language-not-supported') {",
     ),
   ),
   ['mic: a dropped connection rides the restart, not the stop'],
+);
+
+check(
+  'fails when audio-capture ends the mic session',
+  failing(
+    source.replace(
+      "      vlog('mic error: audio-capture — waiting for the revive', true);",
+      '      endMicSession();',
+    ),
+  ),
+  ['mic: audio-capture revives instead of ending the session'],
+);
+
+check(
+  'fails when the new recognizer starts before the old one ends',
+  failing(source.replace('  old.onend = handoff;', '  old.onend = null;\n  startRec(voice);')),
+  ['voice: the post-reading handoff never overlaps two recognizers'],
 );
 
 check(
