@@ -207,7 +207,7 @@ check(
 
 check(
   'fails when the silence may play over a piece that is being read',
-  failing(source.replace('  if (running || sounding) return;\n', '')),
+  failing(source.replace("  if (session === 'speaking') return;\n", '')),
   ['speak: the silence is never played over a piece that is playing'],
 );
 
@@ -244,11 +244,34 @@ check(
   'fails when a result that lands after the mic is off is not ignored',
   failing(
     source.replace(
-      "    if (listener !== voice) return;\n    /* Nor is anything typed while it is speaking (1768). */",
-      "    /* Nor is anything typed while it is speaking (1768). */",
+      '    /* A result that arrives after the mic was put away belongs to nobody. */\n    if (listener !== voice) return;',
+      '    /* A result that arrives after the mic was put away belongs to nobody. */',
     ),
   ),
   ['mic: a result that lands after the mic is off is ignored'],
+);
+
+check(
+  'fails when the session is not one variable with four states',
+  failing(
+    source.replace(
+      "type Session = 'off' | 'listening' | 'thinking' | 'speaking';",
+      'type Session = string;',
+    ),
+  ),
+  ['voice: one session owns the mic and the speaker'],
+);
+
+check(
+  'fails when the recogniser is aborted anywhere but mic-off',
+  failing(`${source}\nrecognizer.abort();\n`),
+  ['voice: the recogniser is aborted once — when the mic comes down'],
+);
+
+check(
+  'fails when the streaming read-aloud loses a leg',
+  failing(source.replace('export function feedVoiceReply', 'export function feedVoiceRepl')),
+  ['voice: a reply is spoken as its sentences arrive, not after it finishes'],
 );
 
 check(

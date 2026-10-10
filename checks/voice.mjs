@@ -413,8 +413,31 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
   const unlockBody = bodyOf('unlock');
   judge(
     'speak: the silence is never played over a piece that is playing',
-    /if \(running \|\| sounding\) return;/.test(unlockBody),
+    /if \(session === 'speaking'\) return;/.test(unlockBody),
     unlockBody ? 'unlock, which plays through the element the reply comes out of' : 'unlock is not in src/voice.ts',
+  );
+  /* ── The session ───────────────────────────────────────────────────────────
+     One variable with four states owns the mic and the speaker, so the two
+     halves cannot disagree. The recogniser starts once (mic up) and is aborted
+     once (mic down): while the answer plays the mic is muted, not killed. And
+     a reply is spoken as its sentences arrive — the streaming read-aloud —
+     rather than after the whole reply has finished. */
+  judge(
+    'voice: one session owns the mic and the speaker',
+    /type Session = 'off' \| 'listening' \| 'thinking' \| 'speaking';/.test(source),
+    'the four states, in one variable',
+  );
+  judge(
+    'voice: the recogniser is aborted once — when the mic comes down',
+    (source.match(/\.abort\(\)/g) || []).length === 1,
+    'endMicSession holds the only abort in the file',
+  );
+  judge(
+    'voice: a reply is spoken as its sentences arrive, not after it finishes',
+    /export function startVoiceReply/.test(source) &&
+      /export function feedVoiceReply/.test(source) &&
+      /export function endVoiceReply/.test(source),
+    'the streaming read-aloud: arm, feed, end',
   );
   const speakBody = bodyOf('playClip');
   judge(

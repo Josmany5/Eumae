@@ -4,7 +4,7 @@ import { Icon } from '../components/shell/icons';
 import { useNav, type Mode } from '../nav';
 import { logEv } from '../log';
 import { streamChat } from '../chat';
-import { speak } from '../voice';
+import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice';
 import { buildRequest, toApiBody, type ApiChatBody, type ThreadTurn } from '../request';
 
 interface Msg extends ThreadTurn {
@@ -172,12 +172,17 @@ export default function ChatScreen() {
     logEv({ area: 'Chat', text: byVoice ? `Sent by voice: ${clip}` : `Sent: ${clip}` });
 
     inFlight.current += 1;
+    /* A voice send reads its own reply aloud as it streams: the first complete
+       sentence starts speaking about a second after it is complete, while the
+       rest is still arriving — instead of waiting for the whole reply. */
+    const voiceId = byVoice ? startVoiceReply(notify) : 0;
     void streamChat(body, (full) => {
       /* The whole text so far, not the new piece: replacing what the bubble shows
          is the only way two pieces arriving out of order could not show up as a
          sentence in the wrong order. The dots go away with the first piece, which
          is this same update. */
       setMsgs((m) => m.map((x) => (x.id === replyId ? { ...x, text: full } : x)));
+      if (byVoice) feedVoiceReply(voiceId, full);
     }).then((reply) => {
       inFlight.current -= 1;
       setMsgs((m) =>
@@ -199,10 +204,11 @@ export default function ChatScreen() {
           : { area: 'Chat', text: `No reply: ${reply.error}`, status: 'bad' },
       );
 
-      /* Read back only when it arrived, and only when the mic asked: the mockup
-         carries `byVoice` from the send to here for exactly this (1902), and half
-         a sentence read out is worse than none. */
-      if (byVoice && reply.ok && reply.text) speak(reply.text, notify);
+      /* The streaming read-aloud ends with the stream: the held-back tail is
+         spoken, or a failed reply says why once. A reply is only read when the
+         mic asked — the mockup carries `byVoice` from the send to here for
+         exactly this (1902). */
+      if (byVoice) endVoiceReply(voiceId, reply.ok, reply.error ?? undefined);
     });
   };
 
