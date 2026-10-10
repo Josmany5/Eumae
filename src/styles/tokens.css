@@ -716,3 +716,22 @@ input,textarea,select{ font-family:inherit; }
 .lib-preview-body img, .lib-preview-body video{ max-width:100%; max-height:100%; border-radius:8px; }
 .lib-preview-body audio{ width:100%; }
 .lib-preview-body iframe{ width:100%; height:100%; border:none; border-radius:8px; background:#fff; }
+.msgTs{ font-size:10px; color:var(--mut); margin-top:4px; }
+.chatTop{ display:flex; gap:8px; padding:8px 12px 0; }
+.hOpen{ display:inline-flex; align-items:center; gap:6px; background:none; border:1px solid var(--hair);
+  border-radius:99px; padding:5px 12px; font-size:12px; font-weight:600; color:var(--mut); }
+.hOpen svg{ width:14px; height:14px; }
+.hscrim{ position:fixed; inset:0; z-index:290; background:rgba(0,0,0,.4); }
+.history{ position:fixed; top:0; left:0; bottom:0; width:min(320px, 85vw); z-index:295;
+  background:var(--card); display:flex; flex-direction:column; }
+.hHead{ display:flex; align-items:center; justify-content:space-between; padding:16px; font-weight:700; }
+.hNew{ display:inline-flex; align-items:center; gap:6px; border:1px solid var(--hair); background:none;
+  border-radius:99px; padding:6px 12px; font-size:13px; font-weight:600; color:var(--tx); }
+.hNew svg{ width:14px; height:14px; }
+.hList{ flex:1; overflow-y:auto; padding:0 8px 16px; }
+.hEmpty{ padding:24px; text-align:center; color:var(--mut); font-size:14px; }
+.hItem{ display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%;
+  padding:10px 12px; border:none; background:none; border-radius:10px; text-align:left; }
+.hItem.on{ background:var(--card2); }
+.hTitle{ font-size:14px; color:var(--tx); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.hDate{ font-size:11px; color:var(--mut); flex:none; }

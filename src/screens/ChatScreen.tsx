@@ -6,8 +6,18 @@ import { logEv } from '../log';
 import { streamChat } from '../chat';
 import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice';
 import { buildRequest, toApiBody, type ApiChatBody, type ThreadTurn } from '../request';
+import {
+  createThread,
+  getCurrentThreadId,
+  getThread,
+  getThreads,
+  saveThread,
+  setCurrentThreadId,
+  titleFor,
+  type Thread,
+} from '../threads';
 
-interface Msg extends ThreadTurn {
+export interface Msg extends ThreadTurn {
   id: number;
   /** The request this message *is* — built when it was sent, from the turn as it
    *  stood then (src/request.ts). Only what the person sent carries one: the
@@ -25,6 +35,8 @@ interface Msg extends ThreadTurn {
   /** The files that went out with this message — snapshots of the refs at send
    *  time, so the bubble shows what the AI saw. */
   attachments?: { label: string; icon: string; url?: string }[];
+  /** When this message was sent. Shown under the bubble. */
+  ts: number;
 }
 
 const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'What am I forgetting?'];
@@ -141,9 +153,67 @@ function ImageViewer({ url, alt, onClose }: { url: string; alt: string; onClose:
   );
 }
 
+/** Thread history — past conversations. New chat button on top, threads below,
+ *  tap to switch. */
+function ThreadHistory({
+  open,
+  currentId,
+  onClose,
+  onNew,
+  onSwitch,
+}: {
+  open: boolean;
+  currentId: string | null;
+  onClose: () => void;
+  onNew: () => void;
+  onSwitch: (id: string) => void;
+}) {
+  const [threads, setThreads] = useState<Thread[]>([]);
+  useEffect(() => {
+    if (open) setThreads(getThreads());
+  }, [open]);
+  if (!open) return null;
+  return (
+    <>
+      <div className="hscrim" onClick={onClose} />
+      <aside className="history" aria-label="Chat history">
+        <div className="hHead">
+          <span>Chats</span>
+          <button className="hNew" onClick={onNew}>
+            <Icon name="pls" /> New chat
+          </button>
+        </div>
+        <div className="hList">
+          {threads.length === 0 ? (
+            <div className="hEmpty">No chats yet.</div>
+          ) : (
+            threads.map((t) => (
+              <button
+                key={t.id}
+                className={`hItem${t.id === currentId ? ' on' : ''}`}
+                onClick={() => onSwitch(t.id)}
+              >
+                <span className="hTitle">{t.title}</span>
+                <span className="hDate">
+                  {new Date(t.updatedAt).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      </aside>
+    </>
+  );
+}
+
 export default function ChatScreen() {
   const { turn, setTurn, refs, clearRefs, notify } = useNav();
   const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [viewing, setViewing] = useState<{ url: string; alt: string } | null>(null);
   /* Replies in flight. A ref rather than state because the only reader is the
      mic's guard, which is called from a speech event and not from a render
@@ -157,6 +227,44 @@ export default function ChatScreen() {
   /* Which message is being rewritten, and what is in the box. One at a time, and
      `null` for none — wove keeps the same single `EDITSTATE` (1711). */
   const [editing, setEditing] = useState<{ id: number; text: string } | null>(null);
+  /* Thread persistence — load on mount, save on every change. */
+  useEffect(() => {
+    const currentId = getCurrentThreadId();
+    const thread = currentId ? getThread(currentId) : undefined;
+    if (thread) {
+      setThreadId(thread.id);
+      setMsgs(thread.messages);
+    } else {
+      const fresh = createThread();
+      setThreadId(fresh.id);
+      setCurrentThreadId(fresh.id);
+      setMsgs([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!threadId) return;
+    const thread = getThread(threadId);
+    if (!thread) return;
+    saveThread({ ...thread, messages: msgs });
+  }, [msgs, threadId]);
+
+  const newChat = () => {
+    const fresh = createThread();
+    setThreadId(fresh.id);
+    setCurrentThreadId(fresh.id);
+    setMsgs([]);
+    setHistoryOpen(false);
+  };
+
+  const switchThread = (id: string) => {
+    const thread = getThread(id);
+    if (!thread) return;
+    setThreadId(thread.id);
+    setCurrentThreadId(thread.id);
+    setMsgs(thread.messages);
+    setHistoryOpen(false);
+  };
   /* The id whose Copy just worked, so that button can be a tick for a moment
      (wove swaps the icon the same way, 1704). Zero is no message: ids are
      `Date.now()`, so no real one is ever 0. */
@@ -214,11 +322,19 @@ export default function ChatScreen() {
        it are arriving and the list is being appended to. */
     const id = Date.now();
     const replyId = id + 1;
+    const now = Date.now();
+    const isFirst = msgs.length === 0;
     setMsgs((m) => [
       ...m,
-      { id, role: 'you', text, body, attachments: refs.map((r) => ({ label: r.label, icon: r.icon, url: r.url })) },
-      { id: replyId, role: 'eumae', text: '', streaming: true },
+      { id, role: 'you', text, body, attachments: refs.map((r) => ({ label: r.label, icon: r.icon, url: r.url })), ts: now },
+      { id: replyId, role: 'eumae', text: '', streaming: true, ts: now },
     ]);
+    /* Title the thread from the first user message. Outside the updater —
+       updaters must stay pure. */
+    if (isFirst && threadId && text.trim()) {
+      const thread = getThread(threadId);
+      if (thread) saveThread({ ...thread, title: titleFor(text) });
+    }
     /* Attachments belong to the message that carried them. The composer clears;
        the message keeps them. */
     clearRefs();
@@ -317,6 +433,14 @@ export default function ChatScreen() {
 
   return (
     <div className="chat">
+      <div className="chatTop">
+        <button className="hOpen" onClick={() => setHistoryOpen(true)} aria-label="Chat history">
+          <Icon name="clk" /> History
+        </button>
+        <button className="hOpen" onClick={newChat} aria-label="New chat">
+          <Icon name="pls" /> New
+        </button>
+      </div>
       <div className="chatScroll" ref={scroller}>
         {msgs.length === 0 ? (
           <div className="hello">
@@ -427,6 +551,14 @@ export default function ChatScreen() {
                           ) : null}
                         </div>
                       ) : null}
+                      {m.ts ? (
+                        <span className="msgTs">
+                          {new Date(m.ts).toLocaleTimeString(undefined, {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      ) : null}
                     </>
                   )}
                   {/* The two buttons under a message, from wove's two rows: `rowA`
@@ -489,6 +621,14 @@ export default function ChatScreen() {
       {viewing && (
         <ImageViewer url={viewing.url} alt={viewing.alt} onClose={() => setViewing(null)} />
       )}
+
+      <ThreadHistory
+        open={historyOpen}
+        currentId={threadId}
+        onClose={() => setHistoryOpen(false)}
+        onNew={newChat}
+        onSwitch={switchThread}
+      />
     </div>
   );
 }
