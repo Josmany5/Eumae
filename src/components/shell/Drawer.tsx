@@ -59,22 +59,29 @@ function SwipeRow({
   onExport: () => void;
 }) {
   const startX = useRef(0);
-  const [dx, setDx] = useState(0);
+  const dxRef = useRef(0);
+  const [, force] = useState(0);
 
   const onTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
+    dxRef.current = open ? -140 : 0;
   };
   const onTouchMove = (e: React.TouchEvent) => {
     const delta = e.touches[0].clientX - startX.current;
-    if (delta < 0) setDx(Math.max(delta, -140));
+    dxRef.current = Math.min(0, Math.max(-140, (open ? -140 : 0) + delta));
+    force((n) => n + 1);
   };
   const onTouchEnd = () => {
-    if (dx < -60) onOpen();
-    else {
-      setDx(0);
+    if (dxRef.current < -70) {
+      dxRef.current = 0;
+      onOpen();
+    } else {
+      dxRef.current = 0;
+      force((n) => n + 1);
       onClose();
     }
   };
+  const tx = open && dxRef.current === 0 ? -140 : dxRef.current;
 
   return (
     <div className="swipeRow" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
@@ -92,7 +99,7 @@ function SwipeRow({
       </div>
       <div
         className={`drSwipe${current ? ' on' : ''}`}
-        style={{ transform: open ? 'translateX(-140px)' : dx ? `translateX(${dx}px)` : undefined }}
+        style={tx ? { transform: `translateX(${tx}px)` } : undefined}
         onClick={() => {
           if (open) onClose();
           else onPick();
