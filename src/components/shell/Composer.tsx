@@ -32,7 +32,7 @@ interface ComposerProps {
  *  time round: `+` sets the chat up and never attaches anything, and the
  *  paperclip brings a photo or PDF into this message. */
 export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: ComposerProps) {
-  const { turn, openAdd, pickFile, notify } = useNav();
+  const { turn, openAdd, pickFile, notify, refs, detach } = useNav();
   const [text, setTextState] = useState('');
   const [micOn, setMicOn] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -148,6 +148,31 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
           </button>
         ))}
       </div>
+
+      {/* Attached files, visible until sent or removed — the frontier pattern:
+          what you're about to send sits where you're composing, not hidden in
+          a panel. Thumbnails for images, icons for the rest, × to detach. */}
+      {refs.length > 0 && (
+        <div className="attachStrip" aria-label="Attached files">
+          {refs.map((r) => (
+            <div key={r.label} className="attachChip">
+              {r.url ? (
+                <img className="attachThumb" src={r.url} alt="" />
+              ) : (
+                <Icon name={r.icon} />
+              )}
+              <span className="attachName">{r.label}</span>
+              <button
+                className="attachX"
+                onClick={() => detach(r.label)}
+                aria-label={`Remove ${r.label}`}
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="cmp">
         <button className="cmpIcon" onClick={openAdd} aria-label="Add" title="Add to this chat">

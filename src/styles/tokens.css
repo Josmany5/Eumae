@@ -403,6 +403,19 @@ input,textarea,select{ font-family:inherit; }
   font-size:12px; font-weight:600; color:var(--tx); transition:background .15s ease; }
 .modeChip:hover{ background:var(--card3); }
 .modeChip .cv{ color:var(--mut); font-size:10px; }
+/* Attachment strip — files waiting to send, above the input. Thumbnails for
+   images, icons for the rest, × to remove. The frontier pattern: visible where
+   you compose, until sent or detached. */
+.attachStrip{ display:flex; flex-wrap:wrap; gap:8px; padding:0 2px 8px; }
+.attachChip{ display:flex; align-items:center; gap:8px; max-width:220px;
+  background:var(--card2); border-radius:12px; padding:6px 8px; }
+.attachThumb{ width:32px; height:32px; object-fit:cover; border-radius:8px; flex:none; }
+.attachName{ font-size:12px; font-weight:500; color:var(--tx);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
+.attachX{ display:flex; align-items:center; justify-content:center;
+  width:24px; height:24px; border:none; background:none; color:var(--mut);
+  border-radius:50%; flex:none; }
+.attachX:hover{ background:var(--card3); color:var(--tx); }
 
 /* Straight from the mockup's `#composer .in` (line 83): radius 28, padding
    6/6/6/8, shadow 0 4px 24px rgba(0,0,0,.35). `align-items` is the one change —
