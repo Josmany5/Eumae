@@ -103,68 +103,16 @@ let transcript = '';
  *  as the timer's guess, once when the same words settle a beat later. */
 let pending = '';
 let timer: ReturnType<typeof setTimeout> | null = null;
-/** The revive's current delay. Reset whenever words arrive — recognition that
- *  is producing results is not failing. */
-let reviveDelay = RESTART_DELAY_MS;
-
-/* ── Debug log ───────────────────────────────────────────────────────────────
- * Every session change, result, and failure, timestamped — the phone-test log.
- * A small overlay in the app renders it; it costs nothing while closed. */
-export interface VoiceLogEntry {
-  /** ms since the first entry: the shape of the session at a glance. */
-  t: number;
-  error: boolean;
-  msg: string;
-}
-
-const VOICE_LOG_MAX = 120;
-let voiceLogT0 = 0;
-let voiceLogEntries: VoiceLogEntry[] = [];
-const voiceLogSubs = new Set<(entries: VoiceLogEntry[]) => void>();
-
-function vlog(msg: string, error = false): void {
-  const now = Date.now();
-  if (!voiceLogT0) voiceLogT0 = now;
-  voiceLogEntries = [...voiceLogEntries.slice(-(VOICE_LOG_MAX - 1)), { t: now - voiceLogT0, error, msg }];
-  for (const sub of voiceLogSubs) sub(voiceLogEntries);
-}
-
-/** Log a voice-session event from outside this module (the chat screen's
- *  stream events). */
-export function logVoice(msg: string, error = false): void {
-  vlog(msg, error);
-}
-
-export function getVoiceLog(): VoiceLogEntry[] {
-  return voiceLogEntries;
-}
-
-export function clearVoiceLog(): void {
-  voiceLogT0 = 0;
-  voiceLogEntries = [];
-  for (const sub of voiceLogSubs) sub(voiceLogEntries);
-}
-
-export function subscribeVoiceLog(cb: (entries: VoiceLogEntry[]) => void): () => void {
-  voiceLogSubs.add(cb);
-  cb(voiceLogEntries);
-  return () => {
-    voiceLogSubs.delete(cb);
-  };
-}
-
-/** Clip a quote for the log: the first words, not the whole sentence. */
-function q(text: string): string {
-  const t = text.trim();
-  return t.length > 42 ? `${t.slice(0, 42)}…` : t;
-}
-
+/** Clear the send countdown. */
 function clearTimer(): void {
   if (timer) {
     clearTimeout(timer);
     timer = null;
   }
 }
+/** The revive's current delay. Reset whenever words arrive — recognition that
+ *  is producing results is not failing. */
+let reviveDelay = RESTART_DELAY_MS;
 
 /* ── The speaker ─────────────────────────────────────────────────────────────
  * Web Audio, not a media element. A played <audio> element leaves iOS's audio
@@ -224,15 +172,12 @@ function unlock(): void {
     c.resume().then(
       () => {
         unlocked = true;
-        vlog('audio unlocked');
       },
       () => {
-        vlog('audio unlock refused — next tap retries', true);
       },
     );
   } else if (!unlocked) {
     unlocked = true;
-    vlog('audio unlocked');
   }
 }
 
@@ -287,7 +232,6 @@ function splitStream(text: string): { complete: string[]; tail: string } {
 function sayOnce(message: string): void {
   if (saidOnce) return;
   saidOnce = true;
-  vlog(`notice: ${message}`, true);
   if (speakSay) speakSay(message);
 }
 
@@ -372,14 +316,12 @@ function playClip(buffer: AudioBuffer): Promise<boolean> {
       resolve(played);
     };
     currentClip = finish;
-    vlog('playing clip');
     const src = c.createBufferSource();
     src.buffer = buffer;
     src.connect(c.destination);
     currentSrc = src;
     src.onended = () => {
       played = true;
-      vlog('clip ended');
       if (currentSrc === src) currentSrc = null;
       finish();
     };
@@ -406,7 +348,6 @@ function playClip(buffer: AudioBuffer): Promise<boolean> {
 function setSessionSpeaking(): void {
   if (session === 'speaking') return;
   session = 'speaking';
-  vlog('session → speaking (mic muted)');
   clearTimer();
   if (listener) listener.lit(false);
 }
@@ -422,12 +363,10 @@ function settleSessionAfterSpeak(): void {
   suspendAudio();
   if (listener) {
     session = 'listening';
-    vlog('session → listening');
     listener.lit(true);
     restartRecognizer();
   } else {
     session = 'off';
-    vlog('session → off');
   }
 }
 
@@ -453,9 +392,6 @@ function beginRun(say?: (m: string) => void, voice?: string): number {
  *  still playing. The chain plays the decoded buffers strictly in order, so by
  *  the time a piece is due its buffer is ready and there is no seam. */
 function enqueuePiece(piece: string, id: number): void {
-  const started = Date.now();
-  const clip = q(piece);
-  vlog(`TTS fetch: "${clip}"`);
   const clipP = tokenP.then((t) => fetchClip(piece, t));
   const bufP: Promise<AudioBuffer | null> = clipP.then((c) => {
     if (!c.bytes) return null;
@@ -463,13 +399,6 @@ function enqueuePiece(piece: string, id: number): void {
     if (!ctx) return null;
     /* decodeAudioData detaches the buffer it is given, so it decodes a copy. */
     return ctx.decodeAudioData(c.bytes.slice().buffer).catch(() => null);
-  });
-  void clipP.then((c) => {
-    if (id !== speakGen) return;
-    vlog(
-      c.bytes ? `TTS ok (${Date.now() - started}ms): "${clip}"` : `TTS failed (status ${c.status}): "${clip}"`,
-      !c.bytes,
-    );
   });
   chain = chain.then(async () => {
     if (id !== speakGen) return;
@@ -519,14 +448,12 @@ export function speak(text: string, say?: (m: string) => void, voice?: string): 
   for (const s of complete) for (const piece of chunks(s)) enqueuePiece(piece, id);
   if (tail.trim()) for (const piece of chunks(tail)) enqueuePiece(piece, id);
   chain = chain.then(() => finishRun(id));
-  vlog('read-aloud started');
 }
 
 /** Arm the streaming read-aloud for a reply that is about to stream in.
  *  Returns the run id the feed and end calls must carry. */
 export function startVoiceReply(say?: (m: string) => void): number {
   if (speakActive) stopSpeaking();
-  vlog('voice reply armed');
   return beginRun(say);
 }
 
@@ -567,7 +494,6 @@ export function endVoiceReply(id: number, ok: boolean, error?: string): void {
 export function stopSpeaking(): void {
   speakGen++;
   speakActive = false;
-  vlog('reading stopped');
   if (currentSrc) {
     const src = currentSrc;
     currentSrc = null;
@@ -624,7 +550,6 @@ function restartRecognizer(): void {
      the old one. Starting while it is still stopping leaves the new one deaf —
      iOS reports audio-capture and the mic never recovers. This is what killed
      the mic after every reply. */
-  vlog('handing off to a fresh recognizer');
   let handed = false;
   const handoff = () => {
     if (handed) return;
@@ -667,7 +592,6 @@ function startRec(voice: VoiceTyping): void {
        spoken is dropped. iOS delivers speech late, and keeping it is how text
        lands in the field from nowhere and gets stuck there, unable to send. */
     if (session !== 'listening') {
-      vlog(`result dropped — ${session}`);
       return;
     }
     /* Words arrived — the revive is not failing, so its backoff starts over. */
@@ -683,12 +607,8 @@ function startRec(voice: VoiceTyping): void {
     /* The tail replaces rather than accumulates: the browser's latest guess at
        the words still coming is the whole of what is not yet settled. */
     pending = interim;
-    const heard = (settled + interim).trim();
-    if (heard) vlog(`heard${settled ? ' (final)' : ''}: "${q(heard)}"`);
     voice.write(transcript + pending);
-    const wasArmed = !!timer;
     clearTimer();
-    if (!wasArmed) vlog('send timer armed (800ms)');
     timer = setTimeout(() => voiceSend(voice), SILENCE_MS);
   };
 
@@ -698,7 +618,6 @@ function startRec(voice: VoiceTyping): void {
        would loop on the AI's own voice. The end of the reading revives it. */
     if (session === 'speaking') {
       recognizer = null;
-      vlog('recognizer ended mid-speech — reviving after reading');
       return;
     }
     /* A browser that ends the stream on its own may never give the silence
@@ -713,10 +632,8 @@ function startRec(voice: VoiceTyping): void {
     recognizer = null;
     const delay = reviveDelay;
     reviveDelay = Math.min(reviveDelay * 2, RESTART_MAX_DELAY_MS);
-    vlog(`recognizer revive in ${delay}ms`);
     setTimeout(() => {
       if (listener !== voice || session === 'speaking' || recognizer) return;
-      vlog('recognizer revived');
       startRec(voice);
     }, delay);
   };
@@ -724,12 +641,10 @@ function startRec(voice: VoiceTyping): void {
   rec.onerror = (event) => {
     const reason = event?.error;
     if (reason === 'not-allowed' || reason === 'service-not-allowed') {
-      vlog(`mic error: ${reason} — permission denied`, true);
       const v = listener;
       endMicSession();
       if (v) v.say('Microphone access was denied.');
     } else if (reason === 'language-not-supported') {
-      vlog(`mic error: ${reason}`, true);
       const v = listener;
       endMicSession();
       if (v) v.say(`Microphone failed: ${reason}.`);
@@ -737,9 +652,7 @@ function startRec(voice: VoiceTyping): void {
       /* Transient on iOS when the audio session has not been handed back yet
          after playback. Never fatal: onend follows and the revive brings a
          fresh recognizer. Ending the session here is what stranded the mic. */
-      vlog('mic error: audio-capture — waiting for the revive', true);
     } else {
-      vlog(`mic error: ${reason ?? 'unknown'} (non-fatal — onend revives)`);
     }
     /* `no-speech`, `aborted` and `network` are not fatal: the browser stopped
        on its own — a dropped connection is routine on a phone — and `onend`
@@ -748,11 +661,9 @@ function startRec(voice: VoiceTyping): void {
 
   try {
     rec.start();
-    vlog('recognizer started');
   } catch {
     /* The browser refused to open the stream synchronously. Leave nothing lit
        and silent. */
-    vlog('recognizer start threw — mic down', true);
     const v = listener;
     endMicSession();
     if (v) v.say('Could not open the microphone.');
@@ -773,12 +684,9 @@ function voiceSend(voice: VoiceTyping, flush = false): void {
   transcript = '';
   pending = '';
   clearTimer();
-  vlog(`send: "${q(text)}"`);
   if (voice.send(true)) {
     session = 'thinking';
-    vlog('session → thinking');
   } else {
-    vlog('send refused by the composer', true);
   }
 }
 
@@ -787,7 +695,6 @@ function voiceSend(voice: VoiceTyping, flush = false): void {
  *  happens exactly once per session. */
 function startMic(voice: VoiceTyping): void {
   if (!recognizerCtor()) {
-    vlog('mic unavailable in this browser', true);
     voice.say('Voice typing is not available in this browser.');
     return;
   }
@@ -796,7 +703,6 @@ function startMic(voice: VoiceTyping): void {
   reviveDelay = RESTART_DELAY_MS;
   listener = voice;
   session = 'listening';
-  vlog('session → listening');
   voice.lit(true);
   /* Inside the tap gesture, so the read-aloud that follows a voice message can
      play without a gesture of its own (iOS refuses a first play that no gesture
@@ -809,7 +715,6 @@ function startMic(voice: VoiceTyping): void {
  *  stopped here and nowhere else. */
 function endMicSession(): void {
   const voice = listener;
-  vlog('mic session ended');
   listener = null;
   clearTimer();
   if (restartTimer) {
@@ -861,16 +766,13 @@ export function armVisibility(): void {
 export function toggleMic(voice: VoiceTyping): void {
   if (session === 'speaking') {
     const hadMic = !!listener;
-    vlog('mic tap — barge in');
     stopSpeaking();
     if (!hadMic) startMic(voice);
     return;
   }
   if (session === 'off') {
-    vlog('mic tap — on');
     startMic(voice);
     return;
   }
-  vlog('mic tap — off');
   endMicSession();
 }

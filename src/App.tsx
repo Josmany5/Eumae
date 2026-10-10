@@ -4,7 +4,6 @@ import TabBar, { type TabId } from './components/shell/TabBar';
 import Drawer from './components/shell/Drawer';
 import AddSheet from './components/shell/AddSheet';
 import Toast from './components/shell/Toast';
-import VoiceDebug from './components/shell/VoiceDebug';
 import Settings from './components/settings/Settings';
 import Sidebar from './components/shell/Sidebar';
 import RightPanel from './components/shell/RightPanel';
@@ -274,7 +273,6 @@ export default function App() {
         <input id="file-input" ref={fileRef} type="file" accept="image/*,.pdf" onChange={onFile} hidden />
 
         <Toast message={toast} onDone={() => setToast(null)} />
-        <VoiceDebug />
       </div>
     </NavContext.Provider>
   );

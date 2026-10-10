@@ -256,7 +256,7 @@ check(
   'fails when results are kept while the answer is on its way',
   failing(
     source.replace(
-      "    if (session !== 'listening') {\n      vlog(`result dropped — ${session}`);\n      return;\n    }",
+      "    if (session !== 'listening') {\n      return;\n    }",
       "    if (session !== 'listening') {\n      /* kept: the stuck-text bug returns */\n    }",
     ),
   ),
@@ -264,9 +264,9 @@ check(
 );
 
 check(
-  'fails when the debug log API is missing',
-  failing(source.replace('export function subscribeVoiceLog', 'function subscribeVoiceLog')),
-  ['voice: the debug log records session changes and failures'],
+  'fails when debug logging creeps back in',
+  failing(`${source}\nfunction vlog() {}\n`),
+  ['voice: no debug logging ships — the overlay and its API are gone'],
 );
 
 check(
@@ -284,8 +284,8 @@ check(
   'fails when audio-capture ends the mic session',
   failing(
     source.replace(
-      "      vlog('mic error: audio-capture — waiting for the revive', true);",
-      '      endMicSession();',
+      "    } else if (reason === 'audio-capture') {\n      /* Transient on iOS when the audio session has not been handed back yet",
+      "    } else if (reason === 'audio-capture') {\n      endMicSession();\n      /* Transient on iOS when the audio session has not been handed back yet",
     ),
   ),
   ['mic: audio-capture revives instead of ending the session'],

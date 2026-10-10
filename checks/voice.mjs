@@ -428,19 +428,18 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
   );
   judge(
     'mic: results are only kept while it is your turn',
-    /if \(session !== 'listening'\)/.test(resultHead) && /result dropped/.test(resultHead),
+    /if \(session !== 'listening'\) \{\s*return;\s*\}/.test(resultHead),
     resultHead
       ? 'onresult, which drops anything arriving while the answer is on its way or being spoken'
       : 'rec.onresult is not in src/voice.ts',
   );
   judge(
-    'voice: the debug log records session changes and failures',
-    /export function subscribeVoiceLog/.test(source) &&
-      /export function getVoiceLog/.test(source) &&
-      /export function clearVoiceLog/.test(source) &&
-      /export function logVoice/.test(source) &&
-      /vlog\('session → /.test(source),
-    'src/voice.ts: the vlog calls beside the session transitions, and the log API the overlay reads',
+    'voice: no debug logging ships — the overlay and its API are gone',
+    !/function vlog/.test(source) &&
+      !/getVoiceLog/.test(source) &&
+      !/clearVoiceLog/.test(source) &&
+      !/subscribeVoiceLog/.test(source),
+    'src/voice.ts, which must not carry the debug log anymore',
   );
   judge(
     'mic: a dropped connection rides the restart, not the stop',
@@ -449,7 +448,8 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
   );
   judge(
     'mic: audio-capture revives instead of ending the session',
-    /reason === 'audio-capture'\) \{[\s\S]{0,300}waiting for the revive/.test(source),
+    /reason === 'audio-capture'\) \{[^}]{0,400}\}/.test(source) &&
+      !/reason === 'audio-capture'\) \{[^}]{0,400}endMicSession/.test(source),
     'the audio-capture branch — transient on iOS, never fatal',
   );
   judge(
