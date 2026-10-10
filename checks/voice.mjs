@@ -418,19 +418,22 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
   );
   /* ── The session ───────────────────────────────────────────────────────────
      One variable with four states owns the mic and the speaker, so the two
-     halves cannot disagree. The recogniser starts once (mic up) and is aborted
-     once (mic down): while the answer plays the mic is muted, not killed. And
-     a reply is spoken as its sentences arrive — the streaming read-aloud —
-     rather than after the whole reply has finished. */
+     halves cannot disagree. The recogniser starts when the mic goes up and is
+     replaced after every reading — a phone test showed iOS leaves the survivor
+     deaf — and aborted when the mic comes down. And a reply is spoken as its
+     sentences arrive — the streaming read-aloud — rather than after the whole
+     reply has finished. */
   judge(
     'voice: one session owns the mic and the speaker',
     /type Session = 'off' \| 'listening' \| 'thinking' \| 'speaking';/.test(source),
     'the four states, in one variable',
   );
   judge(
-    'voice: the recogniser is aborted once — when the mic comes down',
-    (source.match(/\.abort\(\)/g) || []).length === 1,
-    'endMicSession holds the only abort in the file',
+    'voice: the recogniser is replaced after every reading and aborted at mic-off — never mid-session',
+    (source.match(/\.abort\(\)/g) || []).length === 2 &&
+      /function endMicSession[\s\S]{0,600}\.abort\(\)/.test(source) &&
+      /function restartRecognizer[\s\S]{0,900}\.abort\(\)/.test(source),
+    'the two aborts: endMicSession (mic down) and restartRecognizer (fresh ears after a reading)',
   );
   judge(
     'voice: a reply is spoken as its sentences arrive, not after it finishes',

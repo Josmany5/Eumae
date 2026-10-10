@@ -14,10 +14,12 @@ import { storedSpeed, storedVoice, voiceName } from './voices';
  *              still running, but every result is dropped: your voice is not
  *              picked up while it talks.
  *
- * The recogniser starts once, when the mic goes up, and is aborted once, when
- * it comes down. There is no stop/start cycling mid-conversation: while the AI
- * speaks the mic is muted, not killed, so when the reading ends there is
- * nothing to restart — the floor is yours again with no tap.
+ * The recogniser starts when the mic goes up and is replaced after every
+ * reading. While the AI speaks the mic is muted, not killed — but a phone
+ * test showed iOS leaves the survivor deaf: its audio input is cut once the
+ * speaker has played, without `onend` ever firing. So when the reading ends a
+ * fresh recogniser starts after the half-second beat, and the floor is yours
+ * again with no tap.
  */
 
 /** What the mic needs from the app it is typing into. */
@@ -415,10 +417,9 @@ function setSessionSpeaking(): void {
 }
 
 /** The run is over: back to listening if the mic is up, off if it is not. The
- *  recogniser was never stopped for the reading, so there is nothing to
- *  restart — unless it ended on its own mid-read, in which case it is revived
- *  here, silently. Words spoken while the answer was on its way get their
- *  800ms. */
+ *  recogniser is replaced here — the one that lived through the reading cannot
+ *  be trusted to hear afterwards. Words spoken while the answer was on its way
+ *  get their 800ms. */
 function settleSessionAfterSpeak(): void {
   speakActive = false;
   speakText = null;
@@ -426,7 +427,7 @@ function settleSessionAfterSpeak(): void {
     session = 'listening';
     vlog('session → listening');
     listener.lit(true);
-    ensureRecognizer();
+    restartRecognizer();
   } else {
     session = 'off';
     vlog('session → off');
@@ -589,18 +590,34 @@ function recognizerCtor(): RecognizerCtor | undefined {
   return host.SpeechRecognition ?? host.webkitSpeechRecognition;
 }
 
-/** Make sure the recogniser is up. Called when the mic should be listening and
- *  might not be — after a reading, or after a barge-in. A fresh instance every
- *  time: iOS refuses a `start()` on one that has already ended. Not immediately:
- *  iOS fumbles a restart issued the instant the audio stops, and accepts the
- *  same call half a second later — a mic restarted too soon lights the button
- *  but captures nothing. */
-function ensureRecognizer(): void {
+/** After a reading the recogniser is replaced — always, even if it never ended.
+ *  A phone test proved the survivor goes deaf: iOS cuts its audio input once
+ *  the speaker has played, without firing `onend`, so "still alive" is not
+ *  "still hearing". The old instance is neutered first, so its late events
+ *  belong to nobody; the fresh one starts after the half-second beat iOS
+ *  insists on. */
+let restartTimer: ReturnType<typeof setTimeout> | null = null;
+
+function restartRecognizer(): void {
   const voice = listener;
-  if (!voice || recognizer) return;
+  if (!voice) return;
+  if (restartTimer) clearTimeout(restartTimer);
   vlog('recognizer restart in 500ms');
-  setTimeout(() => {
-    if (listener !== voice || recognizer) return;
+  restartTimer = setTimeout(() => {
+    restartTimer = null;
+    if (listener !== voice) return;
+    const old = recognizer;
+    recognizer = null;
+    if (old) {
+      old.onresult = null;
+      old.onend = null;
+      old.onerror = null;
+      try {
+        old.abort();
+      } catch {
+        /* Already ended on its own. */
+      }
+    }
     startRec(voice);
   }, RESTART_DELAY_MS);
 }
@@ -762,6 +779,10 @@ function endMicSession(): void {
   vlog('mic session ended');
   listener = null;
   clearTimer();
+  if (restartTimer) {
+    clearTimeout(restartTimer);
+    restartTimer = null;
+  }
   if (recognizer) {
     try {
       recognizer.abort();

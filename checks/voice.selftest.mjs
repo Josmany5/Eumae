@@ -263,9 +263,9 @@ check(
 );
 
 check(
-  'fails when the recogniser is aborted anywhere but mic-off',
+  'fails when the recogniser is aborted anywhere but mic-off or restart',
   failing(`${source}\nrecognizer.abort();\n`),
-  ['voice: the recogniser is aborted once — when the mic comes down'],
+  ['voice: the recogniser is replaced after every reading and aborted at mic-off — never mid-session'],
 );
 
 check(
