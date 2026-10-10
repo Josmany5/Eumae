@@ -445,7 +445,6 @@ input,textarea,select{ font-family:inherit; }
 .attachImgX{ position:absolute; top:-8px; right:-8px; width:26px; height:26px;
   border-radius:50%; border:none; background:rgba(0,0,0,.65); color:#fff;
   display:flex; align-items:center; justify-content:center; }
-.attachThumb{ width:32px; height:32px; object-fit:cover; border-radius:8px; flex:none; }
 .attachName{ font-size:12px; font-weight:500; color:var(--tx);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
 .attachX{ display:flex; align-items:center; justify-content:center;
