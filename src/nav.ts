@@ -127,6 +127,7 @@ export interface Nav {
   currentThreadId: string | null;
   newChat: () => void;
   switchThread: (id: string) => void;
+  removeThread: (id: string) => void;
 }
 
 export const NavContext = createContext<Nav>({
@@ -152,6 +153,7 @@ export const NavContext = createContext<Nav>({
   currentThreadId: null,
   newChat: () => {},
   switchThread: () => {},
+  removeThread: () => {},
 });
 
 export function useNav(): Nav {

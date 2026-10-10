@@ -13,6 +13,7 @@ import { PAGES, pageTitle } from './pages';
 import { NavContext, DEFAULT_TURN, type Nav, type PanelView, type Ref, type Turn } from './nav';
 import {
   createThread,
+  deleteThread,
   getCurrentThreadId,
   getThread,
   getThreads,
@@ -175,6 +176,22 @@ export default function App() {
     goTab('chat');
   }, [goTab]);
 
+  const removeThread = useCallback((id: string) => {
+    deleteThread(id);
+    const remaining = getThreads();
+    if (currentThreadId === id) {
+      if (remaining.length > 0) {
+        setCurrentThreadId(remaining[0].id);
+        setCurrentId(remaining[0].id);
+      } else {
+        const fresh = createThread();
+        setCurrentThreadId(fresh.id);
+        setCurrentId(fresh.id);
+      }
+    }
+    setThreads(getThreads());
+  }, [currentThreadId, goTab]);
+
   const nav = useMemo<Nav>(
     () => ({
       go,
@@ -199,6 +216,7 @@ export default function App() {
       currentThreadId,
       newChat,
       switchThread,
+      removeThread,
     }),
     [
       go,
@@ -223,6 +241,7 @@ export default function App() {
       currentThreadId,
       newChat,
       switchThread,
+      removeThread,
     ],
   );
 
@@ -322,6 +341,7 @@ export default function App() {
           onPick={pickMenu}
           currentThreadId={currentThreadId}
           onThreadPick={switchThread}
+          onThreadDelete={removeThread}
           onSearch={openSearch}
         />
         <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} notify={notify} />

@@ -722,3 +722,7 @@ input,textarea,select{ font-family:inherit; }
 .daySep span, .daySep{ font-size:12px; font-weight:600; color:var(--mut); }
 .drDate{ margin-left:auto; font-size:12px; color:var(--mut); flex:none; }
 .dr .g{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.drWrap{ position:relative; }
+.drDel{ position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  background:var(--bad); color:#fff; border:none; border-radius:8px;
+  padding:8px 14px; font-size:13px; font-weight:600; }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getThreads } from '../../threads';
 import type { TabId } from './TabBar';
 import { PAGE_MENU } from './pageMenu';
@@ -12,18 +12,33 @@ interface DrawerProps {
   onSearch: () => void;
   currentThreadId?: string | null;
   onThreadPick?: (id: string) => void;
+  onThreadDelete?: (id: string) => void;
 }
 
 /** The phone's second level: the same per-page menu the desktop rail shows,
  *  behind the hamburger. The mockup puts the search field above everything,
  *  so it does too. */
-export default function Drawer({ open, onClose, tab, onPick, onSearch, currentThreadId, onThreadPick }: DrawerProps) {
+export default function Drawer({ open, onClose, tab, onPick, onSearch, currentThreadId, onThreadPick, onThreadDelete }: DrawerProps) {
   /* Threads read fresh every time the drawer opens — App's cached copy goes
      stale when a title updates mid-chat (the 2026-10-10 stale list). */
   const [threads, setThreads] = useState<{ id: string; title: string; updatedAt: number }[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const pressTimer = useRef<number | null>(null);
   useEffect(() => {
-    if (open && tab === 'chat') setThreads(getThreads());
-  }, [open, tab]);
+    if (open && tab === 'chat') {
+      setThreads(getThreads());
+      setConfirmDelete(null);
+    }
+  }, [open, tab ]);
+  const startPress = (id: string) => {
+    pressTimer.current = window.setTimeout(() => setConfirmDelete(id), 500);
+  };
+  const endPress = () => {
+    if (pressTimer.current) {
+      window.clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
   const [q, setQ] = useState('');
 
   const submit = () => {
@@ -56,19 +71,39 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch, currentTh
                   </div>
                 ) : (
                   threads.map((t) => (
-                    <button
-                      key={t.id}
-                      className={`dr${t.id === currentThreadId ? ' on' : ''}`}
-                      onClick={() => onThreadPick?.(t.id)}
-                    >
-                      <span className="g">{t.title}</span>
-                      <span className="drDate">
-                        {new Date(t.updatedAt).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </span>
-                    </button>
+                    <div key={t.id} className="drWrap">
+                      <button
+                        className={`dr${t.id === currentThreadId ? ' on' : ''}`}
+                        onClick={() => onThreadPick?.(t.id)}
+                        onTouchStart={() => startPress(t.id)}
+                        onTouchEnd={endPress}
+                        onTouchMove={endPress}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setConfirmDelete(t.id);
+                        }}
+                      >
+                        <span className="g">{t.title}</span>
+                        <span className="drDate">
+                          {new Date(t.updatedAt).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </span>
+                      </button>
+                      {confirmDelete === t.id ? (
+                        <button
+                          className="drDel"
+                          onClick={() => {
+                            onThreadDelete?.(t.id);
+                            setConfirmDelete(null);
+                            setThreads(getThreads());
+                          }}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
                   ))
                 )
               ) : s.items.length === 0 ? (
