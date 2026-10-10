@@ -160,19 +160,27 @@ export default function ChatScreen() {
   /* Which message is being rewritten, and what is in the box. One at a time, and
      `null` for none — wove keeps the same single `EDITSTATE` (1711). */
   const [editing, setEditing] = useState<{ id: number; text: string } | null>(null);
+  /* True on the render where the thread just changed — the save below must
+     skip it, or the old thread's messages overwrite the new thread before its
+     own messages load (the 2026-10-10 history corruption). */
+  const switching = useRef(false);
   /* Load the current thread's messages. App owns thread identity. */
   useEffect(() => {
     const thread = threadId ? getThread(threadId) : undefined;
+    switching.current = true;
     setMsgs(thread ? thread.messages : []);
   }, [threadId]);
 
   /* Save messages to the current thread on every change. */
   useEffect(() => {
     if (!threadId) return;
+    if (switching.current) {
+      switching.current = false;
+      return;
+    }
     const thread = getThread(threadId);
     if (!thread) return;
     saveThread({ ...thread, messages: msgs });
-    /* Refresh the drawer's thread list when titles change. */
   }, [msgs, threadId]);
   /* The id whose Copy just worked, so that button can be a tick for a moment
      (wove swaps the icon the same way, 1704). Zero is no message: ids are

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getThreads } from '../../threads';
 import type { TabId } from './TabBar';
 import { PAGE_MENU } from './pageMenu';
 import { Icon } from './icons';
@@ -9,7 +10,6 @@ interface DrawerProps {
   tab: TabId;
   onPick: (label: string) => void;
   onSearch: () => void;
-  threads?: { id: string; title: string }[];
   currentThreadId?: string | null;
   onThreadPick?: (id: string) => void;
 }
@@ -17,7 +17,13 @@ interface DrawerProps {
 /** The phone's second level: the same per-page menu the desktop rail shows,
  *  behind the hamburger. The mockup puts the search field above everything,
  *  so it does too. */
-export default function Drawer({ open, onClose, tab, onPick, onSearch, threads, currentThreadId, onThreadPick }: DrawerProps) {
+export default function Drawer({ open, onClose, tab, onPick, onSearch, currentThreadId, onThreadPick }: DrawerProps) {
+  /* Threads read fresh every time the drawer opens — App's cached copy goes
+     stale when a title updates mid-chat (the 2026-10-10 stale list). */
+  const [threads, setThreads] = useState<{ id: string; title: string }[]>([]);
+  useEffect(() => {
+    if (open && tab === 'chat') setThreads(getThreads());
+  }, [open, tab]);
   const [q, setQ] = useState('');
 
   const submit = () => {
@@ -43,7 +49,7 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch, threads, 
           {PAGE_MENU[tab].map((s, i) => (
             <div key={s.heading ?? i}>
               {s.heading ? <div className="ds">{s.heading}</div> : null}
-              {s.heading === 'Recent chats' && tab === 'chat' && threads ? (
+              {s.heading === 'Recent chats' && tab === 'chat' ? (
                 threads.length === 0 ? (
                   <div className="dr ghost">
                     <span className="g">No chats yet</span>

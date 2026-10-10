@@ -316,7 +316,6 @@ export default function App() {
           onClose={() => setDrawerOpen(false)}
           tab={tab}
           onPick={pickMenu}
-          threads={threads}
           currentThreadId={currentThreadId}
           onThreadPick={switchThread}
           onSearch={openSearch}
