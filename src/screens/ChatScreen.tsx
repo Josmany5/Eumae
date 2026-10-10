@@ -348,18 +348,8 @@ export default function ChatScreen() {
     send(text, false, kept);
   };
 
-  const threadDate = threadId ? getThread(threadId)?.updatedAt : null;
-  const dateLabel = threadDate
-    ? new Date(threadDate).toLocaleDateString(undefined, {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-      })
-    : '';
-
   return (
     <div className="chat">
-      {dateLabel ? <div className="chatDate">{dateLabel}</div> : null}
       <div className="chatScroll" ref={scroller}>
         {msgs.length === 0 ? (
           <div className="hello">

@@ -718,4 +718,5 @@ input,textarea,select{ font-family:inherit; }
 .lib-preview-body audio{ width:100%; }
 .lib-preview-body iframe{ width:100%; height:100%; border:none; border-radius:8px; background:#fff; }
 .msgTs{ font-size:10px; color:var(--mut); margin-top:4px; }
-.chatDate{ text-align:center; padding:10px 0 2px; font-size:12px; font-weight:600; color:var(--mut); }
+.daySep{ text-align:center; margin:14px 0 8px; }
+.daySep span, .daySep{ font-size:12px; font-weight:600; color:var(--mut); }
