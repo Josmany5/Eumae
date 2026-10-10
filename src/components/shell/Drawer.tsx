@@ -61,10 +61,12 @@ function SwipeRow({
   const startX = useRef(0);
   const liveDx = useRef(0);
   const [shownDx, setShownDx] = useState(0);
+  const [dragging, setDragging] = useState(false);
 
   const onTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
     liveDx.current = 0;
+    setDragging(true);
   };
   const onTouchMove = (e: React.TouchEvent) => {
     const delta = e.touches[0].clientX - startX.current;
@@ -72,6 +74,7 @@ function SwipeRow({
     setShownDx(liveDx.current);
   };
   const onTouchEnd = () => {
+    setDragging(false);
     if (liveDx.current < -60) onOpen();
     else onClose();
     liveDx.current = 0;
@@ -94,7 +97,10 @@ function SwipeRow({
       </div>
       <div
         className={`drSwipe${current ? ' on' : ''}`}
-        style={{ transform: open ? 'translateX(-140px)' : shownDx ? `translateX(${shownDx}px)` : undefined }}
+        style={{
+          transform: open ? 'translateX(-140px)' : shownDx ? `translateX(${shownDx}px)` : undefined,
+          transition: dragging ? 'none' : undefined,
+        }}
         onClick={() => {
           if (open) onClose();
           else onPick();
