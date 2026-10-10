@@ -259,8 +259,8 @@ export default function ChatScreen() {
     /* The clip is the opening of it: a log row is a sentence, not a transcript.
        Where the mic sent it the row says so — the same flag the mockup reads
        back to have the answer spoken aloud (1857 → 1902). */
-    const clip = text.length > 60 ? `${text.slice(0, 60)}…` : text;
-    logEv({ area: 'Chat', text: byVoice ? `Sent by voice: ${clip}` : `Sent: ${clip}` });
+    /* No log for the message itself — the thread is the record. The log
+       keeps actions: searches, tools, saves. */
 
     inFlight.current += 1;
     /* A voice send reads its own reply aloud as it streams: the first complete
@@ -288,12 +288,14 @@ export default function ChatScreen() {
          the message was — one row per event, with its own dot when it went badly
          (`LogStatus`, log.ts:18), so Logs shows a failed ask without having to
          read the sentence. */
-      const said = reply.text.length > 60 ? `${reply.text.slice(0, 60)}…` : reply.text;
-      logEv(
-        reply.ok
-          ? { area: 'Chat', text: `Replied: ${said}` }
-          : { area: 'Chat', text: `No reply: ${reply.error}`, status: 'bad' },
-      );
+      if (!reply.ok) {
+        logEv({ area: 'Chat', text: `No reply: ${reply.error}`, status: 'bad' });
+      }
+      /* Search grounded this reply — an action worth a row. The query is the
+         useful part, not the answer text. */
+      if (reply.ok && reply.sources && reply.sources.length > 0) {
+        logEv({ area: 'Chat', text: `Searched: ${reply.sources.length} source${reply.sources.length === 1 ? '' : 's'}` });
+      }
 
       /* The streaming read-aloud ends with the stream: the held-back tail is
          spoken, or a failed reply says why once. A reply is only read when the
