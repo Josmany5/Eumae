@@ -574,10 +574,9 @@ input,textarea,select{ font-family:inherit; }
   border-color:color-mix(in srgb, var(--ac) 45%, var(--hair));
   box-shadow:0 8px 28px rgba(0,0,0,.4), 0 0 0 4px var(--acsoft); }
 /* The tap pop — driven by Composer's `pop()` via the Web Animations API, not
-   by :focus-within. The class restart trick never retriggered on iOS and
-   onFocus fires once; `el.animate()` restarts on every call and fires on
-   pointer-down, so every tap pops. Kept as the no-JS fallback (first focus
-   with JS disabled still lifts). */
+   by :focus-within. Gentle enlarge only (scale 1 → 1.025 → 1, no translate):
+   the old squish-then-spring shook on iOS. Kept as the no-JS fallback (first
+   focus with JS disabled still lifts). */
 .cmp.pop{ animation:cmpTapPop .32s cubic-bezier(.34,1.56,.64,1); }
 /* Taps must not wait: without this iOS can delay or swallow the pointer-down
    the pop listens for. */

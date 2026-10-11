@@ -37,17 +37,20 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
   const [micOn, setMicOn] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
-  /* Tap = pop, every tap, iOS included. The old classList remove → reflow →
-     add trick never restarted reliably on iOS Safari (style recalc batches the
-     remove+add into a no-op), and onFocus fires once — tapping an already
-     focused field fires nothing. `el.animate()` restarts on every call by
-     construction, and firing on pointer-down (not focus) means every tap pops,
-     focused or not. The ref sits on `.cmpWrap` (no backdrop-filter), not `.cmp`:
-     animating scale on the same element that owns blur(14px) forces Safari to
-     re-rasterize the blur per frame and it drops the animation. The frosted bar
-     rides along as a cached layer. Transform-only, 350ms spring; reduce-motion
-     skips it. */
+  const lastPop = useRef(0);
+  /* Tap = gentle enlarge, like a hover. The old squish-then-spring (scale
+     .96 → 1.03 + translateY swing on the whole wrapper) shook: pointer-down
+     + focus fired it twice, the translate swung the bar up and down, and the
+     wrapper scaled the chips above the bar too — so tapping Ask wobbled the
+     composer. Now: the ref sits on `.cmp` (the bar only, chips untouched),
+     the trigger sits on the field only (chips/buttons never pop it), a 300ms
+     guard eats the pointer+focus double-fire, and the motion is scale-only
+     1 → 1.025 → 1 with no translate swing. `el.animate()` restarts every tap
+     by construction; reduce-motion skips it. */
   const pop = () => {
+    const now = Date.now();
+    if (now - lastPop.current < 350) return;
+    lastPop.current = now;
     const el = barRef.current;
     if (!el) return;
     try {
@@ -58,12 +61,8 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
     }
     try {
       el.animate(
-        [
-          { transform: 'scale(.96) translateY(3px)' },
-          { transform: 'scale(1.03) translateY(-3px)', offset: 0.55 },
-          { transform: 'scale(1) translateY(-1px)' },
-        ],
-        { duration: 350, easing: 'cubic-bezier(.34,1.56,.64,1)' },
+        [{ transform: 'scale(1)' }, { transform: 'scale(1.025)', offset: 0.4 }, { transform: 'scale(1)' }],
+        { duration: 220, easing: 'ease-out' },
       );
     } catch {
       /* Web Animations missing — the :focus-within lift is the fallback. */
@@ -170,7 +169,7 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
   ].filter((p) => p.v);
 
   return (
-    <div className="cmpWrap" ref={barRef} onPointerDown={pop}>
+    <div className="cmpWrap">
       <div className="modeBar">
         {pills.map((p, i) => (
           <button key={p.k} className="modeChip" onClick={openAdd} title="How Eumae answers">
@@ -221,7 +220,7 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
         </div>
       )}
 
-      <div className="cmp">
+      <div className="cmp" ref={barRef}>
         <button className="cmpIcon" onClick={openAdd} aria-label="Add" title="Add to this chat">
           <Icon name="pls" />
         </button>
@@ -235,6 +234,7 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
           value={text}
           placeholder={placeholder}
           onFocus={pop}
+          onPointerDown={pop}
           onChange={(e) => {
             const value = e.target.value;
             setText(value);
