@@ -2,7 +2,8 @@
 
 Read this before touching anything. It is the state of the world: what exists,
 what is verified, what is decided and why, what is deliberately *not* built yet,
-and what to do next.
+and what to do next. Product truth — what Eumae is, how it works, what we
+keep vs cut — lives in `VISION.md`. Read that before the old docs.
 
 Repo: `github.com/Josmany5/Eumae` — a solo project. The owner is a designer and
 product thinker, not a career engineer: explain trade-offs in plain language,

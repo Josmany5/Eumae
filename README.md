@@ -1,5 +1,8 @@
 # Eumae
 
+Product truth — what this is, how it works, what we build — lives in
+**`VISION.md`**. Read that first. This file is quick start + layout.
+
 One window, six views — **Chat, Console, Studio, Library, Classroom, Guild** — plus Settings, a
 right-hand panel, and a desktop rail that carries each tab's own menu.
 
