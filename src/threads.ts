@@ -106,10 +106,15 @@ export function setCurrentThreadId(id: string): void {
   }
 }
 
-/** Title from the first user message — truncated, no newlines. */
+/** Title from the first user message — whole words, no newlines. Cutting
+ *  mid-word used to leave titles like "Plan my da…". */
 export function titleFor(text: string): string {
   const clean = text.replace(/\s+/g, ' ').trim();
-  return clean.length > 40 ? clean.slice(0, 40) + '…' : clean || 'New chat';
+  if (!clean) return 'New chat';
+  if (clean.length <= 40) return clean;
+  const cut = clean.slice(0, 40);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > 12 ? cut.slice(0, lastSpace) : cut) + '…';
 }
 
 /** A stored thread is only usable if it has the shape we expect. */

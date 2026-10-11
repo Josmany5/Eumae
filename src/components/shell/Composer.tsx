@@ -203,13 +203,6 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
           placeholder={placeholder}
           onChange={(e) => {
             const value = e.target.value;
-            // The mockup's `/` (line 1278): a lone slash opens the menu instead
-            // of typing one — the shortcut the menu's own tip promises.
-            if (value === '/') {
-              setText('');
-              openAdd();
-              return;
-            }
             setText(value);
             const el = e.currentTarget;
             el.style.height = 'auto';

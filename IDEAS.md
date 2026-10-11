@@ -176,6 +176,103 @@ chip clears itself, unlike the mockup's own later draft (`chips10HTML`, 1341), w
 
 ---
 
+## Future chat work (owner, 2026-10-11 — queued, not building yet)
+
+Saved from the chat-improvements talk so nothing is lost. Each says where it
+came from, what it would touch, what is still open.
+
+## I10 — Content auto-titles
+
+- **From:** owner, 2026-10-11 — "make chat titles auto title based on users
+  ask or content".
+- **Says:** title the thread from what was asked / what it is about, not
+  just the first 40 chars. Floor (shipped): `titleFor` cuts at a whole word.
+- **Touches:** `src/threads.ts` (`titleFor`), thread rename on first send.
+- **Open:** whether content-titling needs the reply shape or first message
+  is enough.
+
+## I11 — Thread window (last 100 + down arrow)
+
+- **From:** owner, 2026-10-11 — yes to 100, "no jump just a down arrow when
+  scrolled up".
+- **Says:** past 100 messages, paint the last 100 only. A down-arrow appears
+  when scrolled up; no "jump to latest" pill.
+- **Touches:** `ChatScreen.tsx` thread list, scroller.
+- **Open:** nothing — spec is locked, just not built.
+
+## I12 — Day lines (Today / Yesterday)
+
+- **From:** owner, 2026-10-11 — "where is the today yesterday - ok".
+- **Says:** one divider per day (Today / Yesterday / date), time stays under
+  bubbles. Grouping only, no server clock yet.
+- **Touches:** `ChatScreen.tsx` render, `tokens.css`.
+- **Open:** relative ("2m ago") under an hour — keep or clock only.
+
+## I13 — Sources upgrade (title + domain)
+
+- **From:** owner, 2026-10-11 — "fix sources - tap already opens link".
+- **Says:** show the page title + small domain (keep same-site dedup into one
+  row). Tap opens out — already works, keep it. Links blue, no underline.
+- **Touches:** `src/chat.ts` (`extractSources`), `ChatScreen.tsx`
+  (`SourcesPill`), `tokens.css`.
+- **Open:** whether the title is worth the extra wire weight vs domain-only.
+
+## I14 — Smart welcome from your stuff
+
+- **From:** owner, 2026-10-11 — "update welcome buttons and logic".
+- **Says:** 4 buttons chosen from time-of-day + last thread + recent upload,
+  not the same static 4. Morning = plan day, stuck project = unblock it,
+  fresh upload = turn into tasks. Desktop 4-in-row, phone 2x2, same logic.
+- **Touches:** `ChatScreen.tsx` (`SUGGESTIONS`), threads/uploads/notes reads.
+- **Open:** exact rules per signal; memory-smart later.
+
+## I15 — Regen icon only
+
+- **From:** owner, 2026-10-11 — "regen maybe as a icon", no stop/retry/continue.
+- **Says:** one small regen icon under AI replies. Nothing else.
+- **Touches:** `ChatScreen.tsx` message row.
+- **Open:** icon choice; placement beside copy/speaker.
+
+## I16 — Real slash palette, with harness
+
+- **From:** owner, 2026-10-11 — "/" should not open the menu; slash as
+  attachment / plugin / edit action like ChatGPT, "maybe save for later".
+- **Says:** a lone "/" is just a "/" again (hijack removed). The real palette
+  (`/attach /imagine /edit /action` that actually runs things) waits for
+  dispatcher + bouncer — every button real, none fake.
+- **Touches:** `Composer.tsx`, future dispatcher/tools.
+- **Open:** which commands ship first (needs Q151 starter set).
+
+## I17 — Image gen with Studio-lite
+
+- **From:** owner, 2026-10-11 — "ai to be able to generate images".
+- **Says:** "Draw me…" → plan card → forge → Library + chat shows it. Parked
+  until prompt + plan card + receipt exist. `functionCall` already carried in
+  `chat.ts` — the seam is ready.
+- **Touches:** future tools registry, Studio, Library.
+- **Open:** which 4 forge types first (Game / PDF / Doc / Slides per VISION).
+
+## I18 — Prompt rewrite, standalone
+
+- **From:** owner, 2026-10-11 — "ai doesnt have the right prompt", "save prompt
+  rewrite as its own thing after the other fixes".
+- **Says:** Layer 1 (tiny identity + honesty + reply shape) + Layer 2 (mode
+  only) + Layer 3 (`+` settings only when changed, defaults send zero words).
+  Voice-short line. Lives in `src/request.ts`, not wove.
+- **Touches:** `src/request.ts` (`BASE_PROMPT`, `MODE_CLAUSE`, `directives`).
+- **Open:** exact Layer 1 wording; token-count check.
+
+## I19 — Plan card glass box
+
+- **From:** owner, 2026-10-11 — "ok plan card glass box".
+- **Says:** "Here's what I'll make, tap to start / change" for the 5 starter
+  sentences, live steps UI, receipt + undo in Activity. Phone stacks, desktop
+  can sit in right panel.
+- **Touches:** `ChatScreen.tsx`, `RightPanel.tsx`, future compiler-lite.
+- **Open:** Q151 starter set; C66 worker-vs-chat (hybrid proposed).
+
+---
+
 ## Reversals and changes of mind
 
 - **2026-10-06 — the chip.** First: "only mode and role shows as chips". Minutes

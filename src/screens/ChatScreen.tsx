@@ -328,6 +328,12 @@ export default function ChatScreen() {
        sentence starts speaking about a second after it is complete, while the
        rest is still arriving — instead of waiting for the whole reply. */
     const voiceId = byVoice ? startVoiceReply(notify) : 0;
+    /* The counter always comes back down, even if the reply path throws
+       between increment and resolve: a stuck counter reads as a reply
+       forever in flight, and the mic refuses until reload. */
+    const streamDone = () => {
+      inFlight.current = Math.max(0, inFlight.current - 1);
+    };
     void streamChat(body, (full) => {
       /* The whole text so far, not the new piece: replacing what the bubble shows
          is the only way two pieces arriving out of order could not show up as a
@@ -336,7 +342,7 @@ export default function ChatScreen() {
       setMsgs((m) => m.map((x) => (x.id === replyId ? { ...x, text: full } : x)));
       if (byVoice) feedVoiceReply(voiceId, full);
     }).then((reply) => {
-      inFlight.current -= 1;
+      streamDone();
       setMsgs((m) => {
         const next = m.map((x) =>
           x.id === replyId
@@ -392,6 +398,9 @@ export default function ChatScreen() {
       notify('Wait for the reply to finish.');
       return;
     }
+    /* Close the full-screen photo first: sending behind the viewer is how a
+       send looks like it failed and gets sent twice. */
+    setViewing(null);
     setEditing({ id: m.id, text: m.text });
   };
 
