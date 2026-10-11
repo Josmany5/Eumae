@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Composer from '../components/shell/Composer';
 import { Icon } from '../components/shell/icons';
 import { useNav, type Mode } from '../nav';
@@ -201,6 +201,16 @@ export default function ChatScreen() {
      only (thread A → thread B), which is what effects are for. */
   const [msgs, setMsgs] = useState<Msg[]>(() => bootMountMessages(threadId));
   const [loadedId, setLoadedId] = useState(threadId);
+  useEffect(() => {
+    if (loadedId === threadId) return;
+    setLoadedId(threadId);
+    /* A switch is a deliberate jump to the newest line — re-pin the follow
+       so the stream resumes carrying the view. The floor pin itself lives in
+       the layout effect below (before paint); this one only swaps the thread
+       and the pin state. */
+    markAtBottom(true);
+    setMsgs(messagesFor(threadId));
+  }, [threadId, loadedId, markAtBottom]);
 
   /* Replies in flight. A ref rather than state because the only reader is the
      mic's guard, which is called from a speech event and not from a render
@@ -238,15 +248,16 @@ export default function ChatScreen() {
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [markAtBottom]);
 
-  useEffect(() => {
-    if (loadedId === threadId) return;
-    setLoadedId(threadId);
-    /* A switch is a deliberate jump to the newest line — re-pin the follow
-       and put the view at the floor in the same breath, so no stale position
-       from thread A leaks into thread B. */
-    markAtBottom(true);
-    setMsgs(messagesFor(threadId));
-  }, [threadId, loadedId, markAtBottom]);
+  /* Pin the view to the floor on mount and on thread switches, before paint.
+     The follow effect below handles streams; this one handles the jump —
+     without it, a reload or a switch paints scrolled-up for one frame while
+     the photos (MsgImage) load in, then snaps down: the top-of-history
+     shutter. useLayoutEffect, not useEffect: it must run before the browser
+     paints, or the wrong frame is the one you see. */
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [threadId]);
   const [viewing, setViewing] = useState<{ url: string; alt: string } | null>(null);
   /* The box open over a message, so its height can follow what is in it
      (below). Only one message is ever being edited, so one ref is enough. */
