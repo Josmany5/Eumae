@@ -56,7 +56,7 @@ const PATHS: Record<string, JSX.Element> = {
      tab bar's: `IC_SPK` (1639) is a speaker cone with one wave, drawn on the row
      under a reply (rowA, 1642). Not `mic` — that one belongs to the composer, and
      a reply wearing it would look like it was listening. */
-  spk: <g transform="translate(2.5,2.5) scale(0.79)"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></g>,
+  spk: <><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></>,
 
   /* The row's other two, from the same place: `IC_COPY` and `IC_EDIT`, drawn at
      1636 and hung on the two rows above (1642 is the reply's Copy and Read
@@ -64,11 +64,11 @@ const PATHS: Record<string, JSX.Element> = {
      what a Copy button becomes for a moment after it has copied something —
      the only receipt wove has, and cheaper than a toast that covers the text
      you just copied. */
-  cp: <g transform="translate(2.5,2.5) scale(0.79)"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></g>,
+  cp: <><path d="M9 9h11v11H9z" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></>,
   /* Regen — one circular arrow, same stroke as the row it sits in. Drawn
      here rather than borrowed: no existing glyph means "ask again". */
-  rgn: <g transform="translate(2.5,2.5) scale(0.79)"><path d="M20 12a8 8 0 1 1-2.3-5.6" /><path d="M20 3v4h-4" /></g>,
-  ed: <g transform="translate(2.5,2.5) scale(0.79)"><path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931z" /></g>,
+  rgn: <><path d="M20 12a8 8 0 1 1-2.3-5.6" /><path d="M20 3v4h-4" /></>,
+  ed: <path d="M14 5l5 5L8 21H3v-5L14 5z" />,
   tick: <path d="M5 13l4 4L19 7" />,
 
   /* The six settings-only glyphs. Each is here because the nearest existing

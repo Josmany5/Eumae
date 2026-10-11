@@ -371,19 +371,17 @@ input,textarea,select{ font-family:inherit; }
    moment and nothing else — no toast, because a toast covers the words you just
    copied. Its green, so the two are recognisable as the same answer. */
 .mrowBtn.ok{ color:#30d158; }
-/* One row, one size, one rhythm. Icons sit next to each other — tight 2px
-   gap, 30px targets, 15px glyphs drawn on the same grid. The old
-   mismatch: copy/speaker were drawn edge-to-edge on the 24px viewBox
-   while regen/edit carried padding inside their paths, so at the same
-   CSS size regen and edit read larger. All four glyphs now draw inside
-   the same ~19px box (scale .79 centered), so one CSS size is one
+/* One row, one size, one rhythm. Icons sit next to each other — no gap,
+   36px targets, 20px glyphs, the mockup's bare row (1641/1642). Copy was
+   redrawn as two plain strokes (no rounded rect weight) and edit as a
+   simple pencil, so all four ink the same and one CSS size reads as one
    visual size. */
-.mrow{ display:flex; gap:2px; padding:4px 0 0; align-items:center; }
+.mrow{ display:flex; gap:0; padding:4px 0 0; align-items:center; }
 .mrowBtn{ display:inline-flex; align-items:center; justify-content:center;
-  width:30px; height:30px; padding:0; border:none; background:none;
+  width:36px; height:36px; padding:0; border:none; background:none;
   color:var(--mut); cursor:pointer; border-radius:8px; line-height:0; }
 .mrowBtn:hover{ color:var(--tx); }
-.mrowBtn svg{ width:15px; height:15px; stroke:currentColor; fill:none;
+.mrowBtn svg{ width:20px; height:20px; stroke:currentColor; fill:none;
   stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 .mrowBtn:active{ transform:scale(.9); }
 /* Rendered reply — what the markdown in md.ts becomes on screen. Same

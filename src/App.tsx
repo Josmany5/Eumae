@@ -148,7 +148,12 @@ export default function App() {
   /* Chat threads — App owns them so the drawer ("New chat", "Recent chats")
      and ChatScreen read the same state. */
   const [threads, setThreads] = useState<Thread[]>([]);
-  const [currentThreadId, setCurrentId] = useState<string | null>(null);
+  /* The open thread id boots synchronously from storage: starting at null
+     and filling it in an effect meant the first render never knew the thread,
+     so ChatScreen painted the welcome screen for one frame before the real
+     id arrived — the reload flash. The effect below stays as the backstop
+     (missing id creates a thread), but the common path needs no effect. */
+  const [currentThreadId, setCurrentId] = useState<string | null>(() => getCurrentThreadId());
 
   useEffect(() => {
     const id = getCurrentThreadId();
