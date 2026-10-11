@@ -372,15 +372,18 @@ input,textarea,select{ font-family:inherit; }
    copied. Its green, so the two are recognisable as the same answer. */
 .mrowBtn.ok{ color:#30d158; }
 /* One row, one size, one rhythm. Icons sit next to each other — tight 2px
-   gap, 32px targets, 17px glyphs — the mockup's bare row (1641/1642), not
-   big spaced circles. Regen and edit draw at the same weight so all three
-   read as one row. */
+   gap, 30px targets, 15px glyphs drawn on the same grid. The old
+   mismatch: copy/speaker were drawn edge-to-edge on the 24px viewBox
+   while regen/edit carried padding inside their paths, so at the same
+   CSS size regen and edit read larger. All four glyphs now draw inside
+   the same ~19px box (scale .79 centered), so one CSS size is one
+   visual size. */
 .mrow{ display:flex; gap:2px; padding:4px 0 0; align-items:center; }
 .mrowBtn{ display:inline-flex; align-items:center; justify-content:center;
-  width:32px; height:32px; padding:0; border:none; background:none;
+  width:30px; height:30px; padding:0; border:none; background:none;
   color:var(--mut); cursor:pointer; border-radius:8px; line-height:0; }
 .mrowBtn:hover{ color:var(--tx); }
-.mrowBtn svg{ width:17px; height:17px; stroke:currentColor; fill:none;
+.mrowBtn svg{ width:15px; height:15px; stroke:currentColor; fill:none;
   stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 .mrowBtn:active{ transform:scale(.9); }
 /* Rendered reply — what the markdown in md.ts becomes on screen. Same

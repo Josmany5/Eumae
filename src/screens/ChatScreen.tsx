@@ -194,7 +194,31 @@ function ImageViewer({ url, alt, onClose }: { url: string; alt: string; onClose:
 
 export default function ChatScreen() {
   const { turn, setTurn, refs, clearRefs, notify, currentThreadId: threadId } = useNav();
-  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [msgs, setMsgs] = useState<Msg[]>(() => {
+    /* Read synchronously on first render, not in an effect: the old shape
+       (empty state + effect that filled it) painted the welcome screen for
+       one frame, then swapped in the history — a blank chat that jumps on
+       every reload. Threads are small (pointers, not photos) so this stays
+       cheap. A reload mid-reply strands a `streaming` row with no stream
+       behind it — it can never finish, so it lands as a note with regen
+       beside it to re-ask. */
+    const initial = threadId ? getThread(threadId)?.messages ?? [] : [];
+    seedMsgId(initial);
+    return initial.map((m) =>
+      m.streaming ? { ...m, streaming: false, note: 'Reloaded before the reply arrived.' } : m,
+    );
+  });
+  const [loadedId, setLoadedId] = useState(threadId);
+  if (loadedId !== threadId) {
+    const next = threadId ? getThread(threadId)?.messages ?? [] : [];
+    seedMsgId(next);
+    setLoadedId(threadId);
+    setMsgs(
+      next.map((m) =>
+        m.streaming ? { ...m, streaming: false, note: 'Reloaded before the reply arrived.' } : m,
+      ),
+    );
+  }
   const [viewing, setViewing] = useState<{ url: string; alt: string } | null>(null);
   /* Replies in flight. A ref rather than state because the only reader is the
      mic's guard, which is called from a speech event and not from a render
@@ -208,13 +232,6 @@ export default function ChatScreen() {
   /* Which message is being rewritten, and what is in the box. One at a time, and
      `null` for none — wove keeps the same single `EDITSTATE` (1711). */
   const [editing, setEditing] = useState<{ id: number; text: string } | null>(null);
-  /* Load the current thread's messages. App owns thread identity. */
-  useEffect(() => {
-    const thread = threadId ? getThread(threadId) : undefined;
-    const loaded = thread ? thread.messages : [];
-    seedMsgId(loaded);
-    setMsgs(loaded);
-  }, [threadId]);
 
   /* Save the thread when a reply completes — not per chunk. Streaming used
      to rewrite all of storage on every piece of the reply. The messages stay
