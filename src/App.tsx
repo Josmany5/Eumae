@@ -29,6 +29,45 @@ interface Pushed {
   arg?: unknown;
 }
 
+/* The keyboard, honestly tracked. `visualViewport` is the one API that says
+   what the keyboard actually did: when it opens, the viewport shrinks and
+   `documentElement.clientHeight - visualViewport.height` is roughly the
+   keyboard's height. A 160px shrink means a keyboard; smaller shrinks are the
+   URL bar collapsing, the devtools, split-screen — none of which should hide
+   the tab bar. Focus/blur on fields back it up (some Android keyboards report
+   late), and blur always closes: a stuck hidden tab bar strands navigation.
+   One place, one class (`kbd-open` on `#app`), every screen benefits. */
+function useKeyboardOpen(): boolean {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const onResize = () => {
+      if (!window.visualViewport) return;
+      const shrink = document.documentElement.clientHeight - window.visualViewport.height;
+      setOpen(shrink > 160);
+    };
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT')) {
+        // Give the viewport a beat to shrink — Android reports late. The resize
+        // handler corrects if this was optimistic.
+        window.setTimeout(onResize, 120);
+      }
+    };
+    const onFocusOut = () => setOpen(false);
+    if (vv) vv.addEventListener('resize', onResize);
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    onResize();
+    return () => {
+      if (vv) vv.removeEventListener('resize', onResize);
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+    };
+  }, []);
+  return open;
+}
+
 export default function App() {
   /* One boot, before first paint: thread id + messages + list + the
      reload-keeps / reopen-fresh rule, computed once and memoized inside
@@ -312,7 +351,15 @@ export default function App() {
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  const appClass = [railCollapsed ? 'railCollapsed' : '', panelOpen ? 'panelOpen' : '', booting ? 'booting' : '']
+
+  const kbdOpen = useKeyboardOpen();
+
+  const appClass = [
+    railCollapsed ? 'railCollapsed' : '',
+    panelOpen ? 'panelOpen' : '',
+    booting ? 'booting' : '',
+    kbdOpen ? 'kbd-open' : '',
+  ]
     .filter(Boolean)
     .join(' ');
 
