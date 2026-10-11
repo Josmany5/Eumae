@@ -37,37 +37,26 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
   const [micOn, setMicOn] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
-  const lastPop = useRef(0);
-  /* Tap = dramatic slow swell, like a hover held longer. Scale-only (no
-     translate swing — that was the shake): 1 → 1.06 → 1 over 420ms with a
-     soft ease, plus the :focus-within lift + ring that lands underneath and
-     stays. Bar only (chips untouched), field only (buttons/chips never trigger
-     it), 450ms guard eats the pointer+focus double-fire. `el.animate()`
-     restarts every tap by construction; reduce-motion skips it. */
-  const pop = () => {
-    const now = Date.now();
-    if (now - lastPop.current < 450) return;
-    lastPop.current = now;
+  /* Hold-to-swell: while the finger is down the bar stays enlarged; on release
+     it eases back. A one-shot keyframe always snaps back on its own timer,
+     which is why the old pop never "stayed". Now pointer-down adds `.held`
+     (scale 1.06, slow soft ease) and pointer-up/leave/cancel/blur removes it —
+     the CSS transition does the swelling both ways, so holding holds and
+     releasing releases. Bar only (chips untouched), field only (buttons/chips
+     never trigger it). Reduce-motion never adds the class. */
+  const hold = () => {
     const el = barRef.current;
     if (!el) return;
     try {
       if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
       if (document.documentElement.dataset.motion === 'reduce') return;
     } catch {
-      /* Prefs unreadable — pop anyway. */
+      /* Prefs unreadable — swell anyway. */
     }
-    try {
-      el.animate(
-        [
-          { transform: 'scale(1)' },
-          { transform: 'scale(1.06)', offset: 0.45 },
-          { transform: 'scale(1)' },
-        ],
-        { duration: 420, easing: 'cubic-bezier(.22,1,.36,1)' },
-      );
-    } catch {
-      /* Web Animations missing — the :focus-within lift is the fallback. */
-    }
+    el.classList.add('held');
+  };
+  const release = () => {
+    barRef.current?.classList.remove('held');
   };
   /* The field, and the one value every writer writes. The mic writes through
      `setText` and this send reads the same ref, so there is exactly one place
@@ -234,8 +223,12 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
           rows={1}
           value={text}
           placeholder={placeholder}
-          onFocus={pop}
-          onPointerDown={pop}
+          onFocus={hold}
+          onPointerDown={hold}
+          onPointerUp={release}
+          onPointerLeave={release}
+          onPointerCancel={release}
+          onBlur={release}
           onChange={(e) => {
             const value = e.target.value;
             setText(value);

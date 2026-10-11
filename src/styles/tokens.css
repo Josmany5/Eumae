@@ -559,7 +559,7 @@ input,textarea,select{ font-family:inherit; }
   -webkit-backdrop-filter:blur(14px) saturate(1.2); backdrop-filter:blur(14px) saturate(1.2);
   border:1px solid var(--hair); border-radius:28px;
   box-shadow:0 4px 24px rgba(0,0,0,.35);
-  transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+  transition:transform .6s cubic-bezier(.22,1,.36,1), border-color .18s ease, box-shadow .18s ease; }
 /* Typing pops the bar: focus-within lifts it a hair and warms the border
    toward the accent, so the composer answers the tap. */
 /* Tap = pop: the bar squishes then springs up when the field takes focus.
@@ -570,6 +570,11 @@ input,textarea,select{ font-family:inherit; }
   55%{ transform:scale(1.03) translateY(-3px); }
   100%{ transform:scale(1) translateY(-1px); }
 }
+/* Hold-to-swell: pointer-down adds `.held`, release removes it — the slow
+   transition swells both ways, so the bar stays large while held and eases
+   back on release. Scale-only (no translate swing, that was the shake).
+   600ms ease-out-expo both directions: slow and smooth. */
+.cmp.held{ transform:scale(1.06); }
 .cmp:focus-within{ transform:translateY(-1px);
   border-color:color-mix(in srgb, var(--ac) 45%, var(--hair));
   box-shadow:0 8px 28px rgba(0,0,0,.4), 0 0 0 4px var(--acsoft); }
