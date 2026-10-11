@@ -209,7 +209,8 @@ export default function ChatScreen() {
     );
   });
   const [loadedId, setLoadedId] = useState(threadId);
-  if (loadedId !== threadId) {
+  useEffect(() => {
+    if (loadedId === threadId) return;
     const next = threadId ? getThread(threadId)?.messages ?? [] : [];
     seedMsgId(next);
     setLoadedId(threadId);
@@ -218,7 +219,7 @@ export default function ChatScreen() {
         m.streaming ? { ...m, streaming: false, note: 'Reloaded before the reply arrived.' } : m,
       ),
     );
-  }
+  }, [threadId, loadedId]);
   const [viewing, setViewing] = useState<{ url: string; alt: string } | null>(null);
   /* Replies in flight. A ref rather than state because the only reader is the
      mic's guard, which is called from a speech event and not from a render

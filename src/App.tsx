@@ -147,13 +147,28 @@ export default function App() {
 
   /* Chat threads — App owns them so the drawer ("New chat", "Recent chats")
      and ChatScreen read the same state. */
-  const [threads, setThreads] = useState<Thread[]>([]);
+  const [threads, setThreads] = useState<Thread[]>(() => getThreads());
   /* The open thread id boots synchronously from storage: starting at null
      and filling it in an effect meant the first render never knew the thread,
      so ChatScreen painted the welcome screen for one frame before the real
-     id arrived — the reload flash. The effect below stays as the backstop
-     (missing id creates a thread), but the common path needs no effect. */
-  const [currentThreadId, setCurrentId] = useState<string | null>(() => getCurrentThreadId());
+     id arrived — the reload flash. A cold open (fresh tab, relaunch) starts
+     a new chat instead of dropping back into the old one: reload keeps you
+     (same tab session), reopen starts fresh. The effect below stays as the
+     backstop (missing id creates a thread), but the common path needs no
+     effect. */
+  const [currentThreadId, setCurrentId] = useState<string | null>(() => {
+    try {
+      if (!sessionStorage.getItem('eumae:session')) {
+        const fresh = createThread();
+        setCurrentThreadId(fresh.id);
+        sessionStorage.setItem('eumae:session', '1');
+        return fresh.id;
+      }
+    } catch {
+      /* Storage blocked — fall through to the stored id. */
+    }
+    return getCurrentThreadId();
+  });
 
   useEffect(() => {
     const id = getCurrentThreadId();
