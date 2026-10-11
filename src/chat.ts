@@ -169,9 +169,16 @@ async function refusal(response: Response): Promise<string> {
  *  one exactly when it matters (auth.ts:225). */
 /** Pull the source list out of Gemini's grounding metadata. Title + domain:
  *  the title is what the page calls itself, the domain is where it lives —
- *  "NIH" reads as a source, "nih.gov" reads as a URL. Dedup by domain (three
- *  nih.gov pages still read as one source), keeping the first title seen.
- *  Missing/blank titles fall back to the domain, never to nothing. */
+ *  a real page reads as a source, a bare domain reads as a URL. Dedup by
+ *  domain (three nih.gov pages still read as one source), keeping the first
+ *  title seen. Missing/blank titles fall back to the domain, never to nothing.
+ *
+ *  Hard filter: only http(s) web pages become chips. Google's own chrome —
+ *  the `searchEntryPoint` snippet ("Vertex AI Search"), pseudo-URIs, bare
+ *  search-result titles — is the search *method*, not a page, and is dropped
+ *  even if the server ever relays it (belt + braces with cleanGrounding). */
+const CHROME_TITLE = /vertex\s*ai\s*search|google\s*search|^search\s*results?$/i;
+
 export function extractSources(grounding: unknown): Reply['sources'] {
   const out: Reply['sources'] = [];
   const chunks = (grounding as { groundingChunks?: { web?: { uri?: string; title?: string } }[] })
@@ -180,16 +187,17 @@ export function extractSources(grounding: unknown): Reply['sources'] {
   const seenDomains = new Set<string>();
   for (const c of chunks) {
     const uri = c?.web?.uri;
-    if (!uri) continue;
+    if (!uri || !/^https?:\/\//i.test(uri)) continue;
     let domain = '';
     try {
       domain = new URL(uri).hostname.replace(/^www\./, '');
     } catch {
-      domain = uri;
+      continue;
     }
     if (seenDomains.has(domain)) continue;
     seenDomains.add(domain);
     const title = c?.web?.title?.trim();
+    if (title && CHROME_TITLE.test(title)) continue;
     out.push({ uri, title: title || domain });
   }
   return out;

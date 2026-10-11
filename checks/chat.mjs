@@ -49,7 +49,9 @@ function snippet(source, name) {
 export function lift(source) {
   const sentence = source.match(/^const UNKNOWN_FAILURE = '.*';$/m);
   if (!sentence) throw new Error("const UNKNOWN_FAILURE = '<sentence>'; is not in src/chat.ts");
-  const code = [sentence[0], snippet(source, 'takeEvents'), snippet(source, 'parseEvent'), snippet(source, 'extractSources')].join('\n');
+  const chromeLine = source.match(/^const CHROME_TITLE = .*$/m);
+  if (!chromeLine) throw new Error('const CHROME_TITLE is not in src/chat.ts');
+  const code = [sentence[0], chromeLine[0], snippet(source, 'takeEvents'), snippet(source, 'parseEvent'), snippet(source, 'extractSources')].join('\n');
   return transformSync(code, { loader: 'ts', format: 'cjs' }).code;
 }
 
@@ -250,6 +252,17 @@ export function verdicts(source) {
     JSON.stringify(srcs),
   );
   judge('sources: garbage in, empty out', extractSources(null).length === 0 && extractSources({}).length === 0);
+  /* Google's own chrome is the search method, not a page — never chip-ified. */
+  judge(
+    'sources: vertex/search chrome dropped even if relayed',
+    extractSources({
+      groundingChunks: [
+        { web: { uri: 'https://vertex.ai/search', title: 'Vertex AI Search' } },
+        { web: { uri: 'notaurl', title: 'Google Search' } },
+        { web: { uri: 'https://real.example/page', title: 'Real Page' } },
+      ],
+    }).length === 1,
+  );
 
   const junk = [parseEvent('data: {oops'), parseEvent('data: [1,2]'), parseEvent(': ping'), parseEvent('data: ')];
   judge(
@@ -265,7 +278,7 @@ export function verdicts(source) {
     /data: \$\{JSON\.stringify\(\{ text \}\)\}/,
     /data: \$\{JSON\.stringify\(\{ functionCall: \{ name: call\.name, args: call\.args \} \}\)\}/,
     /data: \$\{JSON\.stringify\(\{ error: \{ message: streamError \} \}\)\}/,
-    /data: \$\{JSON\.stringify\(\{ grounding: streamGrounding \}\)\}/,
+    /data: \$\{JSON\.stringify\(\{ grounding: cleanGrounding\(streamGrounding\) \}\)\}/,
     /data: \$\{JSON\.stringify\(\{ done: true \}\)\}/,
   ];
   const found = shapes.filter((shape) => shape.test(SERVER)).length;

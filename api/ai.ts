@@ -103,6 +103,18 @@ function buildContents(message: string, conversationHistory: ChatMessage[] | und
   return contents;
 }
 
+/* What the server relays of Google's grounding receipt. `searchEntryPoint` is
+   pre-rendered HTML for Google's own display ("Vertex AI Search …") — the
+   search *method*, not a source — and must never reach the client, where it
+   would chip-ify into a fake source. Only chunks (the pages) and the query
+   lists travel. */
+function cleanGrounding(grounding: unknown): unknown {
+  if (!grounding || typeof grounding !== 'object') return grounding;
+  const g = grounding as Record<string, unknown>;
+  const { searchEntryPoint: _dropped, ...rest } = g;
+  return rest;
+}
+
 function buildGeminiBody(
   systemPrompt: string,
   message: string,
@@ -245,7 +257,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           cachedTokens: usage.cachedContentTokenCount || 0,
           inputTokens: usage.promptTokenCount || 0,
         },
-        grounding,
+        grounding: cleanGrounding(grounding),
       });
     }
 
@@ -426,7 +438,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
          silent success either. */
       if (!emittedAnything && !streamError) streamError = EMPTY_REPLY;
       if (streamError) res.write(`data: ${JSON.stringify({ error: { message: streamError } })}\n\n`);
-      if (streamGrounding) res.write(`data: ${JSON.stringify({ grounding: streamGrounding })}\n\n`);
+      if (streamGrounding) res.write(`data: ${JSON.stringify({ grounding: cleanGrounding(streamGrounding) })}\n\n`);
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
       res.end();
       return;
