@@ -90,7 +90,7 @@ input,textarea,select{ font-family:inherit; }
 /* Tab bar: fixed bottom, blurred, 6 tabs */
 .tbar{ position:relative; display:flex;
   margin:0 12px calc(10px + env(safe-area-inset-bottom)); padding:4px;
-  background:color-mix(in srgb, var(--card) 92%, transparent);
+  background:color-mix(in srgb, var(--card) 78%, transparent);
   backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
   border:1px solid var(--hair); border-radius:30px;
   box-shadow:0 10px 32px rgba(0,0,0,.28); z-index:20; }
@@ -101,6 +101,9 @@ input,textarea,select{ font-family:inherit; }
 .tbar button{ position:relative; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
   color:var(--mut); font-size:10px; padding:6px 0; }
 .tbar button.on{ color:var(--ac); }
+/* Tab taps pop: scale answers the finger, accent answers the state. */
+.tbar button{ transition:transform .16s cubic-bezier(.34,1.56,.64,1), color .15s ease; }
+.tbar button:active{ transform:scale(.9); }
 .tbar button svg{ width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.7;
   stroke-linecap:round; stroke-linejoin:round; }
 
@@ -316,6 +319,9 @@ input,textarea,select{ font-family:inherit; }
 .chatScroll{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; padding:24px 20px; }
 .hello{ margin:auto; max-width:520px; text-align:center; }
 .helloT{ margin:0 0 8px; font-size:24px; font-weight:700; letter-spacing:-.02em; }
+/* The smart welcome's second line: continuity, not a lecture. Muted, small,
+   one line — names where you left off without competing with the title. */
+.helloS{ margin:0 0 18px; font-size:14px; line-height:1.5; color:var(--mut); }
 .helloN{ margin:0 0 20px; font-size:15px; line-height:1.55; color:var(--mut); }
 .chips{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
 .chip{ padding:8px 14px; border-radius:99px; font-size:13px; color:var(--tx);
@@ -549,9 +555,16 @@ input,textarea,select{ font-family:inherit; }
    the mockup's field is a single-line `<input>`, ours grows, so the buttons ride
    the last line instead of floating in the middle of a paragraph. */
 .cmp{ display:flex; align-items:flex-end; gap:6px; padding:6px 6px 6px 8px;
-  background:var(--card); border:1px solid var(--hair); border-radius:28px;
+  background:color-mix(in srgb, var(--card) 82%, transparent);
+  -webkit-backdrop-filter:blur(14px) saturate(1.2); backdrop-filter:blur(14px) saturate(1.2);
+  border:1px solid var(--hair); border-radius:28px;
   box-shadow:0 4px 24px rgba(0,0,0,.35);
-  transition:border-color .18s ease, box-shadow .18s ease; }
+  transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+/* Typing pops the bar: focus-within lifts it a hair and warms the border
+   toward the accent, so the composer answers the tap. */
+.cmp:focus-within{ transform:translateY(-1px);
+  border-color:color-mix(in srgb, var(--ac) 45%, var(--hair));
+  box-shadow:0 8px 28px rgba(0,0,0,.4), 0 0 0 4px var(--acsoft); }
 /* The ring is the whole hover story: the pill lifts slightly, and the accent
    only shows up when you're actually in it. No border-colour jump mid-hover. */
 .cmp:hover{ border-color:var(--card3); }
@@ -566,7 +579,9 @@ input,textarea,select{ font-family:inherit; }
   display:inline-flex; align-items:center; justify-content:center; color:var(--tx);
   transition:background .15s ease, color .15s ease, transform .12s ease; }
 .cmpIcon:hover{ background:var(--card3); }
-.cmpIcon:active{ transform:scale(.94); }
+.cmpIcon:active{ transform:scale(.88); }
+/* Tap springs: the icon pops down then back, so every touch answers. */
+.cmpIcon, .cmpSend{ transition:transform .16s cubic-bezier(.34,1.56,.64,1), background .15s ease; }
 /* The mic, lit. The mockup's `micLight` (1753) puts the accent on the colour and
    the border; `.cmpIcon` carries no border, so the accent is the colour plus the
    soft accent behind it. */
@@ -581,7 +596,7 @@ input,textarea,select{ font-family:inherit; }
   transition:transform .15s ease, box-shadow .18s ease, opacity .18s ease; }
 .cmpSend:hover:not(:disabled){ transform:translateY(-1px);
   box-shadow:0 5px 18px color-mix(in srgb, var(--ac) 55%, transparent); }
-.cmpSend:active:not(:disabled){ transform:scale(.94); }
+.cmpSend:active:not(:disabled){ transform:scale(.88); }
 .cmpSend:disabled{ opacity:.32; cursor:default; box-shadow:none; }
 .cmpSend svg{ width:19px; height:19px; stroke:currentColor; fill:none; stroke-width:1.9;
   stroke-linecap:round; stroke-linejoin:round; }

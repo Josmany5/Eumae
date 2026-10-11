@@ -8,7 +8,8 @@ import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice'
 import { buildRequest, toApiBody } from '../request';
 import { getThread, saveThread, titleFor, type Msg } from '../threads';
 import { messagesFor, bootSnapshot, msgId } from '../boot';
-import { uploadData } from '../uploads';
+import { uploadData, listUploads } from '../uploads';
+import { getNotes } from '../notes';
 import { renderMd } from '../md';
 
 /* A photo inside a saved message. The message carries the upload id (§4.15);
@@ -60,6 +61,33 @@ function MsgImage({
 
 
 const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'What am I forgetting?'];
+
+/* The smart welcome. A cold empty chat used to say the same line every time;
+   this one reads the room: time of day for the greeting, and the person's own
+   stuff (threads, uploads, notes) for the line under it. New users get the
+   invite; returning ones get continuity ("Welcome back" + where they left
+   off, never a lecture). Props in, string out — pure, tested via
+   checks/welcome.mjs. */
+export interface WelcomeFacts {
+  hour: number;
+  threadCount: number;
+  lastThreadTitle?: string;
+  uploadCount: number;
+  noteCount: number;
+}
+
+export function welcomeFor(f: WelcomeFacts): { title: string; sub: string } {
+  const daypart = f.hour < 5 ? 'Up late' : f.hour < 12 ? 'Good morning' : f.hour < 18 ? 'Good afternoon' : 'Good evening';
+  if (f.threadCount === 0 && f.uploadCount === 0 && f.noteCount === 0) {
+    return { title: 'What are we doing today?', sub: `${daypart} — ask anything, or tap + to set the chat up.` };
+  }
+  const bits: string[] = [];
+  if (f.lastThreadTitle && f.lastThreadTitle !== 'New chat') bits.push(`last time: ${f.lastThreadTitle}`);
+  if (f.uploadCount > 0) bits.push(`${f.uploadCount} file${f.uploadCount === 1 ? '' : 's'} in the Library`);
+  if (f.noteCount > 0) bits.push(`${f.noteCount} note${f.noteCount === 1 ? '' : 's'}`);
+  const sub = bits.length ? `${daypart} — welcome back${bits.length ? ` (${bits.join(' · ')})` : ''}.` : `${daypart} — welcome back.`;
+  return { title: 'What are we doing today?', sub };
+}
 
 /* An AI reply, rendered through markdown once it has landed. While words
  *  are still arriving the raw text shows — formatting half a reply flickers
@@ -196,7 +224,33 @@ function ImageViewer({ url, alt, onClose }: { url: string; alt: string; onClose:
 }
 
 export default function ChatScreen() {
-  const { turn, setTurn, refs, clearRefs, notify, currentThreadId: threadId } = useNav();
+  const { turn, setTurn, refs, clearRefs, notify, currentThreadId: threadId, threads } = useNav();
+  /* The welcome reads the person's own stuff once per mount — threads from
+     nav (already in memory), uploads + notes counted lazily (storage reads,
+     memoized so one mount is one read each). */
+  const welcome = useMemo(() => {
+    const others = threads.filter((t) => t.id !== threadId);
+    const last = [...others].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+    let uploads = 0;
+    let notes = 0;
+    try {
+      uploads = listUploads().length;
+    } catch {
+      /* Storage blocked — welcome degrades to threads only. */
+    }
+    try {
+      notes = getNotes().length;
+    } catch {
+      /* Same. */
+    }
+    return welcomeFor({
+      hour: new Date().getHours(),
+      threadCount: threads.length,
+      lastThreadTitle: last?.title,
+      uploadCount: uploads,
+      noteCount: notes,
+    });
+  }, [threads, threadId]);
   /* Mount messages come from the same boot that App read: on the boot thread
      the snapshot already holds them (no second storage read, no welcome
      flash, no render-phase setState). On any other thread — impossible on
@@ -524,7 +578,8 @@ export default function ChatScreen() {
       <div className="chatScroll" ref={scroller} onScroll={readBottom}>
         {msgs.length === 0 ? (
           <div className="hello">
-            <h1 className="helloT">What are we doing today?</h1>
+            <h1 className="helloT">{welcome.title}</h1>
+            <p className="helloS">{welcome.sub}</p>
             <p className="helloN">
               Eumae knows your projects, your day, and your history. Ask for anything — or just start.
             </p>
