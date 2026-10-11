@@ -2,11 +2,11 @@
 /* Boot check — the reload-keeps / reopen-fresh rule, against the real code.
  *
  *  boot.ts + threads.ts are storage-only, but they are TypeScript and pull
- *  request types. Like checks/chat.mjs (which lifts functions by name), this
- *  transpiles the real sources with the project's own esbuild and runs the
- *  rule for real against stubbed storages — no browser, no network.
- *  request.ts is stubbed at the type level (ThreadTurn/ApiChatBody), the same
- *  two names threads.ts imports; everything asserted below runs real logic.
+ *  TabBar's TabId type. Like checks/chat.mjs (which lifts functions by name),
+ *  this transpiles the real sources with the project's own esbuild and runs
+ *  the rule for real against stubbed storages — no browser, no network.
+ *  request.ts is stubbed at the type level (ThreadTurn/ApiChatBody) and
+ *  TabBar at TabId; everything asserted below runs real logic.
  *
  *  Exit codes: 0 everything holds, 1 something does not.
  */
@@ -46,10 +46,13 @@ const threadsBody = stripImports(threadsSrc)
 const bootBody = stripImports(bootSrc);
 
 const js = transformSync(
-  `interface ThreadTurn { role: string; text: string; }\n${threadsBody}\n${bootBody}\nboot;`,
+  `interface ThreadTurn { role: string; text: string; }\ntype TabId = 'chat' | 'console' | 'studio' | 'library' | 'classroom' | 'guild';\n${threadsBody}\n${bootBody}\nboot;`,
   { loader: 'ts' },
 ).code
   // The sources use `export` — strip it so the bundle runs in a Function.
+  // boot.ts also imports TabId from TabBar: drop that line, the stub above
+  // carries the type.
+  .replace(/^import type \{ TabId \} from '[^']*';/gm, '')
   .replace(/^export (function|const|let|interface|type|async function) /gm, '$1 ')
   .replace(/^export \{[^}]*\};?/gm, '')
   .replace(/^export default /gm, '');
@@ -160,9 +163,56 @@ function run(setup) {
     JSON.stringify(out.messages[0]),
   );
 }
+// 6. Reload restores where you were: tab + pushed stack survive.
+{
+  const { out } = run(({ local, session }) => {
+    session['eumae:session'] = '1';
+    local['eumae:currentThread'] = 't1';
+    local['eumae:threads'] = JSON.stringify([
+      { id: 't1', title: 'Old', createdAt: 1, updatedAt: 2, messages: [] },
+    ]);
+    local['eumae:nav'] = JSON.stringify({ tab: 'library', stack: [{ page: 'notes' }] });
+  });
+  check(
+    'reload-restores-nav',
+    out.tab === 'library' && out.stack.length === 1 && out.stack[0].page === 'notes',
+    JSON.stringify({ tab: out.tab, stack: out.stack }),
+  );
+}
+// 7. Cold open lands on chat with an empty stack, whatever was stored.
+{
+  const { out } = run(({ local }) => {
+    local['eumae:currentThread'] = 't1';
+    local['eumae:threads'] = JSON.stringify([
+      { id: 't1', title: 'Old', createdAt: 1, updatedAt: 2, messages: [] },
+    ]);
+    local['eumae:nav'] = JSON.stringify({ tab: 'library', stack: [{ page: 'notes' }] });
+  });
+  check(
+    'cold-lands-chat',
+    out.fresh === true && out.tab === 'chat' && out.stack.length === 0,
+    JSON.stringify({ tab: out.tab, stack: out.stack }),
+  );
+}
+// 8. A corrupt stored nav boots to chat, never to nowhere.
+{
+  const { out } = run(({ local, session }) => {
+    session['eumae:session'] = '1';
+    local['eumae:currentThread'] = 't1';
+    local['eumae:threads'] = JSON.stringify([
+      { id: 't1', title: 'Old', createdAt: 1, updatedAt: 2, messages: [] },
+    ]);
+    local['eumae:nav'] = JSON.stringify({ tab: 'nope', stack: [{ nope: 1 }] });
+  });
+  check(
+    'corrupt-nav-fallback',
+    out.tab === 'chat' && out.stack.length === 0,
+    JSON.stringify({ tab: out.tab, stack: out.stack }),
+  );
+}
 
 if (failures.length) {
   console.error(`boot: ${failures.length} failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log('all 8 passed');
+console.log('all 11 passed');

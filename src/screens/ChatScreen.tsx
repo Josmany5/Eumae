@@ -42,7 +42,11 @@ function MsgImage({
       live = false;
     };
   }, [uploadId, url]);
-  if (!src) return null;
+  /* The frame renders before the bytes: a reserved box, not nothing. While
+     the IndexedDB lookup runs, the thread already holds this message's space
+     — the photo fades into place instead of shoving everything down. A
+     missing upload (cleared browser data) renders nothing, same as before. */
+  if (!src) return <span className="msgAttachHold" aria-hidden="true" />;
   return (
     <button
       className="msgAttachBtn"

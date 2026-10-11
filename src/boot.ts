@@ -25,13 +25,32 @@ import {
   type Thread,
 } from './threads';
 
+import type { TabId } from './components/shell/TabBar';
+
 export interface Boot {
   threadId: string;
   messages: Msg[];
   threads: Thread[];
   /** True when this boot started fresh (cold open), false on reload. */
   fresh: boolean;
+  /** Where the person was: tab + pushed page stack. Reload restores it, cold
+   *  open lands on chat with an empty stack. */
+  tab: TabId;
+  stack: BootPlace[];
 }
+
+/** One pushed sub-page — the same shape as App's `Pushed`. */
+export interface BootPlace {
+  page: string;
+  arg?: unknown;
+}
+
+/* The valid tabs, mirrored from TabBar's TABS (the UI list owns labels; this
+   owns boot validity). A hand-edited or stale stored tab boots to chat, never
+   to nowhere. Update both if tabs change. */
+const BOOT_TABS: TabId[] = ['chat', 'console', 'studio', 'library', 'classroom', 'guild'];
+
+const NAV_KEY = 'eumae:nav';
 
 /* Message ids come from a counter, not the clock. Two sends in the same
    millisecond used to collide — Date.now() is not an ID. The counter lives
@@ -98,33 +117,76 @@ export function bootSnapshot(): Boot | null {
    second storage read and cannot disagree with App. */
 export function boot(): Boot {
   if (memo) return memo;
-  if (!sessionAlive()) {
-    markSession();
-    const fresh = createThread();
-    setCurrentThreadId(fresh.id);
-    seedMsgId(fresh.messages);
-    memo = { threadId: fresh.id, messages: [], threads: getThreads(), fresh: true };
-    return memo;
-  }
+  const cold = !sessionAlive();
   markSession();
-  const storedId = getCurrentThreadId();
-  const stored = storedId ? getThread(storedId) : undefined;
-  if (stored) {
-    seedMsgId(stored.messages);
-    memo = {
-      threadId: stored.id,
-      messages: settle(stored.messages),
-      threads: getThreads(),
-      fresh: false,
-    };
-    return memo;
+  const nav = cold ? { tab: 'chat' as TabId, stack: [] } : readNav();
+  if (cold) writeNav(nav.tab, nav.stack);
+  if (!cold) {
+    const storedId = getCurrentThreadId();
+    const stored = storedId ? getThread(storedId) : undefined;
+    if (stored) {
+      seedMsgId(stored.messages);
+      memo = {
+        threadId: stored.id,
+        messages: settle(stored.messages),
+        threads: getThreads(),
+        fresh: false,
+        tab: nav.tab,
+        stack: nav.stack,
+      };
+      return memo;
+    }
   }
-  /* Stored id missing or corrupt — same answer as a cold open, minus the
-     session question (already marked above). */
+  /* Cold open, or a reload whose stored id is missing/corrupt — same answer:
+     a fresh thread. Cold lands on chat + empty stack; the corrupt-id reload
+     keeps the restored nav (you were somewhere real, the thread pointer is
+     what broke). */
   const fresh = createThread();
   setCurrentThreadId(fresh.id);
   seedMsgId(fresh.messages);
-  memo = { threadId: fresh.id, messages: [], threads: getThreads(), fresh: true };
+  memo = {
+    threadId: fresh.id,
+    messages: [],
+    threads: getThreads(),
+    fresh: true,
+    tab: cold ? 'chat' : nav.tab,
+    stack: cold ? [] : nav.stack,
+  };
   return memo;
+}
+
+/** Where the person was: tab + pushed page stack, restored on reload. Read
+ *  once at boot; App writes it back on every change (see saveNav). Invalid or
+ *  missing data boots to chat + empty stack, never to nowhere. */
+function readNav(): { tab: TabId; stack: BootPlace[] } {
+  try {
+    const raw = localStorage.getItem(NAV_KEY);
+    if (!raw) return { tab: 'chat', stack: [] };
+    const parsed = JSON.parse(raw) as { tab?: unknown; stack?: unknown };
+    const tab: TabId = BOOT_TABS.includes(parsed.tab as TabId) ? (parsed.tab as TabId) : 'chat';
+    const stack = Array.isArray(parsed.stack)
+      ? parsed.stack.filter(
+          (s): s is BootPlace =>
+            !!s && typeof s === 'object' && typeof (s as BootPlace).page === 'string',
+        )
+      : [];
+    return { tab, stack };
+  } catch {
+    return { tab: 'chat', stack: [] };
+  }
+}
+
+function writeNav(tab: TabId, stack: BootPlace[]): void {
+  try {
+    localStorage.setItem(NAV_KEY, JSON.stringify({ tab, stack }));
+  } catch {
+    /* Non-fatal. */
+  }
+}
+
+/** App calls this on every tab/stack change so the next reload restores it.
+ *  Cheap (one small JSON write), sync, no render involved. */
+export function saveNav(tab: TabId, stack: BootPlace[]): void {
+  writeNav(tab, stack);
 }
 

@@ -19,7 +19,7 @@ import {
   setCurrentThreadId,
   type Thread,
 } from './threads';
-import { boot } from './boot';
+import { boot, saveNav } from './boot';
 import { logEv } from './log';
 import { saveUpload, uploadData } from './uploads';
 
@@ -35,8 +35,12 @@ export default function App() {
      boot.ts (StrictMode double-invokes initializers — without the memo a
      cold open would create two threads and orphan the first). */
   const [snap] = useState(() => boot());
-  const [tab, setTab] = useState<TabId>('chat');
-  const [stack, setStack] = useState<Pushed[]>([]);
+  /* Reload restores where you were (tab + pushed pages) from the boot
+     snapshot; cold open lands on chat with an empty stack. First render
+     already knows — no effect-driven nav, which would flash chat for a frame
+     on every reload of Library/Studio/notes. */
+  const [tab, setTab] = useState<TabId>(() => snap.tab);
+  const [stack, setStack] = useState<Pushed[]>(() => snap.stack);
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -290,6 +294,12 @@ export default function App() {
     },
     [goTab, notify, pickFile, newChat],
   );
+
+  /* Persist where you are on every change, so a reload restores it. One small
+     sync JSON write — no render, no debounce to lose the last step. */
+  useEffect(() => {
+    saveNav(tab, stack);
+  }, [tab, stack]);
 
   /* First paint lands with transitions off (tokens.css `#app.booting`): the
      parked drawer/panel/sheets would otherwise slide visibly on mount during

@@ -364,14 +364,25 @@ input,textarea,select{ font-family:inherit; }
   display:flex; align-items:center; justify-content:center; }
 .imgViewerX svg{ width:20px; height:20px; stroke:#fff; fill:none; stroke-width:2.2;
   stroke-linecap:round; }
-.msgAttachBtn{ padding:0; border:none; background:none; cursor:pointer; }
+/* The message's own photos, reserved before the bytes arrive: every MsgImage
+   starts life as this frame, not as nothing. Without the reserve, a reload
+   paints the thread at full text height, the IndexedDB lookups land, and every
+   photo shoves the thread down mid-frame — the top-of-history shutter. With
+   it, the frame is already the right size and the bytes fade into place. */
+.msgAttachBtn{ padding:0; border:none; background:none; cursor:pointer;
+  display:block; width:100%; max-width:280px; aspect-ratio:4/3; border-radius:14px;
+  background:var(--card2); overflow:hidden; }
+/* The held frame while bytes load — same box as the photo, so the thread
+   never reflows. `aria-hidden`: it carries no content, only space. */
+.msgAttachHold{ display:block; width:100%; max-width:280px; aspect-ratio:4/3;
+  border-radius:14px; background:var(--card2); }
 /* Attachments inside a sent message — what went out with it. Thumbnails for
    images, names for the rest. */
 /* Sent images stand alone — the picture is the bubble, not something inside it. */
 .msgImgs{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; max-width:80%; justify-content:flex-end; }
 .msgAttaches{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
 /* Sent images: large and clean, the picture itself. No filename, no card. */
-.msgAttachImg{ max-width:100%; max-height:280px; border-radius:14px; display:block; object-fit:cover; }
+.msgAttachImg{ width:100%; height:100%; max-height:280px; border-radius:14px; display:block; object-fit:cover; }
 .msgAttach{ display:flex; align-items:center; gap:8px; max-width:200px;
   background:var(--card2); border-radius:10px; padding:6px 8px; }
 .msgAttachName{ font-size:12px; font-weight:500; overflow:hidden;
