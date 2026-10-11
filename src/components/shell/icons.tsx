@@ -72,7 +72,7 @@ const PATHS: Record<string, JSX.Element> = {
      is r=6.5 (not 8) with a short head, because a full-circle glyph carries
      far more ink than copy's two strokes or edit's single outline — at the
      same box it always reads heavier and wider. Same 20px frame, less ink. */
-  rgn: <><path d="M17.5 12a6.5 6.5 0 1 1-1.9-4.6" /><path d="M17.5 5v3.5h-3.5" /></>,
+  rgn: <><path d="M16.5 12a6.5 6.5 0 1 1-1.9-4.6" /><path d="M16.5 5v3.5h-3.5" /></>,
   ed: <path d="M14 5l5 5L8 21H3v-5L14 5z" />,
   tick: <path d="M5 13l4 4L19 7" />,
 
