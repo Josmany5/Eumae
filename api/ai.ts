@@ -86,6 +86,38 @@ interface ChatMessage {
   content: string;
 }
 
+/* The redirect behind the chip: Google returns redirect URIs, not page URLs.
+   Follow them once, server-side, and cache by redirect URI. A chip must open
+   the page and show the page's icon — never the redirect host's G, never the
+   vertex path. Failures keep the redirect (tapping still lands via Google). */
+const redirectCache = new Map<string, string>();
+
+async function resolveSourceUri(uri: string): Promise<string> {
+  if (!/^https?:\/\//i.test(uri)) return uri;
+  let host = '';
+  try {
+    host = new URL(uri).hostname.toLowerCase();
+  } catch {
+    return uri;
+  }
+  const redirector =
+    host.includes('vertexaisearch') ||
+    host.includes('google.') ||
+    host.includes('googleusercontent');
+  if (!redirector) return uri;
+  const cached = redirectCache.get(uri);
+  if (cached) return cached;
+  try {
+    const res = await fetch(uri, { method: 'HEAD', redirect: 'follow' });
+    const finalUrl = res.url && res.url !== uri ? res.url : uri;
+    if (redirectCache.size > 200) redirectCache.clear();
+    redirectCache.set(uri, finalUrl);
+    return finalUrl;
+  } catch {
+    return uri;
+  }
+}
+
 function buildContents(message: string, conversationHistory: ChatMessage[] | undefined, attachments: unknown) {
   const contents: { role: string; parts: unknown[] }[] = [];
   if (conversationHistory && conversationHistory.length > 0) {
@@ -438,7 +470,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
          silent success either. */
       if (!emittedAnything && !streamError) streamError = EMPTY_REPLY;
       if (streamError) res.write(`data: ${JSON.stringify({ error: { message: streamError } })}\n\n`);
-      if (streamGrounding) res.write(`data: ${JSON.stringify({ grounding: cleanGrounding(streamGrounding) })}\n\n`);
+      if (streamGrounding) {
+        /* Resolve redirect URIs to real page URLs before relaying, so chips
+           open and show the page — never the redirect host. One HEAD per
+           redirect URI, cached; failures keep the redirect. */
+        try {
+          const gchunks = (streamGrounding as { groundingChunks?: { web?: { uri?: string } }[] })
+            ?.groundingChunks;
+          if (Array.isArray(gchunks)) {
+            await Promise.all(
+              gchunks.map(async (gchunk) => {
+                const guri = gchunk?.web?.uri;
+                if (typeof guri === 'string' && guri && gchunk.web) {
+                  gchunk.web.uri = await resolveSourceUri(guri);
+                }
+              }),
+            );
+          }
+        } catch {
+          /* Resolution failed — relay as-is, client filters. */
+        }
+        res.write(`data: ${JSON.stringify({ grounding: cleanGrounding(streamGrounding) })}\n\n`);
+      }
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
       res.end();
       return;

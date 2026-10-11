@@ -51,7 +51,9 @@ export function lift(source) {
   if (!sentence) throw new Error("const UNKNOWN_FAILURE = '<sentence>'; is not in src/chat.ts");
   const chromeLine = source.match(/^const CHROME_TITLE = .*$/m);
   if (!chromeLine) throw new Error('const CHROME_TITLE is not in src/chat.ts');
-  const code = [sentence[0], chromeLine[0], snippet(source, 'takeEvents'), snippet(source, 'parseEvent'), snippet(source, 'extractSources')].join('\n');
+  const redirectLine = source.match(/^const REDIRECT_HOST = .*$/m);
+  if (!redirectLine) throw new Error('const REDIRECT_HOST is not in src/chat.ts');
+  const code = [sentence[0], chromeLine[0], redirectLine[0], snippet(source, 'takeEvents'), snippet(source, 'parseEvent'), snippet(source, 'extractSources')].join('\n');
   return transformSync(code, { loader: 'ts', format: 'cjs' }).code;
 }
 
@@ -257,7 +259,7 @@ export function verdicts(source) {
     'sources: vertex/search chrome dropped even if relayed',
     extractSources({
       groundingChunks: [
-        { web: { uri: 'https://vertex.ai/search', title: 'Vertex AI Search' } },
+        { web: { uri: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/x', title: 'handluggageonly.co.uk' } },
         { web: { uri: 'notaurl', title: 'Google Search' } },
         { web: { uri: 'https://real.example/page', title: 'Real Page' } },
       ],

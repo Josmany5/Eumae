@@ -173,11 +173,12 @@ async function refusal(response: Response): Promise<string> {
  *  domain (three nih.gov pages still read as one source), keeping the first
  *  title seen. Missing/blank titles fall back to the domain, never to nothing.
  *
- *  Hard filter: only http(s) web pages become chips. Google's own chrome —
- *  the `searchEntryPoint` snippet ("Vertex AI Search"), pseudo-URIs, bare
- *  search-result titles — is the search *method*, not a page, and is dropped
- *  even if the server ever relays it (belt + braces with cleanGrounding). */
+ *  Belt + braces with the server (cleanGrounding + redirect resolution):
+ *  only http(s) web pages become chips, and any chunk still sitting on a
+ *  Google/Vertex redirect host is dropped — the search *method* is never a
+ *  page, even if a redirect failed to resolve. */
 const CHROME_TITLE = /vertex\s*ai\s*search|google\s*search|^search\s*results?$/i;
+const REDIRECT_HOST = /vertexaisearch|googleusercontent|^google\./i;
 
 export function extractSources(grounding: unknown): Reply['sources'] {
   const out: Reply['sources'] = [];
@@ -194,6 +195,9 @@ export function extractSources(grounding: unknown): Reply['sources'] {
     } catch {
       continue;
     }
+    /* Unresolved redirect host — the server follows these to the real page,
+       but if one arrives unresolved it is the search path, not the site. */
+    if (REDIRECT_HOST.test(domain)) continue;
     if (seenDomains.has(domain)) continue;
     seenDomains.add(domain);
     const title = c?.web?.title?.trim();
