@@ -49,7 +49,7 @@ function snippet(source, name) {
 export function lift(source) {
   const sentence = source.match(/^const UNKNOWN_FAILURE = '.*';$/m);
   if (!sentence) throw new Error("const UNKNOWN_FAILURE = '<sentence>'; is not in src/chat.ts");
-  const code = [sentence[0], snippet(source, 'takeEvents'), snippet(source, 'parseEvent')].join('\n');
+  const code = [sentence[0], snippet(source, 'takeEvents'), snippet(source, 'parseEvent'), snippet(source, 'extractSources')].join('\n');
   return transformSync(code, { loader: 'ts', format: 'cjs' }).code;
 }
 
@@ -86,7 +86,7 @@ export function verdicts(source) {
       },
     ];
   }
-  if (typeof lifted.takeEvents !== 'function' || typeof lifted.parseEvent !== 'function') {
+  if (typeof lifted.takeEvents !== 'function' || typeof lifted.parseEvent !== 'function' || typeof lifted.extractSources !== 'function') {
     return [
       {
         name: 'the two functions can be lifted out and called',
@@ -96,7 +96,7 @@ export function verdicts(source) {
     ];
   }
 
-  const { takeEvents, parseEvent } = lifted;
+  const { takeEvents, parseEvent, extractSources } = lifted;
   const sentence = sentenceOf(source);
   const out = [];
   const judge = (name, pass, detail) => out.push({ name, pass, detail });
@@ -228,6 +228,28 @@ export function verdicts(source) {
     grounded !== null && grounded.kind === 'grounding' && grounded.grounding.queries[0] === 'weather',
     JSON.stringify(grounded),
   );
+
+  /* Sources: title + domain, deduped by domain. extractSources is lifted from
+     the same file, so these run the real function, not a copy. */
+  const srcGrounding = {
+    groundingChunks: [
+      { web: { uri: 'https://www.nih.gov/health/article', title: 'NIH Health Article' } },
+      { web: { uri: 'https://nih.gov/other/page', title: 'NIH Other Page' } },
+      { web: { uri: 'https://example.com/x', title: '' } },
+      { web: { uri: 'https://example.com/y' } },
+      { web: {} },
+    ],
+  };
+  const srcs = extractSources(srcGrounding);
+  judge(
+    'sources: title first, deduped by domain, blanks fall back to domain',
+    srcs.length === 2 &&
+      srcs[0].title === 'NIH Health Article' &&
+      srcs[0].uri.includes('nih.gov') &&
+      srcs[1].title === 'example.com',
+    JSON.stringify(srcs),
+  );
+  judge('sources: garbage in, empty out', extractSources(null).length === 0 && extractSources({}).length === 0);
 
   const junk = [parseEvent('data: {oops'), parseEvent('data: [1,2]'), parseEvent(': ping'), parseEvent('data: ')];
   judge(

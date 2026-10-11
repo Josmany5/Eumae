@@ -372,6 +372,10 @@ input,textarea,select{ font-family:inherit; }
   background:var(--card2); border-radius:99px; font-size:12px; color:var(--tx);
   text-decoration:none; max-width:180px; }
 .sourceChip span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Title first, domain second — the title is what the page calls itself, the
+   domain is where it lives. Title carries the weight, domain sits muted. */
+.sourceTitle{ font-weight:600; }
+.sourceDomain{ color:var(--mut); font-size:11px; }
 .sourceFav{ width:16px; height:16px; border-radius:50%; flex:none; }
 /* Full-screen image viewer — dark backdrop, picture centered, × top-left. */
 .imgViewer{ position:fixed; inset:0; z-index:300; background:rgba(0,0,0,.92);

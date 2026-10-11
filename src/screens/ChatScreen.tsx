@@ -214,7 +214,9 @@ async function copyText(text: string): Promise<boolean> {
  *    the failure look bigger than it was.
  */
 /** Sources, collapsed by default — provenance available, not loud. A quiet pill
- *  with the count; tap to fan out the deduped domain chips. */
+ *  with the count; tap to fan out the chips. Title first (what the page calls
+ *  itself), domain second (where it lives) — "NIH" reads as a source,
+ *  "nih.gov" reads as a URL. */
 function SourcesPill({ sources }: { sources: { uri: string; title: string }[] }) {
   const [open, setOpen] = useState(false);
   return (
@@ -235,7 +237,8 @@ function SourcesPill({ sources }: { sources: { uri: string; title: string }[] })
                   (e.currentTarget as HTMLImageElement).style.display = 'none';
                 }}
               />
-              <span>{s.title}</span>
+              <span className="sourceTitle">{s.title}</span>
+              <span className="sourceDomain">{(() => { try { return new URL(s.uri).hostname.replace(/^www\./, ''); } catch { return s.uri; } })()}</span>
             </a>
           ))}
         </div>

@@ -167,8 +167,12 @@ async function refusal(response: Response): Promise<string> {
  *  asked for here, at the moment of sending, because the library refreshes an
  *  expiring one in the background — a copy kept anywhere else would be the stale
  *  one exactly when it matters (auth.ts:225). */
-/** Pull the source list out of Gemini's grounding metadata. */
-function extractSources(grounding: unknown): Reply['sources'] {
+/** Pull the source list out of Gemini's grounding metadata. Title + domain:
+ *  the title is what the page calls itself, the domain is where it lives —
+ *  "NIH" reads as a source, "nih.gov" reads as a URL. Dedup by domain (three
+ *  nih.gov pages still read as one source), keeping the first title seen.
+ *  Missing/blank titles fall back to the domain, never to nothing. */
+export function extractSources(grounding: unknown): Reply['sources'] {
   const out: Reply['sources'] = [];
   const chunks = (grounding as { groundingChunks?: { web?: { uri?: string; title?: string } }[] })
     ?.groundingChunks;
@@ -177,7 +181,6 @@ function extractSources(grounding: unknown): Reply['sources'] {
   for (const c of chunks) {
     const uri = c?.web?.uri;
     if (!uri) continue;
-    /* Dedup by domain — three nih.gov pages read as one source. */
     let domain = '';
     try {
       domain = new URL(uri).hostname.replace(/^www\./, '');
@@ -186,7 +189,8 @@ function extractSources(grounding: unknown): Reply['sources'] {
     }
     if (seenDomains.has(domain)) continue;
     seenDomains.add(domain);
-    out.push({ uri, title: domain });
+    const title = c?.web?.title?.trim();
+    out.push({ uri, title: title || domain });
   }
   return out;
 }
