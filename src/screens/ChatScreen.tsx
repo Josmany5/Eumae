@@ -7,6 +7,7 @@ import { streamChat } from '../chat';
 import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice';
 import { buildRequest, toApiBody } from '../request';
 import { getThread, saveThread, titleFor, type Msg } from '../threads';
+import { messagesFor, bootSnapshot, msgId } from '../boot';
 import { uploadData } from '../uploads';
 import { renderMd } from '../md';
 
@@ -68,16 +69,14 @@ function ReplyText({ text, streaming }: { text: string; streaming?: boolean }) {
 }
 
 /* Message IDs come from a counter, not the clock. Two sends in the same
-   millisecond used to collide — Date.now() is not an ID. The counter starts
-   above the highest saved ID so reloads never collide. */
-let nextMsgId = 1;
-function msgId(): number {
-  return nextMsgId++;
-}
-function seedMsgId(msgs: { id: number }[]): void {
-  for (const m of msgs) {
-    if (m.id >= nextMsgId) nextMsgId = m.id + 1;
-  }
+   millisecond used to collide — Date.now() is not an ID. The counter lives
+   in boot.ts next to the snapshot; reloads seed it above the highest saved
+   ID so they never collide. */
+function bootMountMessages(threadId: string | null): Msg[] {
+  if (!threadId) return [];
+  const snap = bootSnapshot();
+  if (snap && snap.threadId === threadId) return snap.messages;
+  return messagesFor(threadId);
 }
 
 /** How long a Copy button stays a tick. wove's own 1500ms (1704). */
@@ -194,31 +193,18 @@ function ImageViewer({ url, alt, onClose }: { url: string; alt: string; onClose:
 
 export default function ChatScreen() {
   const { turn, setTurn, refs, clearRefs, notify, currentThreadId: threadId } = useNav();
-  const [msgs, setMsgs] = useState<Msg[]>(() => {
-    /* Read synchronously on first render, not in an effect: the old shape
-       (empty state + effect that filled it) painted the welcome screen for
-       one frame, then swapped in the history — a blank chat that jumps on
-       every reload. Threads are small (pointers, not photos) so this stays
-       cheap. A reload mid-reply strands a `streaming` row with no stream
-       behind it — it can never finish, so it lands as a note with regen
-       beside it to re-ask. */
-    const initial = threadId ? getThread(threadId)?.messages ?? [] : [];
-    seedMsgId(initial);
-    return initial.map((m) =>
-      m.streaming ? { ...m, streaming: false, note: 'Reloaded before the reply arrived.' } : m,
-    );
-  });
+  /* Mount messages come from the same boot that App read: on the boot thread
+     the snapshot already holds them (no second storage read, no welcome
+     flash, no render-phase setState). On any other thread — impossible on
+     mount today since App always boots the open one — fall back to the same
+     `messagesFor` every switch uses. The effect below handles *switches*
+     only (thread A → thread B), which is what effects are for. */
+  const [msgs, setMsgs] = useState<Msg[]>(() => bootMountMessages(threadId));
   const [loadedId, setLoadedId] = useState(threadId);
   useEffect(() => {
     if (loadedId === threadId) return;
-    const next = threadId ? getThread(threadId)?.messages ?? [] : [];
-    seedMsgId(next);
     setLoadedId(threadId);
-    setMsgs(
-      next.map((m) =>
-        m.streaming ? { ...m, streaming: false, note: 'Reloaded before the reply arrived.' } : m,
-      ),
-    );
+    setMsgs(messagesFor(threadId));
   }, [threadId, loadedId]);
   const [viewing, setViewing] = useState<{ url: string; alt: string } | null>(null);
   /* Replies in flight. A ref rather than state because the only reader is the
@@ -317,7 +303,7 @@ export default function ChatScreen() {
        mockup's own `slice(0,-1)` is doing (1871). */
     const body = toApiBody(buildRequest({ ...turn, mode: moved ?? turn.mode }, refs, text), history ?? msgs);
 
-    /* Two ids from one reading of the clock — the turn, and the reply it is
+    /* Two ids from one counter — the turn, and the reply it is
        waiting for — so the reply can still be found in the list while pieces of
        it are arriving and the list is being appended to. */
     const id = msgId();

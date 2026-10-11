@@ -14,12 +14,12 @@ import { NavContext, DEFAULT_TURN, type Nav, type PanelView, type Ref, type Turn
 import {
   createThread,
   deleteThread,
-  getCurrentThreadId,
   getThread,
   getThreads,
   setCurrentThreadId,
   type Thread,
 } from './threads';
+import { boot } from './boot';
 import { logEv } from './log';
 import { saveUpload, uploadData } from './uploads';
 
@@ -30,6 +30,11 @@ interface Pushed {
 }
 
 export default function App() {
+  /* One boot, before first paint: thread id + messages + list + the
+     reload-keeps / reopen-fresh rule, computed once and memoized inside
+     boot.ts (StrictMode double-invokes initializers — without the memo a
+     cold open would create two threads and orphan the first). */
+  const [snap] = useState(() => boot());
   const [tab, setTab] = useState<TabId>('chat');
   const [stack, setStack] = useState<Pushed[]>([]);
   const [railCollapsed, setRailCollapsed] = useState(false);
@@ -147,41 +152,23 @@ export default function App() {
 
   /* Chat threads — App owns them so the drawer ("New chat", "Recent chats")
      and ChatScreen read the same state. */
-  const [threads, setThreads] = useState<Thread[]>(() => getThreads());
-  /* The open thread id boots synchronously from storage: starting at null
-     and filling it in an effect meant the first render never knew the thread,
-     so ChatScreen painted the welcome screen for one frame before the real
-     id arrived — the reload flash. A cold open (fresh tab, relaunch) starts
-     a new chat instead of dropping back into the old one: reload keeps you
-     (same tab session), reopen starts fresh. The effect below stays as the
-     backstop (missing id creates a thread), but the common path needs no
-     effect. */
-  const [currentThreadId, setCurrentId] = useState<string | null>(() => {
-    try {
-      if (!sessionStorage.getItem('eumae:session')) {
-        const fresh = createThread();
-        setCurrentThreadId(fresh.id);
-        sessionStorage.setItem('eumae:session', '1');
-        return fresh.id;
-      }
-    } catch {
-      /* Storage blocked — fall through to the stored id. */
-    }
-    return getCurrentThreadId();
-  });
+  const [threads, setThreads] = useState<Thread[]>(() => snap.threads);
+  /* The open thread id boots from the boot snapshot, not from storage
+     directly and not from null: boot ran once before first paint and
+     already applied the reload-keeps / reopen-fresh rule, so the first
+     render knows the thread and ChatScreen paints history frame one. */
+  const [currentThreadId, setCurrentId] = useState<string | null>(() => snap.threadId);
 
+  /* Backstop only: boot already resolved the happy path before first paint,
+     so this never creates or loads on a normal boot — it covers a corrupt
+     stored id (thread deleted elsewhere, storage edited by hand). */
   useEffect(() => {
-    const id = getCurrentThreadId();
-    const thread = id ? getThread(id) : undefined;
-    if (thread) {
-      setCurrentId(thread.id);
-    } else {
-      const fresh = createThread();
-      setCurrentThreadId(fresh.id);
-      setCurrentId(fresh.id);
-    }
+    if (!currentThreadId || getThread(currentThreadId)) return;
+    const fresh = createThread();
+    setCurrentThreadId(fresh.id);
+    setCurrentId(fresh.id);
     setThreads(getThreads());
-  }, []);
+  }, [currentThreadId]);
 
   const newChat = useCallback(() => {
     const fresh = createThread();
