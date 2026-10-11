@@ -501,10 +501,12 @@ input,textarea,select{ font-family:inherit; }
 /* Phone keyboard open: the tab bar leaves. While typing, the composer needs
    every pixel and the tab bar is unreachable behind the keyboard anyway —
    hiding it also stops the keyboard+tabbar double-stack that used to squeeze
-   the thread to a slit. Desktop unaffected (no tab bar there). The composer
-   keeps its own floor padding so it never touches the window edge. */
+   the thread to a slit. Desktop unaffected (no tab bar there). The foot drops
+   to the safe-area floor (2px + inset) so it sits flush above the keyboard —
+   the Vercel preview pill floats over the page chrome, not the layout, so it
+   never costs space; the gap it seemed to hold was this padding. */
 #app.kbd-open .tbar{ display:none; }
-#app.kbd-open .chatFoot{ padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
+#app.kbd-open .chatFoot{ padding-bottom:calc(2px + env(safe-area-inset-bottom)); }
 
 /* Desktop has no tab bar under the composer — the window edge is the floor, so
    the padding comes back. */
