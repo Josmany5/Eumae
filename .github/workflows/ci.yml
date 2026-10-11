@@ -18,6 +18,8 @@ jobs:
       - run: npm run build
       - run: npm run check:chat
       - run: npm run check:chat:selftest
+      - run: npm run check:chat-md
+      - run: npm run check:chat-md:selftest
       - run: npm run check:models:selftest
       - run: npm run check:voice
       - run: npm run check:voice:selftest

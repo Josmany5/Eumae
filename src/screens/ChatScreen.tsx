@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Composer from '../components/shell/Composer';
 import { Icon } from '../components/shell/icons';
 import { useNav, type Mode } from '../nav';
@@ -8,6 +8,7 @@ import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice'
 import { buildRequest, toApiBody } from '../request';
 import { getThread, saveThread, titleFor, type Msg } from '../threads';
 import { uploadData } from '../uploads';
+import { renderMd } from '../md';
 
 /* A photo inside a saved message. The message carries the upload id (§4.15);
  * the bytes are looked up here, at render time. A message saved before the
@@ -54,6 +55,17 @@ function MsgImage({
 
 
 const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'What am I forgetting?'];
+
+/* An AI reply, rendered through markdown once it has landed. While words
+ *  are still arriving the raw text shows — formatting half a reply flickers
+ *  (`**half` with no close). Your own messages stay plain: if you type `**`
+ *  it stays literal. Memoized per message text so a stream of pieces does
+ *  not re-render every bubble on every chunk. */
+function ReplyText({ text, streaming }: { text: string; streaming?: boolean }) {
+  const html = useMemo(() => (streaming ? null : renderMd(text)), [text, streaming]);
+  if (html === null) return <>{text}</>;
+  return <span className="md" dangerouslySetInnerHTML={{ __html: html }} />;
+}
 
 /* Message IDs come from a counter, not the clock. Two sends in the same
    millisecond used to collide — Date.now() is not an ID. The counter starts
@@ -423,6 +435,29 @@ export default function ChatScreen() {
     send(text, false, kept);
   };
 
+  /** Ask again for the same thing — one small icon under a reply, nothing
+   *  else. The last user message goes out again as a fresh send (same text,
+   *  photo looked up again by id), so regen on a photo thread still carries
+   *  the photo. Not while a reply is arriving. */
+  const regen = () => {
+    if (inFlight.current > 0) {
+      notify('Wait for the reply to finish.');
+      return;
+    }
+    let at = -1;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'you') {
+        at = i;
+        break;
+      }
+    }
+    if (at < 0) return;
+    const kept = msgs.slice(0, at);
+    setMsgs(kept);
+    saveNow(kept);
+    send(msgs[at].text, false, kept);
+  };
+
   return (
     <div className="chat">
       <div className="chatScroll" ref={scroller}>
@@ -529,7 +564,11 @@ export default function ChatScreen() {
                                 ))}
                             </div>
                           ) : null}
-                          {m.text}
+                          {m.role === 'eumae' && m.text ? (
+                            <ReplyText text={m.text} streaming={m.streaming} />
+                          ) : (
+                            m.text
+                          )}
                           {m.note ? <div className="bubbleNote">{m.note}</div> : null}
                           {m.sources && m.sources.length > 0 ? (
                             <SourcesPill sources={m.sources} />
@@ -570,14 +609,24 @@ export default function ChatScreen() {
                         <Icon name={copied === m.id ? 'tick' : 'cp'} />
                       </button>
                       {m.role === 'eumae' ? (
-                        <button
-                          className="mrowBtn"
-                          onClick={() => speak(m.text, notify)}
-                          aria-label="Read aloud"
-                          title="Read aloud"
-                        >
-                          <Icon name="spk" />
-                        </button>
+                        <>
+                          <button
+                            className="mrowBtn"
+                            onClick={() => speak(m.text, notify)}
+                            aria-label="Read aloud"
+                            title="Read aloud"
+                          >
+                            <Icon name="spk" />
+                          </button>
+                          <button
+                            className="mrowBtn"
+                            onClick={regen}
+                            aria-label="Regenerate reply"
+                            title="Regenerate reply"
+                          >
+                            <Icon name="rgn" />
+                          </button>
+                        </>
                       ) : (
                         <button
                           className="mrowBtn"

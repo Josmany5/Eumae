@@ -65,6 +65,9 @@ const PATHS: Record<string, JSX.Element> = {
      the only receipt wove has, and cheaper than a toast that covers the text
      you just copied. */
   cp: <><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></>,
+  /* Regen — one circular arrow, same stroke as the row it sits in. Drawn
+     here rather than borrowed: no existing glyph means "ask again". */
+  rgn: <><path d="M20 12a8 8 0 1 1-2.3-5.6" /><path d="M20 3v4h-4" /></>,
   ed: <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931z" />,
   tick: <path d="M5 13l4 4L19 7" />,
 
