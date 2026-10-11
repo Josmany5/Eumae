@@ -271,6 +271,52 @@ came from, what it would touch, what is still open.
 - **Touches:** `ChatScreen.tsx`, `RightPanel.tsx`, future compiler-lite.
 - **Open:** Q151 starter set; C66 worker-vs-chat (hybrid proposed).
 
+## I20 — Saved links (sources + uploads, file for later)
+
+- **From:** owner, 2026-10-11 — rarest-insect moment: 9 sources each discussing
+  it, "can i save the links? for later read".
+- **Says:** per-chip "save" + per-reply "save all" into a new `eumae:saved`
+  store (`{uri, title, domain, savedAt, fromThread}`); Library gains a Saved
+  filter beside uploads; dedup by URI. Uploads join the same shelf.
+- **Touches:** new `src/saved.ts`, `ChatScreen.tsx` chips, `LibraryScreen.tsx`.
+- **Open:** none — file by derived topic tags, folders only when earned (I23).
+
+## I21 — Distill (9 pages into one note)
+
+- **From:** owner, 2026-10-11 — "can it distill info on the pages i am asking
+  about", note/doc/slide anything.
+- **Says:** "Distill these" on a sourced reply sends the URIs back through the
+  model (URL context tool) with a distill prompt (facts, agreements,
+  disagreements, one line each + cited); output lands as a Note titled from
+  the thread, sources attached as saved links. Note first (Notes exists);
+  Doc/Slide later.
+- **Touches:** `api/ai.ts` (distill action), `ChatScreen.tsx`, `notes.ts`.
+- **Open:** exact distill prompt wording (needs I18).
+
+## I22 — Waiter behavior (read back, propose, follow up)
+
+- **From:** owner, 2026-10-11 — "like a waiter who reads back your order",
+  plan approve/edit/add, follow-ups that share what it can do + ask to learn
+  you, "save ideas for later phase in plan glass box".
+- **Says:** multi-step asks end with a one-line read-back + approve/edit
+  (C68/C69 propose-and-approve, C07 harmless-auto/consequential-asks live);
+  after actions, one tied follow-up (deeper / organize / save) with examples
+  of possible directions. Lives in the prompt (I18), rendered by the plan
+  card (I19).
+- **Touches:** `src/request.ts` (I18 layers), plan card (I19).
+- **Open:** Q151 starter sentences; exact Layer 1 waiter wording.
+
+## I23 — Filing rule (derive, don't invent; folders when earned)
+
+- **From:** owner, 2026-10-11 — "how to file and how the app titles new
+  folders".
+- **Says:** no folders yet — saved links file by derived topic tags (domain +
+  thread title at save time), filterable in Library. Titles come from the
+  page, never invented. Folders only when 50+ saved makes tags feel thin,
+  same derive-don't-invent rule.
+- **Touches:** `src/saved.ts`, `LibraryScreen.tsx`.
+- **Open:** tag derivation exact rules.
+
 ---
 
 ## Reversals and changes of mind
