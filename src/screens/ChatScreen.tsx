@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Composer from '../components/shell/Composer';
 import { Icon } from '../components/shell/icons';
 import { useNav, type Mode } from '../nav';
@@ -201,18 +201,53 @@ export default function ChatScreen() {
      only (thread A → thread B), which is what effects are for. */
   const [msgs, setMsgs] = useState<Msg[]>(() => bootMountMessages(threadId));
   const [loadedId, setLoadedId] = useState(threadId);
-  useEffect(() => {
-    if (loadedId === threadId) return;
-    setLoadedId(threadId);
-    setMsgs(messagesFor(threadId));
-  }, [threadId, loadedId]);
-  const [viewing, setViewing] = useState<{ url: string; alt: string } | null>(null);
+
   /* Replies in flight. A ref rather than state because the only reader is the
      mic's guard, which is called from a speech event and not from a render
      (`VoiceTyping.busy`, voice.ts:55) — and because a counter in state would
      re-render the whole thread on every frame of a stream. */
   const inFlight = useRef(0);
   const scroller = useRef<HTMLDivElement>(null);
+
+  /* Whether the newest line is in view. The scroll button answers exactly
+     this: shown when you have gone back to read, hidden at the bottom where
+     it would cover the reply for no reason. A reader, not a writer — nothing
+     here scrolls, it only reports. */
+  const [atBottom, setAtBottom] = useState(true);
+  const atBottomRef = useRef(true);
+  const markAtBottom = useCallback((v: boolean) => {
+    atBottomRef.current = v;
+    setAtBottom(v);
+  }, []);
+
+  /* One read of the scroller's position: within a line of the floor counts as
+     the floor, because sub-pixel rounding otherwise flickers the button on
+     phones that land a hair above it. */
+  const readBottom = useCallback(() => {
+    const el = scroller.current;
+    if (!el) return;
+    markAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 24);
+  }, [markAtBottom]);
+
+  /* Jumping down is a user act: it re-pins the follow, so the stream resumes
+     carrying the view. */
+  const jumpToLatest = useCallback(() => {
+    const el = scroller.current;
+    if (!el) return;
+    markAtBottom(true);
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, [markAtBottom]);
+
+  useEffect(() => {
+    if (loadedId === threadId) return;
+    setLoadedId(threadId);
+    /* A switch is a deliberate jump to the newest line — re-pin the follow
+       and put the view at the floor in the same breath, so no stale position
+       from thread A leaks into thread B. */
+    markAtBottom(true);
+    setMsgs(messagesFor(threadId));
+  }, [threadId, loadedId, markAtBottom]);
+  const [viewing, setViewing] = useState<{ url: string; alt: string } | null>(null);
   /* The box open over a message, so its height can follow what is in it
      (below). Only one message is ever being edited, so one ref is enough. */
   const editRef = useRef<HTMLTextAreaElement>(null);
@@ -258,8 +293,13 @@ export default function ChatScreen() {
 
   /* Keep the newest line in view as pieces land. The mockup scrolls its thread
      the same way (1882); the trigger here is the thread itself, since a piece of
-     the reply arriving *is* a render. */
+     the reply arriving *is* a render. Conditional: arriving pieces carry the
+     view down only while you are at the bottom — the moment you scroll up to
+     read, the stream stops pulling and the down-button appears instead. New
+     sends and thread switches re-pin (both are deliberate jumps to the
+     newest line). */
   useEffect(() => {
+    if (!atBottomRef.current) return;
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [msgs]);
@@ -329,6 +369,8 @@ export default function ChatScreen() {
       const thread = getThread(threadId);
       if (thread) saveThread({ ...thread, title: titleFor(text) });
     }
+    /* Your own send re-pins the follow: you wrote it, you mean the newest. */
+    markAtBottom(true);
     /* Attachments belong to the message that carried them. The composer clears;
        the message keeps them. */
     clearRefs();
@@ -464,7 +506,7 @@ export default function ChatScreen() {
 
   return (
     <div className="chat">
-      <div className="chatScroll" ref={scroller}>
+      <div className="chatScroll" ref={scroller} onScroll={readBottom}>
         {msgs.length === 0 ? (
           <div className="hello">
             <h1 className="helloT">What are we doing today?</h1>
@@ -654,6 +696,15 @@ export default function ChatScreen() {
         {/* The mic needs to know whether a reply is in flight, and only this
             screen knows: the count is kept here (1857) and read there (1757). */}
         <Composer onSend={send} busy={() => inFlight.current > 0} />
+        {/* Down to the newest line. Shows only when you have left the bottom —
+            at the floor it would cover the reply for no reason. Jumping is a
+            user act, so it re-pins the follow and the stream resumes carrying
+            the view. No pill, no count: the mockup's shape is one arrow. */}
+        {!atBottom && (
+          <button className="chatDown" onClick={jumpToLatest} aria-label="Scroll to latest" title="Scroll to latest">
+            <Icon name="dn" />
+          </button>
+        )}
       </div>
 
       {viewing && (
