@@ -111,7 +111,9 @@ export default function App() {
         const upload = await saveUpload(file);
         const url = await uploadData(upload.id);
         const icon = upload.kind === 'image' ? 'img' : upload.kind === 'pdf' ? 'pdf' : 'doc';
-        attach({ label: upload.name, icon, url: url ?? undefined });
+        // The id is the pointer (§4.15); the url is the live preview only and is
+        // stripped before the thread is saved (ChatScreen saveNow).
+        attach({ label: upload.name, icon, uploadId: upload.id, url: url ?? undefined });
       } catch {
         notify('Could not read that file.');
       }

@@ -19,9 +19,18 @@ export type PanelView = 'context' | 'activity' | 'studio';
 export interface Ref {
   label: string;
   icon: string;
-  /** A data URL, when the reference is something you can look at — the photo the
-   *  paperclip read. The mockup shows the same thumbnail in its attach chip
-   *  (line 1664), so a photo reads as a photo and not as a filename. */
+  /** The upload id in IndexedDB (see src/uploads.ts), when the reference is
+   *  something you can look at — the photo the paperclip read. The bytes are
+   *  looked up with `uploadData(id)` at send-time and preview-time, never
+   *  stored here: a data URL is megabytes, an id is a few characters, and this
+   *  list is saved with the thread (§4.15). The mockup shows the same thumbnail
+   *  in its attach chip (line 1664), so a photo reads as a photo and not as a
+   *  filename. */
+  uploadId?: string;
+  /** A data URL, kept in memory only for the live preview — the thumbnail in
+   *  the composer and the panel while the ref is attached. Never saved: `saveNow`
+   *  strips it before the thread is written, and old threads carrying `url`
+   *  still render (ChatScreen reads either). */
   url?: string;
 }
 

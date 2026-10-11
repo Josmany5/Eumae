@@ -7,6 +7,50 @@ import { streamChat } from '../chat';
 import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice';
 import { buildRequest, toApiBody } from '../request';
 import { getThread, saveThread, titleFor, type Msg } from '../threads';
+import { uploadData } from '../uploads';
+
+/* A photo inside a saved message. The message carries the upload id (§4.15);
+ * the bytes are looked up here, at render time. A message saved before the
+ * pointer change carries the data URL itself (`url`) and renders straight
+ * from it — no migration, no wipe. While the lookup runs, nothing renders:
+ * a broken-image icon is worse than a beat of empty. */
+function MsgImage({
+  label,
+  uploadId,
+  url,
+  onView,
+}: {
+  label: string;
+  uploadId?: string;
+  url?: string;
+  onView: (url: string, alt: string) => void;
+}) {
+  const [src, setSrc] = useState<string | null>(url ?? null);
+  useEffect(() => {
+    if (url) {
+      setSrc(url);
+      return;
+    }
+    if (!uploadId) return;
+    let live = true;
+    uploadData(uploadId).then((u) => {
+      if (live && u) setSrc(u);
+    });
+    return () => {
+      live = false;
+    };
+  }, [uploadId, url]);
+  if (!src) return null;
+  return (
+    <button
+      className="msgAttachBtn"
+      onClick={() => onView(src, label)}
+      aria-label={`View ${label} full screen`}
+    >
+      <img className="msgAttachImg" src={src} alt={label} />
+    </button>
+  );
+}
 
 
 const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'What am I forgetting?'];
@@ -162,12 +206,34 @@ export default function ChatScreen() {
 
   /* Save the thread when a reply completes — not per chunk. Streaming used
      to rewrite all of storage on every piece of the reply. The messages stay
-     in state while they stream; storage catches up when the reply lands. */
+     in state while they stream; storage catches up when the reply lands.
+     Pointers only (§4.15): `body` (the full API request, base64 inside) and
+     `url` (the data URL) are stripped before writing — a photo-heavy chat
+     would otherwise fill the ~5MB localStorage box and silently stop sticking.
+     What survives is the upload id; bytes are re-looked-up with uploadData()
+     when the thread renders. Old threads that already carry `url` still render. */
   const saveNow = (messages: Msg[]) => {
     if (!threadId) return;
     const thread = getThread(threadId);
     if (!thread) return;
-    saveThread({ ...thread, messages });
+    const stripped: Msg[] = messages.map((m) => {
+      if (!m.attachments && !m.body) return m;
+      const { body: _body, ...rest } = m;
+      void _body;
+      return {
+        ...rest,
+        ...(rest.attachments
+          ? {
+              attachments: rest.attachments.map((a) => {
+                const { url: _url, ...kept } = a;
+                void _url;
+                return kept;
+              }),
+            }
+          : null),
+      };
+    });
+    saveThread({ ...thread, messages: stripped });
   };
   /* The id whose Copy just worked, so that button can be a tick for a moment
      (wove swaps the icon the same way, 1704). Zero is no message: ids are
@@ -231,7 +297,11 @@ export default function ChatScreen() {
     setMsgs((m) => {
       const next: Msg[] = [
         ...m,
-        { id, role: 'you', text, body, attachments: refs.map((r) => ({ label: r.label, icon: r.icon, url: r.url })), ts: now },
+        // Pointers only (§4.15): the upload id survives in storage, the data URL
+        // does not — saveNow strips `body` and `url` before writing. Bytes are
+        // looked up with uploadData() at send-time (above, via refs) and at
+        // render-time (below, via uploadId).
+        { id, role: 'you', text, attachments: refs.map((r) => ({ label: r.label, icon: r.icon, uploadId: r.uploadId, url: r.url })), ts: now },
         { id: replyId, role: 'eumae', text: '', streaming: true, ts: now },
       ];
       saveNow(next);
@@ -416,34 +486,35 @@ export default function ChatScreen() {
                     <>
                       {/* Images stand alone — the picture is the bubble, not
                           something inside it. Text and files go in the bubble
-                          below, the way every chat app does it. */}
-                      {m.attachments && m.attachments.some((a) => a.icon === 'img' && a.url) ? (
+                          below, the way every chat app does it. A saved message
+                          carries the upload id (§4.15); MsgImage resolves the
+                          bytes, or renders the carried url for older threads. */}
+                      {m.attachments && m.attachments.some((a) => a.icon === 'img' && (a.url || a.uploadId)) ? (
                         <div className="msgImgs">
                           {m.attachments
-                            .filter((a) => a.icon === 'img' && a.url)
+                            .filter((a) => a.icon === 'img' && (a.url || a.uploadId))
                             .map((a) => (
-                              <button
-                                key={a.label}
-                                className="msgAttachBtn"
-                                onClick={() => a.url && setViewing({ url: a.url, alt: a.label })}
-                                aria-label={`View ${a.label} full screen`}
-                              >
-                                <img className="msgAttachImg" src={a.url} alt={a.label} />
-                              </button>
+                              <MsgImage
+                                key={a.uploadId ?? a.label}
+                                label={a.label}
+                                uploadId={a.uploadId}
+                                url={a.url}
+                                onView={(url, alt) => setViewing({ url, alt })}
+                              />
                             ))}
                         </div>
                       ) : null}
                       {(m.text ||
-                        (m.attachments && m.attachments.some((a) => !(a.icon === 'img' && a.url))) ||
+                        (m.attachments && m.attachments.some((a) => !(a.icon === 'img' && (a.url || a.uploadId)))) ||
                         m.note ||
                         (m.sources && m.sources.length > 0)) ? (
                         <div className="bubble">
-                          {m.attachments && m.attachments.some((a) => !(a.icon === 'img' && a.url)) ? (
+                          {m.attachments && m.attachments.some((a) => !(a.icon === 'img' && (a.url || a.uploadId))) ? (
                             <div className="msgAttaches">
                               {m.attachments
-                                .filter((a) => !(a.icon === 'img' && a.url))
+                                .filter((a) => !(a.icon === 'img' && (a.url || a.uploadId)))
                                 .map((a) => (
-                                  <div key={a.label} className="msgAttach">
+                                  <div key={a.uploadId ?? a.label} className="msgAttach">
                                     <span className="msgAttachName">{a.label}</span>
                                   </div>
                                 ))}

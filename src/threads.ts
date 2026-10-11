@@ -1,13 +1,14 @@
 import type { ApiChatBody, ThreadTurn } from './request';
 
-/** One message in a thread. */
+/** One message in a thread. Attachments are pointers (§4.15): `uploadId`
+ *  survives in storage, `url` is memory-only (live send + live preview). */
 export interface Msg extends ThreadTurn {
   id: number;
   body?: ApiChatBody;
   streaming?: boolean;
   note?: string;
   sources?: { uri: string; title: string }[];
-  attachments?: { label: string; icon: string; url?: string }[];
+  attachments?: { label: string; icon: string; uploadId?: string; url?: string }[];
   ts: number;
 }
 
