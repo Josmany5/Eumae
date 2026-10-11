@@ -21,10 +21,16 @@ dependency for accounts.
 **Stage: pre-alpha (0.1).**
 
 - **Real:** the shell, navigation (rail / drawer / tab bar / pages), Settings (22
-  rows, 23 panes), the composer, the `+` menu, the right panel, the theme, and the
-  activity log behind Settings → Logs.
-- **Not real:** AI answers, accounts, chat persistence, Studio artifacts, any test
-  suite, any CI. `src/store/store.tsx`'s `EumaeState` is still an empty interface.
+  rows, 23 panes), the composer, the `+` menu, the right panel, the theme, the
+  activity log behind Settings → Logs, the chat sender (real streamed replies
+  via `/api/ai`), voice typing + read aloud, sign-in via Supabase, thread
+  persistence in `localStorage`, uploads to IndexedDB with a Library list, and
+  notes with list + detail pages.
+- **Not real:** Studio artifacts, Console / Classroom / Guild content (stubs
+  rendering `Empty`), cloud persistence (everything local except auth + AI),
+  the harness (no tools run yet), memory beyond the 24-turn window, any test
+  runner, any linter, any CI. `src/store/store.tsx`'s `EumaeState` is still an
+  empty interface — see §4.14, it will not be filled.
 
 ### The culture of this codebase — match it
 
@@ -50,7 +56,7 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (5569 lines across src/ + api/)
+### Code map (7722 lines across src/ + api/)
 
 That number is `find src api -type f | xargs wc -l | tail -1` — every TS, TSX and
 CSS line under the two directories, counted rather than remembered. It was 5014
@@ -160,9 +166,13 @@ new), 109 lines to `ChatScreen.tsx` (99 → 208, the send and the thread it draw
   and `pD` 6×. The project lost time reading the dead `pD` at line 242 ("Pinned
   project", "Customize") while the live one is at 1515. Before trusting any
   function, `grep -n` for *every* definition and take the last occurrence.
-- Open questions for the owner: whether to copy `wove-branch` into the repo (e.g.
-  `design/`) so it is versioned — note it contains his real name and email, so that
-  depends on whether the repo is public.
+- **The mockup is visual guidance, not law — settled 2026-10-11.** The repo has
+  grown past the mockups: chat, voice, auth, threads, uploads and notes are all
+  real and shaped by what was learned building them. Do not revert working code
+  to match the mockup. Steal only the *style* — colors, type, radius, spacing,
+  button shapes, the warm simple feel — and decide layout fresh. Both phone and
+  desktop web are first-class: one kit of components that rearranges, not two
+  apps. When in doubt, ask "does this look like Eumae?" and move on.
 
 ### Environment
 
@@ -753,6 +763,32 @@ Design tokens plus every component's styles in one file, class-named per compone
     same axis is what the log's facets will name — you × Eumae, thinking × doing —
     so both ends of a turn can say who acted instead of assuming it. Full queue,
     with what is still open on each, in `IDEAS.md`.
+14. **No global store — `EumaeState` will not be filled (2026-10-11).** `src/store/store.tsx`
+    is 23 lines holding nothing and nothing reads it (`useStore` has zero callers;
+    only `main.tsx` wraps the app in it). The real shared state already lives where
+    it belongs: `nav.ts` for UI state, `threads.ts` / `notes.ts` / `uploads.ts` for
+    data, `log.ts` for activity, Supabase for truth later. Filling the store would
+    create two places holding the same thing — the double-reader bug in §9. Delete
+    the file + its wrapper when convenient (30 seconds + build check); do not wait
+    for a reason. The `Actor` / `SavedItem` shape survives as database columns
+    (`owner_id`, timestamps, history), not as this box.
+15. **Attachments are pointers, not copies (2026-10-11).** A sent message must never
+    carry base64: it is saved with the thread and one photo-heavy chat fills the ~5MB
+    `localStorage` quota, after which `save()` silently keeps going in memory and chats
+    stop sticking. Save the bytes once (IndexedDB now, Supabase Storage later), save
+    only the upload id in the message, look the bytes up at send-time and preview-time.
+    Shrink to ~1600px max + a thumbnail for lists. This is a correctness rule, not style.
+16. **Supabase is truth, the browser is cache (2026-10-11).** Today chats, notes, uploads,
+    settings and the log live in five places that never talk, and sign-in unlocks the AI
+    without saving anything. The end state: Supabase tables own chats / notes / files /
+    memory / log, the browser keeps a fast offline copy, one Export backs up everything,
+    Delete everything means everything. Build toward it one table at a time; do not add
+    a sixth local key without a migration plan.
+17. **Vercel env is landed (2026-10-11).** All six vars are set in Vercel: `GEMINI_API_KEY`
+    + `GOOGLE_CLOUD_TTS_KEY` (server-only), `SUPABASE_URL` + `SUPABASE_ANON_KEY` (server
+    check), `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (public browser keys by design).
+    Cloud chat + voice + sign-in work on `eumae.vercel.app`. A 401 on Play Sample is auth
+    (no session), not keys.
 
 ---
 
@@ -1205,6 +1241,39 @@ behind one `useLog`, the area pills demoted to presets, a picker for the facets
 and a box for words. It waits on Phase 6 on purpose — a lens over one dimension
 is the pill row again.
 
+**Phase 8 — safety nets + photo-pointer + store delete (2026-10-11).** The
+enterprise floor: CI runs `typecheck + build + check:*:selftest` on every push
+(~15 lines YAML, blocks broken ships); add `esbuild` to devDeps (checks import
+it but it is not declared — fresh installs crash); ESLint + Prettier so style
+stops being argued; an error boundary so a crash is a message not a white
+screen; `.nvmrc` so Node pins. Same batch: messages stop carrying base64 (§4.15
+— pointer only, bytes looked up at send/preview, 1600px max + thumbnail), and
+`src/store/` is deleted (dead, §4.14). Small, safe, makes every later phase cheaper.
+
+**Phase 9 — split the monoliths (2026-10-11).** No rewrites, just slices:
+`Settings.tsx` (896) → one file per pane + shell; `voice.ts` (778) →
+`listen.ts` / `speak.ts` / `session.ts`; `tokens.css` (778) → tokens + per-screen
+sheets. Same code, smaller files — one-pane edits stop breaking other panes,
+and agent coders stop losing context.
+
+**Phase 10 — Supabase data layer (2026-10-11).** §4.16 made real, one table at a
+time: threads → notes → uploads index → log → memory. Browser stays as offline
+cache + write-through; one Export covers all keys; Delete everything means
+everything. Do not add a sixth local key without a migration plan.
+
+**Phase 11 — harness + Studio artifacts (2026-10-11).** The hands: a tool
+registry + permission checks + runner. `chatStream` already carries
+`functionCall` — wire `generate_image` end-to-end first (half-there), then
+`save_note`, `search_library`, `make_task`. Every tool call logs. Studio's
+reading stops being an honest empty when the first artifact lands. This is what
+makes Chat valuable — and what lets Eumae compete rather than just converse.
+
+**Phase 12 — memory (2026-10-11).** Three layers: (a) the 24-turn window (have
+it), (b) auto-summaries of old threads stored in Supabase, (c) sticky facts
+("prefers short answers") — searchable, editable in Settings, wiped by Delete
+everything. Then Console → Classroom → Guild, one room at a time, style-checked
+against wove-branch, desktop + mobile together.
+
 ---
 
 ## 7. Known gaps and deliberately deferred work
@@ -1291,30 +1360,35 @@ is the pill row again.
   server-side ones, plus the `VITE_SUPABASE_*` pair that it had deliberately left out
   until browser code read it. `src/auth.ts` reads them, so they are named — and
   anything secret must never carry that prefix, because Vite inlines it.
-- **No `main` branch** — the default is `rebuild/0-foundation` since 2026-10-08, and
-  `stage/0-foundation` carries the same commit since the force-push that ended the
-  second line (§7, Branches).
+- **No `main` branch** — outdated. The default is `main` (verified 2026-10-11);
+  earlier names (`stage/0-foundation`, `rebuild/0-foundation`) are history.
 - Fixed in `6cb3f4d`, listed so it isn't "fixed" twice: `.gitignore`'s `.DS_Store/`
   had a trailing slash, so it only ever matched a *directory* of that name and the
   file was never ignored.
 
 ## 8. Production-readiness gaps (the "enterprise" list)
 
-This was explained to the owner in plain language, and he has not decided to start
-it yet. In priority order for a solo pre-alpha project:
+Explained to the owner in plain language 2026-10-11: he wants enterprise-grade —
+harness, memory, all six views real on desktop + mobile, competing with frontier
+AI apps. Ordered below. Phases 8-12 in §6 are the build order; this section is
+the checklist behind them.
 
-**Soon — an afternoon, high payoff**
+**Phase 8 batch — an afternoon, high payoff**
 
 1. **CI.** `.github/workflows/ci.yml`: checkout, `actions/setup-node` (Node 24 or
-   `node-version-file: package.json`), `npm ci`, `npm run build`, `npm run
-   check:models:selftest`. Nothing else — the selftest is the one check that needs
-   no network, no key and no browser, so it can run there from day one. Its only
-   job is to stop the branch rotting and make "it builds" a fact instead of a
-   memory.
+   `node-version-file: package.json`), `npm ci`, `npm run build`, all three
+   selftests. Blocks broken ships. **Also add `esbuild` to devDeps** — `checks/`
+   imports it and it is undeclared, so fresh installs crash.
 2. **ESLint + Prettier.** `typescript-eslint` plus `eslint-plugin-react-hooks`
    (`rules-of-hooks` matters: this codebase calls `useStored` inside a component
    body), then Prettier for formatting. Add `npm run lint` and call it from CI.
-3. **Tests (vitest).** Promote §5's nine checks (checks 8 and 9 are already scripts
+3. **An error boundary**: one component around `<App />` with a message and a
+   reload button; today a render error is a white screen.
+4. **`.nvmrc`** (pins Node 24) + photo-pointer fix (§4.15) + `src/store/` delete (§4.14).
+
+**Later — Phases 9-12**
+
+4. **Tests (vitest).** Promote §5's nine checks (checks 8 and 9 are already scripts
    in `checks/`, and leave no scratch copy behind, so they are the shape the others
    should land in). Cheapest high-value order: the
    theme boot cases, the settings integrity check, `useStored` round-trip plus the
@@ -1324,8 +1398,6 @@ it yet. In priority order for a solo pre-alpha project:
    from a string. A node environment is enough — only reach for `jsdom` if a test
    needs `localStorage`, and the boot script can be tested by string injection
    instead.
-
-**Later — when it actually deploys**
 
 4. **`.env.example` + boot-time validation** — **mostly landed** with the
    AI-layer guardrails: `.env.example` names six keys with no values, and each
@@ -1342,8 +1414,13 @@ it yet. In priority order for a solo pre-alpha project:
    not 404 on Vercel.
 7. **Build hygiene**: sourcemaps in production, `manualChunks` to split React out
    (one 270 kB chunk today), and a size ceiling.
-8. **Monitoring**: error and performance reporting; matters only once strangers
-   use it.
+8. **Monitoring (Sentry).** A flight recorder: which screen crashed, on what
+   device, how many hit it. Without it, users leave silently. Add before charging
+   anyone, with alerts on failure spikes.
+9. **Rate limits + per-user quota on `/api/ai`.** Any signed-in caller can burn the
+   Google bill today (15MB image path included). Add per-minute caps before public launch.
+10. **Security headers + SPA rewrite** (`vercel.json` has `maxDuration: 60`; still
+   needs the rewrite so deep links don't 404).
 
 **Whenever**: `.nvmrc`, `CONTRIBUTING.md`, a PR template, and a decision about
 license and repo visibility (the repo currently carries a real name and email).
