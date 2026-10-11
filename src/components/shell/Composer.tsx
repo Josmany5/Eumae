@@ -36,6 +36,19 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
   const [text, setTextState] = useState('');
   const [micOn, setMicOn] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  /* Tap = pop, restarted on every tap. A pure `:focus-within` animation fires
+     once when focus enters and never again — later taps do nothing, and on
+     mobile the focus can already be "on" before the tap lands. So focus calls
+     `pop()`, which pulls the class off, forces a reflow, and puts it back:
+     the keyframe restarts from zero on every single tap. */
+  const pop = () => {
+    const el = barRef.current;
+    if (!el) return;
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+  };
   /* The field, and the one value every writer writes. The mic writes through
      `setText` and this send reads the same ref, so there is exactly one place
      the text lives — the mockup's `#cin.value` (1758), kept as a ref rather
@@ -188,7 +201,7 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
         </div>
       )}
 
-      <div className="cmp">
+      <div className="cmp" ref={barRef}>
         <button className="cmpIcon" onClick={openAdd} aria-label="Add" title="Add to this chat">
           <Icon name="pls" />
         </button>
@@ -201,6 +214,7 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
           rows={1}
           value={text}
           placeholder={placeholder}
+          onFocus={pop}
           onChange={(e) => {
             const value = e.target.value;
             setText(value);

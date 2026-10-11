@@ -570,10 +570,14 @@ input,textarea,select{ font-family:inherit; }
   55%{ transform:scale(1.03) translateY(-3px); }
   100%{ transform:scale(1) translateY(-1px); }
 }
-.cmp:focus-within{ animation:cmpTapPop .32s cubic-bezier(.34,1.56,.64,1);
-  transform:translateY(-1px);
+.cmp:focus-within{ transform:translateY(-1px);
   border-color:color-mix(in srgb, var(--ac) 45%, var(--hair));
   box-shadow:0 8px 28px rgba(0,0,0,.4), 0 0 0 4px var(--acsoft); }
+/* The tap pop — driven by Composer's `pop()` (focus restarts it), not by
+   :focus-within. A pure focus animation fires once and never re-triggers on
+   later taps; removing + re-adding this class restarts the keyframe every
+   tap. Settles at the same lift + ring as :focus-within above. */
+.cmp.pop{ animation:cmpTapPop .32s cubic-bezier(.34,1.56,.64,1); }
 /* The ring is the whole hover story: the pill lifts slightly, and the accent
    only shows up when you're actually in it. No border-colour jump mid-hover. */
 .cmp:hover{ border-color:var(--card3); }
