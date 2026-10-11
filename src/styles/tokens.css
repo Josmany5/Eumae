@@ -378,7 +378,10 @@ input,textarea,select{ font-family:inherit; }
    visual size. */
 .mrow{ display:flex; gap:0; padding:4px 0 0; align-items:center; }
 .mrowBtn{ display:inline-flex; align-items:center; justify-content:center;
-  width:36px; height:36px; padding:0; border:none; background:none;
+  /* Tighter than the composer's 40px: the row is furniture under a message,
+     not controls. Sits at 30px so the glyphs group — regen's loop carries more
+     ink than copy or edit, so a roomy box makes it read as standing apart. */
+  width:30px; height:30px; padding:0; border:none; background:none;
   color:var(--mut); cursor:pointer; border-radius:8px; line-height:0; }
 .mrowBtn:hover{ color:var(--tx); }
 .mrowBtn svg{ width:20px; height:20px; stroke:currentColor; fill:none;
@@ -453,18 +456,19 @@ input,textarea,select{ font-family:inherit; }
 .chatFoot::before{ content:""; position:absolute; left:0; right:0; top:-30px; height:30px;
   background:linear-gradient(to bottom, transparent, var(--bg)); pointer-events:none; }
 .chatFoot .cmpWrap{ max-width:720px; margin-left:auto; margin-right:auto; }
-/* Down to the newest line. A plain wide chevron, centered, floating just
-   above the composer — no circle, no chrome. Hidden at the floor (where it
-   would sit on the reply for no reason), shown the moment you scroll up to
-   read. White, slightly larger, soft shadow so it reads over any text. */
-.chatDown{ position:absolute; left:50%; transform:translateX(-50%); top:-32px;
-  width:36px; height:32px; display:inline-flex; align-items:center; justify-content:center;
-  color:#fff; opacity:.92; }
-.chatDown:hover{ opacity:1; }
-.chatDown:active{ transform:translateX(-50%) scale(.92); }
-.chatDown svg{ width:26px; height:26px; stroke:currentColor; fill:none; stroke-width:2.2;
-  stroke-linecap:round; stroke-linejoin:round;
-  filter:drop-shadow(0 1px 5px rgba(0,0,0,.6)); }
+/* Down to the newest line. A circle + arrow, centered, floating just above
+   the composer — small (36px, under the composer's 40px buttons) so it never
+   reads as a second send. Hidden at the floor (where it would cover the reply
+   for no reason), shown the moment you scroll up to read. */
+.chatDown{ position:absolute; left:50%; transform:translateX(-50%); top:-48px;
+  width:36px; height:36px; border-radius:50%;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:var(--card2); border:1px solid var(--hair); color:var(--tx);
+  box-shadow:0 4px 14px rgba(0,0,0,.35); }
+.chatDown:hover{ background:var(--card3); }
+.chatDown:active{ transform:translateX(-50%) scale(.94); }
+.chatDown svg{ width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:1.9;
+  stroke-linecap:round; stroke-linejoin:round; }
 
 /* Desktop has no tab bar under the composer — the window edge is the floor, so
    the padding comes back. */
