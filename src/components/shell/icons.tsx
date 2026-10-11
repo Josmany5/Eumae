@@ -59,7 +59,7 @@ const PATHS: Record<string, JSX.Element> = {
      tab bar's: `IC_SPK` (1639) is a speaker cone with one wave, drawn on the row
      under a reply (rowA, 1642). Not `mic` — that one belongs to the composer, and
      a reply wearing it would look like it was listening. */
-  spk: <><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></>,
+  spk: <><path d="M13 5 8 9H5v6h3l5 4z" /><path d="M17.5 8.5a5 5 0 0 1 0 7" /></>,
 
   /* The row's other two, from the same place: `IC_COPY` and `IC_EDIT`, drawn at
      1636 and hung on the two rows above (1642 is the reply's Copy and Read
@@ -72,7 +72,7 @@ const PATHS: Record<string, JSX.Element> = {
      is r=6.5 (not 8) with a short head, because a full-circle glyph carries
      far more ink than copy's two strokes or edit's single outline — at the
      same box it always reads heavier and wider. Same 20px frame, less ink. */
-  rgn: <><path d="M18.5 12a6.5 6.5 0 1 1-1.9-4.6" /><path d="M18.5 5v3.5h-3.5" /></>,
+  rgn: <><path d="M17.5 12a6.5 6.5 0 1 1-1.9-4.6" /><path d="M17.5 5v3.5h-3.5" /></>,
   ed: <path d="M14 5l5 5L8 21H3v-5L14 5z" />,
   tick: <path d="M5 13l4 4L19 7" />,
 
