@@ -226,21 +226,29 @@ function SourcesPill({ sources }: { sources: { uri: string; title: string }[] })
       </button>
       {open && (
         <div className="sourcesChips">
-          {sources.map((s) => (
-            <a key={s.uri} href={s.uri} target="_blank" rel="noreferrer" className="sourceChip">
-              <img
-                className="sourceFav"
-                src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(s.title)}&sz=32`}
-                alt=""
-                loading="lazy"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = 'none';
-                }}
-              />
-              <span className="sourceTitle">{s.title}</span>
-              <span className="sourceDomain">{(() => { try { return new URL(s.uri).hostname.replace(/^www\./, ''); } catch { return s.uri; } })()}</span>
-            </a>
-          ))}
+          {sources.map((s) => {
+            let domain = s.uri;
+            try {
+              domain = new URL(s.uri).hostname.replace(/^www\./, '');
+            } catch {
+              /* Non-URL uri — show the title alone. */
+              domain = '';
+            }
+            return (
+              <a key={s.uri} href={s.uri} target="_blank" rel="noreferrer" className="sourceChip">
+                <img
+                  className="sourceFav"
+                  src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain || s.uri)}&sz=32`}
+                  alt=""
+                  loading="lazy"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                <span className="sourceTitle">{domain || s.title}</span>
+              </a>
+            );
+          })}
         </div>
       )}
     </div>
