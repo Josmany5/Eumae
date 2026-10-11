@@ -453,18 +453,18 @@ input,textarea,select{ font-family:inherit; }
 .chatFoot::before{ content:""; position:absolute; left:0; right:0; top:-30px; height:30px;
   background:linear-gradient(to bottom, transparent, var(--bg)); pointer-events:none; }
 .chatFoot .cmpWrap{ max-width:720px; margin-left:auto; margin-right:auto; }
-/* Down to the newest line. A plain arrow, centered, floating just above the
-   composer — no circle, no chrome. Hidden at the floor (where it would sit
-   on the reply for no reason), shown the moment you scroll up to read. Muted
-   until hovered, so it reads as furniture, not a button shouting for taps. */
-.chatDown{ position:absolute; left:50%; transform:translateX(-50%); top:-30px;
-  width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center;
-  color:var(--mut); }
-.chatDown:hover{ color:var(--tx); }
+/* Down to the newest line. A plain wide chevron, centered, floating just
+   above the composer — no circle, no chrome. Hidden at the floor (where it
+   would sit on the reply for no reason), shown the moment you scroll up to
+   read. White, slightly larger, soft shadow so it reads over any text. */
+.chatDown{ position:absolute; left:50%; transform:translateX(-50%); top:-32px;
+  width:36px; height:32px; display:inline-flex; align-items:center; justify-content:center;
+  color:#fff; opacity:.92; }
+.chatDown:hover{ opacity:1; }
 .chatDown:active{ transform:translateX(-50%) scale(.92); }
-.chatDown svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:2;
+.chatDown svg{ width:26px; height:26px; stroke:currentColor; fill:none; stroke-width:2.2;
   stroke-linecap:round; stroke-linejoin:round;
-  filter:drop-shadow(0 1px 4px rgba(0,0,0,.5)); }
+  filter:drop-shadow(0 1px 5px rgba(0,0,0,.6)); }
 
 /* Desktop has no tab bar under the composer — the window edge is the floor, so
    the padding comes back. */
