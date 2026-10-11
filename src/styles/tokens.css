@@ -453,19 +453,18 @@ input,textarea,select{ font-family:inherit; }
 .chatFoot::before{ content:""; position:absolute; left:0; right:0; top:-30px; height:30px;
   background:linear-gradient(to bottom, transparent, var(--bg)); pointer-events:none; }
 .chatFoot .cmpWrap{ max-width:720px; margin-left:auto; margin-right:auto; }
-/* Down to the newest line. Floats above the composer's top-right corner, out
-   of the reply's way: hidden at the floor (where it would cover text for no
-   reason), shown the moment you scroll up to read. Same 40px circle as the
-   composer's own buttons, same card fill, so it reads as furniture, not
-   chrome. */
-.chatDown{ position:absolute; right:26px; top:-52px; width:40px; height:40px; border-radius:50%;
-  display:inline-flex; align-items:center; justify-content:center;
-  background:var(--card2); border:1px solid var(--hair); color:var(--tx);
-  box-shadow:0 4px 14px rgba(0,0,0,.35); }
-.chatDown:hover{ background:var(--card3); }
-.chatDown:active{ transform:scale(.94); }
-.chatDown svg{ width:19px; height:19px; stroke:currentColor; fill:none; stroke-width:1.9;
-  stroke-linecap:round; stroke-linejoin:round; }
+/* Down to the newest line. A plain arrow, centered, floating just above the
+   composer — no circle, no chrome. Hidden at the floor (where it would sit
+   on the reply for no reason), shown the moment you scroll up to read. Muted
+   until hovered, so it reads as furniture, not a button shouting for taps. */
+.chatDown{ position:absolute; left:50%; transform:translateX(-50%); top:-30px;
+  width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center;
+  color:var(--mut); }
+.chatDown:hover{ color:var(--tx); }
+.chatDown:active{ transform:translateX(-50%) scale(.92); }
+.chatDown svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:2;
+  stroke-linecap:round; stroke-linejoin:round;
+  filter:drop-shadow(0 1px 4px rgba(0,0,0,.5)); }
 
 /* Desktop has no tab bar under the composer — the window edge is the floor, so
    the padding comes back. */
