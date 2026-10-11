@@ -379,9 +379,9 @@ input,textarea,select{ font-family:inherit; }
 .mrow{ display:flex; gap:0; padding:4px 0 0; align-items:center; }
 .mrowBtn{ display:inline-flex; align-items:center; justify-content:center;
   /* Tighter than the composer's 40px: the row is furniture under a message,
-     not controls. Sits at 30px so the glyphs group — regen's loop carries more
+     not controls. Sits at 25px so the glyphs group — regen's loop carries more
      ink than copy or edit, so a roomy box makes it read as standing apart. */
-  width:30px; height:30px; padding:0; border:none; background:none;
+  width:25px; height:25px; padding:0; border:none; background:none;
   color:var(--mut); cursor:pointer; border-radius:8px; line-height:0; }
 .mrowBtn:hover{ color:var(--tx); }
 .mrowBtn svg{ width:20px; height:20px; stroke:currentColor; fill:none;
