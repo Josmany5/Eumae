@@ -674,14 +674,24 @@ export default function ChatScreen() {
                           </button>
                         </>
                       ) : (
-                        <button
-                          className="mrowBtn"
-                          onClick={() => startEdit(m)}
-                          aria-label="Edit"
-                          title="Edit"
-                        >
-                          <Icon name="ed" />
-                        </button>
+                        <>
+                          <button
+                            className={`mrowBtn${copied === m.id ? ' ok' : ''}`}
+                            onClick={() => copy(m.text, m.id)}
+                            aria-label="Copy"
+                            title="Copy"
+                          >
+                            <Icon name={copied === m.id ? 'tick' : 'cp'} />
+                          </button>
+                          <button
+                            className="mrowBtn"
+                            onClick={() => startEdit(m)}
+                            aria-label="Edit"
+                            title="Edit"
+                          >
+                            <Icon name="ed" />
+                          </button>
+                        </>
                       )}
                     </div>
                   ) : null}

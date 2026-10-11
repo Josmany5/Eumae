@@ -73,7 +73,9 @@ const PATHS: Record<string, JSX.Element> = {
      far more ink than copy's two strokes or edit's single outline — at the
      same box it always reads heavier and wider. Same 20px frame, less ink. */
   rgn: <><path d="M16.5 12a6.5 6.5 0 1 1-1.9-4.6" /><path d="M16.5 5v3.5h-3.5" /></>,
-  ed: <path d="M14 5l5 5L8 21H3v-5L14 5z" />,
+  /* Slimmer outline pencil — the old one was a chunky diagonal slab next to
+     copy's light strokes. Same 20px frame, less fill. */
+  ed: <path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />,
   tick: <path d="M5 13l4 4L19 7" />,
 
   /* The six settings-only glyphs. Each is here because the nearest existing
