@@ -776,3 +776,13 @@ input,textarea,select{ font-family:inherit; }
 .noteEditor{ min-height:200px; font-size:17px; line-height:1.6; outline:none; padding:0 20px; }
 .noteEditor:empty:before{ content:attr(data-placeholder); color:var(--mut); }
 .noteEditor ul{ margin:8px 0; padding-left:20px; }
+
+/* The crash screen — shown by ErrorBoundary when a render fails. Same card
+   language as the rest of the app: centered, one action, no jargon. */
+.crash{ display:flex; align-items:center; justify-content:center; min-height:100dvh;
+  padding:24px; background:var(--bg); }
+.crash-card{ max-width:340px; text-align:center; display:flex; flex-direction:column; gap:12px; }
+.crash-title{ font-size:20px; font-weight:700; color:var(--tx); }
+.crash-note{ font-size:14px; line-height:1.5; color:var(--mut); }
+.crash-btn{ border:none; border-radius:12px; padding:12px 20px; font-size:15px;
+  font-weight:600; background:var(--ac); color:#fff; cursor:pointer; }

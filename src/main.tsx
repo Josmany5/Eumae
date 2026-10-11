@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/tokens.css';
 import App from './App';
+import ErrorBoundary from './components/shell/ErrorBoundary';
 import { StoreProvider } from './store/store';
 
 // Appearance is applied by the inline script in index.html, before the first
@@ -10,8 +11,10 @@ import { StoreProvider } from './store/store';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <StoreProvider>
-      <App />
-    </StoreProvider>
+    <ErrorBoundary>
+      <StoreProvider>
+        <App />
+      </StoreProvider>
+    </ErrorBoundary>
   </StrictMode>
 );
