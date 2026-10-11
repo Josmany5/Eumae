@@ -562,7 +562,16 @@ input,textarea,select{ font-family:inherit; }
   transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
 /* Typing pops the bar: focus-within lifts it a hair and warms the border
    toward the accent, so the composer answers the tap. */
-.cmp:focus-within{ transform:translateY(-1px);
+/* Tap = pop: the bar squishes then springs up when the field takes focus.
+   0% pressed in, 55% overshoot past rest, 100% settle at the focus lift.
+   Transform-only so no layout thrash; blur value never animates. */
+@keyframes cmpTapPop{
+  0%{ transform:scale(.96) translateY(3px); }
+  55%{ transform:scale(1.03) translateY(-3px); }
+  100%{ transform:scale(1) translateY(-1px); }
+}
+.cmp:focus-within{ animation:cmpTapPop .32s cubic-bezier(.34,1.56,.64,1);
+  transform:translateY(-1px);
   border-color:color-mix(in srgb, var(--ac) 45%, var(--hair));
   box-shadow:0 8px 28px rgba(0,0,0,.4), 0 0 0 4px var(--acsoft); }
 /* The ring is the whole hover story: the pill lifts slightly, and the accent
