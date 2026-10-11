@@ -386,6 +386,10 @@ input,textarea,select{ font-family:inherit; }
 .mrowBtn:hover{ color:var(--tx); }
 .mrowBtn svg{ width:20px; height:20px; stroke:currentColor; fill:none;
   stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+/* Read-aloud carries the least ink in the row — a small cone plus one wave
+   against copy's box and regen's loop — so its glyph alone renders slightly
+   larger (22px) to read even. The button box is untouched: no spacing moves. */
+.mrowBtn.spk svg{ width:22px; height:22px; }
 .mrowBtn:active{ transform:scale(.9); }
 /* Rendered reply — what the markdown in md.ts becomes on screen. Same
    typeface and size as the bubble: formatting, not a second voice. Bold,

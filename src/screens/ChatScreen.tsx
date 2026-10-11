@@ -657,7 +657,7 @@ export default function ChatScreen() {
                       {m.role === 'eumae' ? (
                         <>
                           <button
-                            className="mrowBtn"
+                            className="mrowBtn spk"
                             onClick={() => speak(m.text, notify)}
                             aria-label="Read aloud"
                             title="Read aloud"
