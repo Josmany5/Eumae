@@ -227,25 +227,35 @@ function SourcesPill({ sources }: { sources: { uri: string; title: string }[] })
       {open && (
         <div className="sourcesChips">
           {sources.map((s) => {
+            /* The site, not the search: domain from the page's own URI (what
+               the page calls itself lives in s.title already). The favicon
+               serves the same domain — never Google's, even though Google did
+               the searching. vertexai / google internals never reach here
+               (extractSources + cleanGrounding drop them), so no search-path
+               link can render. */
             let domain = '';
             try {
               domain = new URL(s.uri).hostname.replace(/^www\./, '');
             } catch {
-              /* Non-URL uri — title alone. */
+              /* Non-URL uri — title alone, no icon. */
             }
             return (
               <a key={s.uri} href={s.uri} target="_blank" rel="noreferrer" className="sourceChip">
-                <img
-                  className="sourceFav"
-                  src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain || s.uri)}&sz=32`}
-                  alt=""
-                  loading="lazy"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-                <span className="sourceTitle">{s.title}</span>
-                {domain && domain !== s.title ? <span className="sourceDomain">{domain}</span> : null}
+                {domain ? (
+                  <img
+                    className="sourceFav"
+                    src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`}
+                    alt=""
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                ) : null}
+                <span className="sourceText">
+                  <span className="sourceTitle">{s.title}</span>
+                  {domain && domain !== s.title ? <span className="sourceDomain">{domain}</span> : null}
+                </span>
               </a>
             );
           })}

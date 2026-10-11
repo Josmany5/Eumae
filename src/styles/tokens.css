@@ -368,15 +368,15 @@ input,textarea,select{ font-family:inherit; }
 .sourcesPill{ background:none; border:1px solid var(--hair); border-radius:99px;
   padding:4px 12px; font-size:11px; font-weight:600; color:var(--mut); }
 .sourcesChips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-.sourceChip{ display:inline-flex; align-items:center; gap:6px; padding:5px 10px 5px 6px;
-  background:var(--card2); border-radius:99px; font-size:12px; color:var(--tx);
-  text-decoration:none; max-width:180px; }
-.sourceChip span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-/* Title first, domain second — the title is what the page calls itself, the
-   domain is where it lives. Title carries the weight, domain sits muted.
-   Domain hides when it adds nothing (title already is the domain). */
-.sourceTitle{ font-weight:600; }
-.sourceDomain{ color:var(--mut); font-size:11px; }
+.sourceChip{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px 6px 7px;
+  background:var(--card2); border:1px solid var(--hair); border-radius:16px; font-size:12px; color:var(--tx);
+  text-decoration:none; max-width:100%; }
+/* Text stacks: full title on its own line (never cut), domain muted beneath.
+   The chip grows to fit — no ellipsis, no clipped half-lines. */
+.sourceText{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+.sourceTitle{ font-weight:600; white-space:normal; overflow:visible; }
+.sourceDomain{ color:var(--mut); font-size:11px; white-space:normal; overflow:visible; }
+
 .sourceFav{ width:16px; height:16px; border-radius:50%; flex:none; }
 /* Full-screen image viewer — dark backdrop, picture centered, × top-left. */
 .imgViewer{ position:fixed; inset:0; z-index:300; background:rgba(0,0,0,.92);
