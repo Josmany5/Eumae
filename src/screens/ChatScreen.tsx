@@ -201,16 +201,6 @@ export default function ChatScreen() {
      only (thread A → thread B), which is what effects are for. */
   const [msgs, setMsgs] = useState<Msg[]>(() => bootMountMessages(threadId));
   const [loadedId, setLoadedId] = useState(threadId);
-  useEffect(() => {
-    if (loadedId === threadId) return;
-    setLoadedId(threadId);
-    /* A switch is a deliberate jump to the newest line — re-pin the follow
-       so the stream resumes carrying the view. The floor pin itself lives in
-       the layout effect below (before paint); this one only swaps the thread
-       and the pin state. */
-    markAtBottom(true);
-    setMsgs(messagesFor(threadId));
-  }, [threadId, loadedId, markAtBottom]);
 
   /* Replies in flight. A ref rather than state because the only reader is the
      mic's guard, which is called from a speech event and not from a render
@@ -247,6 +237,16 @@ export default function ChatScreen() {
     markAtBottom(true);
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [markAtBottom]);
+
+  /* Thread switches swap the thread and re-pin the follow (a switch is a
+     deliberate jump to the newest line). The floor pin itself lives in the
+     layout effect below (before paint); this one only swaps + marks. */
+  useEffect(() => {
+    if (loadedId === threadId) return;
+    setLoadedId(threadId);
+    markAtBottom(true);
+    setMsgs(messagesFor(threadId));
+  }, [threadId, loadedId, markAtBottom]);
 
   /* Pin the view to the floor on mount and on thread switches, before paint.
      The follow effect below handles streams; this one handles the jump —
