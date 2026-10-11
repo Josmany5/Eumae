@@ -227,12 +227,11 @@ function SourcesPill({ sources }: { sources: { uri: string; title: string }[] })
       {open && (
         <div className="sourcesChips">
           {sources.map((s) => {
-            let domain = s.uri;
+            let domain = '';
             try {
               domain = new URL(s.uri).hostname.replace(/^www\./, '');
             } catch {
-              /* Non-URL uri — show the title alone. */
-              domain = '';
+              /* Non-URL uri — title alone. */
             }
             return (
               <a key={s.uri} href={s.uri} target="_blank" rel="noreferrer" className="sourceChip">
@@ -245,7 +244,8 @@ function SourcesPill({ sources }: { sources: { uri: string; title: string }[] })
                     (e.currentTarget as HTMLImageElement).style.display = 'none';
                   }}
                 />
-                <span className="sourceTitle">{domain || s.title}</span>
+                <span className="sourceTitle">{s.title}</span>
+                {domain && domain !== s.title ? <span className="sourceDomain">{domain}</span> : null}
               </a>
             );
           })}
