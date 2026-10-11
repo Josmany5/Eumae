@@ -37,17 +37,37 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
   const [micOn, setMicOn] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
-  /* Tap = pop, restarted on every tap. A pure `:focus-within` animation fires
-     once when focus enters and never again — later taps do nothing, and on
-     mobile the focus can already be "on" before the tap lands. So focus calls
-     `pop()`, which pulls the class off, forces a reflow, and puts it back:
-     the keyframe restarts from zero on every single tap. */
+  /* Tap = pop, every tap, iOS included. The old classList remove → reflow →
+     add trick never restarted reliably on iOS Safari (style recalc batches the
+     remove+add into a no-op), and onFocus fires once — tapping an already
+     focused field fires nothing. `el.animate()` restarts on every call by
+     construction, and firing on pointer-down (not focus) means every tap pops,
+     focused or not. The ref sits on `.cmpWrap` (no backdrop-filter), not `.cmp`:
+     animating scale on the same element that owns blur(14px) forces Safari to
+     re-rasterize the blur per frame and it drops the animation. The frosted bar
+     rides along as a cached layer. Transform-only, 350ms spring; reduce-motion
+     skips it. */
   const pop = () => {
     const el = barRef.current;
     if (!el) return;
-    el.classList.remove('pop');
-    void el.offsetWidth;
-    el.classList.add('pop');
+    try {
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+      if (document.documentElement.dataset.motion === 'reduce') return;
+    } catch {
+      /* Prefs unreadable — pop anyway. */
+    }
+    try {
+      el.animate(
+        [
+          { transform: 'scale(.96) translateY(3px)' },
+          { transform: 'scale(1.03) translateY(-3px)', offset: 0.55 },
+          { transform: 'scale(1) translateY(-1px)' },
+        ],
+        { duration: 350, easing: 'cubic-bezier(.34,1.56,.64,1)' },
+      );
+    } catch {
+      /* Web Animations missing — the :focus-within lift is the fallback. */
+    }
   };
   /* The field, and the one value every writer writes. The mic writes through
      `setText` and this send reads the same ref, so there is exactly one place
@@ -150,7 +170,7 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
   ].filter((p) => p.v);
 
   return (
-    <div className="cmpWrap">
+    <div className="cmpWrap" ref={barRef} onPointerDown={pop}>
       <div className="modeBar">
         {pills.map((p, i) => (
           <button key={p.k} className="modeChip" onClick={openAdd} title="How Eumae answers">
@@ -201,7 +221,7 @@ export default function Composer({ onSend, busy, placeholder = 'Ask Eumae' }: Co
         </div>
       )}
 
-      <div className="cmp" ref={barRef}>
+      <div className="cmp">
         <button className="cmpIcon" onClick={openAdd} aria-label="Add" title="Add to this chat">
           <Icon name="pls" />
         </button>

@@ -573,11 +573,15 @@ input,textarea,select{ font-family:inherit; }
 .cmp:focus-within{ transform:translateY(-1px);
   border-color:color-mix(in srgb, var(--ac) 45%, var(--hair));
   box-shadow:0 8px 28px rgba(0,0,0,.4), 0 0 0 4px var(--acsoft); }
-/* The tap pop — driven by Composer's `pop()` (focus restarts it), not by
-   :focus-within. A pure focus animation fires once and never re-triggers on
-   later taps; removing + re-adding this class restarts the keyframe every
-   tap. Settles at the same lift + ring as :focus-within above. */
+/* The tap pop — driven by Composer's `pop()` via the Web Animations API, not
+   by :focus-within. The class restart trick never retriggered on iOS and
+   onFocus fires once; `el.animate()` restarts on every call and fires on
+   pointer-down, so every tap pops. Kept as the no-JS fallback (first focus
+   with JS disabled still lifts). */
 .cmp.pop{ animation:cmpTapPop .32s cubic-bezier(.34,1.56,.64,1); }
+/* Taps must not wait: without this iOS can delay or swallow the pointer-down
+   the pop listens for. */
+.cmp{ touch-action:manipulation; }
 /* The ring is the whole hover story: the pill lifts slightly, and the accent
    only shows up when you're actually in it. No border-colour jump mid-hover. */
 .cmp:hover{ border-color:var(--card3); }
