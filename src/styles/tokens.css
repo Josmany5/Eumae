@@ -363,29 +363,26 @@ input,textarea,select{ font-family:inherit; }
   background:var(--card2); border-radius:10px; padding:6px 8px; }
 .msgAttachName{ font-size:12px; font-weight:500; overflow:hidden;
   text-overflow:ellipsis; white-space:nowrap; }
-/* The actions under a reply — the mockup's rowA (1642): 14px apart, and its
-   buttons bare (BTN, 1641: no background, no border, the muted colour, gone
-   bright under the cursor). The padding is the mockup's, doubled: 2px made a
-   22px target out of an 18px glyph, which is under the 44px a thumb wants. */
-.mrow{ display:flex; gap:14px; padding:5px 2px 0; }
-.mrowBtn{ color:var(--mut); padding:4px; line-height:0; }
+/* The actions under a reply — the mockup's rowA (1642): bare buttons (BTN,
+   1641: no background, no border, muted, bright on hover). Tight row, small
+   glyphs, next to each other — the rule below is the only one. */
 .mrowBtn:hover{ color:var(--tx); }
-.mrowBtn svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.7; }
 /* Copied. wove's own receipt (1704) is a green tick in place of the icon for a
    moment and nothing else — no toast, because a toast covers the words you just
    copied. Its green, so the two are recognisable as the same answer. */
 .mrowBtn.ok{ color:#30d158; }
-/* One row, one size, one rhythm. Every icon in the row is a 44px touch
-   target with a 20px glyph at 1.7 stroke — no 22px targets beside 44px
-   ones, no 18px glyphs beside 20px ones. The regen arrow draws at the
-   same weight so it reads as the same row, not a smaller cousin. */
-.mrow{ align-items:center; }
+/* One row, one size, one rhythm. Icons sit next to each other — tight 2px
+   gap, 32px targets, 17px glyphs — the mockup's bare row (1641/1642), not
+   big spaced circles. Regen and edit draw at the same weight so all three
+   read as one row. */
+.mrow{ display:flex; gap:2px; padding:4px 0 0; align-items:center; }
 .mrowBtn{ display:inline-flex; align-items:center; justify-content:center;
-  width:44px; height:44px; padding:0; border:none; background:none;
-  cursor:pointer; border-radius:50%; }
-.mrowBtn svg{ width:20px; height:20px; stroke:currentColor; fill:none;
+  width:32px; height:32px; padding:0; border:none; background:none;
+  color:var(--mut); cursor:pointer; border-radius:8px; line-height:0; }
+.mrowBtn:hover{ color:var(--tx); }
+.mrowBtn svg{ width:17px; height:17px; stroke:currentColor; fill:none;
   stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-.mrowBtn:active{ transform:scale(.92); }
+.mrowBtn:active{ transform:scale(.9); }
 /* Rendered reply — what the markdown in md.ts becomes on screen. Same
    typeface and size as the bubble: formatting, not a second voice. Bold,
    lists and headers breathe like paragraphs; code sits in its own gray
