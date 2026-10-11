@@ -22,6 +22,7 @@ jobs:
       - run: npm run check:chat-md:selftest
       - run: npm run check:boot
       - run: npm run check:welcome
+      - run: npm run check:threadwin
       - run: npm run check:models:selftest
       - run: npm run check:voice
       - run: npm run check:voice:selftest

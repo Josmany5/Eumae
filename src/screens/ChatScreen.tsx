@@ -62,6 +62,46 @@ function MsgImage({
 
 const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'What am I forgetting?'];
 
+/* Day lines + the 100-message window. Long threads used to render every
+   message ever — slow mounts, lost place. Now: the thread renders the newest
+   100 and groups them under Today / Yesterday / date lines. Older history
+   stays in storage and the drawer; the down-arrow you already have jumps to
+   the newest. Props in, rows out — pure, tested via checks/threadwin.mjs. */
+export interface ThreadRow {
+  kind: 'day' | 'msg';
+  label?: string;
+  msg?: Msg;
+}
+
+const WINDOW_MSGS = 100;
+
+export function dayLabel(ts: number, now: number): string {
+  const d = new Date(ts);
+  const n = new Date(now);
+  const day = (x: Date) => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
+  if (day(d) === day(n)) return 'Today';
+  const y = new Date(n);
+  y.setDate(n.getDate() - 1);
+  if (day(d) === day(y)) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: d.getFullYear() === n.getFullYear() ? undefined : 'numeric' });
+}
+
+export function threadRows(msgs: Msg[], now: number = Date.now()): { rows: ThreadRow[]; hidden: number } {
+  const hidden = Math.max(0, msgs.length - WINDOW_MSGS);
+  const windowed = msgs.slice(hidden);
+  const rows: ThreadRow[] = [];
+  let lastDay = '';
+  for (const msg of windowed) {
+    const label = dayLabel(msg.ts, now);
+    if (label !== lastDay) {
+      lastDay = label;
+      rows.push({ kind: 'day', label });
+    }
+    rows.push({ kind: 'msg', msg });
+  }
+  return { rows, hidden };
+}
+
 /* The smart welcome. A cold empty chat used to say the same line every time;
    this one reads the room: time of day for the greeting, and the person's own
    stuff (threads, uploads, notes) for the line under it. New users get the
@@ -573,6 +613,10 @@ export default function ChatScreen() {
     send(msgs[at].text, false, kept);
   };
 
+  /* The visible window: newest 100 under day lines. Memoized so a stream of
+     pieces re-slices only when the thread changes, not per chunk. */
+  const visible = useMemo(() => threadRows(msgs), [msgs]);
+
   return (
     <div className="chat">
       <div className="chatScroll" ref={scroller} onScroll={readBottom}>
@@ -593,9 +637,22 @@ export default function ChatScreen() {
           </div>
         ) : (
           <div className="thread">
-            {msgs.map((m) => (
-              <div key={m.id} className={`msg ${m.role}`}>
-                <div className={`msgCol${editing?.id === m.id ? ' editing' : ''}`}>
+            {visible.hidden > 0 ? (
+              <div className="dayLine">
+                <span>{visible.hidden} older message{visible.hidden === 1 ? '' : 's'} in history</span>
+              </div>
+            ) : null}
+            {visible.rows.map((row) =>
+              row.kind === 'day' ? (
+                <div className="dayLine" key={`day-${row.label}`}>
+                  <span>{row.label}</span>
+                </div>
+              ) : (
+                <div key={row.msg!.id} className={`msg ${row.msg!.role}`}>
+                  {(() => {
+                    const m = row.msg!;
+                    return (
+                      <div className={`msgCol${editing?.id === m.id ? ' editing' : ''}`}>
                   {editing?.id === m.id ? (
                     /* Your own message, open for rewriting — wove's inline box
                        (1715): the text where the bubble was, Cancel, Send. It sits
@@ -763,10 +820,12 @@ export default function ChatScreen() {
                           </button>
                         </>
                       )}
+                      </div>
+                    ) : null}
                     </div>
-                  ) : null}
+                    );
+                  })()}
                 </div>
-              </div>
             ))}
           </div>
         )}

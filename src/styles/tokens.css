@@ -328,6 +328,14 @@ input,textarea,select{ font-family:inherit; }
   background:var(--card); border:1px solid var(--hair); }
 .chip:hover{ background:var(--card2); }
 .thread{ width:100%; max-width:720px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+/* Day lines — Today / Yesterday / date. A centered muted label with hairlines
+   either side: divides time without boxing anything. The history note wears
+   the same line (older messages live in storage + drawer, not in this
+   window). */
+.dayLine{ display:flex; align-items:center; gap:12px; margin:6px 0 2px;
+  font-size:12px; font-weight:600; letter-spacing:.04em; color:var(--mut); }
+.dayLine::before, .dayLine::after{ content:""; flex:1; height:1px; background:var(--hair); }
+.dayLine span{ white-space:nowrap; }
 .msg{ display:flex; }
 .msg.you{ justify-content:flex-end; }
 .bubble{ max-width:80%; padding:11px 15px; border-radius:16px; font-size:15px; line-height:1.6;
