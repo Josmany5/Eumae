@@ -291,7 +291,18 @@ export default function App() {
     [goTab, notify, pickFile, newChat],
   );
 
-  const appClass = [railCollapsed ? 'railCollapsed' : '', panelOpen ? 'panelOpen' : '']
+  /* First paint lands with transitions off (tokens.css `#app.booting`): the
+     parked drawer/panel/sheets would otherwise slide visibly on mount during
+     a fast reload. One frame is enough — the browser has placed everything by
+     then, and every later open/close animates as before. Hook order: these run
+     unconditionally, above, in the same order every render. */
+  const [booting, setBooting] = useState(true);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setBooting(false));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const appClass = [railCollapsed ? 'railCollapsed' : '', panelOpen ? 'panelOpen' : '', booting ? 'booting' : '']
     .filter(Boolean)
     .join(' ');
 

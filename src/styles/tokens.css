@@ -60,6 +60,14 @@ input,textarea,select{ font-family:inherit; }
    Defined once — no screen touches this, so no screen can resize the chrome.
    The pair of heights is deliberate: 100% is the fallback, dvh keeps the phone
    tab bar above the browser's URL bar as it collapses and expands. */
+/* First paint lands instantly: the drawer, panel, settings and add-sheet all
+   boot parked off-screen with slide transitions, and on a fast reload the
+   browser plays those transitions during mount — the left/right/bottom
+   surfaces visibly sweeping in and collapsing into the chat for ~300ms.
+   While `#app` carries `booting`, every transition is off; App drops the
+   class after one frame, so all later opens/closes still animate. */
+#app.booting *, #app.booting *::before, #app.booting *::after{
+  transition:none !important; }
 #app{ height:100%; height:100dvh; display:grid; grid-template-columns:1fr; background:var(--bg); }
 .col{ min-width:0; min-height:0; display:flex; flex-direction:column; background:var(--bg); }
 #mn{ flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
