@@ -76,7 +76,10 @@ export function saveThread(thread: Thread): void {
 export function createThread(): Thread {
   const now = Date.now();
   const thread: Thread = {
-    id: `t${now}`,
+    /* Random suffix: two creates in the same millisecond (fast double-tap New
+       chat, StrictMode double-boot) must never mint the same id and overwrite
+       each other. Same shape as uploads.ts. */
+    id: `t${now.toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`,
     title: 'New chat',
     createdAt: now,
     updatedAt: now,

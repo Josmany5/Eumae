@@ -1,3 +1,5 @@
+import { Icon } from './icons';
+
 interface HeaderProps {
   onMenu: () => void;
   onActivity: () => void;
@@ -22,12 +24,18 @@ function ActivityIcon() {
   );
 }
 
-export default function Header({ onMenu, onActivity, title }: HeaderProps) {
+export default function Header({ onMenu, onActivity, title, onBack }: HeaderProps) {
   return (
     <header className="hd">
-      <button className="hb" onClick={onMenu} aria-label="Menu">
-        <MenuIcon />
-      </button>
+      {onBack ? (
+        <button className="hb" onClick={onBack} aria-label="Back">
+          <Icon name="bk" />
+        </button>
+      ) : (
+        <button className="hb" onClick={onMenu} aria-label="Menu">
+          <MenuIcon />
+        </button>
+      )}
       <div className="t">{title}</div>
       <button className="hb" onClick={onActivity} aria-label="Activity">
         <ActivityIcon />

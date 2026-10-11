@@ -82,7 +82,9 @@ export function saveNote(note: Note): void {
 export function createNote(title = 'New note'): Note {
   const now = Date.now();
   const note: Note = {
-    id: `n${now}`,
+    /* Random suffix, like threads and uploads: two creates in the same
+       millisecond must never share an id. */
+    id: `n${now.toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`,
     title,
     entries: [],
     sortNewFirst: true,
@@ -101,5 +103,10 @@ export function deleteNote(id: string): void {
 /** Start a new entry — one per visit. */
 export function startEntry(): NoteEntry {
   const now = Date.now();
-  return { id: `e${now}`, text: '', createdAt: now, editedAt: now };
+  return {
+    id: `e${now.toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`,
+    text: '',
+    createdAt: now,
+    editedAt: now,
+  };
 }
