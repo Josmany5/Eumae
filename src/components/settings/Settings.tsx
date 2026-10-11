@@ -422,7 +422,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
                 ))}
                 <div className="btns">
                   {signedIn ? (
-                    <button className="gho" style={{ color: 'var(--rd)' }} onClick={signOut}>Sign out</button>
+                    <button className="gho danger" onClick={signOut}>Sign out</button>
                   ) : (
                     <button className="pri" onClick={() => setView('security')}>Sign in</button>
                   )}
@@ -442,14 +442,14 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
 
         {view === 'memory' && (
           <>
-            <div className="card" style={{ padding: '6px 14px' }}>
+            <div className="card cardPad">
               {mems.length === 0 ? (
                 <div className="s m">Nothing saved yet.</div>
               ) : (
                 mems.map((x) => (
                   <div className="gr" key={x.id}>
                     <div className="g">{x.t}</div>
-                    <button className="fb gho" style={{ color: 'var(--rd)' }} onClick={() => setMems(mems.filter((y) => y.id !== x.id))}>Forget</button>
+                    <button className="fb gho danger" onClick={() => setMems(mems.filter((y) => y.id !== x.id))}>Forget</button>
                   </div>
                 ))
               )}
@@ -459,7 +459,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
               <div className="btns">
                 <button className="pri" onClick={() => {
                   if (draft.trim()) {
-                    setMems([...mems, { id: 'm' + Date.now(), t: draft.trim() }]);
+                    setMems([...mems, { id: `m${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`, t: draft.trim() }]);
                     setDraft('');
                   }
                 }}>Teach Eumae</button>
@@ -470,7 +470,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
 
         {view === 'permissions' && (
           <>
-            <div className="card" style={{ padding: '6px 14px' }}>
+            <div className="card cardPad">
               {Object.entries(grants).map(([k, v]) => (
                 <div className="gr" key={k}>
                   <div className="g" style={{ textTransform: 'capitalize' }}><b>{GRANT_LABELS[k] || k}</b></div>
@@ -488,7 +488,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
 
         {view === 'skills' && (
           <>
-            <div className="card" style={{ padding: '6px 14px' }}>
+            <div className="card cardPad">
               <div className="gr">
                 <div className="g"><b>Web search</b></div>
                 <Toggle on={websearch} onClick={() => setWebsearch(!websearch)} label="Web search" />
@@ -500,7 +500,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
 
         {view === 'automations' && (
           <>
-            <div className="card" style={{ padding: '6px 14px' }}>
+            <div className="card cardPad">
               {autos.map((x) => (
                 <div className="gr" key={x.id}>
                   <div className="g"><b>{x.n}</b><div className="xs m">{x.w}</div></div>
@@ -516,7 +516,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
 
         {view === 'crew' && (
           <>
-            <div className="card" style={{ padding: '6px 14px' }}>
+            <div className="card cardPad">
               {CREW.map((x) => (
                 <div className="gr" key={x.n}>
                   <div className="g"><b>{x.n}</b><div className="xs m">{x.d}</div></div>
@@ -595,7 +595,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
         )}
 
         {view === 'notifications' && (
-          <div className="card" style={{ padding: '6px 14px' }}>
+          <div className="card cardPad">
             <div className="gr">
               <div className="g"><b>Allow notifications</b></div>
               <Toggle on={notif.allow} onClick={() => setNotif({ ...notif, allow: !notif.allow })} label="Allow notifications" />
@@ -640,21 +640,21 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
             to sit behind it moved in here, where the export action already lived. */}
         {view === 'datacontrols' && (
           <>
-            <div className="card" style={{ padding: '6px 14px' }}>
+            <div className="card cardPad">
               <div className="kv"><span className="m">What a backup holds</span><span>Everything Eumae keeps</span></div>
               <div className="kv"><span className="m">Where it goes</span><span>A file you keep</span></div>
             </div>
             <div className="btns">
               <button onClick={exportData}>Export my data</button>
               <button className="gho" onClick={() => notify('Restoring from a file arrives in a later stage')}>Restore from a file</button>
-              <button className="gho" style={{ color: 'var(--rd)' }} onClick={wipeData}>Delete everything</button>
+              <button className="gho danger" onClick={wipeData}>Delete everything</button>
             </div>
             <div className="s m">One plain JSON file, written on this device. Nothing is uploaded.</div>
           </>
         )}
 
         {view === 'storage' && (
-          <div className="card" style={{ padding: '6px 14px' }}>
+          <div className="card cardPad">
             <div className="kv"><span className="m">Things remembered</span><span>{mems.length} items</span></div>
             <div className="kv"><span className="m">Device</span><span>Local only</span></div>
           </div>
@@ -690,7 +690,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
                 <span className="v m">selected</span>
               </div>
             </div>
-            <div className="card" style={{ padding: '6px 14px' }}>
+            <div className="card cardPad">
               <div className="kv"><span className="m">Region</span><span>{LANG_FACTS.region}</span></div>
               <div className="kv"><span className="m">Date format</span><span>{LANG_FACTS.date}</span></div>
             </div>
@@ -700,7 +700,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
 
         {view === 'accessibility' && (
           <>
-            <div className="card" style={{ padding: '6px 14px' }}>
+            <div className="card cardPad">
               <div className="gr">
                 <div className="g"><b>Larger text</b></div>
                 <Toggle on={a11y.larger} onClick={() => setA11y({ ...a11y, larger: !a11y.larger })} label="Larger text" />
@@ -738,7 +738,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
 
         {view === 'security' && (
           <>
-            <div className="card" style={{ padding: '6px 14px' }}>
+            <div className="card cardPad">
               <div className="kv">
                 <span className="m">Signed in as</span>
                 <span>
@@ -767,7 +767,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
             ) : signedIn ? (
               <>
                 <div className="btns">
-                  <button className="gho" style={{ color: 'var(--rd)' }} onClick={signOut}>Sign out</button>
+                  <button className="gho danger" onClick={signOut}>Sign out</button>
                 </div>
                 <div className="s m">
                   Resetting a password by email, two-factor and a list of active sessions are not
@@ -844,7 +844,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
                 <button key={a} className={logArea === a ? 'on' : ''} onClick={() => setLogArea(a)}>{a}</button>
               ))}
             </div>
-            <div className="card" style={{ padding: '6px 14px' }}>
+            <div className="card cardPad">
               {/* The real log (src/log.ts), filtered by the pill you're on. The
                   mockup seeded invented rows here (line 1435); this pane shows
                   what actually happened, and stays empty — in its own words —
@@ -880,7 +880,7 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
 
         {view === 'about' && (
           <>
-            <div className="card" style={{ padding: '6px 14px' }}>
+            <div className="card cardPad">
               <div className="kv"><span className="m">Version</span><span>0.1</span></div>
               <div className="kv"><span className="m">Stage</span><span>Building</span></div>
               <div className="kv"><span className="m">Your data</span><span>Local only</span></div>

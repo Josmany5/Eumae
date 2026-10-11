@@ -67,11 +67,10 @@ const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'Wh
    100 and groups them under Today / Yesterday / date lines. Older history
    stays in storage and the drawer; the down-arrow you already have jumps to
    the newest. Props in, rows out — pure, tested via checks/threadwin.mjs. */
-export interface ThreadRow {
-  kind: 'day' | 'msg';
-  label?: string;
-  msg?: Msg;
-}
+/* A discriminated union, not a bag of optionals: a day row always carries a
+   label, a message row always carries its message. No `!` needed at the
+   reader — TypeScript narrows on `kind`, and a malformed row is unbuildable. */
+export type ThreadRow = { kind: 'day'; label: string } | { kind: 'msg'; msg: Msg };
 
 const WINDOW_MSGS = 100;
 
@@ -648,9 +647,9 @@ export default function ChatScreen() {
                   <span>{row.label}</span>
                 </div>
               ) : (
-                <div key={row.msg!.id} className={`msg ${row.msg!.role}`}>
+                <div key={row.msg.id} className={`msg ${row.msg.role}`}>
                   {(() => {
-                    const m = row.msg!;
+                    const m = row.msg;
                     return (
                       <div className={`msgCol${editing?.id === m.id ? ' editing' : ''}`}>
                   {editing?.id === m.id ? (

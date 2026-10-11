@@ -206,8 +206,12 @@ input,textarea,select{ font-family:inherit; }
 .tg.on::after{ left:22px; }
 .btns{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
 .btns button{ flex:1; white-space:nowrap; padding:12px; border-radius:12px; font-size:16px; font-weight:600; background:var(--card2); color:var(--tx); }
-.pri{ background:var(--ac) !important; color:#fff !important; }
-.gho{ background:none !important; color:var(--ac) !important; }
+/* Settings utilities: one padded card + one danger button, instead of the
+   same inline style handwritten ~25 times. */
+.cardPad{ padding:6px 14px; }
+.danger{ color:var(--rd); }
+.pri{ background:var(--ac); color:#fff; }
+.gho{ background:none; color:var(--ac); }
 .seg{ display:flex; gap:6px; margin:10px 0; }
 .seg button{ flex:1; padding:12px 16px; border-radius:12px; background:var(--card); font-size:16px; color:var(--tx); }
 .seg button.on{ background:var(--acsoft); color:var(--ac); font-weight:600; }
@@ -586,10 +590,8 @@ input,textarea,select{ font-family:inherit; }
 .cmp:focus-within{ transform:translateY(-1px);
   border-color:color-mix(in srgb, var(--ac) 45%, var(--hair));
   box-shadow:0 8px 28px rgba(0,0,0,.4), 0 0 0 4px var(--acsoft); }
-/* The tap pop — driven by Composer's `pop()` via the Web Animations API, not
-   by :focus-within. Gentle enlarge only (scale 1 → 1.025 → 1, no translate):
-   the old squish-then-spring shook on iOS. Kept as the no-JS fallback (first
-   focus with JS disabled still lifts). */
+/* No-JS fallback: scripts disabled means the Web Animations pop never runs,
+   so a `.pop` class still answers first focus with the keyframe. */
 .cmp.pop{ animation:cmpTapPop .32s cubic-bezier(.34,1.56,.64,1); }
 /* Taps must not wait: without this iOS can delay or swallow the pointer-down
    the pop listens for. */
