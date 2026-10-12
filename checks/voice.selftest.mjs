@@ -83,7 +83,7 @@ check(
 
 check(
   'fails when a row names a voice Google does not speak',
-  failingWith(VOICES.replace("name: 'Kore',", "name: 'Nova',")),
+  failingWith(VOICES.replace("name: 'Aoede',", "name: 'Nova',")),
   [
     'voices: six rows, each one naming the voice Google answers to',
     'voices: every name is one Google lists for US English',
@@ -96,7 +96,7 @@ check(
 
 check(
   "fails when a gender is not the one Google lists for that name",
-  failingWith(VOICES.replace("name: 'Puck',\n    gender: 'Male',", "name: 'Puck',\n    gender: 'Female',")),
+  failingWith(VOICES.replace("name: 'Algieba',\n    gender: 'Male',", "name: 'Algieba',\n    gender: 'Female',")),
   ["voices: every gender is Google's own for that name"],
 );
 

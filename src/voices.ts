@@ -1,31 +1,22 @@
 /* The voices the app offers — by Google's own names.
  *
- *  The mockup offers four: Nova, Alloy, Onyx and Shimmer (197, 613, 692). Those
- *  are OpenAI's voice names, and this server does not speak them: `speak`
- *  (api/ai.ts:416) asks Google Cloud Text-to-Speech for an `en-US-Chirp3-HD-*`
- *  name, and a name it does not recognise is answered with the default — so the
- *  four rows were one voice wearing four labels, which is why they all sounded
- *  the same. A row that names a voice nothing can fetch promises something that
- *  will never arrive.
+ *  The owner's own voice pane (screenshot, 2026-10-12) shows six, female first
+ *  then male: Achernar, Aoede, Leda, Achird, Algieba, Alnilam. That is what this
+ *  table now holds, in that order — the rows below replaced Kore, Puck and
+ *  Fenrir, which the pane never showed.
  *
- *  So the names here are the ones that API answers to: six of the thirty Chirp 3:
- *  HD voices Google documents for en-US
+ *  The names here are the ones that API answers to: members of the thirty Chirp
+ *  3: HD voices Google documents for en-US
  *  (cloud.google.com/text-to-speech/docs/chirp3-hd, read 2026-10-08 — the page
- *  the server's own table was checked against). The first two are the voices the
- *  server already spoke: Achernar was its fallback and Achird its `male`, so the
- *  default is unchanged and a stored name from the old four lands on it.
+ *  the server's own table was checked against). The first is the voice the
+ *  server already spoke: Achernar was its fallback, so the default is unchanged
+ *  and a stored name this app no longer offers lands on it.
  *
  *  What that page gives per voice is a name, a gender and a recording — no
- *  adjectives at all. So each row used to say where the name came from (every one
- *  of the thirty is a star, a moon, or a figure out of myth) and claimed nothing
- *  about the sound. The owner asked for the sound (2026-10-08), and he is right
- *  about the picker: six names and six star stories is a list about Google's
- *  naming, not about the only question this pane has to answer — which of these
- *  do I want to listen to. So `sound` says that, and it is the one line in this
- *  file that Google's page does not contain: written here, by this app, as a
- *  guide to how each voice reads. `gender` beside it stays Google's own column,
- *  which checks/voice.mjs holds it to, and Play sample is still where any
- *  description can be checked against the thing itself.
+ *  adjectives at all. So `sound` is this app's own guide, written here, to how
+ *  each voice reads: the one line in this file that Google's page does not
+ *  contain, and the reason the row is worth reading at all. Play sample is
+ *  where any description can be checked against the thing itself.
  */
 
 export interface Voice {
@@ -52,22 +43,10 @@ export const VOICES: Voice[] = [
     sound: 'Warm and even, unhurried — the calm one for a long answer.',
   },
   {
-    id: 'en-US-Chirp3-HD-Achird',
-    name: 'Achird',
-    gender: 'Male',
-    sound: 'Low and steady, with a narrator\u2019s edge.',
-  },
-  {
-    id: 'en-US-Chirp3-HD-Kore',
-    name: 'Kore',
+    id: 'en-US-Chirp3-HD-Aoede',
+    name: 'Aoede',
     gender: 'Female',
-    sound: 'Bright and clear, a little brisk — facts read quickly.',
-  },
-  {
-    id: 'en-US-Chirp3-HD-Puck',
-    name: 'Puck',
-    gender: 'Male',
-    sound: 'Light and young, with a lift at the end of a sentence.',
+    sound: 'Clear and lyrical, light without hurrying — stories read easily.',
   },
   {
     id: 'en-US-Chirp3-HD-Leda',
@@ -76,10 +55,22 @@ export const VOICES: Voice[] = [
     sound: 'Soft and close, slower than the rest — the bedtime one.',
   },
   {
-    id: 'en-US-Chirp3-HD-Fenrir',
-    name: 'Fenrir',
+    id: 'en-US-Chirp3-HD-Achird',
+    name: 'Achird',
     gender: 'Male',
-    sound: 'Deep and heavy, the slowest read of the six.',
+    sound: 'Low and steady, with a narrator\u2019s edge.',
+  },
+  {
+    id: 'en-US-Chirp3-HD-Algieba',
+    name: 'Algieba',
+    gender: 'Male',
+    sound: 'Full and measured, with weight behind it — the one for reading aloud.',
+  },
+  {
+    id: 'en-US-Chirp3-HD-Alnilam',
+    name: 'Alnilam',
+    gender: 'Male',
+    sound: 'Even and unhurried, middle of the road — nothing to trip over.',
   },
 ];
 
@@ -94,7 +85,7 @@ export const DEFAULT_VOICE: Voice = VOICES[0];
 const VOICE_KEY = 'eumae:voice';
 
 /** The row with this id — or with this bare name, since a value written by hand
- *  is as likely to say `Kore` as `en-US-Chirp3-HD-Kore`. Anything else at all is
+ *  is as likely to say `Aoede` as `en-US-Chirp3-HD-Aoede`. Anything else at all is
  *  the default: a name this app no longer offers is a reason to speak in the
  *  default voice, never a reason to fail a reply. */
 export function voiceById(id: unknown): Voice {
