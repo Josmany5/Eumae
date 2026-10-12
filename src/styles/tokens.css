@@ -902,23 +902,47 @@ input,textarea,select{ font-family:inherit; }
 .noteRow .g{ flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
 .noteTitle{ font-weight:600; }
 .notePreview{ font-size:13px; color:var(--mut); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.noteView{ padding-bottom:40px; min-height:100%; }
-.pageHeadTitle{ flex:1; font-size:17px; font-weight:600; }
-.noteTitleField{ display:block; width:100%; border:none; background:none;
-  font-size:28px; font-weight:700; color:var(--tx); outline:none;
-  padding:8px 20px 4px; }
-.noteEntry{ padding:16px 20px; border-bottom:1px solid var(--hair); }
-.noteEntry:last-child{ border-bottom:none; }
-.noteEntryHead{ font-size:12px; color:var(--mut); margin-bottom:8px; font-weight:600; }
-.editedOn{ font-weight:400; }
-.noteEntryText{ font-size:17px; line-height:1.6; }
-.noteEntryText ul{ margin:8px 0; padding-left:20px; }
-.rtBar{ display:flex; gap:8px; margin-bottom:8px; padding:0 20px; }
-.rtBar button{ border:1px solid var(--hair); background:none; border-radius:8px;
-  padding:6px 12px; font-size:14px; color:var(--tx); }
-.noteEditor{ min-height:200px; font-size:17px; line-height:1.6; outline:none; padding:0 20px; }
-.noteEditor:empty:before{ content:attr(data-placeholder); color:var(--mut); }
-.noteEditor ul{ margin:8px 0; padding-left:20px; }
+/* The clean note: one bare sheet. No title field (the first block IS the
+   title, large + bold by position), no entry boxes, no toolbar on the face.
+   The meta line is the only chrome: date + word count, muted. */
+.noteClean{ padding-bottom:60px; min-height:100%; }
+.nmeta{ padding:12px 24px 0; font-size:12px; color:var(--mut); }
+.ndoc{ min-height:60vh; font-size:17px; line-height:1.65; outline:none;
+  padding:4px 24px 40px; color:var(--tx); word-wrap:break-word; }
+.ndoc:empty:before{ content:attr(data-placeholder); color:var(--mut); }
+/* First block is the title — Apple Notes: large, bold, tight. Whatever block
+   type the first line carries, position makes it the title. */
+.ndoc > :first-child{ font-size:28px !important; font-weight:700 !important;
+  line-height:1.2; margin:0 0 8px; }
+.ndoc h1{ font-size:22px; margin:16px 0 8px; }
+.ndoc p{ margin:0 0 12px; }
+.ndoc ul{ margin:8px 0 12px; padding-left:24px; }
+.ndoc li{ margin:4px 0; }
+/* Session ribbon: a hairline date divider, not a box. contenteditable=false
+   so the caret never lands in it. */
+.nsess{ display:flex; align-items:center; gap:10px; margin:20px 0 12px;
+  font-size:12px; color:var(--mut); font-weight:600; pointer-events:none;
+  user-select:none; }
+.nsess::before, .nsess::after{ content:''; flex:1; height:1px; background:var(--hair); }
+.nsess span{ white-space:nowrap; }
+/* Checklist rows: tap the circle to toggle. The circle is the ::before; the
+   text stays plain so toggling never disturbs it. */
+.ndoc li.ncheck{ list-style:none; position:relative; padding-left:30px; }
+.ndoc li.ncheck::before{ content:''; position:absolute; left:0; top:2px;
+  width:20px; height:20px; border-radius:50%; border:1.5px solid var(--mut); }
+.ndoc li.ncheck.done{ color:var(--mut); text-decoration:line-through; }
+.ndoc li.ncheck.done::before{ background:var(--ac); border-color:var(--ac); }
+/* The floating format menu: only on selection. Dark pill, thumb-sized, above
+   the keyboard — nothing on the face until you need it. */
+.nfmt{ position:fixed; transform:translateX(-50%); z-index:60; display:flex;
+  align-items:center; gap:2px; padding:6px 8px; border-radius:14px;
+  background:color-mix(in srgb, var(--card) 92%, transparent);
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  border:1px solid var(--hair); box-shadow:0 8px 28px rgba(0,0,0,.35); }
+.nfmt button{ border:none; background:none; color:var(--tx); font-size:14px;
+  font-weight:600; padding:6px 10px; border-radius:8px; }
+.nfmt button:active{ background:var(--card2); }
+.nfmtSep{ width:1px; height:18px; background:var(--hair); margin:0 4px; }
 
 /* The crash screen — shown by ErrorBoundary when a render fails. Same card
    language as the rest of the app: centered, one action, no jargon. */

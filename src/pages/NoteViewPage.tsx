@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav';
-import { getNote, saveNote, startEntry, type Note, type NoteEntry } from '../notes';
+import { getNote, saveNote, startSession, type Note } from '../notes';
 import type { PageProps } from './index';
 
-function fmtDate(ts: number): string {
+function fmtDay(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, {
+    weekday: 'long',
     month: 'short',
     day: 'numeric',
-    year: 'numeric',
   });
 }
 
@@ -18,195 +18,182 @@ function fmtTime(ts: number): string {
   });
 }
 
-/** Minimal rich text toolbar — bold, italic, bullet list. */
-function Toolbar({ onCmd }: { onCmd: (cmd: string) => void }) {
+/* The only formatting surface: appears on text selection, nowhere else. Title
+   and Body restyle the current block; the rest wrap the selection. Checklist
+   inserts a toggleable row. Nothing on the face until you select. */
+function FormatMenu({ editorRef }: { editorRef: React.RefObject<HTMLDivElement | null> }) {
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const onSel = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+        setPos(null);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      const host = editorRef.current;
+      if (!host || !host.contains(range.commonAncestorContainer)) {
+        setPos(null);
+        return;
+      }
+      const rect = range.getBoundingClientRect();
+      setPos({ x: Math.min(Math.max(rect.left + rect.width / 2, 90), window.innerWidth - 90), y: rect.top });
+    };
+    document.addEventListener('selectionchange', onSel);
+    return () => document.removeEventListener('selectionchange', onSel);
+  }, [editorRef]);
+
+  if (!pos) return null;
+
+  const cmd = (name: string) => {
+    editorRef.current?.focus();
+    document.execCommand(name);
+  };
+  const block = (tag: string) => {
+    editorRef.current?.focus();
+    document.execCommand('formatBlock', false, tag);
+  };
+  const checklist = () => {
+    const host = editorRef.current;
+    if (!host) return;
+    host.focus();
+    document.execCommand('insertUnorderedList');
+    const sel = window.getSelection();
+    let node: Node | null = sel?.anchorNode ?? null;
+    while (node && node !== host) {
+      if (node instanceof HTMLLIElement) {
+        node.classList.add('ncheck');
+        break;
+      }
+      node = node.parentNode;
+    }
+  };
+
   return (
-    <div className="rtBar">
-      <button onMouseDown={(e) => { e.preventDefault(); onCmd('bold'); }} aria-label="Bold"><b>B</b></button>
-      <button onMouseDown={(e) => { e.preventDefault(); onCmd('italic'); }} aria-label="Italic"><i>I</i></button>
-      <button onMouseDown={(e) => { e.preventDefault(); onCmd('insertUnorderedList'); }} aria-label="Bullet list">• List</button>
+    <div className="nfmt" style={{ left: pos.x, top: Math.max(pos.y - 52, 8) }}>
+      <button onMouseDown={(e) => { e.preventDefault(); block('h1'); }} aria-label="Title">Title</button>
+      <button onMouseDown={(e) => { e.preventDefault(); block('p'); }} aria-label="Body">Body</button>
+      <span className="nfmtSep" />
+      <button onMouseDown={(e) => { e.preventDefault(); cmd('bold'); }} aria-label="Bold"><b>B</b></button>
+      <button onMouseDown={(e) => { e.preventDefault(); cmd('italic'); }} aria-label="Italic"><i>I</i></button>
+      <span className="nfmtSep" />
+      <button onMouseDown={(e) => { e.preventDefault(); checklist(); }} aria-label="Checklist">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="4" y="4" width="16" height="16" rx="8" /><path d="M8.5 12.5l2.5 2.5 4.5-5.5" /></svg>
+      </button>
+      <button onMouseDown={(e) => { e.preventDefault(); cmd('insertUnorderedList'); }} aria-label="Bullets">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="5" cy="6" r="1.2" fill="currentColor" /><circle cx="5" cy="12" r="1.2" fill="currentColor" /><circle cx="5" cy="18" r="1.2" fill="currentColor" /></svg>
+      </button>
     </div>
   );
 }
 
+/* A session divider: hairline date + time, not editable, never saved into the
+   body — rendered from `sessions`, so the ribbon can never duplicate. */
+function sessionDivider(ts: number): HTMLElement {
+  const d = document.createElement('div');
+  d.className = 'nsess';
+  d.contentEditable = 'false';
+  const label = document.createElement('span');
+  label.textContent = fmtDay(ts) + ' \u00b7 ' + fmtTime(ts);
+  d.appendChild(label);
+  return d;
+}
+
 export default function NoteViewPage({ arg }: PageProps) {
-  const { back, notify } = useNav();
+  const { back } = useNav();
   const id = typeof arg === 'string' ? arg : '';
   const [note, setNote] = useState<Note | null>(null);
-  const [title, setTitle] = useState('');
+  const [words, setWords] = useState(0);
   const editorRef = useRef<HTMLDivElement>(null);
-  const draftId = useRef('');
+  const saveTimer = useRef<number | null>(null);
+  const loadedId = useRef('');
 
-  /* Open the note and start a new entry — one entry per visit. */
+  /* Open once: record the visit, paint the one document. Saves thereafter
+     never repaint — the DOM is the source of truth while typing. */
   useEffect(() => {
     const n = getNote(id);
     if (!n) {
       back();
       return;
     }
-    const entry = startEntry();
-    draftId.current = entry.id;
-    const withEntry: Note = { ...n, entries: [...n.entries, entry] };
-    setNote(withEntry);
-    setTitle(n.title);
+    const withSession = startSession(n);
+    setNote(withSession);
+    setWords(withSession.body.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length);
+    const host = editorRef.current;
+    if (host && loadedId.current !== withSession.id) {
+      loadedId.current = withSession.id;
+      host.innerHTML = withSession.body || '';
+      for (const ts of [...withSession.sessions].sort((a, b) => a - b)) {
+        host.appendChild(sessionDivider(ts));
+      }
+      placeCaretAtEnd(host);
+    }
     return () => {
-      /* Save on leave — the entry keeps whatever was typed. */
-      const text = editorRef.current?.innerHTML ?? '';
-      const latest = getNote(id);
-      if (!latest) return;
-      const entries = latest.entries.map((e) =>
-        e.id === draftId.current ? { ...e, text, editedAt: text !== e.text ? Date.now() : e.editedAt } : e,
-      );
-      /* Drop the entry if nothing was written. */
-      const cleaned = entries.filter((e) => e.id !== draftId.current || e.text.replace(/<[^>]+>/g, '').trim());
-      saveNote({ ...latest, entries: cleaned, title: latest.title });
+      if (saveTimer.current) window.clearTimeout(saveTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (!note) return null;
 
-  const persist = (entries: NoteEntry[], newTitle = title) => {
-    const updated: Note = { ...note, title: newTitle, entries };
-    setNote(updated);
-    saveNote(updated);
+  const onInput = () => {
+    const host = editorRef.current;
+    if (!host) return;
+    /* Read back minus the chrome: dividers carry `.nsess`, never saved. */
+    const clone = host.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('.nsess').forEach((d) => d.remove());
+    const body = clone.innerHTML;
+    const text = (clone.textContent ?? '').trim();
+    setWords(text ? text.split(/\s+/).length : 0);
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      const latest = getNote(id);
+      if (!latest) return;
+      const title = text.split('\n')[0].trim().slice(0, 80) || 'Untitled';
+      saveNote({ ...latest, body, title });
+    }, 400);
   };
 
-  const updateEntry = (entryId: string, text: string) => {
-    const entries = note.entries.map((e) =>
-      e.id === entryId ? { ...e, text, editedAt: Date.now() } : e,
-    );
-    /* Edited entries bump to most-recent position but keep original date. */
-    entries.sort((a, b) => b.editedAt - a.editedAt);
-    persist(entries);
-  };
-
-  const toggleSort = () => {
-    const updated = { ...note, sortNewFirst: !note.sortNewFirst };
-    setNote(updated);
-    saveNote(updated);
-  };
-
-  const share = async () => {
-    const text = `${note.title}\n\n` + note.entries
-      .map((e) => `${fmtDate(e.createdAt)} ${fmtTime(e.createdAt)}\n${e.text.replace(/<[^>]+>/g, '')}`)
-      .join('\n\n');
-    try {
-      await navigator.share({ title: note.title, text });
-    } catch {
-      /* Dismissed or unavailable — copy instead. */
-      try {
-        await navigator.clipboard.writeText(text);
-        notify('Copied to clipboard');
-      } catch {
-        notify('Could not share');
-      }
-    }
-  };
-
-  const sorted = [...note.entries].sort((a, b) =>
-    note.sortNewFirst ? b.createdAt - a.createdAt : a.createdAt - b.createdAt,
-  );
-  /* The live draft is the newest entry; show the rest. */
-  const shown = sorted.filter((e) => e.id !== draftId.current || e.text);
-
-  const exec = (cmd: string) => {
-    document.execCommand(cmd, false);
-    editorRef.current?.focus();
+  const onChecklistTap = (e: React.MouseEvent) => {
+    const li = (e.target as HTMLElement).closest('li.ncheck');
+    if (!li) return;
+    e.preventDefault();
+    li.classList.toggle('done');
+    onInput();
   };
 
   return (
-    <div className="page noteView">
-      <div className="pageHead">
-        <button className="hb" onClick={back} aria-label="Back to notes">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
-        <span className="pageHeadTitle">Note</span>
-        <button className="hb" onClick={toggleSort} aria-label={note.sortNewFirst ? 'Oldest first' : 'Newest first'}>
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" />
-          </svg>
-        </button>
-        <button className="hb" onClick={share} aria-label="Share note">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-          </svg>
-        </button>
+    <div className="page noteClean">
+      {/* No page chrome of its own: the shell's header/backbar is the one way
+          back. The face is the sheet. */}
+      <div className="nmeta">
+        {fmtDay(note.updatedAt)} \u00b7 {words} {words === 1 ? 'word' : 'words'}
       </div>
-
-      <input
-        className="noteTitleField"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onBlur={() => persist(note.entries, title.trim() || 'Untitled')}
-        placeholder="Title"
-        aria-label="Note title"
+      <div
+        ref={editorRef}
+        className="ndoc"
+        contentEditable
+        suppressContentEditableWarning
+        data-placeholder="New note"
+        onInput={onInput}
+        onClick={onChecklistTap}
       />
-
-      {shown.map((e) =>
-        e.id === draftId.current ? null : (
-          <EntryView key={e.id} entry={e} onSave={(text) => updateEntry(e.id, text)} />
-        ),
-      )}
-
-      <div className="noteEntry">
-        <div className="noteEntryHead">
-          {fmtDate(Date.now())} · {fmtTime(Date.now())}
-        </div>
-        <Toolbar onCmd={exec} />
-        <div
-          ref={editorRef}
-          className="noteEditor"
-          contentEditable
-          suppressContentEditableWarning
-          data-placeholder="Write…"
-          onInput={() => undefined}
-        />
-      </div>
+      <FormatMenu editorRef={editorRef} />
     </div>
   );
 }
 
-/** A saved entry — tap to edit. */
-function EntryView({ entry, onSave }: { entry: NoteEntry; onSave: (text: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  if (!editing) {
-    return (
-      <div className="noteEntry" onClick={() => setEditing(true)}>
-        <div className="noteEntryHead">
-          {fmtDate(entry.createdAt)} · {fmtTime(entry.createdAt)}
-          {entry.editedAt > entry.createdAt + 1000 ? (
-            <span className="editedOn"> · edited {fmtDate(entry.editedAt)}</span>
-          ) : null}
-        </div>
-        <div className="noteEntryText" dangerouslySetInnerHTML={{ __html: entry.text }} />
-      </div>
-    );
+function placeCaretAtEnd(host: HTMLElement): void {
+  try {
+    host.focus();
+    const range = document.createRange();
+    range.selectNodeContents(host);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  } catch {
+    /* Non-fatal. */
   }
-
-  return (
-    <div className="noteEntry">
-      <div className="noteEntryHead">
-        {fmtDate(entry.createdAt)} · {fmtTime(entry.createdAt)}
-        <span className="editedOn"> · editing</span>
-      </div>
-      <div
-        ref={ref}
-        className="noteEditor"
-        contentEditable
-        suppressContentEditableWarning
-        dangerouslySetInnerHTML={{ __html: entry.text }}
-      />
-      <div className="btns">
-        <button className="pri" onClick={() => { onSave(ref.current?.innerHTML ?? ''); setEditing(false); }}>
-          Done
-        </button>
-        <button className="gho" onClick={() => setEditing(false)}>Cancel</button>
-      </div>
-    </div>
-  );
 }

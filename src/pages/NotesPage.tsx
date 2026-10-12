@@ -1,17 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav';
-import { createNote, deleteNote, getNotes, type Note } from '../notes';
+import { createNote, deleteNote, getNotes, noteText, titleOf, type Note } from '../notes';
 import type { PageProps } from './index';
 
-/** One row in the notes list — swipe left on touch, icon buttons on desktop. */
+function fmtShort(ts: number): string {
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/* One row: swipe left for Export + Delete on touch, icon buttons on desktop.
+   Export lives here so the note face stays a bare sheet. */
 function NoteRow({
   note,
   onOpen,
   onDelete,
+  onExport,
 }: {
   note: Note;
   onOpen: () => void;
   onDelete: () => void;
+  onExport: () => void;
 }) {
   const startX = useRef(0);
   const liveDx = useRef(0);
@@ -26,25 +33,32 @@ function NoteRow({
   };
   const onTouchMove = (e: React.TouchEvent) => {
     const delta = e.touches[0].clientX - startX.current;
-    liveDx.current = delta < 0 ? Math.max(delta, -70) : 0;
+    liveDx.current = delta < 0 ? Math.max(delta, -140) : 0;
     setShownDx(liveDx.current);
   };
   const onTouchEnd = () => {
     setDragging(false);
-    if (liveDx.current < -35) setOpen(true);
+    if (liveDx.current < -70) setOpen(true);
     else setOpen(false);
     liveDx.current = 0;
     setShownDx(0);
   };
 
-  const preview = note.entries.length
-    ? note.entries[note.entries.length - 1].text.replace(/<[^>]+>/g, '').slice(0, 60)
-    : 'No entries yet';
+  /* Title is the first line; preview the next words. */
+  const text = noteText(note);
+  const title = text ? text.slice(0, 80).split(/[.?!\n]/)[0].trim() || note.title : note.title || 'Untitled';
+  const rest = text.slice(title.length).replace(/^\s*[.?!\n\s]+/, '').slice(0, 60);
+  const preview = rest || fmtShort(note.updatedAt);
 
   return (
     <div className="swipeRow" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <div className="swipeActions">
-        <button className="swDel" onClick={onDelete} aria-label={`Delete ${note.title}`}>
+        <button className="swExp" onClick={onExport} aria-label={`Export ${title}`}>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+          </svg>
+        </button>
+        <button className="swDel" onClick={onDelete} aria-label={`Delete ${title}`}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
           </svg>
@@ -53,7 +67,7 @@ function NoteRow({
       <button
         className="noteRow"
         style={{
-          transform: open ? 'translateX(-70px)' : shownDx ? `translateX(${shownDx}px)` : undefined,
+          transform: open ? 'translateX(-140px)' : shownDx ? `translateX(${shownDx}px)` : undefined,
           transition: dragging ? 'none' : undefined,
         }}
         onClick={() => {
@@ -62,15 +76,18 @@ function NoteRow({
         }}
       >
         <span className="g">
-          <span className="noteTitle">{note.title || 'Untitled'}</span>
+          <span className="noteTitle">{title || 'Untitled'}</span>
           <span className="notePreview">{preview}</span>
         </span>
-        <span className="drDate">
-          {new Date(note.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-        </span>
+        <span className="drDate">{fmtShort(note.updatedAt)}</span>
       </button>
       <div className="drDesktop">
-        <button className="drIconBtn danger" onClick={onDelete} aria-label={`Delete ${note.title}`}>
+        <button className="drIconBtn" onClick={onExport} aria-label={`Export ${title}`}>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+          </svg>
+        </button>
+        <button className="drIconBtn danger" onClick={onDelete} aria-label={`Delete ${title}`}>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
           </svg>
@@ -81,7 +98,7 @@ function NoteRow({
 }
 
 export default function NotesPage(_: PageProps) {
-  const { go } = useNav();
+  const { go, notify } = useNav();
   const [notes, setNotes] = useState<Note[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Note | null>(null);
 
@@ -92,6 +109,20 @@ export default function NotesPage(_: PageProps) {
   const newNote = () => {
     const note = createNote();
     go('note', note.id);
+  };
+
+  const exportNote = async (note: Note) => {
+    const text = titleOf(note) + '\n\n' + noteText(note);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: titleOf(note), text });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+        notify('Note copied.');
+      }
+    } catch {
+      /* Dismissed — silent. */
+    }
   };
 
   return (
@@ -116,6 +147,7 @@ export default function NotesPage(_: PageProps) {
             note={n}
             onOpen={() => go('note', n.id)}
             onDelete={() => setDeleteTarget(n)}
+            onExport={() => exportNote(n)}
           />
         ))
       )}
@@ -124,7 +156,7 @@ export default function NotesPage(_: PageProps) {
           <div className="dlgScrim" onClick={() => setDeleteTarget(null)} />
           <div className="dlg" role="alertdialog" aria-label="Delete note">
             <div className="dlgTitle">Delete this note?</div>
-            <div className="dlgBody">"{deleteTarget.title || 'Untitled'}" will be gone for good.</div>
+            <div className="dlgBody">\u201c{titleOf(deleteTarget) || 'Untitled'}\u201d will be gone for good.</div>
             <div className="dlgBtns">
               <button className="dlgCancel" onClick={() => setDeleteTarget(null)}>Cancel</button>
               <button
