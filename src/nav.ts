@@ -82,7 +82,7 @@ export interface Nav {
   back: () => void;
   depth: number;
   goTab: (tab: TabId) => void;
-  openSettings: () => void;
+  openSettings: (view?: string) => void;
 
   /** Say something small and short-lived — the mockup's one global `toast()`,
    *  which it reaches for from everywhere. App owns the one that exists; the mic
@@ -144,7 +144,7 @@ export const NavContext = createContext<Nav>({
   back: () => {},
   depth: 0,
   goTab: () => {},
-  openSettings: () => {},
+  openSettings: (_view?: string) => {},
   notify: () => {},
   panelOpen: false,
   panelView: 'context',

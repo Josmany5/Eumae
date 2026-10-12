@@ -149,10 +149,19 @@ interface SettingsProps {
   open: boolean;
   onClose: () => void;
   notify: (msg: string) => void;
+  view: string | null;
+  onView: (view: string | null) => void;
 }
 
-export default function Settings({ open, onClose, notify }: SettingsProps) {
-  const [view, setView] = useState<View>('main');
+export default function Settings({ open, onClose, notify, view: viewProp, onView }: SettingsProps) {
+  const [viewLocal, setViewLocal] = useState<View>('main');
+  const known = (v: string | null): v is View => v != null && (v as View) in TITLES;
+  const view: View = known(viewProp) ? viewProp : viewLocal;
+  const setView = (v: View | ((prev: View) => View)) => {
+    const next = typeof v === 'function' ? (v as (prev: View) => View)(view) : v;
+    setViewLocal(next);
+    onView(next);
+  };
   const [mems, setMems] = useStored<Mem[]>('mems', []);
   const [grants, setGrants] = useStored<Record<string, string>>('grants', {
     edit: 'always', file: 'always', calendar: 'ask', email: 'never', delete: 'never',
@@ -205,7 +214,9 @@ export default function Settings({ open, onClose, notify }: SettingsProps) {
   const isDesktop = useMedia('(min-width:900px)');
 
   useEffect(() => {
-    if (open) setView(isDesktop ? 'personalization' : 'main');
+    if (!open) return;
+    if (known(viewProp)) return;
+    setView(isDesktop ? 'personalization' : 'main');
   }, [open, isDesktop]);
 
   useEffect(() => {

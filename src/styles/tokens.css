@@ -85,7 +85,12 @@ input,textarea,select{ font-family:inherit; }
 .hb{ width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--tx);
   background:var(--card); box-shadow:0 2px 12px rgba(0,0,0,.12); border:1px solid var(--hair); }
 .hb:active{ background:var(--card2); transform:scale(.96); }
-.hb svg{ width:22px; height:22px; }
+.hb svg{ width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.8;
+  stroke-linecap:round; stroke-linejoin:round; }
+/* `Icon` renders a bare svg — no stroke of its own. Without this every `.hb`
+   icon inherits the browser default (black), which is why pushed pages showed
+   a black back arrow in dark mode. The desktop backbar and settings head set
+   their own strokes; this is the base that covers the rest. */
 
 /* Tab bar: fixed bottom, blurred, 6 tabs */
 .tbar{ position:relative; display:flex;

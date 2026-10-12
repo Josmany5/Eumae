@@ -26,6 +26,7 @@ import {
 } from './threads';
 
 import type { TabId } from './components/shell/TabBar';
+import type { PanelView } from './nav';
 
 export interface Boot {
   threadId: string;
@@ -37,6 +38,20 @@ export interface Boot {
    *  open lands on chat with an empty stack. */
   tab: TabId;
   stack: BootPlace[];
+  /** The overlays, restored on reload and reset on cold open. Tabs + stack
+   *  were never the whole "where I was" — a reload inside Settings → Voice
+   *  used to land on chat with Settings gone, because `settingsOpen` and the
+   *  Settings-local `view` died with the page. Same for the right panel: it
+   *  reopened on Context, not the reading you were in. Transient things
+   *  (drawer, + sheet, toast, composer text) stay transient on purpose —
+   *  nobody wants a toast restored. */
+  settingsOpen: boolean;
+  /** The Settings section to land on, or null for its landing rule
+   *  (main on phone, Personalization on desktop). Validated by Settings
+   *  itself — boot carries the string, the pane decides if it knows it. */
+  settingsView: string | null;
+  panelOpen: boolean;
+  panelView: PanelView;
 }
 
 /** One pushed sub-page — the same shape as App's `Pushed`. */
@@ -119,8 +134,26 @@ export function boot(): Boot {
   if (memo) return memo;
   const cold = !sessionAlive();
   markSession();
-  const nav = cold ? { tab: 'chat' as TabId, stack: [] } : readNav();
-  if (cold) writeNav(nav.tab, nav.stack);
+  const nav = cold
+    ? {
+        tab: 'chat' as TabId,
+        stack: [] as BootPlace[],
+        settingsOpen: false,
+        settingsView: null as string | null,
+        panelOpen: false,
+        panelView: 'context' as PanelView,
+      }
+    : readNav();
+  if (cold)
+    writeNav(nav.tab, nav.stack, nav.settingsOpen, nav.settingsView, nav.panelOpen, nav.panelView);
+  const withNav = {
+    tab: nav.tab,
+    stack: nav.stack,
+    settingsOpen: cold ? false : nav.settingsOpen,
+    settingsView: cold ? null : nav.settingsView,
+    panelOpen: cold ? false : nav.panelOpen,
+    panelView: nav.panelView,
+  };
   if (!cold) {
     const storedId = getCurrentThreadId();
     const stored = storedId ? getThread(storedId) : undefined;
@@ -131,16 +164,15 @@ export function boot(): Boot {
         messages: settle(stored.messages),
         threads: getThreads(),
         fresh: false,
-        tab: nav.tab,
-        stack: nav.stack,
+        ...withNav,
       };
       return memo;
     }
   }
   /* Cold open, or a reload whose stored id is missing/corrupt — same answer:
-     a fresh thread. Cold lands on chat + empty stack; the corrupt-id reload
-     keeps the restored nav (you were somewhere real, the thread pointer is
-     what broke). */
+     a fresh thread. Cold lands on chat + empty stack + closed overlays; the
+     corrupt-id reload keeps the restored nav (you were somewhere real, the
+     thread pointer is what broke). */
   const fresh = createThread();
   setCurrentThreadId(fresh.id);
   seedMsgId(fresh.messages);
@@ -149,20 +181,51 @@ export function boot(): Boot {
     messages: [],
     threads: getThreads(),
     fresh: true,
-    tab: cold ? 'chat' : nav.tab,
-    stack: cold ? [] : nav.stack,
+    ...(cold
+      ? {
+          tab: 'chat' as TabId,
+          stack: [] as BootPlace[],
+          settingsOpen: false,
+          settingsView: null as string | null,
+          panelOpen: false,
+          panelView: 'context' as PanelView,
+        }
+      : withNav),
   };
   return memo;
 }
 
-/** Where the person was: tab + pushed page stack, restored on reload. Read
- *  once at boot; App writes it back on every change (see saveNav). Invalid or
- *  missing data boots to chat + empty stack, never to nowhere. */
-function readNav(): { tab: TabId; stack: BootPlace[] } {
+/** Where the person was: tab + pushed page stack + overlays, restored on
+ *  reload. Read once at boot; App writes it back on every change (see
+ *  saveNav). Invalid or missing data boots to chat + empty stack + closed
+ *  overlays, never to nowhere. */
+function readNav(): {
+  tab: TabId;
+  stack: BootPlace[];
+  settingsOpen: boolean;
+  settingsView: string | null;
+  panelOpen: boolean;
+  panelView: PanelView;
+} {
+  const empty = {
+    tab: 'chat' as TabId,
+    stack: [] as BootPlace[],
+    settingsOpen: false,
+    settingsView: null as string | null,
+    panelOpen: false,
+    panelView: 'context' as PanelView,
+  };
   try {
     const raw = localStorage.getItem(NAV_KEY);
-    if (!raw) return { tab: 'chat', stack: [] };
-    const parsed = JSON.parse(raw) as { tab?: unknown; stack?: unknown };
+    if (!raw) return { ...empty, stack: [] };
+    const parsed = JSON.parse(raw) as {
+      tab?: unknown;
+      stack?: unknown;
+      settingsOpen?: unknown;
+      settingsView?: unknown;
+      panelOpen?: unknown;
+      panelView?: unknown;
+    };
     const tab: TabId = BOOT_TABS.includes(parsed.tab as TabId) ? (parsed.tab as TabId) : 'chat';
     const stack = Array.isArray(parsed.stack)
       ? parsed.stack.filter(
@@ -170,23 +233,45 @@ function readNav(): { tab: TabId; stack: BootPlace[] } {
             !!s && typeof s === 'object' && typeof (s as BootPlace).page === 'string',
         )
       : [];
-    return { tab, stack };
+    const settingsOpen = parsed.settingsOpen === true;
+    const settingsView = typeof parsed.settingsView === 'string' ? parsed.settingsView : null;
+    const panelOpen = parsed.panelOpen === true;
+    const panelView: PanelView =
+      parsed.panelView === 'activity' || parsed.panelView === 'studio' ? parsed.panelView : 'context';
+    return { tab, stack, settingsOpen, settingsView, panelOpen, panelView };
   } catch {
-    return { tab: 'chat', stack: [] };
+    return { ...empty, stack: [] };
   }
 }
 
-function writeNav(tab: TabId, stack: BootPlace[]): void {
+function writeNav(
+  tab: TabId,
+  stack: BootPlace[],
+  settingsOpen: boolean,
+  settingsView: string | null,
+  panelOpen: boolean,
+  panelView: PanelView,
+): void {
   try {
-    localStorage.setItem(NAV_KEY, JSON.stringify({ tab, stack }));
+    localStorage.setItem(
+      NAV_KEY,
+      JSON.stringify({ tab, stack, settingsOpen, settingsView, panelOpen, panelView }),
+    );
   } catch {
     /* Non-fatal. */
   }
 }
 
-/** App calls this on every tab/stack change so the next reload restores it.
- *  Cheap (one small JSON write), sync, no render involved. */
-export function saveNav(tab: TabId, stack: BootPlace[]): void {
-  writeNav(tab, stack);
+/** App calls this on every tab/stack/overlay change so the next reload
+ *  restores it. Cheap (one small JSON write), sync, no render involved. */
+export function saveNav(
+  tab: TabId,
+  stack: BootPlace[],
+  settingsOpen: boolean,
+  settingsView: string | null,
+  panelOpen: boolean,
+  panelView: PanelView,
+): void {
+  writeNav(tab, stack, settingsOpen, settingsView, panelOpen, panelView);
 }
 

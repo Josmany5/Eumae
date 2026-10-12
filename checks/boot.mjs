@@ -2,7 +2,7 @@
 /* Boot check — the reload-keeps / reopen-fresh rule, against the real code.
  *
  *  boot.ts + threads.ts are storage-only, but they are TypeScript and pull
- *  TabBar's TabId type. Like checks/chat.mjs (which lifts functions by name),
+ *  TabBar's TabId type and nav's PanelView. Like checks/chat.mjs,
  *  this transpiles the real sources with the project's own esbuild and runs
  *  the rule for real against stubbed storages — no browser, no network.
  *  request.ts is stubbed at the type level (ThreadTurn/ApiChatBody) and
@@ -46,7 +46,7 @@ const threadsBody = stripImports(threadsSrc)
 const bootBody = stripImports(bootSrc);
 
 const js = transformSync(
-  `interface ThreadTurn { role: string; text: string; }\ntype TabId = 'chat' | 'console' | 'studio' | 'library' | 'classroom' | 'guild';\n${threadsBody}\n${bootBody}\nboot;`,
+  `interface ThreadTurn { role: string; text: string; }\ntype TabId = 'chat' | 'console' | 'studio' | 'library' | 'classroom' | 'guild';\ntype PanelView = 'context' | 'activity' | 'studio';\n${threadsBody}\n${bootBody}\nboot;`,
   { loader: 'ts' },
 ).code
   // The sources use `export` — strip it so the bundle runs in a Function.
@@ -211,8 +211,92 @@ function run(setup) {
   );
 }
 
+// 9. Reload inside Settings restores the open pane + section.
+{
+  const { out } = run(({ local, session }) => {
+    session['eumae:session'] = '1';
+    local['eumae:currentThread'] = 't1';
+    local['eumae:threads'] = JSON.stringify([
+      { id: 't1', title: 'Old', createdAt: 1, updatedAt: 2, messages: [] },
+    ]);
+    local['eumae:nav'] = JSON.stringify({
+      tab: 'chat',
+      stack: [],
+      settingsOpen: true,
+      settingsView: 'voice',
+      panelOpen: true,
+      panelView: 'activity',
+    });
+  });
+  check(
+    'reload-restores-overlays',
+    out.settingsOpen === true &&
+      out.settingsView === 'voice' &&
+      out.panelOpen === true &&
+      out.panelView === 'activity',
+    JSON.stringify({
+      settingsOpen: out.settingsOpen,
+      settingsView: out.settingsView,
+      panelOpen: out.panelOpen,
+      panelView: out.panelView,
+    }),
+  );
+}
+// 10. Cold open resets overlays, whatever was stored.
+{
+  const { out } = run(({ local }) => {
+    local['eumae:currentThread'] = 't1';
+    local['eumae:threads'] = JSON.stringify([
+      { id: 't1', title: 'Old', createdAt: 1, updatedAt: 2, messages: [] },
+    ]);
+    local['eumae:nav'] = JSON.stringify({
+      tab: 'library',
+      stack: [{ page: 'notes' }],
+      settingsOpen: true,
+      settingsView: 'voice',
+      panelOpen: true,
+      panelView: 'activity',
+    });
+  });
+  check(
+    'cold-resets-overlays',
+    out.settingsOpen === false &&
+      out.settingsView === null &&
+      out.panelOpen === false &&
+      out.tab === 'chat' &&
+      out.stack.length === 0,
+    JSON.stringify({ settingsOpen: out.settingsOpen, panelOpen: out.panelOpen }),
+  );
+}
+// 11. Corrupt overlay data boots closed, never stuck open.
+{
+  const { out } = run(({ local, session }) => {
+    session['eumae:session'] = '1';
+    local['eumae:currentThread'] = 't1';
+    local['eumae:threads'] = JSON.stringify([
+      { id: 't1', title: 'Old', createdAt: 1, updatedAt: 2, messages: [] },
+    ]);
+    local['eumae:nav'] = JSON.stringify({
+      tab: 'chat',
+      stack: [],
+      settingsOpen: 'yes',
+      settingsView: 42,
+      panelOpen: 1,
+      panelView: 'nope',
+    });
+  });
+  check(
+    'corrupt-overlays-fallback',
+    out.settingsOpen === false &&
+      out.settingsView === null &&
+      out.panelOpen === false &&
+      out.panelView === 'context',
+    JSON.stringify({ settingsOpen: out.settingsOpen, panelView: out.panelView }),
+  );
+}
+
 if (failures.length) {
   console.error(`boot: ${failures.length} failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log('all 11 passed');
+console.log('all 14 passed');

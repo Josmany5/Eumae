@@ -74,21 +74,29 @@ export default function App() {
      boot.ts (StrictMode double-invokes initializers — without the memo a
      cold open would create two threads and orphan the first). */
   const [snap] = useState(() => boot());
-  /* Reload restores where you were (tab + pushed pages) from the boot
-     snapshot; cold open lands on chat with an empty stack. First render
-     already knows — no effect-driven nav, which would flash chat for a frame
-     on every reload of Library/Studio/notes. */
+  /* Reload restores where you were (tab + pushed pages + overlays) from the
+     boot snapshot; cold open lands on chat with an empty stack and closed
+     overlays. First render already knows — no effect-driven nav, which would
+     flash chat for a frame on every reload of Library/Studio/notes/Settings. */
   const [tab, setTab] = useState<TabId>(() => snap.tab);
   const [stack, setStack] = useState<Pushed[]>(() => snap.stack);
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  /* Settings' open state + section seed from boot. `settingsView` is owned
+     here rather than inside Settings so a reload inside Settings → Voice can
+     land back on Voice: Settings-local state died with the page, which is why
+     reloads used to drop you on chat with Settings gone. Null = its landing
+     rule (main on phone, Personalization on desktop). */
+  const [settingsOpen, setSettingsOpen] = useState(() => snap.settingsOpen);
+  const [settingsView, setSettingsView] = useState<string | null>(() => snap.settingsView);
   const [toast, setToast] = useState<string | null>(null);
 
   // The panel. `panelView` deliberately outlives `panelOpen`, so closing it and
   // coming back lands you on the reading you were in, not back on Context.
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [panelView, setPanelView] = useState<PanelView>('context');
+  // Both seed from boot, so a reload with the panel open restores the reading
+  // you were in rather than resetting to Context.
+  const [panelOpen, setPanelOpen] = useState(() => snap.panelOpen);
+  const [panelView, setPanelView] = useState<PanelView>(() => snap.panelView);
   /** What Eumae is holding on this conversation. Local until the files work. */
   const [refs, setRefs] = useState<Ref[]>([]);
   const [addOpen, setAddOpen] = useState(false);
@@ -190,7 +198,10 @@ export default function App() {
   }, []);
 
   const back = useCallback(() => setStack((s) => s.slice(0, -1)), []);
-  const openSettings = useCallback(() => setSettingsOpen(true), []);
+  const openSettings = useCallback((view?: string) => {
+    if (view) setSettingsView(view);
+    setSettingsOpen(true);
+  }, []);
   const openSearch = useCallback(() => go('search'), [go]);
 
   /* Chat threads — App owns them so the drawer ("New chat", "Recent chats")
@@ -335,10 +346,12 @@ export default function App() {
   );
 
   /* Persist where you are on every change, so a reload restores it. One small
-     sync JSON write — no render, no debounce to lose the last step. */
+     sync JSON write — no render, no debounce to lose the last step. Overlays
+     ride along: Settings open + section, panel open + reading — reload restores
+     them, cold open ignores them. */
   useEffect(() => {
-    saveNav(tab, stack);
-  }, [tab, stack]);
+    saveNav(tab, stack, settingsOpen, settingsView, panelOpen, panelView);
+  }, [tab, stack, settingsOpen, settingsView, panelOpen, panelView]);
 
   /* First paint lands with transitions off (tokens.css `#app.booting`): the
      parked drawer/panel/sheets would otherwise slide visibly on mount during
@@ -425,7 +438,7 @@ export default function App() {
           onThreadDelete={removeThread}
           onSearch={openSearch}
         />
-        <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} notify={notify} />
+        <Settings open={settingsOpen} view={settingsView} onView={setSettingsView} onClose={() => setSettingsOpen(false)} notify={notify} />
         <AddSheet open={addOpen} onClose={() => setAddOpen(false)} onCreateRole={onCreateRole} />
 
         {/* `accept` is what puts Photo library / Take photo / Choose file on
