@@ -18,41 +18,13 @@ function fmtTime(ts: number): string {
   });
 }
 
-/* The only formatting surface: appears on text selection, nowhere else.
-   Title/Body restyle the current block; B/I/U wrap the selection; the three
-   list buttons toggle real lists (bullets, numbers, checklist). Checklist and
-   numbered rows come from the same list machinery, so the browser numbers
-   follow-ups itself and Backspace on an empty row deletes it (see onKeyDown).
-   Nothing on the face until you select. */
-function FormatMenu({ editorRef, onInput }: { editorRef: React.RefObject<HTMLDivElement | null>; onInput: () => void }) {
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
-
-  useEffect(() => {
-    const onSel = () => {
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
-        setPos(null);
-        return;
-      }
-      const range = sel.getRangeAt(0);
-      const host = editorRef.current;
-      if (!host || !host.contains(range.commonAncestorContainer)) {
-        setPos(null);
-        return;
-      }
-      const rect = range.getBoundingClientRect();
-      /* Clamp inside the viewport with margin: near an edge the menu used to
-         hang past the page and clip. ~140px is half the pill's width. */
-      const M = 148;
-      const x = Math.min(Math.max(rect.left + rect.width / 2, M), window.innerWidth - M);
-      setPos({ x, y: rect.top });
-    };
-    document.addEventListener('selectionchange', onSel);
-    return () => document.removeEventListener('selectionchange', onSel);
-  }, [editorRef]);
-
-  if (!pos) return null;
-
+/* The format bar: docked above the keyboard, Apple Notes' Aa row. The
+   floating pill fought the OS selection callout (copy/paste vs format,
+   stacked on iOS) and covered the words being styled. A docked row ends both:
+   selection stays the OS's, formatting stays ours, and the words stay visible
+   above it. Always mounted while the note is open - one thumb row, room for
+   fonts + sizes later. */
+function FormatBar({ editorRef, onInput }: { editorRef: React.RefObject<HTMLDivElement | null>; onInput: () => void }) {
   const cmd = (name: string) => {
     editorRef.current?.focus();
     document.execCommand(name);
@@ -61,7 +33,7 @@ function FormatMenu({ editorRef, onInput }: { editorRef: React.RefObject<HTMLDiv
   const block = (tag: string) => {
     editorRef.current?.focus();
     document.execCommand('formatBlock', false, tag);
-    ensureTitle(editorRef.current!);
+    if (editorRef.current) ensureTitle(editorRef.current);
     onInput();
   };
   /* Toggle a list around the current line: same button builds and unwraps,
@@ -88,11 +60,11 @@ function FormatMenu({ editorRef, onInput }: { editorRef: React.RefObject<HTMLDiv
   };
 
   const btn = (label: React.ReactNode, name: string, act: () => void) => (
-    <button onMouseDown={(e) => { e.preventDefault(); act(); }} aria-label={name} title={name}>{label}</button>
+    <button onMouseDown={(e) => { e.preventDefault(); act(); }} onClick={(e) => e.preventDefault()} aria-label={name} title={name}>{label}</button>
   );
 
   return (
-    <div className="nfmt" style={{ left: pos.x, top: Math.max(pos.y - 52, 8) }}>
+    <div className="nbar">
       {btn('Title', 'Title', () => block('h1'))}
       {btn('Body', 'Body', () => block('p'))}
       <span className="nfmtSep" />
@@ -100,9 +72,9 @@ function FormatMenu({ editorRef, onInput }: { editorRef: React.RefObject<HTMLDiv
       {btn(<i>I</i>, 'Italic', () => cmd('italic'))}
       {btn(<u>U</u>, 'Underline', () => cmd('underline'))}
       <span className="nfmtSep" />
-      {btn(<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="4" y="4" width="16" height="16" rx="8" /><path d="M8.5 12.5l2.5 2.5 4.5-5.5" /></svg>, 'Checklist', () => list('check'))}
-      {btn(<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="5" cy="6" r="1.2" fill="currentColor" /><circle cx="5" cy="12" r="1.2" fill="currentColor" /><circle cx="5" cy="18" r="1.2" fill="currentColor" /></svg>, 'Bullets', () => list('ul'))}
-      {btn(<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 7h11M9 12h11M9 17h11" /><text x="2.5" y="8.5" fontSize="7" fill="currentColor" stroke="none">1</text><text x="2.5" y="13.5" fontSize="7" fill="currentColor" stroke="none">2</text><text x="2.5" y="18.5" fontSize="7" fill="currentColor" stroke="none">3</text></svg>, 'Numbers', () => list('ol'))}
+      {btn(<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="4" y="4" width="16" height="16" rx="8" /><path d="M8.5 12.5l2.5 2.5 4.5-5.5" /></svg>, 'Checklist', () => list('check'))}
+      {btn(<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="5" cy="6" r="1.2" fill="currentColor" /><circle cx="5" cy="12" r="1.2" fill="currentColor" /><circle cx="5" cy="18" r="1.2" fill="currentColor" /></svg>, 'Bullets', () => list('ul'))}
+      {btn(<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 7h11M9 12h11M9 17h11" /><path d="M4 6.5v-1l1.2 1M4 12h1.5M4 17c.8 0 1.3-.5 1.3-1.2 0-.6-.4-1-1-1.1.5-.1.9-.5.9-1 0-.6-.4-1-1.2-1" /></svg>, 'Numbers', () => list('ol'))}
     </div>
   );
 }
@@ -290,7 +262,7 @@ export default function NoteViewPage({ arg }: PageProps) {
         onKeyDown={onKeyDown}
         onClick={onChecklistTap}
       />
-      <FormatMenu editorRef={editorRef} onInput={onInput} />
+      <FormatBar editorRef={editorRef} onInput={onInput} />
     </div>
   );
 }

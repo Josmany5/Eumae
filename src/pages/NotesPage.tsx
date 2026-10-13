@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav';
-import { createNote, deleteNote, getNotes, noteText, titleOf, type Note } from '../notes';
+import { createNote, deleteNote, getNotes, noteText, previewOf, titleOf, type Note } from '../notes';
 import type { PageProps } from './index';
 
 function fmtShort(ts: number): string {
@@ -46,17 +46,15 @@ function NoteRow({
 
   /* Title reads off the first block (titleOf) - the row and the save share
      the one function, so the two can never disagree again. */
-  const text = noteText(note);
   const title = titleOf(note);
-  const rest = text.slice(title.length).trim().slice(0, 60);
-  const preview = rest || fmtShort(note.updatedAt);
+  const preview = previewOf(note) || fmtShort(note.updatedAt);
 
   return (
     <div className="swipeRow" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
       <div className="swipeActions">
         <button className="swExp" onClick={onExport} aria-label={`Export ${title}`}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+            <path d="M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8" />
           </svg>
         </button>
         <button className="swDel" onClick={onDelete} aria-label={`Delete ${title}`}>
@@ -85,7 +83,7 @@ function NoteRow({
       <div className="drDesktop">
         <button className="drIconBtn" onClick={onExport} aria-label={`Export ${title}`}>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+            <path d="M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8" />
           </svg>
         </button>
         <button className="drIconBtn danger" onClick={onDelete} aria-label={`Delete ${title}`}>

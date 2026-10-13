@@ -161,8 +161,49 @@ const OLD = {
   check('title-no-nbsp', !out.title.includes('&') && !out.title.includes('\u00a0'), JSON.stringify(out));
 }
 
+// 7. Preview reads the second block, decoded - never an entity, never the title.
+{
+  const { out } = run(
+    (store) => {
+      store['eumae:notes'] = JSON.stringify([
+        {
+          id: 'n4',
+          title: 'stale',
+          body: '<div>My Title</div><div>second&nbsp;block here</div>',
+          sessions: [],
+          createdAt: 1,
+          updatedAt: 2,
+          ownerId: '',
+        },
+      ]);
+    },
+    `(() => { const ns = getNotes(); return { preview: previewOf(ns[0]) }; })()`,
+  );
+  check('preview-second-block', out.preview === 'second block here', JSON.stringify(out));
+}
+// 8. A single-block note previews nothing - the row falls back to the date.
+{
+  const { out } = run(
+    (store) => {
+      store['eumae:notes'] = JSON.stringify([
+        {
+          id: 'n5',
+          title: 'stale',
+          body: '<div>Only Title</div>',
+          sessions: [],
+          createdAt: 1,
+          updatedAt: 2,
+          ownerId: '',
+        },
+      ]);
+    },
+    `(() => { const ns = getNotes(); return { preview: previewOf(ns[0]) }; })()`,
+  );
+  check('preview-single-blank', out.preview === '', JSON.stringify(out));
+}
+
 if (failures.length) {
   console.error(`notes: ${failures.length} failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log('all 6 passed');
+console.log('all 8 passed');

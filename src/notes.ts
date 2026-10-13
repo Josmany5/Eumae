@@ -141,6 +141,24 @@ export function titleOf(note: Note): string {
   return (fallback || note.title || 'Untitled').slice(0, 80);
 }
 
+/* The list preview: the SECOND content block, decoded - the first block is
+   the title. Decoded here (not in the row) so entities like &nbsp; never
+   reach the list. A single-block note previews nothing; the row falls back
+   to the date. */
+export function previewOf(note: Note): string {
+  const body = typeof note.body === 'string' ? note.body : '';
+  const re = /<(?:div|p|h1|h2|li)([^>]*)>([\s\S]*?)(?=<\/(?:div|p|h1|h2)|<li|<ul|<ol|$)/gi;
+  const texts: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body)) !== null) {
+    if (/nsess/.test(m[1])) continue;
+    const t = blockText(m[2]);
+    if (t) texts.push(t);
+  }
+  if (texts.length < 2) return '';
+  return texts[1].slice(0, 60);
+}
+
 export function getNotes(): Note[] {
   return [...load()].sort((a, b) => b.updatedAt - a.updatedAt);
 }

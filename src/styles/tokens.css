@@ -936,18 +936,18 @@ input,textarea,select{ font-family:inherit; }
   width:20px; height:20px; border-radius:50%; border:1.5px solid var(--mut); }
 .ndoc li.ncheck.done{ color:var(--mut); text-decoration:line-through; }
 .ndoc li.ncheck.done::before{ background:var(--ac); border-color:var(--ac); }
-/* The floating format menu: only on selection. Dark pill, thumb-sized, above
-   the keyboard — nothing on the face until you need it. */
-.nfmt{ position:fixed; transform:translateX(-50%); z-index:60; display:flex;
-  align-items:center; gap:2px; padding:6px 8px; border-radius:14px;
+/* The format bar: docked above the keyboard, not floating. The pill fought
+   the OS selection callout and covered the words being styled; a docked row
+   ends both. Sticky to the sheet bottom so the keyboard pushes it up. */
+.nbar{ position:sticky; bottom:0; z-index:30; display:flex; align-items:center;
+  justify-content:center; gap:2px; padding:8px 10px calc(8px + env(safe-area-inset-bottom));
   background:color-mix(in srgb, var(--card) 92%, transparent);
   backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
-  border:1px solid var(--hair); box-shadow:0 8px 28px rgba(0,0,0,.35); }
-.nfmt{ max-width:calc(100vw - 24px); flex-wrap:wrap; justify-content:center; }
-.nfmt button{ border:none; background:none; color:var(--tx); font-size:14px;
-  font-weight:600; padding:6px 10px; border-radius:8px; }
-.nfmt button:active{ background:var(--card2); }
-.nfmtSep{ width:1px; height:18px; background:var(--hair); margin:0 4px; }
+  border-top:1px solid var(--hair); }
+.nbar button{ border:none; background:none; color:var(--tx); font-size:14px;
+  font-weight:600; padding:8px 11px; border-radius:8px; flex:none; }
+.nbar button:active{ background:var(--card2); }
+.nfmtSep{ width:1px; height:18px; background:var(--hair); margin:0 4px; flex:none; }
 
 /* The crash screen — shown by ErrorBoundary when a render fails. Same card
    language as the rest of the app: centered, one action, no jargon. */
