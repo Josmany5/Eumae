@@ -860,7 +860,6 @@ input,textarea,select{ font-family:inherit; }
 .lib-preview-body img, .lib-preview-body video{ max-width:100%; max-height:100%; border-radius:8px; }
 .lib-preview-body audio{ width:100%; }
 .lib-preview-body iframe{ width:100%; height:100%; border:none; border-radius:8px; background:#fff; }
-.msgTs{ font-size:10px; color:var(--mut); margin-top:4px; }
 .daySep{ text-align:center; margin:14px 0 8px; }
 .daySep span, .daySep{ font-size:12px; font-weight:600; color:var(--mut); }
 .drDate{ margin-left:auto; font-size:12px; color:var(--mut); flex:none; }
@@ -931,7 +930,8 @@ input,textarea,select{ font-family:inherit; }
 .nsess span{ white-space:nowrap; }
 /* Checklist rows: tap the circle to toggle. The circle is the ::before; the
    text stays plain so toggling never disturbs it. */
-.ndoc li.ncheck{ list-style:none; position:relative; padding-left:30px; }
+.ndoc li.ncheck{ list-style:none; position:relative; padding-left:30px; margin-left:-24px; }
+.ndoc li.ncheck::marker{ content:none; }
 .ndoc li.ncheck::before{ content:''; position:absolute; left:0; top:2px;
   width:20px; height:20px; border-radius:50%; border:1.5px solid var(--mut); }
 .ndoc li.ncheck.done{ color:var(--mut); text-decoration:line-through; }
@@ -943,6 +943,7 @@ input,textarea,select{ font-family:inherit; }
   background:color-mix(in srgb, var(--card) 92%, transparent);
   backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
   border:1px solid var(--hair); box-shadow:0 8px 28px rgba(0,0,0,.35); }
+.nfmt{ max-width:calc(100vw - 24px); flex-wrap:wrap; justify-content:center; }
 .nfmt button{ border:none; background:none; color:var(--tx); font-size:14px;
   font-weight:600; padding:6px 10px; border-radius:8px; }
 .nfmt button:active{ background:var(--card2); }

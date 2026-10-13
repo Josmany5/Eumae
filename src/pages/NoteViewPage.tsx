@@ -18,10 +18,13 @@ function fmtTime(ts: number): string {
   });
 }
 
-/* The only formatting surface: appears on text selection, nowhere else. Title
-   and Body restyle the current block; the rest wrap the selection. Checklist
-   inserts a toggleable row. Nothing on the face until you select. */
-function FormatMenu({ editorRef }: { editorRef: React.RefObject<HTMLDivElement | null> }) {
+/* The only formatting surface: appears on text selection, nowhere else.
+   Title/Body restyle the current block; B/I/U wrap the selection; the three
+   list buttons toggle real lists (bullets, numbers, checklist). Checklist and
+   numbered rows come from the same list machinery, so the browser numbers
+   follow-ups itself and Backspace on an empty row deletes it (see onKeyDown).
+   Nothing on the face until you select. */
+function FormatMenu({ editorRef, onInput }: { editorRef: React.RefObject<HTMLDivElement | null>; onInput: () => void }) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
@@ -53,41 +56,53 @@ function FormatMenu({ editorRef }: { editorRef: React.RefObject<HTMLDivElement |
   const cmd = (name: string) => {
     editorRef.current?.focus();
     document.execCommand(name);
+    onInput();
   };
   const block = (tag: string) => {
     editorRef.current?.focus();
     document.execCommand('formatBlock', false, tag);
+    ensureTitle(editorRef.current!);
+    onInput();
   };
-  const checklist = () => {
+  /* Toggle a list around the current line: same button builds and unwraps,
+     so reformatting never strands you. Checklist rows get the toggleable
+     class; numbered rows let the browser do the counting. */
+  const list = (kind: 'ul' | 'ol' | 'check') => {
     const host = editorRef.current;
     if (!host) return;
     host.focus();
-    document.execCommand('insertUnorderedList');
-    const sel = window.getSelection();
-    let node: Node | null = sel?.anchorNode ?? null;
-    while (node && node !== host) {
-      if (node instanceof HTMLLIElement) {
-        node.classList.add('ncheck');
-        break;
+    const tag = kind === 'ol' ? 'insertOrderedList' : 'insertUnorderedList';
+    document.execCommand(tag);
+    if (kind === 'check') {
+      const sel = window.getSelection();
+      let node: Node | null = sel?.anchorNode ?? null;
+      while (node && node !== host) {
+        if (node instanceof HTMLLIElement) {
+          node.classList.add('ncheck');
+          break;
+        }
+        node = node.parentNode;
       }
-      node = node.parentNode;
     }
+    onInput();
   };
+
+  const btn = (label: React.ReactNode, name: string, act: () => void) => (
+    <button onMouseDown={(e) => { e.preventDefault(); act(); }} aria-label={name} title={name}>{label}</button>
+  );
 
   return (
     <div className="nfmt" style={{ left: pos.x, top: Math.max(pos.y - 52, 8) }}>
-      <button onMouseDown={(e) => { e.preventDefault(); block('h1'); }} aria-label="Title">Title</button>
-      <button onMouseDown={(e) => { e.preventDefault(); block('p'); }} aria-label="Body">Body</button>
+      {btn('Title', 'Title', () => block('h1'))}
+      {btn('Body', 'Body', () => block('p'))}
       <span className="nfmtSep" />
-      <button onMouseDown={(e) => { e.preventDefault(); cmd('bold'); }} aria-label="Bold"><b>B</b></button>
-      <button onMouseDown={(e) => { e.preventDefault(); cmd('italic'); }} aria-label="Italic"><i>I</i></button>
+      {btn(<b>B</b>, 'Bold', () => cmd('bold'))}
+      {btn(<i>I</i>, 'Italic', () => cmd('italic'))}
+      {btn(<u>U</u>, 'Underline', () => cmd('underline'))}
       <span className="nfmtSep" />
-      <button onMouseDown={(e) => { e.preventDefault(); checklist(); }} aria-label="Checklist">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="4" y="4" width="16" height="16" rx="8" /><path d="M8.5 12.5l2.5 2.5 4.5-5.5" /></svg>
-      </button>
-      <button onMouseDown={(e) => { e.preventDefault(); cmd('insertUnorderedList'); }} aria-label="Bullets">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="5" cy="6" r="1.2" fill="currentColor" /><circle cx="5" cy="12" r="1.2" fill="currentColor" /><circle cx="5" cy="18" r="1.2" fill="currentColor" /></svg>
-      </button>
+      {btn(<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="4" y="4" width="16" height="16" rx="8" /><path d="M8.5 12.5l2.5 2.5 4.5-5.5" /></svg>, 'Checklist', () => list('check'))}
+      {btn(<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="5" cy="6" r="1.2" fill="currentColor" /><circle cx="5" cy="12" r="1.2" fill="currentColor" /><circle cx="5" cy="18" r="1.2" fill="currentColor" /></svg>, 'Bullets', () => list('ul'))}
+      {btn(<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 7h11M9 12h11M9 17h11" /><text x="2.5" y="8.5" fontSize="7" fill="currentColor" stroke="none">1</text><text x="2.5" y="13.5" fontSize="7" fill="currentColor" stroke="none">2</text><text x="2.5" y="18.5" fontSize="7" fill="currentColor" stroke="none">3</text></svg>, 'Numbers', () => list('ol'))}
     </div>
   );
 }
@@ -178,7 +193,10 @@ export default function NoteViewPage({ arg }: PageProps) {
   };
 
   /* Enter inside the title ends the title: split a body line after it rather
-     than growing an h1. Backspace at the body's start merges back up. */
+     than growing an h1. Backspace at the body's start merges back up.
+     Backspace on an empty bullet/task/number row deletes the row and lands a
+     plain line: the browser keeps the empty li otherwise, which is why lists
+     felt impossible to get out of. */
   const onKeyDown = (e: React.KeyboardEvent) => {
     const host = editorRef.current;
     if (!host) return;
@@ -201,6 +219,36 @@ export default function NoteViewPage({ arg }: PageProps) {
       sel.addRange(range);
       onInput();
     } else if (e.key === 'Backspace' && sel.isCollapsed) {
+      /* Empty list row: unwrap it to a plain line instead of keeping a dead li. */
+      let li: HTMLLIElement | null = null;
+      let n: Node | null = node instanceof Element ? node : node?.parentNode ?? null;
+      while (n && n !== host) {
+        if (n instanceof HTMLLIElement) {
+          li = n;
+          break;
+        }
+        n = n.parentNode;
+      }
+      if (li && (li.textContent ?? '').trim() === '') {
+        e.preventDefault();
+        const list = li.parentElement;
+        const line = document.createElement('div');
+        line.innerHTML = '<br>';
+        if (list && (list.tagName === 'UL' || list.tagName === 'OL')) {
+          list.after(line);
+          li.remove();
+          if (!list.querySelector('li')) list.remove();
+        } else {
+          li.replaceWith(line);
+        }
+        const range = document.createRange();
+        range.selectNodeContents(line);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        onInput();
+        return;
+      }
       const range = sel.getRangeAt(0);
       if (range.startOffset === 0) {
         let el: Node | null = node instanceof Element ? node : node?.parentNode ?? null;
@@ -242,7 +290,7 @@ export default function NoteViewPage({ arg }: PageProps) {
         onKeyDown={onKeyDown}
         onClick={onChecklistTap}
       />
-      <FormatMenu editorRef={editorRef} />
+      <FormatMenu editorRef={editorRef} onInput={onInput} />
     </div>
   );
 }

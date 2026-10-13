@@ -62,43 +62,22 @@ function MsgImage({
 
 const SUGGESTIONS = ['Plan my day', 'Summarize my week', 'Draft a proposal', 'What am I forgetting?'];
 
-/* Day lines + the 100-message window. Long threads used to render every
-   message ever — slow mounts, lost place. Now: the thread renders the newest
-   100 and groups them under Today / Yesterday / date lines. Older history
-   stays in storage and the drawer; the down-arrow you already have jumps to
-   the newest. Props in, rows out — pure, tested via checks/threadwin.mjs. */
-/* A discriminated union, not a bag of optionals: a day row always carries a
-   label, a message row always carries its message. No `!` needed at the
-   reader — TypeScript narrows on `kind`, and a malformed row is unbuildable. */
-export type ThreadRow = { kind: 'day'; label: string } | { kind: 'msg'; msg: Msg };
+/* The 100-message window. Long threads used to render every message ever —
+   slow mounts, lost place. Now the thread renders the newest 100; older
+   history stays in storage and the drawer, and the down-arrow jumps to the
+   newest. No day lines, no per-message times: the thread just flows
+   (2026-10-13, owner call). Props in, rows out — pure, tested via
+   checks/threadwin.mjs. */
+/* One row per message — no day rows since 2026-10-13 (owner call: the thread
+   just flows). The `kind` tag stays so the window shape is stable. */
+export type ThreadRow = { kind: 'msg'; msg: Msg };
 
 const WINDOW_MSGS = 100;
 
-export function dayLabel(ts: number, now: number): string {
-  const d = new Date(ts);
-  const n = new Date(now);
-  const day = (x: Date) => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
-  if (day(d) === day(n)) return 'Today';
-  const y = new Date(n);
-  y.setDate(n.getDate() - 1);
-  if (day(d) === day(y)) return 'Yesterday';
-  return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: d.getFullYear() === n.getFullYear() ? undefined : 'numeric' });
-}
-
-export function threadRows(msgs: Msg[], now: number = Date.now()): { rows: ThreadRow[]; hidden: number } {
+export function threadRows(msgs: Msg[]): { rows: ThreadRow[]; hidden: number } {
   const hidden = Math.max(0, msgs.length - WINDOW_MSGS);
   const windowed = msgs.slice(hidden);
-  const rows: ThreadRow[] = [];
-  let lastDay = '';
-  for (const msg of windowed) {
-    const label = dayLabel(msg.ts, now);
-    if (label !== lastDay) {
-      lastDay = label;
-      rows.push({ kind: 'day', label });
-    }
-    rows.push({ kind: 'msg', msg });
-  }
-  return { rows, hidden };
+  return { rows: windowed.map((msg) => ({ kind: 'msg' as const, msg })), hidden };
 }
 
 /* The smart welcome. A cold empty chat used to say the same line every time;
@@ -662,12 +641,7 @@ export default function ChatScreen() {
                 <span>{visible.hidden} older message{visible.hidden === 1 ? '' : 's'} in history</span>
               </div>
             ) : null}
-            {visible.rows.map((row) =>
-              row.kind === 'day' ? (
-                <div className="dayLine" key={`day-${row.label}`}>
-                  <span>{row.label}</span>
-                </div>
-              ) : (
+            {visible.rows.map((row) => (
                 <div key={row.msg.id} className={`msg ${row.msg.role}`}>
                   {(() => {
                     const m = row.msg;
@@ -768,14 +742,6 @@ export default function ChatScreen() {
                           ) : null}
                         </div>
                       ) : null}
-                      {m.ts ? (
-                        <span className="msgTs">
-                          {new Date(m.ts).toLocaleTimeString(undefined, {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      ) : null}
                     </>
                   )}
                   {/* The two buttons under a message, from wove's two rows: `rowA`
@@ -821,24 +787,14 @@ export default function ChatScreen() {
                           </button>
                         </>
                       ) : (
-                        <>
-                          <button
-                            className={`mrowBtn${copied === m.id ? ' ok' : ''}`}
-                            onClick={() => copy(m.text, m.id)}
-                            aria-label="Copy"
-                            title="Copy"
-                          >
-                            <Icon name={copied === m.id ? 'tick' : 'cp'} />
-                          </button>
-                          <button
-                            className="mrowBtn"
-                            onClick={() => startEdit(m)}
-                            aria-label="Edit"
-                            title="Edit"
-                          >
-                            <Icon name="ed" />
-                          </button>
-                        </>
+                        <button
+                          className="mrowBtn"
+                          onClick={() => startEdit(m)}
+                          aria-label="Edit"
+                          title="Edit"
+                        >
+                          <Icon name="ed" />
+                        </button>
                       )}
                       </div>
                     ) : null}
