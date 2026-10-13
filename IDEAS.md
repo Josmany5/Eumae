@@ -317,6 +317,104 @@ came from, what it would touch, what is still open.
 - **Touches:** `src/saved.ts`, `LibraryScreen.tsx`.
 - **Open:** tag derivation exact rules.
 
+## I24 — Foreground/background working set (last message is king)
+
+- **From:** owner, 2026-10-13 — the widget-v2 bug: ask for a widget, then plain
+  sentences on other subjects keep producing new code versions.
+- **Says:** every turn splits into BACKGROUND (compacted history; old code
+  travels as one-line outcomes with file ids, never full text) + CURRENT
+  REQUEST (the last message alone — the sole source of intent). Continuation
+  rule with teeth: only iterate the artifact on explicit reference — name,
+  pronoun, or build verb. A question, comment, or new topic is never a
+  rebuild; unsure → answer in words + one line ("Still on the widget, or
+  dropping it?").
+- **Touches:** `src/request.ts` (I18 layers), thread window/compaction.
+- **Open:** exact continuation wording; what the compactor keeps per outcome.
+
+## I25 — Turn verdict + focus ledger (meta harness, lite)
+
+- **From:** owner, 2026-10-13 — "it can't differentiate between what I asked
+  before and what I'm saying now"; manual Context toggles shouldn't be the
+  system.
+- **Says:** the meta harness classifies each turn — continue / new / resume /
+  meta-talk — and keeps a focus ledger with heat: referenced stays hot,
+  ignored cools, an unbridged new topic parks the old focus as a one-line
+  outcome. The `+` settings and Context panel become overrides on the
+  automatic system, read back in the chip ("on: widget v1 · Build") — pin or
+  drop, never hand-manage attention every turn.
+- **Touches:** new focus module, request builder, chip.
+- **Open:** classifier as heuristics-first vs cheap model call; heat half-life
+  in turns.
+
+## I26 — Clarify like the best, never like a form (anti-annoyance rule)
+
+- **From:** owner, 2026-10-13 — glass-box plan + clarity confirmations wanted,
+  "but could get annoying if it doesn't just get it like frontier models do";
+  the goal is replacing frontier models on smarts + usefulness.
+- **Says:** default is commit-and-receipt, not interrogation. Single clear
+  commands execute; multi-step ends in the glass-box plan card (I19) with
+  approve/edit, then receipt + undo. Clarify only on genuine ambiguity — one
+  line, once per turn, never re-ask what focus already answers. Frontier "just
+  gets it" by committing with an undo nearby; we match that, with the waiter
+  (I22) reserved for the truly ambiguous.
+- **Touches:** `src/request.ts` (I18), plan card (I19).
+- **Open:** Q151 starter sentences (each maps to exactly one behavior); exact
+  Layer-1 waiter wording.
+
+## I27 — Artifact pinning + Build's exit rule
+
+- **From:** owner, 2026-10-13 — code in the transcript pulls continuation;
+  "back to the widget" should resume it, silence about it should end it.
+- **Says:** built things live as versioned objects behind ids (Studio), not as
+  chat text; the transcript carries outcomes. The Build harness pins artifact
+  + version, with one exit rule: stop iterating the moment the person stops
+  referring to it. "Back to X" reloads it as the working object; a new topic
+  parks it with its state in one line.
+- **Touches:** Studio/artifact store, `src/request.ts`, focus ledger (I25).
+- **Open:** artifact store shape; version-list UI.
+
+## I28 — Frontier catch-up list (their intelligent UI, distilled to ours)
+
+- **From:** owner, 2026-10-13 — "chatgpt dropped intelligent ui features so i
+  have to catch up"; goal is replacing frontier models.
+- **Says:** the catch-up set, each mapped to ours: artifact/canvas pane →
+  I27 + Studio; memory that holds ("remember X") → I30; projects holding files
+  + chats → scope revival (I8 open); scheduled nudges → automations (I29,
+  nudge-once); a voice that talks → voice-mode prompt rules (I18);
+  deep-research → Distill (I21); share/export → already exists (drawer export,
+  note share). Builds in harness order (I24–I27 first) — no feature lands that
+  reintroduces the bleed.
+- **Touches:** roadmap order more than files.
+- **Open:** which catch-up item earns its build first after the harness slice.
+
+## I29 — Vertical harnesses: opcode → skill → tool, agents, automations
+
+- **From:** owner, 2026-10-13 — "meta harness versus the vertical harnesses";
+  agents, automations, skill files, opcodes.
+- **Says:** each job gets a vertical pack — entry verbs (Q151), narrow opcodes,
+  its skills, its tools — loaded only while active, unloaded on topic change
+  so the model can't keep building what was dropped. An agent is a vertical
+  harness with a budget (N steps, Y minutes) + receipt obligation; an
+  automation is trigger + harness + nudge-once (C66 worker-vs-chat). First
+  vertical: Build with the I27 exit rule. First tool on the loop: save_link
+  (I20, harmless, no approval). First gated action: plan approve/edit
+  (I19 + I22).
+- **Touches:** harness modules, `api/ai.ts` dispatcher, `src/request.ts`
+  declarations.
+- **Open:** C66, C68/C69, C07 (95/5 stands); the Q151 verb list.
+
+## I30 — Memory tiers feeding focus (after focus works)
+
+- **From:** owner, 2026-10-13 — memory + actions + briefing loops; memory
+  without focus is just more clutter in the prompt.
+- **Says:** four tiers — working (this focus, hot), episodic (parked focuses
+  with outcomes), semantic (durable facts, said/inferred/observed tagged),
+  procedural (skills + opcodes themselves). Retrieval keyed on focus entities,
+  never dumped whole; local stores first, Supabase sync later behind the same
+  get/save seams. Nothing memorized before I24–I25 hold.
+- **Touches:** memory store, context builder, notes/threads/uploads seams.
+- **Open:** store shape; what earns semantic promotion.
+
 ---
 
 ## Reversals and changes of mind
@@ -341,3 +439,9 @@ came from, what it would touch, what is still open.
 5. **Whenever — I8 and I9**, plus the open owner decisions still standing: wire or
    hide the mic (I9); drive or label always-in-context (I8); and where a project
    scope is chosen now that the rail row is back but inert (§4.13).
+6. **Harness first — I24 → I25 → I26/I27, then tools, then memory, then
+   surface.** Focus and the foreground/background split land before anything
+   that adds tokens: pages (Console/Studio/Classroom/Guild content) and crew
+   wait until the bleed is dead, because every new source multiplies it until
+   then. I20 save_link is the first tool on the loop; I30 memory after; the
+   I28 catch-up list orders behind the slice.
