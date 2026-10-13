@@ -31,6 +31,10 @@ export default function LibraryScreen() {
 
   useEffect(() => {
     setUploads(listUploads());
+    /* Same backstop as the notes list: a focus return re-reads. */
+    const onFocus = () => setUploads(listUploads());
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, []);
 
   const shown = filter === 'all' ? uploads : uploads.filter((u) => u.kind === filter);

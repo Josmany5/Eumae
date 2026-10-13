@@ -386,6 +386,10 @@ export default function App() {
           onSearch={openSearch}
           onPick={pickMenu}
           onCollapse={() => setRailCollapsed((c) => !c)}
+          threads={threads}
+          currentThreadId={currentThreadId}
+          onThreadPick={switchThread}
+          onNewChat={newChat}
         />
         <div className="col">
           <Header

@@ -25,6 +25,9 @@ function NoteRow({
   const [shownDx, setShownDx] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [open, setOpen] = useState(false);
+  /* Desktop has no swipe — hover reveals the ghost pair instead. The prop
+     callbacks are shared; only the door differs. */
+  const [hover, setHover] = useState(false);
 
   const onTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
@@ -49,15 +52,27 @@ function NoteRow({
   const title = titleOf(note);
   const preview = previewOf(note) || fmtShort(note.updatedAt);
 
+  /* One row, two doors. Mobile swipes the face left to reveal the colored
+     pair behind it; desktop hovers to reveal a ghost pair pinned inside the
+     row's right edge — same callbacks, no colored boxes, nothing outside
+     the row. The swipe strip stays mounted (touch only reads it) but
+     desktop CSS hides it, so the blue/red pair can never bleed through. */
   return (
-    <div className="swipeRow" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-      <div className="swipeActions">
-        <button className="swExp" onClick={onExport} aria-label={`Export ${title}`}>
+    <div
+      className="swipeRow"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <div className="swipeActions" aria-hidden="true">
+        <button className="swExp" onClick={onExport} aria-label={`Export ${title}`} tabIndex={-1}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8" />
           </svg>
         </button>
-        <button className="swDel" onClick={onDelete} aria-label={`Delete ${title}`}>
+        <button className="swDel" onClick={onDelete} aria-label={`Delete ${title}`} tabIndex={-1}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
           </svg>
@@ -78,20 +93,52 @@ function NoteRow({
           <span className="noteTitle">{title || 'Untitled'}</span>
           <span className="notePreview">{preview}</span>
         </span>
+        <span className={`noteTools${hover ? ' show' : ''}`}>
+          <span
+            role="button"
+            tabIndex={0}
+            className="noteTool"
+            aria-label={`Export ${title}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onExport();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                onExport();
+              }
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8" />
+            </svg>
+          </span>
+          <span
+            role="button"
+            tabIndex={0}
+            className="noteTool danger"
+            aria-label={`Delete ${title}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete();
+              }
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
+            </svg>
+          </span>
+        </span>
         <span className="drDate">{fmtShort(note.updatedAt)}</span>
       </button>
-      <div className="drDesktop">
-        <button className="drIconBtn" onClick={onExport} aria-label={`Export ${title}`}>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8" />
-          </svg>
-        </button>
-        <button className="drIconBtn danger" onClick={onDelete} aria-label={`Delete ${title}`}>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
-          </svg>
-        </button>
-      </div>
     </div>
   );
 }
@@ -103,6 +150,11 @@ export default function NotesPage(_: PageProps) {
 
   useEffect(() => {
     setNotes(getNotes());
+    /* Backstop: the editor saves on keystroke + flushes on unmount, but a
+       focus return re-reads anyway — the list can never show a stale note. */
+    const onFocus = () => setNotes(getNotes());
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, []);
 
   const newNote = () => {
@@ -148,7 +200,7 @@ export default function NotesPage(_: PageProps) {
           <div className="dlgScrim" onClick={() => setDeleteTarget(null)} />
           <div className="dlg" role="alertdialog" aria-label="Delete note">
             <div className="dlgTitle">Delete this note?</div>
-            <div className="dlgBody">\u201c{titleOf(deleteTarget) || 'Untitled'}\u201d will be gone for good.</div>
+            <div className="dlgBody">“{titleOf(deleteTarget) || 'Untitled'}” will be gone for good.</div>
             <div className="dlgBtns">
               <button className="dlgCancel" onClick={() => setDeleteTarget(null)}>Cancel</button>
               <button

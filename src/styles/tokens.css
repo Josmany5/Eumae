@@ -907,6 +907,20 @@ input,textarea,select{ font-family:inherit; }
 .dlgDanger{ border:none; border-radius:10px; padding:10px 18px;
   font-size:15px; font-weight:700; background:var(--rd); color:#fff; }
 .drDesktop{ display:none; }
+
+/* In-row ghost tools: desktop hover reveals Export/Delete pinned inside the
+   row's right edge — no colored boxes, nothing outside the row. Mobile never
+   sees them (no hover there); the swipe strip is the only door. */
+.noteTools{ display:none; }
+@media (min-width:900px){
+  .swipeRow .swipeActions{ display:none; }
+  .noteTools{ display:flex; gap:2px; margin-left:auto; flex:none; opacity:0; }
+  .swipeRow:hover .noteTools, .swipeRow:focus-within .noteTools{ opacity:1; }
+  .noteTool{ width:30px; height:30px; border-radius:50%; display:inline-flex;
+    align-items:center; justify-content:center; color:var(--mut); cursor:pointer; }
+  .noteTool:hover{ background:var(--card2); color:var(--tx); }
+  .noteTool.danger:hover{ color:var(--rd); }
+}
 @media (hover:hover) and (pointer:fine) {
   .drDesktop{ display:flex; gap:4px; margin-left:auto; padding-right:12px; }
   .drIconBtn{ width:32px; height:32px; border-radius:50%; border:1px solid var(--hair);
@@ -916,6 +930,12 @@ input,textarea,select{ font-family:inherit; }
 }
 .pageHead{ display:flex; align-items:center; gap:12px; padding:16px 20px; }
 .pageHead h2{ flex:1; margin:0; font-size:22px; font-weight:700; }
+/* The note face: a flex column with the sheet growing, so the format bar
+   docks at the viewport bottom even on a short note. Sticky-in-flow used to
+   leave it floating mid-page on desktop, where the empty space below the
+   text exposed it. */
+.noteClean{ min-height:100%; display:flex; flex-direction:column; padding-bottom:0; }
+.noteClean .ndoc{ flex:1; }
 .noteRow{ display:flex; align-items:center; gap:12px; width:100%; background:var(--card);
   padding:14px 20px; font-size:16px; text-align:left; color:var(--tx); border:none;
   transition:transform .2s ease; position:relative; }
@@ -925,7 +945,6 @@ input,textarea,select{ font-family:inherit; }
 /* The clean note: one bare sheet. No title field (the first block IS the
    title, large + bold by position), no entry boxes, no toolbar on the face.
    The meta line is the only chrome: date + word count, muted. */
-.noteClean{ padding-bottom:60px; min-height:100%; }
 .nmeta{ padding:12px 24px 0; font-size:12px; color:var(--mut); }
 .ndoc{ min-height:60vh; font-size:17px; line-height:1.65; outline:none;
   padding:4px 24px 40px; color:var(--tx); word-wrap:break-word; }

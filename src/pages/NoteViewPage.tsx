@@ -98,6 +98,10 @@ export default function NoteViewPage({ arg }: PageProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<number | null>(null);
   const loadedId = useRef('');
+  /* The last debounced body, held beside the timer: leaving within the 400ms
+     window used to drop the final keystrokes, because unmount cleared the
+     timer before it fired and the list then showed the pre-save note. */
+  const pendingBody = useRef<string | null>(null);
 
   /* Open once: record the visit, paint the one document. Saves thereafter
      never repaint — the DOM is the source of truth while typing. */
@@ -133,6 +137,13 @@ export default function NoteViewPage({ arg }: PageProps) {
     }
     return () => {
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
+      /* Flush the last keystrokes on the way out: the debounce in onInput
+         may not have fired yet, and without this the list shows the note as
+         it was 400ms ago. Writes through the same helper the timer uses. */
+      if (pendingBody.current !== null) {
+        writeBody(id, pendingBody.current);
+        pendingBody.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -151,16 +162,12 @@ export default function NoteViewPage({ arg }: PageProps) {
     clone.querySelectorAll('.nsess').forEach((d) => d.remove());
     clone.querySelectorAll('.ntitle').forEach((t) => t.classList.remove('ntitle'));
     const body = clone.innerHTML;
+    pendingBody.current = body;
     const text = (clone.textContent ?? '').replace(/\u00a0/g, ' ').trim();
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      const latest = getNote(id);
-      if (!latest) return;
-      /* Title = first content block's text, not textContent split on newline:
-         divs carry no newlines, so that split was the whole document. */
-      const firstBlock = clone.firstElementChild?.textContent?.replace(/\u00a0/g, ' ').trim() ?? '';
-      const title = (firstBlock || text).slice(0, 80) || 'Untitled';
-      saveNote({ ...latest, body, title });
+      pendingBody.current = null;
+      writeBody(id, body, text);
     }, 400);
   };
 
@@ -308,8 +315,25 @@ function ensureTitle(host: HTMLElement): void {
   }
 }
 
-/* Empty-sheet flag for the placeholder: no text content means the hint. */
+/* One writer for note bodies: the debounce timer and the unmount flush share
+   it, so the last keystrokes can never be newer than the last save. Title =
+   first content block's text, not textContent split on newline: divs carry no
+   newlines, so that split was the whole document. */
+function writeBody(id: string, body: string, text?: string): void {
+  const latest = getNote(id);
+  if (!latest) return;
+  const plain = text ?? body.replace(/<[^>]+>/g, ' ').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  const firstBlock = body
+    .replace(/<div class="nsess"[^>]*><\/div>/g, '\n')
+    .replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\xa0/g, ' ')
+    .split('\n')[0]
+    ?.trim() ?? '';
+  const title = (firstBlock || plain).slice(0, 80) || 'Untitled';
+  saveNote({ ...latest, body, title });
+}
+
 function syncEmpty(host: HTMLElement): void {
+  /* Empty-sheet flag for the placeholder: no text content means the hint. */
   const text = (host.textContent ?? '').trim();
   host.classList.toggle('tEmpty', text.length === 0);
 }
