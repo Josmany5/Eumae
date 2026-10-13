@@ -895,7 +895,6 @@ input,textarea,select{ font-family:inherit; }
 }
 .pageHead{ display:flex; align-items:center; gap:12px; padding:16px 20px; }
 .pageHead h2{ flex:1; margin:0; font-size:22px; font-weight:700; }
-.emptyNotes{ text-align:center; padding:60px 20px; color:var(--mut); }
 .noteRow{ display:flex; align-items:center; gap:12px; width:100%; background:var(--card);
   padding:14px 20px; font-size:16px; text-align:left; color:var(--tx); border:none;
   transition:transform .2s ease; position:relative; }

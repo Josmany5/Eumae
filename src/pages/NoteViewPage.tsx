@@ -104,7 +104,6 @@ export default function NoteViewPage({ arg }: PageProps) {
   const { back } = useNav();
   const id = typeof arg === 'string' ? arg : '';
   const [note, setNote] = useState<Note | null>(null);
-  const [words, setWords] = useState(0);
   const editorRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<number | null>(null);
   const loadedId = useRef('');
@@ -119,7 +118,6 @@ export default function NoteViewPage({ arg }: PageProps) {
     }
     const withSession = startSession(n);
     setNote(withSession);
-    setWords(withSession.body.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length);
     const host = editorRef.current;
     if (host && loadedId.current !== withSession.id) {
       loadedId.current = withSession.id;
@@ -145,7 +143,6 @@ export default function NoteViewPage({ arg }: PageProps) {
     clone.querySelectorAll('.nsess').forEach((d) => d.remove());
     const body = clone.innerHTML;
     const text = (clone.textContent ?? '').trim();
-    setWords(text ? text.split(/\s+/).length : 0);
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
       const latest = getNote(id);
@@ -167,9 +164,6 @@ export default function NoteViewPage({ arg }: PageProps) {
     <div className="page noteClean">
       {/* No page chrome of its own: the shell's header/backbar is the one way
           back. The face is the sheet. */}
-      <div className="nmeta">
-        {fmtDay(note.updatedAt)} \u00b7 {words} {words === 1 ? 'word' : 'words'}
-      </div>
       <div
         ref={editorRef}
         className="ndoc"

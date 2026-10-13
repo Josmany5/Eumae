@@ -21,7 +21,7 @@ export interface PageDef {
 export const PAGES: Record<string, PageDef> = {
   search: { title: 'Search', page: SearchPage },
   notes: { title: 'Notes', page: NotesPage },
-  note: { title: 'Note', page: NoteViewPage },
+  note: { title: '', page: NoteViewPage },
 };
 
 export function pageTitle(name: string): string {

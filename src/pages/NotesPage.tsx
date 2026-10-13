@@ -135,13 +135,7 @@ export default function NotesPage(_: PageProps) {
           </svg>
         </button>
       </div>
-      {notes.length === 0 ? (
-        <div className="emptyNotes">
-          <p>No notes yet.</p>
-          <button className="pri" onClick={newNote}>New note</button>
-        </div>
-      ) : (
-        notes.map((n) => (
+      {notes.map((n) => (
           <NoteRow
             key={n.id}
             note={n}
@@ -149,8 +143,7 @@ export default function NotesPage(_: PageProps) {
             onDelete={() => setDeleteTarget(n)}
             onExport={() => exportNote(n)}
           />
-        ))
-      )}
+        ))}
       {deleteTarget ? (
         <>
           <div className="dlgScrim" onClick={() => setDeleteTarget(null)} />
