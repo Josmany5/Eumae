@@ -99,16 +99,46 @@ function migrate(note: Note): Note {
 /* Plain text of a note — for list previews and word counts. */
 export function noteText(note: Note): string {
   const body = typeof note.body === 'string' ? note.body : '';
-  return body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return body
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/ /g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-/* The title is the first line of the document - read off the body, falling
-   back to the stored title while a note is still empty. */
+/* Plain text of a block of the body - non-breaking spaces decoded first, so
+   a trailing &nbsp; never survives as junk on the end of a title. */
+export function blockText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/ /g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/* The title is the first block of the document - read off the body, falling
+   back to the stored title while a note is still empty. First block, not
+   first sentence: noteText joins blocks with spaces, so a sentence split was
+   the whole document when the title ran long. */
 export function titleOf(note: Note): string {
-  const text = noteText(note);
-  if (!text) return note.title;
-  const first = text.split('.')[0].split('?')[0].split('!')[0].trim();
-  return (first || note.title).slice(0, 80);
+  const body = typeof note.body === 'string' ? note.body : '';
+  /* First CONTENT block: session dividers (.nsess) are chrome, and a migrated
+     body leads with one - matching it would title every migrated note '' and
+     fall back to the stale stored title. Walk blocks until one has text. */
+  const re = /<(?:div|p|h1|h2|li)([^>]*)>([\s\S]*?)(?=<\/(?:div|p|h1|h2)|<li|<ul|<ol|$)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body)) !== null) {
+    if (/nsess/.test(m[1])) continue;
+    const text = blockText(m[2]);
+    if (text) return text.slice(0, 80);
+  }
+  const fallback = blockText(body);
+  return (fallback || note.title || 'Untitled').slice(0, 80);
 }
 
 export function getNotes(): Note[] {

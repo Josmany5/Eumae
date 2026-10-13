@@ -38,7 +38,11 @@ function FormatMenu({ editorRef }: { editorRef: React.RefObject<HTMLDivElement |
         return;
       }
       const rect = range.getBoundingClientRect();
-      setPos({ x: Math.min(Math.max(rect.left + rect.width / 2, 90), window.innerWidth - 90), y: rect.top });
+      /* Clamp inside the viewport with margin: near an edge the menu used to
+         hang past the page and clip. ~140px is half the pill's width. */
+      const M = 148;
+      const x = Math.min(Math.max(rect.left + rect.width / 2, M), window.innerWidth - M);
+      setPos({ x, y: rect.top });
     };
     document.addEventListener('selectionchange', onSel);
     return () => document.removeEventListener('selectionchange', onSel);
@@ -160,12 +164,15 @@ export default function NoteViewPage({ arg }: PageProps) {
     clone.querySelectorAll('.nsess').forEach((d) => d.remove());
     clone.querySelectorAll('.ntitle').forEach((t) => t.classList.remove('ntitle'));
     const body = clone.innerHTML;
-    const text = (clone.textContent ?? '').trim();
+    const text = (clone.textContent ?? '').replace(/\u00a0/g, ' ').trim();
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
       const latest = getNote(id);
       if (!latest) return;
-      const title = text.split('\n')[0].trim().slice(0, 80) || 'Untitled';
+      /* Title = first content block's text, not textContent split on newline:
+         divs carry no newlines, so that split was the whole document. */
+      const firstBlock = clone.firstElementChild?.textContent?.replace(/\u00a0/g, ' ').trim() ?? '';
+      const title = (firstBlock || text).slice(0, 80) || 'Untitled';
       saveNote({ ...latest, body, title });
     }, 400);
   };

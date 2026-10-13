@@ -44,10 +44,11 @@ function NoteRow({
     setShownDx(0);
   };
 
-  /* Title is the first line; preview the next words. */
+  /* Title reads off the first block (titleOf) - the row and the save share
+     the one function, so the two can never disagree again. */
   const text = noteText(note);
-  const title = text ? text.slice(0, 80).split(/[.?!\n]/)[0].trim() || note.title : note.title || 'Untitled';
-  const rest = text.slice(title.length).replace(/^\s*[.?!\n\s]+/, '').slice(0, 60);
+  const title = titleOf(note);
+  const rest = text.slice(title.length).trim().slice(0, 60);
   const preview = rest || fmtShort(note.updatedAt);
 
   return (

@@ -138,8 +138,31 @@ const OLD = {
   check('migrate-idempotent-shape', out.sessions === 2 && out.bodyLen > 0, JSON.stringify(out));
 }
 
+// 5. Title reads the first block only - never the whole document, never a
+// trailing non-breaking space.
+{
+  const { out } = run(
+    (store) => {
+      store['eumae:notes'] = JSON.stringify([
+        {
+          id: 'n3',
+          title: 'stale',
+          body: '<div>My Title&nbsp;</div><div>body words here</div>',
+          sessions: [],
+          createdAt: 1,
+          updatedAt: 2,
+          ownerId: '',
+        },
+      ]);
+    },
+    `(() => { const ns = getNotes(); return { title: titleOf(ns[0]), text: noteText(ns[0]) }; })()`,
+  );
+  check('title-first-block-only', out.title === 'My Title', JSON.stringify(out));
+  check('title-no-nbsp', !out.title.includes('&') && !out.title.includes('\u00a0'), JSON.stringify(out));
+}
+
 if (failures.length) {
   console.error(`notes: ${failures.length} failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log('all 4 passed');
+console.log('all 6 passed');
