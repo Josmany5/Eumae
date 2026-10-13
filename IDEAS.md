@@ -411,9 +411,48 @@ came from, what it would touch, what is still open.
   with outcomes), semantic (durable facts, said/inferred/observed tagged),
   procedural (skills + opcodes themselves). Retrieval keyed on focus entities,
   never dumped whole; local stores first, Supabase sync later behind the same
-  get/save seams. Nothing memorized before I24–I25 hold.
+  get/save seams. Nothing memorized before I24–I25 hold. *When* each tier
+  loads is I32.
 - **Touches:** memory store, context builder, notes/threads/uploads seams.
 - **Open:** store shape; what earns semantic promotion.
+
+## I31 — Intent translator (understand-before-act)
+
+- **From:** owner, 2026-10-13 — "can i build translator that parses what the
+  message says and makes what i say more robust, clear, described, like label
+  indicators"; is the translator deterministic code or an AI that reshapes
+  mine before the main AI; who is being trained when every call is fresh.
+- **Says:** two AI calls in a chain, not one prompt doing both jobs. Call 1
+  (small/fast/cheap, ~80 JSON tokens, 2s timeout, deterministic-heuristic
+  fallback so it can never block the reply) parses each message into
+  `{intent, focus, mode, action, targets, ambiguity, rewritten}` — the
+  rewritten request becomes CURRENT REQUEST for Call 2 (big/smart), which acts
+  on it. One parse per turn, never chained translators; the translator
+  clarifies intent, never rewords personality, and its JSON renders as the
+  glass-box chip (`on: widget v1 · Build`) — tap-to-correct, and every
+  correction saves `{raw, translator said, you meant}` as the eval set that
+  trains the layer (prompts, heuristics, future classifier), never the
+  weights. Splitting forces understand-before-act: acting can't win over
+  understanding when the verdict must exist first.
+- **Touches:** new translator module, `src/request.ts` (I18 builds on it), chip.
+- **Open:** translator prompt wording; v0 heuristic list vs v1 model; chip
+  correction UI.
+
+## I32 — Memory load policy (when each tier loads, not just what they are)
+
+- **From:** owner, 2026-10-13 — "do I have to read preferences + memory files
+  every turn, or only for briefings / proactive / agents?"
+- **Says:** every turn carries only the ID card (~60–100 tokens, stable,
+  cached: name, tone, standing prefs, timezone) — continuity comes from the
+  ledger, not re-reading. Per turn loads top 3–5 focus-relevant hits only,
+  keyed on translator output; states ride the focus block and decay, prefs
+  load only when this turn touches them. Full sweep once per session / on
+  "brief me" (durable prefs + ~10 recent outcomes + open loops). Proactive and
+  agents get mission briefs — the narrowest context that lets them succeed,
+  no transcript. Wide raw files every turn is banned: it dilutes attention
+  and busts the cache.
+- **Touches:** `src/request.ts` context builder, I30 store, translator (I31).
+- **Open:** ID card exact contents; retrieval scoring; session-sweep trigger.
 
 ---
 

@@ -785,11 +785,24 @@ Design tokens plus every component's styles in one file, class-named per compone
     memory / log, the browser keeps a fast offline copy, one Export backs up everything,
     Delete everything means everything. Build toward it one table at a time; do not add
     a sixth local key without a migration plan.
-17. **Vercel env is landed (2026-10-11).** All six vars are set in Vercel: `GEMINI_API_KEY`
+18. **Vercel env is landed (2026-10-11).** All six vars are set in Vercel: `GEMINI_API_KEY`
     + `GOOGLE_CLOUD_TTS_KEY` (server-only), `SUPABASE_URL` + `SUPABASE_ANON_KEY` (server
     check), `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (public browser keys by design).
     Cloud chat + voice + sign-in work on `eumae.vercel.app`. A 401 on Play Sample is auth
     (no session), not keys.
+
+19. **The translator is AI, not code — and training trains the layer, not the
+  weights (2026-10-13).** Every API call is a fresh brain, so understand-before-act
+  is two calls in a chain: Call 1 (small/fast/cheap, ~80 JSON tokens, 2s timeout,
+  heuristic fallback so it can never block) parses each message into
+  `{intent, focus, mode, action, targets, ambiguity, rewritten}`; Call 2
+  (big/smart) acts on the rewritten request. One parse per turn, never chained
+  translators. Corrections (`{raw, translator said, you meant}`) are the eval
+  set that improves prompts, heuristics, and the future classifier. Memory loads
+  by policy, not by dump: the ID card (~60–100 cached tokens) every turn, top
+  3–5 focus-relevant hits per turn, full sweep per session/briefing, mission
+  briefs for background jobs. Raw files every turn is banned — it dilutes
+  attention and busts the cache. `IDEAS.md` I31–I32.
 
 ---
 
