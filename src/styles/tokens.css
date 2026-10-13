@@ -908,12 +908,17 @@ input,textarea,select{ font-family:inherit; }
 .nmeta{ padding:12px 24px 0; font-size:12px; color:var(--mut); }
 .ndoc{ min-height:60vh; font-size:17px; line-height:1.65; outline:none;
   padding:4px 24px 40px; color:var(--tx); word-wrap:break-word; }
-.ndoc:empty:before{ content:attr(data-placeholder); color:var(--mut); }
-/* First block is the title — Apple Notes: large, bold, tight. Whatever block
-   type the first line carries, position makes it the title. */
-.ndoc > :first-child{ font-size:28px !important; font-weight:700 !important;
-  line-height:1.2; margin:0 0 8px; }
+/* First line is the title — Apple Notes: large, bold, tight. Carried by the
+   `ntitle` class (see ensureTitle in NoteViewPage), never by position: the
+   first line is a bare text node until its first Enter, and bare text matches
+   no selector — a `:first-child` rule styled the second line instead. Class
+   beats tag, so an h1 first line still reads as the title. */
 .ndoc h1{ font-size:22px; margin:16px 0 8px; }
+.ndoc .ntitle{ font-size:28px; font-weight:700; line-height:1.2; margin:0 0 8px; }
+/* Empty sheet: the placeholder. Toggled by JS (tEmpty) rather than `:empty` —
+   the sheet seeds a title div holding a br for caret height, which is never
+   `:empty`. */
+.ndoc.tEmpty:before{ content:attr(data-placeholder); color:var(--mut); }
 .ndoc p{ margin:0 0 12px; }
 .ndoc ul{ margin:8px 0 12px; padding-left:24px; }
 .ndoc li{ margin:4px 0; }

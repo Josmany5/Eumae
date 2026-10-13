@@ -121,10 +121,23 @@ export default function NoteViewPage({ arg }: PageProps) {
     const host = editorRef.current;
     if (host && loadedId.current !== withSession.id) {
       loadedId.current = withSession.id;
+      /* Body first (title line included), session ribbon after the text.
+         Dedupe: a migrated body may already carry `.nsess` dividers from the
+         pre-migration entries — those are history, kept once, never doubled. */
+      const seen = new Set<number>();
       host.innerHTML = withSession.body || '';
+      host.querySelectorAll('.nsess').forEach((d) => {
+        const ts = Number((d as HTMLElement).dataset.ts);
+        if (ts) seen.add(ts);
+      });
+      ensureTitle(host);
       for (const ts of [...withSession.sessions].sort((a, b) => a - b)) {
-        host.appendChild(sessionDivider(ts));
+        if (seen.has(ts)) continue;
+        const d = sessionDivider(ts);
+        d.dataset.ts = String(ts);
+        host.appendChild(d);
       }
+      syncEmpty(host);
       placeCaretAtEnd(host);
     }
     return () => {
@@ -138,9 +151,14 @@ export default function NoteViewPage({ arg }: PageProps) {
   const onInput = () => {
     const host = editorRef.current;
     if (!host) return;
-    /* Read back minus the chrome: dividers carry `.nsess`, never saved. */
+    ensureTitle(host);
+    syncEmpty(host);
+    /* Read back minus the chrome: dividers carry `.nsess`, never saved. The
+       title helper class is chrome too — strip it before save so a reload
+       never persists a duplicate. */
     const clone = host.cloneNode(true) as HTMLElement;
     clone.querySelectorAll('.nsess').forEach((d) => d.remove());
+    clone.querySelectorAll('.ntitle').forEach((t) => t.classList.remove('ntitle'));
     const body = clone.innerHTML;
     const text = (clone.textContent ?? '').trim();
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
@@ -150,6 +168,49 @@ export default function NoteViewPage({ arg }: PageProps) {
       const title = text.split('\n')[0].trim().slice(0, 80) || 'Untitled';
       saveNote({ ...latest, body, title });
     }, 400);
+  };
+
+  /* Enter inside the title ends the title: split a body line after it rather
+     than growing an h1. Backspace at the body's start merges back up. */
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    const host = editorRef.current;
+    if (!host) return;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const node = sel.anchorNode;
+    const titleEl =
+      node instanceof Element
+        ? node.closest('.ntitle')
+        : node?.parentElement?.closest('.ntitle');
+    if (e.key === 'Enter' && titleEl && !e.shiftKey) {
+      e.preventDefault();
+      const line = document.createElement('div');
+      line.innerHTML = '<br>';
+      titleEl.after(line);
+      const range = document.createRange();
+      range.selectNodeContents(line);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      onInput();
+    } else if (e.key === 'Backspace' && sel.isCollapsed) {
+      const range = sel.getRangeAt(0);
+      if (range.startOffset === 0) {
+        let el: Node | null = node instanceof Element ? node : node?.parentNode ?? null;
+        while (el && el !== host && el.parentNode !== host) el = el.parentNode;
+        if (el && el !== host && el.previousSibling instanceof Element && el.previousSibling.classList.contains('ntitle')) {
+          e.preventDefault();
+          const prev = el.previousSibling as HTMLElement;
+          prev.appendChild(document.createElement('br'));
+          const r2 = document.createRange();
+          r2.selectNodeContents(prev);
+          r2.collapse(false);
+          sel.removeAllRanges();
+          sel.addRange(r2);
+          onInput();
+        }
+      }
+    }
   };
 
   const onChecklistTap = (e: React.MouseEvent) => {
@@ -171,11 +232,59 @@ export default function NoteViewPage({ arg }: PageProps) {
         suppressContentEditableWarning
         data-placeholder="New note"
         onInput={onInput}
+        onKeyDown={onKeyDown}
         onClick={onChecklistTap}
       />
       <FormatMenu editorRef={editorRef} />
     </div>
   );
+}
+
+/* The title contract, in one place. The first content block (skipping session
+   dividers) carries `.ntitle`; every other block does not. Runs after every
+   input and on open, so typing, Enter-splits, deletes and pastes can never
+   leave the big type on the wrong line. A bare-text first line (fresh note,
+   or text before any Enter) gets wrapped in a div so the class has a home —
+   the caret is recorded and restored around the swap, so typing never jumps.
+   Enter later splits that div, never the class off it. */
+function ensureTitle(host: HTMLElement): void {
+  // Wrap a leading bare-text title so the class has an element to live on.
+  const first = host.firstChild;
+  if (first && !(first instanceof HTMLElement) && (first.textContent ?? '').trim()) {
+    const sel = window.getSelection();
+    const offset = sel && sel.rangeCount > 0 && sel.anchorNode === first ? sel.anchorOffset : -1;
+    const div = document.createElement('div');
+    div.className = 'ntitle';
+    div.textContent = first.textContent ?? '';
+    host.replaceChild(div, first);
+    if (offset >= 0 && div.firstChild) {
+      try {
+        const range = document.createRange();
+        range.setStart(div.firstChild, Math.min(offset, (div.textContent ?? '').length));
+        range.collapse(true);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      } catch {
+        /* Non-fatal — caret stays where the browser left it. */
+      }
+    }
+  }
+  let titled = false;
+  for (const b of Array.from(host.childNodes)) {
+    if (!(b instanceof HTMLElement) || b.classList.contains('nsess')) continue;
+    if (!titled) {
+      b.classList.add('ntitle');
+      titled = true;
+    } else {
+      b.classList.remove('ntitle');
+    }
+  }
+}
+
+/* Empty-sheet flag for the placeholder: no text content means the hint. */
+function syncEmpty(host: HTMLElement): void {
+  const text = (host.textContent ?? '').trim();
+  host.classList.toggle('tEmpty', text.length === 0);
 }
 
 function placeCaretAtEnd(host: HTMLElement): void {
