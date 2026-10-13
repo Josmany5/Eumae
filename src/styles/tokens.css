@@ -7,6 +7,28 @@
   --gr:#30d158; --grsoft:rgba(48,209,88,.14);
   color-scheme:dark;
 }
+/* The type, bundled — not fetched. Inter used to arrive from Google Fonts
+   as a render-blocking stylesheet on every load: on a slow connection the
+   page sat unpainted waiting on it, or painted in the fallback and visibly
+   swapped when Inter landed. These four latin weights (~95KB) ship inside
+   the bundle, so the first paint already has the face and there is no
+   outside dependency left on the critical path. */
+@font-face{
+  font-family:"Inter"; font-style:normal; font-weight:400; font-display:swap;
+  src:url("../assets/fonts/inter-400.woff2") format("woff2");
+}
+@font-face{
+  font-family:"Inter"; font-style:normal; font-weight:500; font-display:swap;
+  src:url("../assets/fonts/inter-500.woff2") format("woff2");
+}
+@font-face{
+  font-family:"Inter"; font-style:normal; font-weight:600; font-display:swap;
+  src:url("../assets/fonts/inter-600.woff2") format("woff2");
+}
+@font-face{
+  font-family:"Inter"; font-style:normal; font-weight:700; font-display:swap;
+  src:url("../assets/fonts/inter-700.woff2") format("woff2");
+}
 html[data-theme="light"]{
   --bg:#f2f2f7; --card:#fff; --card2:#e9e9ee; --card3:#dcdce2;
   --tx:#000; --mut:#6b6b70; --hair:rgba(0,0,0,.1);
@@ -33,11 +55,11 @@ html[data-motion="reduce"] *::after{
 
 *{ box-sizing:border-box; }
 html,body{ margin:0; padding:0; }
-/* Bare-HTML background matches the app's dark default, so a reload that kills
-   the JS mid-boot flashes dark, not white: before React mounts, this rule is
-   the only paint on screen. Light users get one dark frame instead — same
-   trade the inline theme script already makes, and dark is the default. */
+/* Bare-HTML background matches the resolved theme, so neither side flashes:
+   the inline script in index.html sets the same value before first paint,
+   and this rule holds it once the stylesheet lands. */
 html{ background:#000; }
+html[data-theme="light"]{ background:#f2f2f7; }
 body{
   background:var(--bg); color:var(--tx);
   font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
@@ -958,3 +980,8 @@ input,textarea,select{ font-family:inherit; }
 .crash-note{ font-size:14px; line-height:1.5; color:var(--mut); }
 .crash-btn{ border:none; border-radius:12px; padding:12px 20px; font-size:15px;
   font-weight:600; background:var(--ac); color:#fff; cursor:pointer; }
+/* The escape hatch: a quieter second button, not a second primary. Same
+   shape, no fill — findable in a crash without competing with the safe
+   first move (Reload). */
+.crash-btn-ghost{ background:none; border:1px solid var(--hair); color:var(--mut);
+  font-weight:500; font-size:14px; padding:10px 20px; }

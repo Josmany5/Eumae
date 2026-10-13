@@ -43,10 +43,31 @@ function readIndex(): Upload[] {
     const raw = localStorage.getItem(INDEX_KEY);
     if (!raw) return [];
     const list = JSON.parse(raw) as Upload[];
-    return Array.isArray(list) ? list : [];
+    if (!Array.isArray(list)) return [];
+    /* One odd row used to render an odd Library line; a badly-shaped one
+       could do worse. Drop what does not hold, keep what does. */
+    return list.filter(isUpload);
   } catch {
     return [];
   }
+}
+
+const UPLOAD_KINDS: UploadKind[] = ['image', 'pdf', 'text', 'audio', 'video', 'doc', 'other'];
+
+function isUpload(u: unknown): u is Upload {
+  if (!u || typeof u !== 'object') return false;
+  const o = u as Record<string, unknown>;
+  return (
+    typeof o.id === 'string' &&
+    typeof o.name === 'string' &&
+    typeof o.mimeType === 'string' &&
+    typeof o.size === 'number' &&
+    Number.isFinite(o.size) &&
+    typeof o.createdAt === 'number' &&
+    Number.isFinite(o.createdAt) &&
+    typeof o.action === 'string' &&
+    UPLOAD_KINDS.includes(o.kind as UploadKind)
+  );
 }
 
 function writeIndex(list: Upload[]): void {

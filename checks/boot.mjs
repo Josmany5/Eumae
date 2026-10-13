@@ -163,7 +163,63 @@ function run(setup) {
     JSON.stringify(out.messages[0]),
   );
 }
-// 6. Reload restores where you were: tab + pushed stack survive.
+// 6. One malformed message is dropped at boot; the good ones survive. The
+//    crash-looping shape never reaches React, and the cleaned list is
+//    written back so the bad row dies once.
+{
+  const { out, local } = run(({ local, session }) => {
+    session['eumae:session'] = '1';
+    local['eumae:currentThread'] = 't1';
+    local['eumae:threads'] = JSON.stringify([
+      {
+        id: 't1',
+        title: 'Old',
+        createdAt: 1,
+        updatedAt: 2,
+        messages: [
+          { id: 1, role: 'you', text: 'hi', ts: 1 },
+          { id: 'bad', role: 'eumae', text: 42, ts: 'yesterday' },
+          { id: 3, role: 'eumae', text: 'hello back', ts: 3 },
+        ],
+      },
+    ]);
+  });
+  const stored = JSON.parse(local['eumae:threads']);
+  check(
+    'bad-message-dropped',
+    out.messages.length === 2 && out.messages[0].text === 'hi' && out.messages[1].text === 'hello back',
+    JSON.stringify(out.messages.map((m) => m.text)),
+  );
+  check(
+    'bad-message-persisted',
+    stored.length === 1 && stored[0].messages.length === 2,
+    JSON.stringify(stored[0] && stored[0].messages.length),
+  );
+}
+
+// 7. A thread whose every message is bad boots empty — never a crash.
+{
+  const { out } = run(({ local, session }) => {
+    session['eumae:session'] = '1';
+    local['eumae:currentThread'] = 't1';
+    local['eumae:threads'] = JSON.stringify([
+      {
+        id: 't1',
+        title: 'Old',
+        createdAt: 1,
+        updatedAt: 2,
+        messages: [{ nope: true }, null, 'a string'],
+      },
+    ]);
+  });
+  check(
+    'all-bad-messages-empty',
+    out.fresh === false && out.threadId === 't1' && out.messages.length === 0,
+    JSON.stringify({ fresh: out.fresh, count: out.messages.length }),
+  );
+}
+
+// 8. Reload restores where you were: tab + pushed stack survive.
 {
   const { out } = run(({ local, session }) => {
     session['eumae:session'] = '1';
@@ -179,7 +235,7 @@ function run(setup) {
     JSON.stringify({ tab: out.tab, stack: out.stack }),
   );
 }
-// 7. Cold open lands on chat with an empty stack, whatever was stored.
+// 9. Cold open lands on chat with an empty stack, whatever was stored.
 {
   const { out } = run(({ local }) => {
     local['eumae:currentThread'] = 't1';
@@ -194,7 +250,7 @@ function run(setup) {
     JSON.stringify({ tab: out.tab, stack: out.stack }),
   );
 }
-// 8. A corrupt stored nav boots to chat, never to nowhere.
+// 10. A corrupt stored nav boots to chat, never to nowhere.
 {
   const { out } = run(({ local, session }) => {
     session['eumae:session'] = '1';
@@ -211,7 +267,7 @@ function run(setup) {
   );
 }
 
-// 9. Reload inside Settings restores the open pane + section.
+// 11. Reload inside Settings restores the open pane + section.
 {
   const { out } = run(({ local, session }) => {
     session['eumae:session'] = '1';
@@ -242,7 +298,7 @@ function run(setup) {
     }),
   );
 }
-// 10. Cold open resets overlays, whatever was stored.
+// 12. Cold open resets overlays, whatever was stored.
 {
   const { out } = run(({ local }) => {
     local['eumae:currentThread'] = 't1';
@@ -268,7 +324,7 @@ function run(setup) {
     JSON.stringify({ settingsOpen: out.settingsOpen, panelOpen: out.panelOpen }),
   );
 }
-// 11. Corrupt overlay data boots closed, never stuck open.
+// 13. Corrupt overlay data boots closed, never stuck open.
 {
   const { out } = run(({ local, session }) => {
     session['eumae:session'] = '1';
@@ -299,4 +355,4 @@ if (failures.length) {
   console.error(`boot: ${failures.length} failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log('all 14 passed');
+console.log('all 18 passed');

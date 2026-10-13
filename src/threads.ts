@@ -39,7 +39,32 @@ function load(): Thread[] {
       return cache;
     }
     const parsed = JSON.parse(raw);
-    cache = Array.isArray(parsed) ? parsed.filter(isThread) : [];
+    if (!Array.isArray(parsed)) {
+      cache = [];
+      return cache;
+    }
+    let dropped = 0;
+    const cleaned: Thread[] = [];
+    for (const t of parsed) {
+      if (!isThread(t)) {
+        dropped++;
+        continue;
+      }
+      const msgs = cleanMessages(t.messages);
+      dropped += t.messages.length - msgs.length;
+      cleaned.push({ ...t, messages: msgs });
+    }
+    cache = cleaned;
+    /* A bad row dies once: write the cleaned list back so the next boot
+       never reads it again. A crash-looping message is dropped here, before
+       React ever sees it. */
+    if (dropped > 0) {
+      try {
+        localStorage.setItem(KEY, JSON.stringify(cleaned));
+      } catch {
+        /* Non-fatal — memory still holds the cleaned list. */
+      }
+    }
     return cache;
   } catch {
     cache = [];
@@ -120,7 +145,13 @@ export function titleFor(text: string): string {
   return (lastSpace > 12 ? cut.slice(0, lastSpace) : cut) + '…';
 }
 
-/** A stored thread is only usable if it has the shape we expect. */
+/** A stored thread is only usable if it has the shape we expect. Threads are
+ *  checked on load, and now their messages are too: one malformed message
+ *  (wrong types, unknown role, bad attachment/source rows) used to reach
+ *  React and crash the whole boot — Reload re-read the same row and crashed
+ *  again, with no way out but clearing site data by hand. Bad rows are
+ *  dropped here, before React ever sees them; `load()` writes the cleaned
+ *  list back so a bad row dies once. */
 function isThread(t: unknown): t is Thread {
   if (!t || typeof t !== 'object') return false;
   const o = t as Record<string, unknown>;
@@ -131,4 +162,41 @@ function isThread(t: unknown): t is Thread {
     typeof o.updatedAt === 'number' &&
     Array.isArray(o.messages)
   );
+}
+
+/** One stored message is usable if its core fields hold. Unknown extra keys
+ *  are fine (forward-compatible); wrong-typed core or sub-rows are not. */
+function isMsg(m: unknown): m is Msg {
+  if (!m || typeof m !== 'object') return false;
+  const o = m as Record<string, unknown>;
+  if (typeof o.id !== 'number' || !Number.isFinite(o.id)) return false;
+  if (o.role !== 'you' && o.role !== 'eumae') return false;
+  if (typeof o.text !== 'string') return false;
+  if (typeof o.ts !== 'number' || !Number.isFinite(o.ts)) return false;
+  if (o.streaming !== undefined && typeof o.streaming !== 'boolean') return false;
+  if (o.note !== undefined && typeof o.note !== 'string') return false;
+  if (o.sources !== undefined) {
+    if (!Array.isArray(o.sources)) return false;
+    for (const s of o.sources) {
+      if (!s || typeof s !== 'object') return false;
+      const so = s as Record<string, unknown>;
+      if (typeof so.uri !== 'string' || typeof so.title !== 'string') return false;
+    }
+  }
+  if (o.attachments !== undefined) {
+    if (!Array.isArray(o.attachments)) return false;
+    for (const a of o.attachments) {
+      if (!a || typeof a !== 'object') return false;
+      const ao = a as Record<string, unknown>;
+      if (typeof ao.label !== 'string' || typeof ao.icon !== 'string') return false;
+      if (ao.uploadId !== undefined && typeof ao.uploadId !== 'string') return false;
+      if (ao.url !== undefined && typeof ao.url !== 'string') return false;
+    }
+  }
+  return true;
+}
+
+function cleanMessages(messages: unknown): Msg[] {
+  if (!Array.isArray(messages)) return [];
+  return messages.filter(isMsg);
 }

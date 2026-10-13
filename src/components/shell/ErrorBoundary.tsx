@@ -16,14 +16,16 @@ interface Props {
 
 interface State {
   message: string | null;
+  confirmingWipe: boolean;
 }
 
 export default class ErrorBoundary extends Component<Props, State> {
-  state: State = { message: null };
+  state: State = { message: null, confirmingWipe: false };
 
   static getDerivedStateFromError(error: unknown): State {
     return {
       message: error instanceof Error ? error.message : 'Something went wrong.',
+      confirmingWipe: false,
     };
   }
 
@@ -32,6 +34,28 @@ export default class ErrorBoundary extends Component<Props, State> {
     // the stack here is the debugging half. Same split as api/ai.ts keeps.
     console.error('Eumae crashed:', error);
   }
+
+  /* The escape hatch: a bad saved message used to crash boot, and Reload
+   * re-read the same bad row and crashed again — no way out but clearing
+   * site data by hand. Message validation (threads.ts) should stop that
+   * class of crash before React sees it; this button covers whatever shape
+   * ever breaks validation again. Chats only — notes, uploads, theme stay.
+   * Two taps: the first arms, the second wipes `eumae:threads` +
+   * `eumae:currentThread` and reloads onto a fresh chat. */
+  private wipeChats = () => {
+    if (!this.state.confirmingWipe) {
+      this.setState({ confirmingWipe: true });
+      return;
+    }
+    try {
+      localStorage.removeItem('eumae:threads');
+      localStorage.removeItem('eumae:currentThread');
+      sessionStorage.removeItem('eumae:session');
+    } catch {
+      /* If storage itself is broken, reloading is still the best move. */
+    }
+    window.location.reload();
+  };
 
   render(): ReactNode {
     if (this.state.message === null) return this.props.children;
@@ -46,6 +70,12 @@ export default class ErrorBoundary extends Component<Props, State> {
           <button className="crash-btn" onClick={() => window.location.reload()}>
             Reload Eumae
           </button>
+          <button className="crash-btn crash-btn-ghost" onClick={this.wipeChats}>
+            {this.state.confirmingWipe ? 'Tap again to erase chats & reload' : 'Erase chats & reload'}
+          </button>
+          {this.state.confirmingWipe ? (
+            <div className="crash-note">This erases saved chats only. Notes, files and settings stay.</div>
+          ) : null}
         </div>
       </div>
     );

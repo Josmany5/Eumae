@@ -18,22 +18,37 @@
         try {
           raw = localStorage.getItem('eumae:theme');
           saved = JSON.parse(raw || 'null');
-        } catch {
+        } catch (e) {
           saved = raw; // a bare, unquoted value: hand-edited, or from before this was JSON
         }
         if (saved !== 'light' && saved !== 'dark') {
-          saved = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          try {
+            saved = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          } catch (e2) {
+            saved = 'dark';
+          }
         }
         document.documentElement.dataset.theme = saved;
+        /* The bare-HTML background matches the resolved theme, so a light
+           user never gets the old one-dark-frame flash: this runs before
+           first paint, and the stylesheet's own rule agrees. */
+        document.documentElement.style.background = saved === 'light' ? '#f2f2f7' : '#000';
       })();
     </script>
-    <!-- The type the AI apps use. Falls back to the system UI font offline. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Critical paint: the hashed stylesheet is cache-immutable, but on a
+         dead connection it may still miss — these rules mean the app can
+         never appear naked. Theme-aware background, the shell column, the
+         base face: plain, but dressed. The full stylesheet replaces all of
+         this when it lands. Keep minimal or it rots. -->
+    <style>
+      html{background:#000}
+      html[data-theme="light"]{background:#f2f2f7}
+      body{margin:0;background:#000;color:#fff;font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+      html[data-theme="light"] body{background:#f2f2f7;color:#000}
+      #root{height:100%}
+      #app{display:flex;min-height:100dvh}
+      #app .col{flex:1;min-width:0;display:flex;flex-direction:column}
+    </style>
   </head>
   <body>
     <div id="root"></div>
