@@ -997,6 +997,38 @@ input,textarea,select{ font-family:inherit; }
 .crash-card{ max-width:340px; text-align:center; display:flex; flex-direction:column; gap:12px; }
 .crash-title{ font-size:20px; font-weight:700; color:var(--tx); }
 .crash-note{ font-size:14px; line-height:1.5; color:var(--mut); }
+/* ─── Widget cards: the mockup's .wc/.wt/.rm + shake ─────────────────────── */
+/* Card: 2-col grid span, half class halves it. The mockup's .wc/.half. */
+.wc{ background:var(--card); border-radius:20px; padding:14px 16px;
+  margin-bottom:10px; position:relative; grid-column:span 2; display:flex;
+  flex-direction:column; gap:6px; min-width:0; cursor:pointer; }
+.wc.half{ grid-column:span 1; }
+/* Title row: icon + name + chevron. The mockup's .wt. */
+.wt{ display:flex; align-items:center; gap:8px; color:var(--mut); font-size:13px;
+  font-weight:600; }
+.wt svg{ width:18px; height:18px; stroke:var(--ac); fill:none; stroke-width:1.8;
+  stroke-linecap:round; stroke-linejoin:round; flex:none; }
+.wt i{ margin-left:auto; font-style:normal; font-size:20px; color:var(--mut); }
+/* Remove ×: top-left circle in edit. The mockup's .rm. */
+.rm{ position:absolute; top:-8px; left:-8px; width:26px; height:26px;
+  border-radius:50%; background:var(--card3); color:var(--tx); padding:0;
+  z-index:2; font-size:16px; line-height:1; cursor:pointer; }
+/* Size toggle: top-right pill in edit. The mockup's inline rmSz button. */
+.rmSz{ position:absolute; top:-8px; right:-8px; width:auto; padding:0 9px;
+  border-radius:99px; font-size:11px; font-weight:600; background:var(--card3);
+  color:var(--tx); z-index:2; cursor:pointer; }
+/* Hero number: first card's big count. The mockup's .big. */
+.big{ font-size:34px; font-weight:700; letter-spacing:-.02em; line-height:1.1; }
+.big small{ font-size:15px; font-weight:600; color:var(--mut); margin-left:6px;
+  letter-spacing:0; }
+/* Page grid: 2 columns, half cards share a row. The mockup's .pgrid. */
+.pgrid{ display:grid; grid-template-columns:1fr 1fr; gap:0 10px; align-content:start; }
+/* Edit shake: dashed outline + jiggle on cards, from the mockup's .ed8 .wc
+   + jg keyframes. Honors reduce-motion via the existing global rule. */
+.ed8 .wc{ outline:1.5px dashed var(--card3); outline-offset:4px;
+  animation:jg .25s infinite alternate; }
+@keyframes jg{ from{ transform:rotate(-.4deg); } to{ transform:rotate(.4deg); } }
+
 /* Swipe pages + dots: the Console's Today/Tasks/Calendar/Pinned pager. The
    mockup's #sw/.pg/#dots/.pl, rebuilt on tokens. */
 .cswipe{ display:flex; overflow-x:auto; scroll-snap-type:x mandatory;
