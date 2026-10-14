@@ -40,7 +40,8 @@
     "check:events": "node checks/events.mjs",
     "check:stores": "node checks/stores.mjs",
     "check:dash": "node checks/dash.mjs",
-    "check:gdash": "node checks/gdash.mjs"
+    "check:gdash": "node checks/gdash.mjs",
+    "check:library": "node checks/library.mjs"
   },
   "type": "module",
   "version": "0.1.0"
