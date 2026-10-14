@@ -1,6 +1,7 @@
-/* Guild: people, threads, requests, shared, marketplace. Fields follow the
- * mockup's SEED guild block verbatim (people with initials, threads with
- * message pairs, reqIn/reqOut, act, shared, market). Example seeds are the
+/* Guild: people, threads, requests, shared, marketplace, assigned work,
+ * groups. Fields follow the mockup's SEED guild block verbatim (people with
+ * initials, threads with message pairs, reqIn/reqOut, act, shared, market)
+ * plus the Guild dashboard's GAS9/GGRP9 seeds. Example seeds are the
  * mockup's own rows, labeled until live data replaces them.
  */
 
@@ -65,6 +66,26 @@ export interface GuildMarket {
   example?: boolean;
 }
 
+/* Assigned work — the mockup's GAS9 seed. `mine: 0` is work you assigned
+ * (everyone's status); `mine: 1` is work assigned to you (your progress). */
+export interface GuildAssignment {
+  t: string;
+  who: string;
+  pct: number;
+  mine: 0 | 1;
+  example?: boolean;
+}
+
+/* Group chats — the mockup's GGRP9 seed. Message pairs are [who, text],
+ * like the mockup. */
+export interface GuildGroup {
+  n: string;
+  un: number;
+  last: string;
+  msgs: [string, string][];
+  example?: boolean;
+}
+
 export interface Guild {
   people: GuildPerson[];
   threads: GuildThread[];
@@ -73,6 +94,8 @@ export interface Guild {
   act: GuildAct[];
   shared: GuildShared[];
   market: GuildMarket[];
+  assigned: GuildAssignment[];
+  groups: GuildGroup[];
 }
 
 const KEY = 'eumae:guild';
@@ -167,6 +190,34 @@ function seed(): Guild {
       { n: 'Pitch deck template', k: 'Template', by: 'ana.creates', got: 0, example: true },
       { n: 'Follow-up flow', k: 'Flow', by: 'leo.ops', got: 0, example: true },
     ],
+    assigned: [
+      { t: 'Sales onboarding', who: 'Marcus', pct: 60, mine: 0, example: true },
+      { t: 'Safety basics', who: 'Ana', pct: 100, mine: 0, example: true },
+      { t: 'Demo rehearsal checklist', who: 'Ana', pct: 35, mine: 0, example: true },
+      { t: 'Sales onboarding', who: 'You', pct: 20, mine: 1, example: true },
+    ],
+    groups: [
+      {
+        n: 'Terravita crew',
+        un: 1,
+        last: 'Mockup v2 is live for review',
+        example: true,
+        msgs: [
+          ['Marcus', 'Mockup v2 is live for review'],
+          ['Ana', 'Checking on my phone now'],
+        ],
+      },
+      {
+        n: 'Family',
+        un: 0,
+        last: 'Sunday dinner at 5?',
+        example: true,
+        msgs: [
+          ['Mom', 'Sunday dinner at 5?'],
+          ['You', 'I will bring the bread'],
+        ],
+      },
+    ],
   };
 }
 
@@ -179,24 +230,90 @@ function save(guild: Guild): void {
   }
 }
 
-function isGuild(g: unknown): g is Guild {
-  if (!g || typeof g !== 'object') return false;
-  const o = g as Record<string, unknown>;
+function isGuildAssignment(a: unknown): a is GuildAssignment {
+  if (!a || typeof a !== 'object') return false;
+  const o = a as Record<string, unknown>;
   return (
-    Array.isArray(o.people) &&
-    Array.isArray(o.threads) &&
-    Array.isArray(o.reqIn) &&
-    Array.isArray(o.reqOut) &&
-    Array.isArray(o.act) &&
-    Array.isArray(o.shared) &&
-    Array.isArray(o.market)
+    typeof o.t === 'string' &&
+    typeof o.who === 'string' &&
+    typeof o.pct === 'number' &&
+    (o.mine === 0 || o.mine === 1)
   );
 }
 
+function isGuildGroup(g: unknown): g is GuildGroup {
+  if (!g || typeof g !== 'object') return false;
+  const o = g as Record<string, unknown>;
+  return (
+    typeof o.n === 'string' &&
+    typeof o.un === 'number' &&
+    typeof o.last === 'string' &&
+    Array.isArray(o.msgs)
+  );
+}
+
+function isGuild(g: unknown): g is Guild {
+  if (!g || typeof g !== 'object') return false;
+  const o = g as Record<string, unknown>;
+  if (
+    !Array.isArray(o.people) ||
+    !Array.isArray(o.threads) ||
+    !Array.isArray(o.reqIn) ||
+    !Array.isArray(o.reqOut) ||
+    !Array.isArray(o.act) ||
+    !Array.isArray(o.shared) ||
+    !Array.isArray(o.market)
+  ) {
+    return false;
+  }
+  /* Assigned + groups arrived with the Guild dashboard: old saves predate
+     them, so absent lists read as empty rather than failing the row. */
+  if (o.assigned !== undefined && (!Array.isArray(o.assigned) || !o.assigned.every(isGuildAssignment))) {
+    return false;
+  }
+  if (o.groups !== undefined && (!Array.isArray(o.groups) || !o.groups.every(isGuildGroup))) {
+    return false;
+  }
+  return true;
+}
+
 export function getGuild(): Guild {
-  return load();
+  const g = load();
+  /* Old saves predate assigned + groups — normalize to empty, never crash. */
+  return {
+    ...g,
+    assigned: Array.isArray(g.assigned) ? g.assigned : [],
+    groups: Array.isArray(g.groups) ? g.groups : [],
+  };
 }
 
 export function saveGuild(guild: Guild): void {
   save(guild);
+}
+
+/* Accept an incoming request: the mockup's gReq(i,1) — status flips to
+ * "found", Eumae goes looking. Decline (0) removes it, sent (2) marks it. */
+export function answerRequest(index: number, action: 0 | 1 | 2): string {
+  const g = load();
+  const r = g.reqIn[index];
+  if (!r) return 'Nothing there.';
+  if (action === 0) {
+    save({ ...g, reqIn: g.reqIn.filter((_, i) => i !== index) });
+    return 'Request declined.';
+  }
+  if (action === 1) {
+    save({ ...g, reqIn: g.reqIn.map((x, i) => (i === index ? { ...x, st: 'found' } : x)) });
+    return 'Accepted — Eumae is finding it.';
+  }
+  save({ ...g, reqIn: g.reqIn.map((x, i) => (i === index ? { ...x, st: 'sent' } : x)) });
+  return 'Sent.';
+}
+
+/* Take a marketplace item into your Studio: the mockup's gAdd — got flips. */
+export function takeMarketplace(index: number): string {
+  const g = load();
+  const item = g.market[index];
+  if (!item) return 'Nothing there.';
+  save({ ...g, market: g.market.map((x, i) => (i === index ? { ...x, got: 1 as const } : x)) });
+  return 'Added to your Studio.';
 }
