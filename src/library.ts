@@ -24,6 +24,9 @@ export interface LibFile {
   st: 'live' | 'draft';
   v: number;
   b: string;
+  /** Version history — the mockup's hist9: old {version, body} pairs plus
+   * when each was saved. Push on edit-save; restore reads from it. */
+  hist?: { v: number; b: string; at: number }[];
   /** Folder override — without one, folderOf files it by kind. */
   fol8?: string;
   /** ms since epoch — Recent + date-sort read this. */
@@ -96,6 +99,12 @@ interface LibState {
 
 const KEY = 'eumae:library';
 let cache: LibState | null = null;
+function isHistRow(h: unknown): h is { v: number; b: string; at: number } {
+  if (!h || typeof h !== 'object') return false;
+  const o = h as Record<string, unknown>;
+  return typeof o.v === 'number' && typeof o.b === 'string' && typeof o.at === 'number';
+}
+
 function isLibFile(f: unknown): f is LibFile {
   if (!f || typeof f !== 'object') return false;
   const o = f as Record<string, unknown>;
@@ -106,6 +115,7 @@ function isLibFile(f: unknown): f is LibFile {
     (o.st === 'live' || o.st === 'draft') &&
     typeof o.v === 'number' &&
     typeof o.b === 'string' &&
+    (o.hist === undefined || (Array.isArray(o.hist) && o.hist.every(isHistRow))) &&
     typeof o.createdAt === 'number'
   );
 }
@@ -268,6 +278,40 @@ export function bumpVersion(id: string): LibFile | null {
   const f = s.files.find((x) => x.id === id);
   if (!f) return null;
   const next = { ...f, v: f.v + 1 };
+  save({ ...s, files: s.files.map((x) => (x.id === id ? next : x)) });
+  return { ...next };
+}
+
+/* Real edit: new title + body, old body pushed to hist, version bumps —
+ * the mockup's svEdit9. Returns the saved file. */
+export function saveEdit(id: string, t: string, b: string): LibFile | null {
+  const s = load();
+  const f = s.files.find((x) => x.id === id);
+  if (!f) return null;
+  const next: LibFile = {
+    ...f,
+    t: t.trim() || f.t,
+    b,
+    hist: [...(f.hist ?? []), { v: f.v, b: f.b, at: Date.now() }],
+    v: f.v + 1,
+  };
+  save({ ...s, files: s.files.map((x) => (x.id === id ? next : x)) });
+  return { ...next };
+}
+
+/* Restore an old version as the new current — the mockup's rsVer: old
+ * body becomes current, current pushed to hist, version bumps. */
+export function restoreVersion(id: string, v: number): LibFile | null {
+  const s = load();
+  const f = s.files.find((x) => x.id === id);
+  const ent = f?.hist?.find((h) => h.v === v);
+  if (!f || !ent) return null;
+  const next: LibFile = {
+    ...f,
+    b: ent.b,
+    hist: [...(f.hist ?? []), { v: f.v, b: f.b, at: Date.now() }],
+    v: f.v + 1,
+  };
   save({ ...s, files: s.files.map((x) => (x.id === id ? next : x)) });
   return { ...next };
 }

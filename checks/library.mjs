@@ -77,8 +77,20 @@ function run(js, setup, body) {
   check('sort', JSON.stringify(out.byDate) === '["f4","f3","f2","f1"]' && out.byName[0] === 'f4', JSON.stringify(out));
 }
 
+// 7. saveEdit pushes hist + bumps v; restoreVersion swaps back.
+{
+  const { out } = run(lib, () => {}, '(() => { const e = saveEdit("f1", "Gym split - v4", "Push/pull/legs, 6 days."); const r = restoreVersion("f1", 3); const f = getFiles().find((x) => x.id === "f1"); return { v1: e.v, hist1: e.hist.length, v2: r.v, body: f.b, hist2: f.hist.length }; })()');
+  check('versions', out.v1 === 4 && out.hist1 === 1 && out.v2 === 5 && out.body === 'Push/pull/legs, 5 days.' && out.hist2 === 2, JSON.stringify(out));
+}
+
+// 8. Bad hist rows fail the file; old files without hist still load.
+{
+  const { out } = run(lib, (store) => { store['eumae:library'] = JSON.stringify({ files: [{ id: 'x', t: 'Bad hist', k: 'DOC', st: 'live', v: 1, b: '', hist: [{ v: 'x' }], createdAt: 1 }, { id: 'y', t: 'Old file', k: 'DOC', st: 'live', v: 1, b: '', createdAt: 1 }], folders: [], favs: [], trash: [], filed: {}, prefs: {} }); }, '(() => getFiles().map((f) => f.id))()');
+  check('hist-migration', JSON.stringify(out) === '["y"]', JSON.stringify(out));
+}
+
 if (failures.length) {
   console.error('library: ' + failures.length + ' failed: ' + failures.join(', '));
   process.exit(1);
 }
-console.log('all 6 passed');
+console.log('all 8 passed');
