@@ -1063,6 +1063,12 @@ input,textarea,select{ font-family:inherit; }
   border-bottom:1px solid var(--hair); font-size:15px; }
 .st li:last-child{ border:0; }
 .st svg{ width:18px; height:18px; flex:none; }
+/* Classroom: course/digest cards + quiz buttons. The mockup's .cxcard/.qz. */
+.cxcard{ background:var(--card); border-radius:16px; padding:14px; margin:10px 0; }
+.qz button{ display:block; width:100%; text-align:left; padding:12px; border-radius:12px;
+  background:var(--card2); margin:6px 0; font-size:15px; }
+.qz button.right{ background:var(--grsoft); color:var(--gr); font-weight:700; }
+.qz button.wrong{ background:var(--rdsoft); color:var(--rd); font-weight:700; }
 
 
 /* ─── Console: the mockup's rCon rows ─────────────────────────────────────── */
