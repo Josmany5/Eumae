@@ -340,9 +340,38 @@ export default function App() {
         pickFile();
         return;
       }
+      if (label === 'Scope to a project') {
+        go('projects');
+        return;
+      }
+      /* Menu rows that navigate: every page they point at exists in PAGES.
+         Labels come from PAGE_MENU (rail + drawer share it). Anything
+         without a row here toasts, as before. */
+      const hit = {
+        Tasks: { tab: 'console', page: 'tasks' },
+        Events: { tab: 'console', page: 'cal' },
+        Calendar: { tab: 'console', page: 'cal' },
+        Goals: { tab: 'console', page: 'goals' },
+        Projects: { tab: 'console', page: 'projects' },
+        Flows: { tab: 'console', page: 'flows' },
+        Contacts: { tab: 'guild', page: 'gsec', arg: 'Contacts' },
+        Messages: { tab: 'guild', page: 'gmsg' },
+        Requests: { tab: 'guild', page: 'greq' },
+        'Assigned work': { tab: 'guild', page: 'greq' },
+        Activity: { tab: 'guild', page: 'gsec', arg: 'Activity' },
+        'Shared work': { tab: 'guild', page: 'gsec', arg: 'Shared work' },
+        Marketplace: { tab: 'guild', page: 'gsec', arg: 'Marketplace' },
+        'Shared with me': { tab: 'guild', page: 'gsec', arg: 'Shared work' },
+      }[label];
+      if (hit) {
+        const ht = hit as { tab?: TabId; page?: string; arg?: unknown };
+        if (ht.tab && ht.tab !== tab) goTab(ht.tab);
+        if (ht.page) go(ht.page, ht.arg);
+        return;
+      }
       notify(`${label} arrives with its screen`);
     },
-    [goTab, notify, pickFile, newChat],
+    [go, goTab, notify, pickFile, newChat, tab],
   );
 
   /* Persist where you are on every change, so a reload restores it. One small
