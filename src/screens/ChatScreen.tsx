@@ -7,6 +7,7 @@ import { streamChat } from '../chat';
 import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice';
 import { buildRequest, toApiBody } from '../request';
 import { getThread, saveThread, titleFor, type Msg } from '../threads';
+import { takePendingBrief } from '../studio';
 import { messagesFor, bootSnapshot, msgId } from '../boot';
 import { uploadData, listUploads } from '../uploads';
 import { getNotes } from '../notes';
@@ -344,6 +345,25 @@ export default function ChatScreen() {
     markAtBottom(true);
     setMsgs(messagesFor(threadId));
   }, [threadId, loadedId, markAtBottom]);
+
+  /* Studio hands Chat a brief: queueBrief() then goTab('chat'). Take it once
+     on arrival — a tab switch back later must not re-send it. take consumes,
+     so a reload mid-handoff lands one brief, never two. Guarded on thread +
+     empty-thread: a brief arriving onto a thread with history would read as
+     a non-sequitur. */
+  const briefTaken = useRef(false);
+  useEffect(() => {
+    if (briefTaken.current) return;
+    const brief = takePendingBrief();
+    if (!brief) return;
+    briefTaken.current = true;
+    if (msgs.length === 0) {
+      send(brief);
+    } else {
+      notify('Studio brief ready — sending it in a fresh chat would keep this thread clean.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* Pin the view to the floor on mount and on thread switches, before paint.
      The follow effect below handles streams; this one handles the jump —

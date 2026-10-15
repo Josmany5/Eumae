@@ -216,3 +216,26 @@ export function draftsOpen(): boolean {
 export function setDraftsOpen(open: boolean): void {
   saveUi({ draftsOpen: open });
 }
+
+/* The brief Studio hands to Chat — the mockup's go("ai"); ask(brief).
+ * Studio queues it and switches tabs; Chat takes it once on arrival and
+ * sends. Take consumes (a reload mid-handoff lands one brief, never two). */
+const BRIEF_KEY = 'eumae:pendingBrief';
+
+export function queueBrief(brief: string): void {
+  try {
+    localStorage.setItem(BRIEF_KEY, brief);
+  } catch {
+    /* Non-fatal — Chat just opens without it. */
+  }
+}
+
+export function takePendingBrief(): string | null {
+  try {
+    const b = localStorage.getItem(BRIEF_KEY);
+    if (b) localStorage.removeItem(BRIEF_KEY);
+    return b;
+  } catch {
+    return null;
+  }
+}
