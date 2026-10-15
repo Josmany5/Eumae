@@ -106,9 +106,11 @@ function ClassroomRoot({ assigned, onCourse, onTutorial, onSection, notify, toCh
         <div className="s" style={{ marginTop: 4 }}><b>Mirror:</b> lessons stick when they are under ten minutes. <b>Nudge:</b> Lesson 5 is eight minutes - do it before training?</div>
       </div>
       <h3 className="sec">Courses</h3>
+      <div className="cxGrid">
       {COURSE_ORDER.filter((n) => n !== CONTINUE.course).map((n) => (
         <CourseCard key={n} name={n} sub={courseSub(n)} onOpen={() => onCourse(n)} />
       ))}
+      </div>
       <h3 className="sec">Training</h3>
       {toYou.length ? toYou.map((a) => (
         <div key={a.t} className="cxcard">

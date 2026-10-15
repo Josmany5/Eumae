@@ -213,6 +213,7 @@ function GalleryView({ onBack, onPickCat }: { onBack: () => void; onPickCat: (ca
       <div className="screenT">What can I make?</div>
       <div className="s m">Browse what Eumae can make. See it first - then build it in Chat.</div>
       <h3 className="sec">Can make</h3>
+      <div className="stGrid">
       {STUDIO_CATEGORY_ORDER.map((cat) => (
         <button
           key={cat}
@@ -225,6 +226,7 @@ function GalleryView({ onBack, onPickCat }: { onBack: () => void; onPickCat: (ca
           <span className="xs m">{STUDIO_CATEGORIES[cat].join(' · ')}</span>
         </button>
       ))}
+      </div>
     </div>
   );
 }
@@ -276,6 +278,8 @@ function TemplateView({ name, cat, variant, onVariant, purpose, onPurpose, detai
       <BackBar onBack={onBack} />
       <div className="screenT">{name}</div>
       <div className="s m">{t.u}</div>
+      <div className="tplSplit">
+      <div>
       {t.v.map((v, i) => (
         <button
           key={v[0] + v[1]}
@@ -291,6 +295,8 @@ function TemplateView({ name, cat, variant, onVariant, purpose, onPurpose, detai
           <div style={{ marginTop: 8 }}>{variant === i ? <span className="tag">Selected</span> : null}</div>
         </button>
       ))}
+      </div>
+      <div>
       <div className="card">
         <b>How a good one is built</b>
         <ul className="st">
@@ -316,6 +322,8 @@ function TemplateView({ name, cat, variant, onVariant, purpose, onPurpose, detai
           style={{ minHeight: 70 }}
           aria-label="Anything it must include"
         />
+      </div>
+      </div>
       </div>
       <div className="btns">
         <button className="pri" onClick={onBuild}>Make it in Chat</button>
