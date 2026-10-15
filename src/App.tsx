@@ -364,7 +364,7 @@ export default function App() {
         'Shared with me': { tab: 'guild', page: 'gsec', arg: 'Shared work' },
         'Spanish \u00b7 Lesson 5': { tab: 'classroom', page: 'course', arg: 'Spanish' },
         'AI Engineering \u00b7 Ch 3': { tab: 'classroom', page: 'course', arg: 'AI Engineering' },
-        'Sales onboarding \u00b7 assigned to you': { tab: 'classroom', page: 'course', arg: 'Spanish' },
+        'Sales onboarding \u00b7 assigned to you': { tab: 'classroom', page: 'cxsec', arg: 'Training' },
         'Onboarding \u00b7 you assigned': { tab: 'classroom', page: 'cxsec', arg: 'Training' },
         'gbrain teardown': { tab: 'classroom', page: 'cxsec', arg: 'Digest' },
         'Speech as programming': { tab: 'classroom', page: 'cxsec', arg: 'Digest' },
