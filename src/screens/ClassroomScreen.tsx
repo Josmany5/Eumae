@@ -7,6 +7,7 @@ import {
 } from '../classroom';
 import { getGuild } from '../guild';
 import { queueBrief } from '../studio';
+import { addFile } from '../library';
 import { Icon } from '../components/shell/icons';
 
 /* The Classroom - the mockup's latest rCx layer, rebuilt as React.
@@ -27,7 +28,7 @@ type CxSel =
   | { kind: 'section'; name: string };
 
 export default function ClassroomScreen() {
-  const { notify, goTab } = useNav();
+  const { notify, go, goTab } = useNav();
   const [sel, setSel] = useState<CxSel>({ kind: 'root' });
   const [tick, setTick] = useState(0);
   const refresh = () => setTick((t) => t + 1);
@@ -49,11 +50,12 @@ export default function ClassroomScreen() {
         notify={notify}
         toChat={toChat}
         refresh={refresh}
+        onOpenFull={(n) => go('course', n)}
       />
     );
   }
   if (sel.kind === 'tutorial') {
-    return <TutorialView name={sel.name} onBack={() => setSel({ kind: 'root' })} toChat={toChat} />;
+    return <TutorialView name={sel.name} onBack={() => setSel({ kind: 'root' })} toChat={toChat} onOpenFull={(n) => go('tut', n)} />;
   }
   if (sel.kind === 'section') {
     return (
@@ -62,8 +64,8 @@ export default function ClassroomScreen() {
         onBack={() => setSel({ kind: 'root' })}
         onOpenCourse={(n) => setSel({ kind: 'course', name: n })}
         onOpenTutorial={(n) => setSel({ kind: 'tutorial', name: n })}
-        notify={notify}
         toChat={toChat}
+        onOpenFull={(n) => go('cxsec', n)}
       />
     );
   }
@@ -73,16 +75,15 @@ export default function ClassroomScreen() {
       onCourse={(n) => setSel({ kind: 'course', name: n })}
       onTutorial={(n) => setSel({ kind: 'tutorial', name: n })}
       onSection={(n) => setSel({ kind: 'section', name: n })}
-      notify={notify}
       toChat={toChat}
     />
   );
 }
 
-function ClassroomRoot({ assigned, onCourse, onTutorial, onSection, notify, toChat }: {
+function ClassroomRoot({ assigned, onCourse, onTutorial, onSection, toChat }: {
   assigned: { t: string; who: string; pct: number; mine: number }[];
   onCourse: (n: string) => void; onTutorial: (n: string) => void; onSection: (n: string) => void;
-  notify: (m: string) => void; toChat: (brief: string) => void;
+  toChat: (brief: string) => void;
 }) {
   const cont = courseProgress(CONTINUE.course);
   const toYou = assigned.filter((a) => a.mine);
@@ -117,7 +118,16 @@ function ClassroomRoot({ assigned, onCourse, onTutorial, onSection, notify, toCh
           <div className="row"><div className="g"><b>{a.t}</b><div className="xs m">Training · assigned to you · {a.pct}%</div></div></div>
           <div className="bar"><i style={{ width: a.pct + '%' }} /></div>
           <div className="btns">
-            <button className="pri" onClick={() => notify('Training ' + a.t + ' opens here once its course ships.')}>Resume training</button>
+            <button
+              className="pri"
+              onClick={() => {
+                const hit = COURSE_ORDER.find((c) => a.t.toLowerCase().includes(c.toLowerCase()));
+                if (hit) onCourse(hit);
+                else toChat(`Continue my ${a.t} training`);
+              }}
+            >
+              Resume training
+            </button>
           </div>
         </div>
       )) : <div className="s m">Nothing assigned to you.</div>}
@@ -186,9 +196,10 @@ function DigestRow({ title, kind, detail }: { title: string; kind: string; detai
   );
 }
 
-function CourseView({ name, onBack, notify, toChat, refresh }: {
+function CourseView({ name, onBack, notify, toChat, refresh, onOpenFull }: {
   name: string; onBack: () => void;
   notify: (m: string) => void; toChat: (brief: string) => void; refresh: () => void;
+  onOpenFull: (n: string) => void;
 }) {
   const c = COURSES[name];
   const [picked, setPicked] = useState<string | null>(null);
@@ -248,13 +259,17 @@ function CourseView({ name, onBack, notify, toChat, refresh }: {
       </div>
       <div className="btns">
         <button className="gho" onClick={() => toChat('Continue my ' + name + ' lesson')}>Continue in Chat</button>
+        <button className="fb" onClick={() => onOpenFull(name)}>
+          Open full page
+        </button>
       </div>
     </div>
   );
 }
 
-function TutorialView({ name, onBack, toChat }: {
+function TutorialView({ name, onBack, toChat, onOpenFull }: {
   name: string; onBack: () => void; toChat: (brief: string) => void;
+  onOpenFull: (n: string) => void;
 }) {
   const steps = TUTORIALS[name] || ['Open it from the Classroom tab.', 'Everything here is reference — no progress, no pressure.'];
   return (
@@ -277,18 +292,23 @@ function TutorialView({ name, onBack, toChat }: {
       </div>
       <div className="btns">
         <button className="pri" onClick={() => toChat('Teach me: ' + name)}>Learn it in Chat</button>
+        <button className="fb" onClick={() => onOpenFull(name)}>
+          Open full page
+        </button>
       </div>
     </div>
   );
 }
 
-function SectionView({ name, onBack, onOpenCourse, onOpenTutorial, notify, toChat }: {
+function SectionView({ name, onBack, onOpenCourse, onOpenTutorial, toChat, onOpenFull }: {
   name: string; onBack: () => void;
   onOpenCourse: (n: string) => void; onOpenTutorial: (n: string) => void;
-  notify: (m: string) => void; toChat: (brief: string) => void;
+  toChat: (brief: string) => void;
+  onOpenFull: (n: string) => void;
 }) {
   const sec = SECTIONS[name];
   const [distilled, setDistilled] = useState(false);
+  const [saved, setSaved] = useState(false);
   if (!sec) { onBack(); return null; }
   const openRow = (row: string) => {
     if (name === 'Courses') {
@@ -296,7 +316,15 @@ function SectionView({ name, onBack, onOpenCourse, onOpenTutorial, notify, toCha
       if (hit) { onOpenCourse(hit); return; }
     }
     if (name === 'App tutorials') { onOpenTutorial(row); return; }
-    if (name === 'Training') { notify('Assigning happens in Guild.'); return; }
+    if (name === 'Training') {
+      const courseHit = COURSE_ORDER.find((c) => row.toLowerCase().includes(c.toLowerCase()));
+      if (courseHit) {
+        onOpenCourse(courseHit);
+        return;
+      }
+      toChat('Continue my ' + row + ' training');
+      return;
+    }
     toChat('Preview: ' + row);
   };
   return (
@@ -324,7 +352,15 @@ function SectionView({ name, onBack, onOpenCourse, onOpenTutorial, notify, toCha
                 <li>One thing to ignore</li>
               </ul>
               <div className="btns">
-                <button className="gho" onClick={() => notify('Saved to Digest')}>Save</button>
+                <button
+                  className="gho"
+                  onClick={() => {
+                    addFile('Distilled digest', 'DIGEST', 'Documents');
+                    setSaved(true);
+                  }}
+                >
+                  {saved ? 'Saved' : 'Save'}
+                </button>
               </div>
             </div>
           ) : null}
@@ -354,9 +390,18 @@ function SectionView({ name, onBack, onOpenCourse, onOpenTutorial, notify, toCha
       ) : null}
       {sec.create ? (
         <div className="btns">
-          <button className="gho" onClick={() => notify(sec.create + ' starts in Studio. Only drafts exist there so far.')}>{sec.create}</button>
+          <button className="gho" onClick={() => toChat(sec.create + ': ')}>{sec.create}</button>
+          <button className="fb" onClick={() => onOpenFull(name)}>
+            Open full page
+          </button>
         </div>
-      ) : null}
+      ) : (
+        <div className="btns">
+          <button className="fb" onClick={() => onOpenFull(name)}>
+            Open full page
+          </button>
+        </div>
+      )}
     </div>
   );
 }

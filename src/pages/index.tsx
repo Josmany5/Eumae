@@ -17,6 +17,9 @@ import FlowPage from './FlowPage';
 import FlowEditPage from './FlowEditPage';
 import StudioItemPage from './StudioItemPage';
 import LibraryFolderPage from './LibraryFolderPage';
+import CoursePage from './CoursePage';
+import CxSectionPage from './CxSectionPage';
+import TutorialPage from './TutorialPage';
 
 export interface PageProps {
   /** Whatever the caller passed to nav.go(name, arg). */
@@ -53,6 +56,9 @@ export const PAGES: Record<string, PageDef> = {
   flowedit: { title: '', page: FlowEditPage },
   sitem: { title: '', page: StudioItemPage },
   libf: { title: '', page: LibraryFolderPage },
+  course: { title: '', page: CoursePage },
+  cxsec: { title: '', page: CxSectionPage },
+  tut: { title: '', page: TutorialPage },
 };
 
 export function pageTitle(name: string): string {

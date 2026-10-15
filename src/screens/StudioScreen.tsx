@@ -33,7 +33,7 @@ import { Icon } from '../components/shell/icons';
 type Walk = { cat: string | null; tpl: string | null };
 
 export default function StudioScreen() {
-  const { notify, goTab } = useNav();
+  const { notify, go, goTab } = useNav();
   const [walk, setWalk] = useState<Walk>({ cat: null, tpl: null });
   const [variant, setVariant] = useState(0);
   const [purpose, setPurpose] = useState('');
@@ -103,7 +103,7 @@ export default function StudioScreen() {
         showDrafts={showDrafts}
         onToggleDrafts={toggleDrafts}
         onPickCat={(cat) => setWalk({ cat, tpl: null })}
-        onOpen={(f) => notify(`Open ${f.t} in the Library.`)}
+        onOpen={(f) => go('sitem', f.id)}
       />
     );
   }
