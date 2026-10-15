@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNav } from '../nav';
 import {
   getFiles, allFolders, getFavs, getTrash, filedFolder, fileUpload,
-  folderPrefs, setFolderPrefs, filesIn, addFolder, addFile, toggleFav, toggleStatus,
-  bumpVersion, trashFile, restoreTrash, emptyTrash, sortFiles,
+  folderPrefs, setFolderPrefs, filesIn, addFolder, addFile, sortFiles,
   LIB_VIEWS, TYPE_TABS, TYPE_FILTERS,
   liveOnly, folderOf,
   type LibFile, type LibView, type LibSortKey, type LibKind,
 } from '../library';
+import FileDetail, { TrashPane } from '../components/shell/FileDetail';
 import { deleteUpload, listUploads, uploadData, type Upload } from '../uploads';
 import { getProjects } from '../projects';
 import { getGuild } from '../guild';
@@ -25,7 +25,7 @@ import { Icon } from '../components/shell/icons';
  * fav star, trash restore-as-draft.
  */
 
-type Sel =
+export type Sel =
   | { kind: 'view'; view: LibView }
   | { kind: 'folder'; folder: string }
   | { kind: 'trash' };
@@ -45,9 +45,9 @@ function fmtSize(bytes: number): string {
   return (bytes / 1024 / 1024).toFixed(1) + ' MB';
 }
 
-export default function LibraryScreen() {
+export default function LibraryScreen({ initial }: { initial?: Sel }) {
   const { notify, go } = useNav();
-  const [sel, setSel] = useState<Sel>({ kind: 'view', view: 'Folders' });
+  const [sel, setSel] = useState<Sel>(initial ?? { kind: 'view', view: 'Folders' });
   const [typeTab, setTypeTab] = useState<string>('All');
   const [query, setQuery] = useState('');
   const [tick, setTick] = useState(0);
@@ -167,13 +167,23 @@ export default function LibraryScreen() {
           />
         </section>
       {detail ? (
-        <FileDetail
-          file={detail}
-          fav={favs.includes(detail.id)}
-          notify={notify}
-          refresh={refresh}
-          onClose={() => { setDetail(null); refresh(); }}
-        />
+        <div className="lib-preview" role="dialog" aria-label={detail.t}>
+          <div className="lib-preview-head">
+            <span>{detail.t}</span>
+            <button onClick={() => { setDetail(null); refresh(); }} aria-label="Close detail">
+              ×
+            </button>
+          </div>
+          <div className="pageBody" style={{ padding: '0 14px 14px' }}>
+            <FileDetail
+              file={detail}
+              fav={favs.includes(detail.id)}
+              notify={notify}
+              refresh={refresh}
+              onClose={() => { setDetail(null); refresh(); }}
+            />
+          </div>
+        </div>
       ) : null}
       {preview ? (
         <div className="lib-preview" role="dialog" aria-label={preview.upload.name}>
@@ -614,95 +624,5 @@ function FolderActions({ folder, notify, refresh }: { folder: string; notify: (m
     </div>
   );
 }
-
-/* Trash: restore-as-draft or empty. The mockup's libTrash sheet, inline. */
-function TrashPane({ trash, notify, refresh }: {
-  trash: { t: string; k: string }[]; notify: (m: string) => void; refresh: () => void;
-}) {
-  if (!trash.length) return <div className="s m">Trash is empty.</div>;
-  return (
-    <>
-      <div className="card cardPad">
-        {trash.map((x, i) => (
-          <div key={x.t + i} className="li">
-            <div className="fi">{x.k.slice(0, 4)}</div>
-            <div className="g">{x.t}</div>
-            <button
-              className="fb"
-              onClick={() => { restoreTrash(i); notify('Restored.'); refresh(); }}
-            >
-              Restore
-            </button>
-          </div>
-        ))}
-      </div>
-      <div className="btns">
-        <button
-          className="gho"
-          onClick={() => {
-            if (!window.confirm('Empty trash? This cannot be undone.')) return;
-            emptyTrash();
-            notify('Trash emptied.');
-            refresh();
-          }}
-        >
-          Empty trash
-        </button>
-      </div>
-    </>
-  );
-}
-
-/* File detail: the mockup's fOpen sheet - title/body/type/status/version
-   with Publish flip, Edit bump, fav star, trash. */
-function FileDetail({ file, fav, notify, refresh, onClose }: {
-  file: LibFile; fav: boolean;
-  notify: (m: string) => void; refresh: () => void; onClose: () => void;
-}) {
-  const [f, setF] = useState<LibFile>(file);
-  const act = (msg: string, fn: () => LibFile | boolean | null) => {
-    const out = fn();
-    if (out === false || out === null) { notify('Nothing there.'); return; }
-    if (typeof out === 'object') setF({ ...out });
-    notify(msg);
-    refresh();
-  };
-  return (
-    <div className="lib-preview" role="dialog" aria-label={f.t}>
-      <div className="lib-preview-head">
-        <button onClick={onClose} aria-label="Back to Library">
-          <Icon name="bk" />
-        </button>
-        <span>{f.t}</span>
-        <button onClick={() => act(fav ? 'Unstarred.' : 'Starred.', () => toggleFav(f.id))} aria-label="Toggle favorite">
-          {fav ? '★' : '☆'}
-        </button>
-      </div>
-      <div className="pageBody" style={{ padding: '0 14px 14px' }}>
-        <div className="card">{f.b || 'No preview.'}</div>
-        <div className="kv"><span className="m">Type</span><span>{f.k}</span></div>
-        <div className="kv"><span className="m">Status</span><span>{f.st}</span></div>
-        <div className="kv"><span className="m">Version</span><span>v{f.v}</span></div>
-        <div className="kv"><span className="m">Folder</span><span>{folderOf(f)}</span></div>
-        <div className="btns">
-          <button className="pri" onClick={() => act(f.st === 'draft' ? 'Published.' : 'Unpublished.', () => toggleStatus(f.id))}>
-            {f.st === 'draft' ? 'Publish' : 'Unpublish'}
-          </button>
-          <button className="gho" onClick={() => act('Edited.', () => bumpVersion(f.id))}>
-            Edit
-          </button>
-          <button
-            className="gho"
-            onClick={() => {
-              trashFile(f.id);
-              notify('Trashed.');
-              onClose();
-            }}
-          >
-            Trash
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+/* Trash + file detail live in components/shell/FileDetail (shared with
+   Studio's sitem page). */

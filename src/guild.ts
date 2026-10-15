@@ -291,9 +291,12 @@ export function saveGuild(guild: Guild): void {
   save(guild);
 }
 
-/* Accept an incoming request: the mockup's gReq(i,1) — status flips to
- * "found", Eumae goes looking. Decline (0) removes it, sent (2) marks it. */
-export function answerRequest(index: number, action: 0 | 1 | 2): string {
+/* Request pipeline stages — the mockup's GSTEPS. reqOut.step indexes in. */
+export const GSTEPS = ['Received', 'Their AI is preparing', 'Waiting on their approval', 'Done'];
+
+/* Accept an incoming request: the mockup's gReq — 0 decline (removes),
+ * 1 accept (→ found), 2 send (→ sent), 3 not-yet (→ new). */
+export function answerRequest(index: number, action: 0 | 1 | 2 | 3): string {
   const g = load();
   const r = g.reqIn[index];
   if (!r) return 'Nothing there.';
@@ -305,8 +308,60 @@ export function answerRequest(index: number, action: 0 | 1 | 2): string {
     save({ ...g, reqIn: g.reqIn.map((x, i) => (i === index ? { ...x, st: 'found' } : x)) });
     return 'Accepted — Eumae is finding it.';
   }
-  save({ ...g, reqIn: g.reqIn.map((x, i) => (i === index ? { ...x, st: 'sent' } : x)) });
+  if (action === 2) {
+    save({ ...g, reqIn: g.reqIn.map((x, i) => (i === index ? { ...x, st: 'sent' } : x)) });
+    return 'Sent.';
+  }
+  save({ ...g, reqIn: g.reqIn.map((x, i) => (i === index ? { ...x, st: 'new' } : x)) });
+  return 'Kept waiting.';
+}
+
+/* Assign work to a Guild member — the mockup's gAssign sheet: their Eumae
+ * prepares it, nothing moves without their yes (starts at 0%). */
+export function assignWork(title: string, person: number): string {
+  const g = load();
+  const t = title.trim();
+  const p = g.people[person];
+  if (!t) return 'Name it first.';
+  if (!p) return 'Pick someone.';
+  save({
+    ...g,
+    assigned: [...(g.assigned ?? []), { t: t.slice(0, 48), who: p.n, pct: 0, mine: 0 }],
+  });
+  return `Assigned to ${p.n}.`;
+}
+
+/* Send a message in a thread — marks read, appends, stamps last. The
+ * mockup's gSend; the canned reply arrives via Chat, not here. */
+export function sendGuildMessage(index: number, text: string): string {
+  const g = load();
+  const t = g.threads[index];
+  const v = text.trim();
+  if (!t || !v) return 'Nothing there.';
+  const person = g.people[t.p];
+  save({
+    ...g,
+    threads: g.threads.map((x, i) =>
+      i === index
+        ? { ...x, un: 0, last: `You: ${v.slice(0, 80)}`, msgs: [...x.msgs, { who: 1 as const, text: v.slice(0, 500) }] }
+        : x,
+    ),
+  });
+  void person;
   return 'Sent.';
+}
+
+/* Open-or-create a thread with someone — the mockup's msgP9. Returns the
+ * thread index. Stamp is passed in (Date is stubbed in checks). */
+export function threadWith(person: number, stamp?: string): number {
+  const g = load();
+  const i = g.threads.findIndex((t) => t.p === person);
+  if (i >= 0) return i;
+  save({
+    ...g,
+    threads: [{ p: person, last: '', t: stamp ?? 'now', un: 0, msgs: [] }, ...g.threads],
+  });
+  return 0;
 }
 
 /* Take a marketplace item into your Studio: the mockup's gAdd — got flips. */

@@ -31,7 +31,7 @@ import { GuildWidgetCard, GUILD_WIDGET_NAV } from '../components/shell/guildWidg
  */
 
 export default function GuildScreen() {
-  const { notify, goTab } = useNav();
+  const { notify, go, goTab } = useNav();
   const [dash, setDash] = useState<GuildDashboard>(() => getGuildDashboard());
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState(false);
@@ -78,12 +78,14 @@ export default function GuildScreen() {
 
   const navigate = (id: GuildWidgetId) => {
     const nav = GUILD_WIDGET_NAV[id];
-    if (!nav.page && !nav.tab) return;
-    notify('The full ' + GUILD_WIDGET_TITLES[id] + ' page arrives next.');
+    if (nav.tab) {
+      goTab(nav.tab as 'chat' | 'console' | 'studio' | 'library' | 'classroom' | 'guild');
+      return;
+    }
+    if (nav.page) go(nav.page, nav.arg);
   };
   const openPage = (p: string, arg?: unknown) => {
-    void arg;
-    notify('The full ' + p + ' page arrives next.');
+    go(p, arg);
   };
   const openTab = (t: string) => {
     if (t === 'studio' || t === 'classroom' || t === 'guild' || t === 'library' || t === 'console' || t === 'chat') {

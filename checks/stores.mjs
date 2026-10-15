@@ -77,7 +77,7 @@ const guild = loadMod('../src/guild.ts');
   check('projects-status', out.st === 'active' && out.pc === 60, JSON.stringify({ st: out.st, pc: out.pc }));
 }
 
-// Flows: the mockup's two flows, on.
+// Flows: the mockup's two flows, on. Step toggle + on toggle.
 {
   const { out } = run(flows, () => {}, `(() => getFlows())()`);
   check(
@@ -85,6 +85,14 @@ const guild = loadMod('../src/guild.ts');
     out.length === 2 && out.every((f) => f.on === 1 && f.example === true),
     JSON.stringify(out.map((f) => f.n)),
   );
+}
+{
+  const { out } = run(
+    flows,
+    () => {},
+    `(() => { toggleFlowStep('brief', 0); const d1 = getFlows()[0].done; toggleFlowOn('brief'); const on = getFlows()[0].on; return { d1, on }; })()`,
+  );
+  check('flows-toggle', JSON.stringify(out.d1) === '[0]' && out.on === 0, JSON.stringify(out));
 }
 
 // Guild: people + threads + requests + shared + market + assigned + groups,
@@ -102,16 +110,24 @@ const guild = loadMod('../src/guild.ts');
   );
 }
 
-// Guild ops: accept flips to found, decline removes, take flips got.
+// Guild ops: accept flips to found, decline removes, take flips got,
+// not-yet flips back to new, assign appends, message sends.
 {
   const { out } = run(
     guild,
     () => {},
-    `(() => { const a = answerRequest(0, 1); const st = getGuild().reqIn[0].st; const t = takeMarketplace(0); const got = getGuild().market[0].got; return { a, st, t, got }; })()`,
+    `(() => { const a = answerRequest(0, 1); const st = getGuild().reqIn[0].st; const t = takeMarketplace(0); const got = getGuild().market[0].got; answerRequest(0, 3); const back = getGuild().reqIn[0].st; const asg = assignWork('Review deck', 0); const sm = sendGuildMessage(1, 'Hello'); const th = threadWith(3); return { a, st, t, got, back, asg, sm, th }; })()`,
   );
   check(
     'guild-ops',
-    out.st === 'found' && out.got === 1 && /finding it/.test(out.a) && /Studio/.test(out.t),
+    out.st === 'found' &&
+      out.got === 1 &&
+      /finding it/.test(out.a) &&
+      /Studio/.test(out.t) &&
+      out.back === 'new' &&
+      /Marcus/.test(out.asg) &&
+      out.sm === 'Sent.' &&
+      out.th === 0,
     JSON.stringify(out),
   );
 }
@@ -140,4 +156,4 @@ if (failures.length) {
   console.error(`stores: ${failures.length} failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log('all 9 passed');
+console.log('all 10 passed');

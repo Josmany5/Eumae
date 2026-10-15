@@ -19,7 +19,7 @@ import {
 import { Icon } from './icons';
 
 /** Where a card tap lands — the mockup's GNAV9. Sections ride `arg`
- * (mockup's goPage second argument); the full pages arrive in batch 3. */
+ * (mockup's goPage second argument); all targets exist in PAGES. */
 export const GUILD_WIDGET_NAV: Record<GuildWidgetId, { tab?: string; page?: string; arg?: unknown }> = {
   gmsg9: { page: 'gmsg' },
   greq9: { page: 'greq' },

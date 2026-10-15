@@ -15,7 +15,8 @@ export interface Flow {
   /** On: 0/1, like the mockup. */
   on: 0 | 1;
   steps: string[];
-  done: string[];
+  /** Done holds step *indexes* — the mockup's f.done. Number array. */
+  done: number[];
   /** True for a labeled example seed. Never synced anywhere. */
   example?: boolean;
   /** ms since epoch. */
@@ -130,4 +131,18 @@ export function createFlow(n: string): Flow {
 
 export function deleteFlow(id: string): void {
   save(load().filter((f) => f.id !== id));
+}
+
+/* Step toggle — the mockup's fStep: done holds step indexes. */
+export function toggleFlowStep(id: string, index: number): void {
+  const f = load().find((x) => x.id === id);
+  if (!f || !f.steps[index]) return;
+  const done = f.done.includes(index) ? f.done.filter((d) => d !== index) : [...f.done, index];
+  saveFlow({ ...f, done });
+}
+
+export function toggleFlowOn(id: string): void {
+  const f = load().find((x) => x.id === id);
+  if (!f) return;
+  saveFlow({ ...f, on: f.on ? 0 : 1 });
 }

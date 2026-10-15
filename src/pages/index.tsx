@@ -8,6 +8,15 @@ import GoalsPage from './GoalsPage';
 import ProjectsPage from './ProjectsPage';
 import ProjectPage from './ProjectPage';
 import BriefPage from './BriefPage';
+import MessagesPage from './MessagesPage';
+import ChatPage, { GroupChatPage } from './ChatPage';
+import RequestsPage from './RequestsPage';
+import GuildSectionPage from './GuildSectionPage';
+import FlowsPage from './FlowsPage';
+import FlowPage from './FlowPage';
+import FlowEditPage from './FlowEditPage';
+import StudioItemPage from './StudioItemPage';
+import LibraryFolderPage from './LibraryFolderPage';
 
 export interface PageProps {
   /** Whatever the caller passed to nav.go(name, arg). */
@@ -34,6 +43,16 @@ export const PAGES: Record<string, PageDef> = {
   projects: { title: 'Projects', page: ProjectsPage },
   project: { title: 'Project', page: ProjectPage },
   brief: { title: "Today's briefing", page: BriefPage },
+  gmsg: { title: 'Messages', page: MessagesPage },
+  gchat: { title: '', page: ChatPage },
+  gchatg: { title: '', page: GroupChatPage },
+  greq: { title: 'Requests', page: RequestsPage },
+  gsec: { title: '', page: GuildSectionPage },
+  flows: { title: 'Flows', page: FlowsPage },
+  flow: { title: '', page: FlowPage },
+  flowedit: { title: '', page: FlowEditPage },
+  sitem: { title: '', page: StudioItemPage },
+  libf: { title: '', page: LibraryFolderPage },
 };
 
 export function pageTitle(name: string): string {
