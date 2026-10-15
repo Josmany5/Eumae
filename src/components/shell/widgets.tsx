@@ -14,7 +14,7 @@ import { getPinnedProject } from '../../projects';
 import { listUploads } from '../../uploads';
 import { getGuild } from '../../guild';
 import { useLog } from '../../log';
-import { WIDGET_TITLES, WIDGET_ICONS, sizeOf, type Dashboard, type WidgetId } from '../../dash';
+import { WIDGET_TITLES, WIDGET_ICONS, sizeOf, isHalf, type Dashboard, type WidgetId } from '../../dash';
 import { Icon } from './icons';
 
 /** Where a quick-view tap lands — the mockup's WNAV8. */
@@ -369,6 +369,7 @@ function FullPinned({ refresh }: { refresh: () => void }) {
 export function WidgetCard({
   id,
   dash,
+  pageLen,
   isFirst,
   editing,
   onNavigate,
@@ -379,6 +380,8 @@ export function WidgetCard({
 }: {
   id: WidgetId;
   dash: Dashboard;
+  /** Widgets on this page — the half rule needs the count. */
+  pageLen: number;
   isFirst: boolean;
   editing: boolean;
   onNavigate: (id: WidgetId) => void;
@@ -392,7 +395,7 @@ export function WidgetCard({
   const go = () => onNavigate(id);
   return (
     <div
-      className="wc"
+      className={'wc' + (!full && isHalf(id, pageLen) ? ' half' : '')}
       onClick={() => {
         if (!editing) go();
       }}
@@ -419,7 +422,7 @@ export function WidgetCard({
       ) : null}
       {editing ? (
         <button
-          className="rmSz"
+          className="rm rmSz"
           aria-label={full ? 'Switch to Quick view' : 'Switch to Full view'}
           onClick={(e) => {
             e.stopPropagation();

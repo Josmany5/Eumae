@@ -10,7 +10,6 @@ import {
   moveGuildWidget,
   addGuildPage,
   removeGuildPage,
-  isGuildHalf,
   GUILD_WIDGET_IDS,
   GUILD_WIDGET_TITLES,
   GUILD_PAGE_NAMES,
@@ -109,11 +108,11 @@ export default function GuildScreen() {
   }, [pages]);
 
   return (
-    <div className={editing ? 'ed8' : ''}>
+    <div className={editing ? 'ed8 dashWide' : 'dashWide'}>
       <div className="row">
         <div className="g">
-          <div style={{ fontSize: 24, fontWeight: 700 }}>Guild</div>
-          <div className="s m">
+          <div className="screenT">Guild</div>
+          <div className="screenS">
             People, requests, shared work.{' '}
             {editing ? 'Tap × to remove something.' : unread + ' unread'}
           </div>
@@ -143,7 +142,6 @@ export default function GuildScreen() {
               {widgets.map((w, wi) => (
                 <div
                   key={w}
-                  className={isGuildHalf(w, widgets.length) ? 'half' : ''}
                   draggable={editing}
                   onDragStart={(e) => {
                     e.dataTransfer.effectAllowed = 'move';
@@ -182,6 +180,7 @@ export default function GuildScreen() {
                   <GuildWidgetCard
                     id={w}
                     dash={dash}
+                    pageLen={widgets.length}
                     isFirst={pi === 0 && wi === 0}
                     editing={editing}
                     onNavigate={navigate}
@@ -256,8 +255,8 @@ export default function GuildScreen() {
   );
 }
 
-/* Add-to-page registry: every widget not already on the Guild. Half-width
-   cards (HALG) share a row via the page grid — isGuildHalf decides. */
+/* Add-to-page registry: every widget not already on the Guild.
+   Guild-only: Console has its own twin on ConsoleScreen. */
 function AddGuildRow({ available, onAdd }: { available: GuildWidgetId[]; onAdd: (w: GuildWidgetId) => void }) {
   const [open, setOpen] = useState(false);
   if (!open) {

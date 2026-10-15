@@ -12,6 +12,7 @@ import {
   GUILD_WIDGET_TITLES,
   GUILD_WIDGET_ICONS,
   guildSizeOf,
+  isGuildHalf,
   type GuildDashboard,
   type GuildWidgetId,
 } from '../../gdash';
@@ -465,6 +466,7 @@ function FullAsn({
 export function GuildWidgetCard({
   id,
   dash,
+  pageLen,
   isFirst,
   editing,
   onNavigate,
@@ -477,6 +479,8 @@ export function GuildWidgetCard({
 }: {
   id: GuildWidgetId;
   dash: GuildDashboard;
+  /** Widgets on this page — the half rule needs the count. */
+  pageLen: number;
   isFirst: boolean;
   editing: boolean;
   onNavigate: (id: GuildWidgetId) => void;
@@ -492,7 +496,7 @@ export function GuildWidgetCard({
   const go = () => onNavigate(id);
   return (
     <div
-      className="wc"
+      className={'wc' + (!full && isGuildHalf(id, pageLen) ? ' half' : '')}
       onClick={() => {
         if (!editing) go();
       }}
@@ -519,7 +523,7 @@ export function GuildWidgetCard({
       ) : null}
       {editing ? (
         <button
-          className="rmSz"
+          className="rm rmSz"
           aria-label={full ? 'Switch to Quick view' : 'Switch to Full view'}
           onClick={(e) => {
             e.stopPropagation();

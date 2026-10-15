@@ -150,7 +150,7 @@ function StudioRoot({ published, made, showDrafts, onToggleDrafts, onPickCat, on
 }) {
   return (
     <div>
-      <div style={{ fontSize: 24, fontWeight: 700 }}>Your studio</div>
+      <div className="screenT">Your studio</div>
       <div className="s m">Everything you have made - drafts, published, every version.</div>
       <div className="btns">
         <button className="pri" onClick={() => onPickCat("__gallery__")}>Make something new</button>
@@ -210,7 +210,7 @@ function GalleryView({ onBack, onPickCat }: { onBack: () => void; onPickCat: (ca
   return (
     <div>
       <BackBar onBack={onBack} />
-      <div style={{ fontSize: 24, fontWeight: 700 }}>What can I make?</div>
+      <div className="screenT">What can I make?</div>
       <div className="s m">Browse what Eumae can make. See it first - then build it in Chat.</div>
       <h3 className="sec">Can make</h3>
       {STUDIO_CATEGORY_ORDER.map((cat) => (
@@ -237,7 +237,7 @@ function CategoryView({ cat, onBack, onPickTpl }: {
   return (
     <div>
       <BackBar onBack={onBack} />
-      <div style={{ fontSize: 24, fontWeight: 700 }}>{cat}</div>
+      <div className="screenT">{cat}</div>
       <div className="s m">Kinds of {cat.toLowerCase()} Eumae can make.</div>
       <div className="card cardPad">
         {(STUDIO_CATEGORIES[cat] || []).map((tpl) => (
@@ -274,7 +274,7 @@ function TemplateView({ name, cat, variant, onVariant, purpose, onPurpose, detai
   return (
     <div>
       <BackBar onBack={onBack} />
-      <div style={{ fontSize: 24, fontWeight: 700 }}>{name}</div>
+      <div className="screenT">{name}</div>
       <div className="s m">{t.u}</div>
       {t.v.map((v, i) => (
         <button

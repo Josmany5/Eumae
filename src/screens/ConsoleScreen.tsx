@@ -10,7 +10,6 @@ import {
   moveWidget,
   addPage,
   removePage,
-  isHalf,
   WIDGET_IDS,
   WIDGET_TITLES,
   type Dashboard,
@@ -105,11 +104,11 @@ export default function ConsoleScreen() {
   }, [pages]);
 
   return (
-    <div className={editing ? 'ed8' : ''}>
+    <div className={editing ? 'ed8 dashWide' : 'dashWide'}>
       <div className="row">
         <div className="g">
-          <div style={{ fontSize: 24, fontWeight: 700 }}>Console</div>
-          <div className="s m">
+          <div className="screenT">Console</div>
+          <div className="screenS">
             Right now, at a glance.{' '}
             {editing ? 'Tap × to remove something.' : `${today} · ${openCount} left today`}
           </div>
@@ -147,7 +146,6 @@ export default function ConsoleScreen() {
               {widgets.map((w, wi) => (
                 <div
                   key={w}
-                  className={isHalf(w, widgets.length) ? 'half' : ''}
                   draggable={editing}
                   onDragStart={(e) => {
                     e.dataTransfer.effectAllowed = 'move';
@@ -190,6 +188,7 @@ export default function ConsoleScreen() {
                   <WidgetCard
                     id={w}
                     dash={dash}
+                    pageLen={widgets.length}
                     isFirst={pi === 0 && wi === 0}
                     editing={editing}
                     onNavigate={navigate}
@@ -278,7 +277,8 @@ export default function ConsoleScreen() {
   );
 }
 
-/* Add-to-page registry: every widget not already on the Console. */
+/* Add-to-page registry: every widget not already on the Console.
+   Console-only: Guild has its own twin on GuildScreen. */
 function AddWidgetRow({ available, onAdd }: { available: WidgetId[]; onAdd: (w: WidgetId) => void }) {
   const [open, setOpen] = useState(false);
   if (!open) {
