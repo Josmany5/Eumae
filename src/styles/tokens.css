@@ -860,21 +860,10 @@ input,textarea,select{ font-family:inherit; }
 .shEmpty{ margin:0; padding:12px 14px; font-size:12px; line-height:1.5; color:var(--mut); }
 .shTip{ margin:14px 2px 0; font-size:11px; line-height:1.6; color:var(--mut); }
 
-/* Library as a Finder — sidebar + folder pane, icon/list, phone/desktop. */
+/* Library as a Finder — toolbar + contents, phone/desktop. No sidebar: the
+   rail's Library section + the view chips already go everywhere. */
 .lib2{ display:flex; flex-direction:column; min-height:0; }
-/* Phone chips (the mockup's ftabs + Uploads). Desktop hides them. */
 .lib2-chips{ margin:0 -16px; padding:0 16px 6px; }
-.lib2-body{ display:flex; flex-direction:column; min-height:0; }
-/* Sidebar: desktop only. Phone navigates via chips + folder rows. */
-.lib2-side{ display:none; }
-.lib2-sec{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--mut); margin:14px 0 4px; }
-.lib2-sec:first-child{ margin-top:0; }
-.lib2-row{ display:flex; align-items:center; gap:10px; width:100%; padding:9px 10px; border-radius:10px; text-align:left; font-size:15px; }
-.lib2-row svg{ width:19px; height:19px; stroke:var(--mut); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; flex:none; }
-.lib2-row .g{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.lib2-row .v{ color:var(--mut); font-size:13px; }
-.lib2-row.on{ background:var(--card2); font-weight:600; }
-.lib2-row.on svg{ stroke:var(--ac); }
 /* Folder pane + toolbar. */
 .lib2-main{ min-width:0; display:flex; flex-direction:column; gap:4px; }
 .lib2-bar{ display:flex; align-items:center; gap:8px; padding:6px 0; }
@@ -893,12 +882,9 @@ input,textarea,select{ font-family:inherit; }
 .lib2-tileIcon svg{ width:24px; height:24px; stroke:var(--ac); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 .lib2-tileName{ font-size:12px; font-weight:600; line-height:1.3; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere; }
 .lib2-tileSub{ font-size:10px; color:var(--mut); }
-/* Desktop: sidebar + pane side by side, chips off. */
+/* Desktop: contents breathe wider. No sidebar — the rail owns navigation. */
 @media (min-width:900px){
-  .lib2-chips{ display:none; }
-  .lib2-body{ flex-direction:row; gap:18px; align-items:flex-start; }
-  .lib2-side{ display:block; width:230px; flex:none; position:sticky; top:0; max-height:100%; overflow-y:auto; padding-bottom:16px; }
-  .lib2-main{ flex:1; min-width:0; }
+  .lib2-main{ max-width:860px; }
 }
 /* Upload thumbs + delete, carried over from the uploads browser. */
 .lib-thumb{ width:40px; height:40px; object-fit:cover; border-radius:8px; flex:none; }

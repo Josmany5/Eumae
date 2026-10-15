@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNav } from '../nav';
 import {
-  getFiles, getFolders, allFolders, getFavs, getTrash, filedFolder, fileUpload,
+  getFiles, allFolders, getFavs, getTrash, filedFolder, fileUpload,
   folderPrefs, setFolderPrefs, filesIn, addFolder, addFile, toggleFav, toggleStatus,
   bumpVersion, trashFile, restoreTrash, emptyTrash, sortFiles,
   LIB_VIEWS, TYPE_TABS, TYPE_FILTERS,
@@ -66,11 +66,9 @@ export default function LibraryScreen() {
   }, []);
 
   const files = useMemo(() => getFiles(), [tick]);
-  const folders = useMemo(() => getFolders(), [tick]);
   const favs = useMemo(() => getFavs(), [tick]);
   const trash = useMemo(() => getTrash(), [tick]);
   const uploads = useMemo(() => listUploads(), [tick]);
-  void folders;
 
   /* Current folder name drives prefs + counts. Views map: Folders shows
      nothing until a folder is picked on desktop (phone shows folder list);
@@ -113,8 +111,9 @@ export default function LibraryScreen() {
 
   return (
     <div className="lib2">
-      {/* Phone chips - the mockup's ftabs, plus Uploads. Desktop hides
-          these; the sidebar takes over. */}
+      {/* View chips — the mockup's ftabs, plus Uploads. The rail's Library
+          section already links Favorites/Recent/Shared/Trash; these switch
+          the view in place. */}
       <div className="ftabs lib2-chips">
         {LIB_VIEWS.map((v) => (
           <button
@@ -126,52 +125,7 @@ export default function LibraryScreen() {
           </button>
         ))}
       </div>
-      <div className="lib2-body">
-        <nav className="lib2-side" aria-label="Library sidebar">
-          <div className="lib2-sec">Favorites</div>
-          <SideRow
-            label="Favorites"
-            count={favs.length}
-            active={sel.kind === 'view' && sel.view === 'Favorites'}
-            onClick={() => setSel({ kind: 'view', view: 'Favorites' })}
-          />
-          <div className="lib2-sec">Folders</div>
-          {allFolders().map((f) => (
-            <SideRow
-              key={f}
-              label={f}
-              count={folderCount(f)}
-              active={sel.kind === 'folder' && sel.folder === f}
-              onClick={() => { setSel({ kind: 'folder', folder: f }); setQuery(''); }}
-            />
-          ))}
-          {getFolders().length === 0 ? null : null}
-          <div className="lib2-sec">More</div>
-          <SideRow
-            label="Uploads"
-            count={uploads.length}
-            active={sel.kind === 'view' && sel.view === 'Uploads'}
-            onClick={() => setSel({ kind: 'view', view: 'Uploads' })}
-          />
-          <SideRow
-            label="Shared"
-            count={guild.shared.length}
-            active={sel.kind === 'view' && sel.view === 'Shared'}
-            onClick={() => setSel({ kind: 'view', view: 'Shared' })}
-          />
-          <SideRow
-            label="Trash"
-            count={trash.length}
-            active={sel.kind === 'trash'}
-            onClick={() => setSel({ kind: 'trash' })}
-          />
-          <div className="btns">
-            <button className="gho" onClick={() => { setNewFolderOpen(true); setNewFolderName(''); }}>
-              New folder
-            </button>
-          </div>
-        </nav>
-        <section className="lib2-main">
+      <section className="lib2-main">
           <LibToolbar
             title={folderName}
             query={query}
@@ -212,7 +166,6 @@ export default function LibraryScreen() {
             onNewFolderClose={() => setNewFolderOpen(false)}
           />
         </section>
-      </div>
       {detail ? (
         <FileDetail
           file={detail}
@@ -241,16 +194,6 @@ export default function LibraryScreen() {
         </div>
       ) : null}
     </div>
-  );
-}
-
-function SideRow({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
-  return (
-    <button className={'lib2-row' + (active ? ' on' : '')} onClick={onClick}>
-      <Icon name={label === 'Trash' ? 'arch' : label === 'Favorites' ? 'str' : label === 'Uploads' ? 'up' : label === 'Shared' ? 'lnk' : 'fol'} />
-      <span className="g">{label}</span>
-      {count ? <span className="v">{count}</span> : null}
-    </button>
   );
 }
 
