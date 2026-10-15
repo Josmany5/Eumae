@@ -65,11 +65,16 @@ const guild = loadMod('../src/guild.ts');
   check('goals-bad-dropped', out.length === 0, JSON.stringify(out.length));
 }
 
-// Projects: two labeled seeds, pin defaults to w1.
+// Projects: two labeled seeds, pin defaults to w1, status derives.
 {
-  const { out } = run(projects, () => {}, `(() => ({ n: getProjects().length, pin: getPinnedProject() }))()`);
+  const { out } = run(
+    projects,
+    () => {},
+    `(() => ({ n: getProjects().length, pin: getPinnedProject(), st: projectStatus(getProjects()[0]), pc: projectPercent(getProjects()[0]) }))()`,
+  );
   check('projects-seeds', out.n === 2, JSON.stringify(out.n));
   check('projects-pin', out.pin && out.pin.id === 'w1', JSON.stringify(out.pin && out.pin.id));
+  check('projects-status', out.st === 'active' && out.pc === 60, JSON.stringify({ st: out.st, pc: out.pc }));
 }
 
 // Flows: the mockup's two flows, on.
@@ -135,4 +140,4 @@ if (failures.length) {
   console.error(`stores: ${failures.length} failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log('all 8 passed');
+console.log('all 9 passed');

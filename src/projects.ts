@@ -78,6 +78,16 @@ export function getProjects(): Project[] {
   return [...load()];
 }
 
+/* Status is derived, not stored — the mockup's pSt: done when every step
+   is done (and there is at least one), active otherwise. */
+export function projectStatus(p: Project): 'active' | 'done' {
+  return p.ts > 0 && p.dn >= p.ts ? 'done' : 'active';
+}
+
+export function projectPercent(p: Project): number {
+  return p.ts ? Math.round((p.dn / p.ts) * 100) : 0;
+}
+
 export function getProject(id: string): Project | undefined {
   return load().find((p) => p.id === id);
 }

@@ -3,14 +3,27 @@
  * Fields follow the mockup's SEED (`tasks:[{id,t,d}]` — id, text, done) plus
  * the scheduling the mockup's own task page implies (due date/time, estimate,
  * repeat): Eumae schedules, so a task that cannot hold a time is a dead row.
- * Nothing here is invented beyond that — subtasks, lists, Eisenhower flags
- * are the wove repo's later growth, not this migration.
+ * The Tasks full page adds the mockup's pgTasks shape: `list` (which list it
+ * belongs to), `pr` (priority flag), `sub` (subtasks with their own done).
+ * Old rows predate all three and normalize to inbox/none/empty.
  *
  * Example seeds carry `example: true` and the list keeps them until you tell
  * it otherwise: the mockup's paths (brief card, widgets, To-do) only exist
  * with rows in them, and bare empties would hide the very paths this
  * migration is meant to show. Delete them like any row when live data lands.
  */
+
+export type TaskPriority = 'none' | 'important' | 'urgent' | 'critical';
+
+export interface Subtask {
+  t: string;
+  d: 0 | 1;
+}
+
+export interface TaskList {
+  id: string;
+  n: string;
+}
 
 export interface Task {
   id: string;
@@ -26,6 +39,12 @@ export interface Task {
   est?: number;
   /** Repeat: none (default), daily, weekly, monthly. */
   rep?: 'none' | 'daily' | 'weekly' | 'monthly';
+  /** Which list — the mockup's t.list, default inbox. */
+  list?: string;
+  /** Priority — the mockup's t.pr, default none. */
+  pr?: TaskPriority;
+  /** Subtasks — the mockup's t.sub, default empty. */
+  sub?: Subtask[];
   /** True for a labeled example seed — see above. Never synced anywhere. */
   example?: boolean;
   /** ms since epoch. */
@@ -33,8 +52,12 @@ export interface Task {
 }
 
 const KEY = 'eumae:tasks';
+const LISTS_KEY = 'eumae:taskLists';
+
+const PRIORITIES: TaskPriority[] = ['none', 'important', 'urgent', 'critical'];
 
 let cache: Task[] | null = null;
+let listsCache: TaskList[] | null = null;
 
 function load(): Task[] {
   if (cache) return cache;
@@ -73,6 +96,12 @@ function save(tasks: Task[]): void {
   }
 }
 
+function isSubtask(s: unknown): s is Subtask {
+  if (!s || typeof s !== 'object') return false;
+  const o = s as Record<string, unknown>;
+  return typeof o.t === 'string' && (o.d === 0 || o.d === 1);
+}
+
 function isTask(t: unknown): t is Task {
   if (!t || typeof t !== 'object') return false;
   const o = t as Record<string, unknown>;
@@ -84,16 +113,30 @@ function isTask(t: unknown): t is Task {
     (o.tm === undefined || typeof o.tm === 'string') &&
     (o.est === undefined || typeof o.est === 'number') &&
     (o.rep === undefined || o.rep === 'none' || o.rep === 'daily' || o.rep === 'weekly' || o.rep === 'monthly') &&
+    (o.list === undefined || typeof o.list === 'string') &&
+    (o.pr === undefined || PRIORITIES.includes(o.pr as TaskPriority)) &&
+    (o.sub === undefined || (Array.isArray(o.sub) && o.sub.every(isSubtask))) &&
     typeof o.createdAt === 'number'
   );
 }
 
+/* Old rows predate list/pr/sub — normalize on the way out, never crash. */
+function normalize(t: Task): Task {
+  return {
+    ...t,
+    list: typeof t.list === 'string' ? t.list : 'inbox',
+    pr: t.pr && PRIORITIES.includes(t.pr) ? t.pr : 'none',
+    sub: Array.isArray(t.sub) ? t.sub.filter(isSubtask) : [],
+  };
+}
+
 export function getTasks(): Task[] {
-  return [...load()];
+  return load().map(normalize);
 }
 
 export function getTask(id: string): Task | undefined {
-  return load().find((t) => t.id === id);
+  const t = load().find((t) => t.id === id);
+  return t ? normalize(t) : undefined;
 }
 
 export function saveTask(task: Task): void {
@@ -112,6 +155,9 @@ export function createTask(t: string): Task {
     id: `t${now.toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`,
     t,
     d: 0,
+    list: 'inbox',
+    pr: 'none',
+    sub: [],
     createdAt: now,
   };
   saveTask(task);
@@ -126,4 +172,81 @@ export function toggleTask(id: string): void {
 
 export function deleteTask(id: string): void {
   save(load().filter((t) => t.id !== id));
+}
+
+/* Priority cycles none → important → urgent → critical → none — the
+   mockup's prCycle. */
+export function cyclePriority(id: string): TaskPriority | null {
+  const task = getTask(id);
+  if (!task) return null;
+  const next = PRIORITIES[(PRIORITIES.indexOf(task.pr ?? 'none') + 1) % PRIORITIES.length];
+  saveTask({ ...task, pr: next });
+  return next;
+}
+
+export function toggleSubtask(id: string, index: number): void {
+  const task = getTask(id);
+  if (!task || !task.sub || !task.sub[index]) return;
+  const sub = task.sub.map((s, i) => (i === index ? { ...s, d: (s.d ? 0 : 1) as 0 | 1 } : s));
+  saveTask({ ...task, sub });
+}
+
+export function addSubtask(id: string, t: string): void {
+  const task = getTask(id);
+  const name = t.trim();
+  if (!task || !name) return;
+  saveTask({ ...task, sub: [...(task.sub ?? []), { t: name, d: 0 }] });
+}
+
+/* Lists — the mockup's S.lists, seeded inbox + work. */
+function seedLists(): TaskList[] {
+  return [
+    { id: 'inbox', n: 'Inbox' },
+    { id: 'work', n: 'Work' },
+  ];
+}
+
+function loadLists(): TaskList[] {
+  if (listsCache) return listsCache;
+  try {
+    const raw = localStorage.getItem(LISTS_KEY);
+    if (!raw) {
+      listsCache = seedLists();
+      return listsCache;
+    }
+    const parsed = JSON.parse(raw);
+    listsCache = Array.isArray(parsed)
+      ? parsed.filter(
+          (l): l is TaskList => !!l && typeof l === 'object' && typeof (l as TaskList).id === 'string' && typeof (l as TaskList).n === 'string',
+        )
+      : seedLists();
+    return listsCache;
+  } catch {
+    listsCache = seedLists();
+    return listsCache;
+  }
+}
+
+function saveLists(lists: TaskList[]): void {
+  listsCache = lists;
+  try {
+    localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+  } catch {
+    /* Non-fatal. */
+  }
+}
+
+export function getLists(): TaskList[] {
+  return [...loadLists()];
+}
+
+export function addList(n: string): TaskList | null {
+  const name = n.trim();
+  if (!name) return null;
+  const list: TaskList = {
+    id: `l${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`,
+    n: name.slice(0, 48),
+  };
+  saveLists([...loadLists(), list]);
+  return list;
 }

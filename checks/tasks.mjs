@@ -80,8 +80,58 @@ function run(setup, body) {
   check('create-delete', out.n1 === 4 && out.n2 === 3, JSON.stringify(out));
 }
 
+// 5. Old rows normalize: list inbox, pr none, sub empty.
+{
+  const { out } = run(
+    (store) => {
+      store['eumae:tasks'] = JSON.stringify([{ id: 'old', t: 'Old row', d: 0, createdAt: 1 }]);
+    },
+    `(() => getTask('old'))()`,
+  );
+  check(
+    'old-normalizes',
+    out && out.list === 'inbox' && out.pr === 'none' && Array.isArray(out.sub) && out.sub.length === 0,
+    JSON.stringify(out),
+  );
+}
+
+// 6. Priority cycles none → important → urgent → critical → none.
+{
+  const { out } = run(
+    () => {},
+    `(() => { const a = cyclePriority('t1'); const b = cyclePriority('t1'); const c = cyclePriority('t1'); const d = cyclePriority('t1'); return [a, b, c, d]; })()`,
+  );
+  check(
+    'pr-cycles',
+    JSON.stringify(out) === JSON.stringify(['important', 'urgent', 'critical', 'none']),
+    JSON.stringify(out),
+  );
+}
+
+// 7. Subtasks add + toggle.
+{
+  const { out } = run(
+    () => {},
+    `(() => { addSubtask('t1', 'First step'); const n = getTask('t1').sub.length; toggleSubtask('t1', 0); return { n, d: getTask('t1').sub[0].d }; })()`,
+  );
+  check('subtasks', out.n === 1 && out.d === 1, JSON.stringify(out));
+}
+
+// 8. Lists seed inbox + work, add appends.
+{
+  const { out } = run(
+    () => {},
+    `(() => { const before = getLists().map((l) => l.id); const added = addList('Home'); return { before, added: added && added.n, after: getLists().length }; })()`,
+  );
+  check(
+    'lists',
+    JSON.stringify(out.before) === JSON.stringify(['inbox', 'work']) && out.added === 'Home' && out.after === 3,
+    JSON.stringify(out),
+  );
+}
+
 if (failures.length) {
   console.error(`tasks: ${failures.length} failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log('all 4 passed');
+console.log('all 8 passed');
