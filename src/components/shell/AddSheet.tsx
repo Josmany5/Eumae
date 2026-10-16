@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Icon } from './icons';
 import { useMedia } from '../../useMedia';
 import { useNav, type Model, type Mode, type Thinking } from '../../nav';
+import { getRoles } from '../../roles';
 import { logEv } from '../../log';
 
 /** The composer's `+` window — the mockup's `plusSh()`, "Add to this chat"
@@ -194,6 +195,15 @@ export default function AddSheet({ open, onClose, onCreateRole }: AddSheetProps)
                  rather than "Role: Default." (request.ts). */
               on={(turn.role || 'Default') === r}
               onClick={pick({ role: r === 'Default' ? '' : r }, `Set role to ${r}`)}
+            />
+          ))}
+          {getRoles().map((r) => (
+            <Row
+              key={r.n}
+              label={r.n}
+              desc={[r.tone, r.style, r.purpose].filter(Boolean).join(' · ') || undefined}
+              on={turn.role === r.n}
+              onClick={pick({ role: r.n }, `Set role to ${r.n}`)}
             />
           ))}
           <button

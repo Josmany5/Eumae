@@ -24,6 +24,7 @@ import ViewPage from './ViewPage';
 import EditPage from './EditPage';
 import VersionPage from './VersionPage';
 import LessonPage from './LessonPage';
+import RolePage from './RolePage';
 
 export interface PageProps {
   /** Whatever the caller passed to nav.go(name, arg). */
@@ -67,6 +68,7 @@ export const PAGES: Record<string, PageDef> = {
   edit: { title: 'Edit', page: EditPage },
   ver: { title: '', page: VersionPage },
   lesson: { title: '', page: LessonPage },
+  role: { title: 'Create a role', page: RolePage },
 };
 
 export function pageTitle(name: string): string {

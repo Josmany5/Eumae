@@ -6,6 +6,7 @@ import { logEv } from '../log';
 import { streamChat } from '../chat';
 import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice';
 import { buildRequest, toApiBody } from '../request';
+import { findRole } from '../roles';
 import { getThread, saveThread, titleFor, type Msg } from '../threads';
 import { takePendingBrief } from '../studio';
 import { messagesFor, bootSnapshot, msgId } from '../boot';
@@ -469,7 +470,12 @@ export default function ChatScreen() {
        applied here by hand instead of being read back a render too late, and the
        history is the thread as it stands *before* this message, which is what the
        mockup's own `slice(0,-1)` is doing (1871). */
-    const body = toApiBody(buildRequest({ ...turn, mode: moved ?? turn.mode }, refs, text), history ?? msgs);
+    const custom = findRole(turn.role) ?? null;
+    const body = toApiBody(
+      buildRequest({ ...turn, mode: moved ?? turn.mode }, refs, text),
+      history ?? msgs,
+      custom,
+    );
 
     /* Two ids from one counter — the turn, and the reply it is
        waiting for — so the reply can still be found in the list while pieces of

@@ -1,4 +1,5 @@
 import type { Mode, Model, Ref, Turn } from './nav';
+import type { CustomRole } from './roles';
 
 /* The request — what this thread hands to /api/ai, decided in one place.
  *
@@ -103,9 +104,18 @@ export function buildRequest(turn: Turn, refs: readonly Ref[], text: string): Tu
  *   - the skill line drops the skill's own description, which the mockup
  *     appends when there is one (1652). No skill exists yet, so there is no
  *     description to carry; the sentence itself still says "Follow it." */
-export function directives(req: TurnRequest): string {
+export function directives(req: TurnRequest, custom?: CustomRole | null): string {
   const lines = [`Mode: ${req.mode}${MODE_CLAUSE[req.mode]}`];
-  if (req.role) lines.push(`Role: ${req.role}.`);
+  if (req.role) {
+    /* Custom roles carry their definition — the mockup's directives()
+       looks the role up and appends tone/style/purpose. Built-ins travel
+       as the name alone. */
+    const extra =
+      custom && [custom.tone, custom.style, custom.purpose].some(Boolean)
+        ? ` - tone: ${custom.tone || '—'}, style: ${custom.style || '—'}, purpose: ${custom.purpose || '—'}`
+        : '';
+    lines.push(`Role: ${req.role}.${extra}`);
+  }
   if (req.skill) lines.push(`Skill: ${req.skill}. Follow it.`);
   /* Balanced asks for nothing extra — the mockup only speaks up for the two
      ends (1653), which is what makes Balanced the default rather than a third
@@ -250,6 +260,7 @@ function timeStamp(): string {
 export function toApiBody(
   req: TurnRequest,
   history: readonly ThreadTurn[],
+  customRole?: CustomRole | null,
   functionDeclarations?: unknown[],
 ): ApiChatBody {
   const attachments = refsToAttachments(req.refs);
@@ -257,7 +268,7 @@ export function toApiBody(
   return {
     action: 'chatStream',
     data: {
-      systemPrompt: BASE_PROMPT + directives(req) + timeStamp(),
+      systemPrompt: BASE_PROMPT + directives(req, customRole) + timeStamp(),
       conversationHistory: historyOf(history),
       message: req.text,
       ...(attachments.length ? { attachments } : {}),

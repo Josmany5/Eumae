@@ -181,7 +181,10 @@ export default function App() {
      (§4.13): building a role. "Scope to a project" is the rail's row again and
      toasts through `pickMenu` like every other unbuilt row, so there is no
      second branch to keep in step here. */
-  const onCreateRole = useCallback(() => notify('Custom roles arrive with Studio'), [notify]);
+  const onCreateRole = useCallback(() => {
+    setTab('console');
+    setStack([{ page: 'role' }]);
+  }, []);
 
   // The mockup's go(): switching tab clears the page stack.
   const goTab = useCallback((t: TabId) => {
