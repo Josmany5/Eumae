@@ -213,15 +213,13 @@ export default function FlowEditPage({ arg }: PageProps) {
         </div>
       </div>
 
-      <div className="flSave">
+      <div className="btns flSave">
         <button className="pri" onClick={save}>
           {existing ? 'Save changes' : kind === 'routine' ? 'Create routine' : 'Create flow'}
         </button>
-        <button className="gho" onClick={back}>
-          Cancel
-        </button>
+        <button onClick={back}>Cancel</button>
         {existing ? (
-          <button className="gho" style={{ color: 'var(--rd)', marginLeft: 'auto' }} onClick={remove}>
+          <button style={{ color: 'var(--rd)' }} onClick={remove}>
             Delete
           </button>
         ) : null}

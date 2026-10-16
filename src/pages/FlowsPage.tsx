@@ -45,9 +45,11 @@ export default function FlowsPage(_props: PageProps) {
       ) : (
         <div className="card s m">No routines yet. A routine is the same steps on repeat.</div>
       )}
-      <button className="pri" style={{ width: '100%', marginTop: 10 }} onClick={() => go('flowedit', '')}>
-        + New flow or routine
-      </button>
+      <div className="btns">
+        <button className="pri" onClick={() => go('flowedit', '')}>
+          + New flow or routine
+        </button>
+      </div>
     </div>
   );
 }
