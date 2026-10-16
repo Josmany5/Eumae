@@ -25,14 +25,6 @@ export function PageNav({
   if (n < 2) return null;
   return (
     <div className="pn" role="tablist" aria-label="Pages">
-      <button
-        className="pnArrow"
-        aria-label="Previous page"
-        disabled={page <= 0}
-        onClick={() => onJump(page - 1)}
-      >
-        ‹
-      </button>
       {names.map((name, i) => (
         <button
           key={i}
@@ -44,14 +36,6 @@ export function PageNav({
           {name}
         </button>
       ))}
-      <button
-        className="pnArrow"
-        aria-label="Next page"
-        disabled={page >= n - 1}
-        onClick={() => onJump(page + 1)}
-      >
-        ›
-      </button>
     </div>
   );
 }

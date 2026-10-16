@@ -16,6 +16,7 @@ import {
 import { getTasks, toggleTask } from '../tasks';
 import { getFiles } from '../library';
 import { queueBrief } from '../studio';
+import { MilestonesEditor } from '../components/Milestones';
 import type { PageProps } from './index';
 
 export default function ProjectPage({ arg }: PageProps) {
@@ -119,6 +120,32 @@ export default function ProjectPage({ arg }: PageProps) {
             Chat in this project
           </button>
         </div>
+      </div>
+      <h3 className="sec">Deadline and milestones</h3>
+      <div className="card evForm">
+        <div className="evRow">
+          <label>
+            <span className="xs m">Deadline</span>
+            <input
+              className="sinput"
+              type="date"
+              value={p.due ?? ''}
+              onChange={(e) => {
+                saveProject({ ...p, due: e.target.value });
+                refresh();
+              }}
+            />
+          </label>
+        </div>
+        <span className="xs m">Milestones</span>
+        <MilestonesEditor
+          value={p.ms ?? []}
+          onChange={(ms) => {
+            saveProject({ ...p, ms });
+            refresh();
+          }}
+        />
+        <span className="xs m">The deadline and every dated milestone show on your calendar.</span>
       </div>
       <h3 className="sec">Tasks</h3>
       <div className="card cardPad">

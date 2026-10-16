@@ -1,3 +1,5 @@
+import type { Milestone } from './milestones';
+
 /* Projects: work with a shape. Fields follow the mockup's SEED
  * (`projs:[{id,n,d,ts,dn}]` — id, name, desc, total steps, done steps).
  * Example seeds are the mockup's own rows, labeled until live data
@@ -15,6 +17,10 @@ export interface Project {
   ts: number;
   /** Done steps. */
   dn: number;
+  /** Deadline, YYYY-MM-DD. Empty or missing means none. */
+  due?: string;
+  /** Dated checkpoints on the way. */
+  ms?: Milestone[];
   /** True for a labeled example seed. Never synced anywhere. */
   example?: boolean;
   /** ms since epoch. */
@@ -47,7 +53,7 @@ function load(): Project[] {
 function seeds(): Project[] {
   const now = Date.now();
   return [
-    { id: 'w1', n: 'Eumae', d: 'The personal AI. Demo Nov 2.', ts: 5, dn: 3, example: true, createdAt: now },
+    { id: 'w1', n: 'Eumae', d: 'The personal AI. Demo Nov 2.', ts: 5, dn: 3, due: '2026-11-02', example: true, createdAt: now },
     { id: 'w2', n: 'Uptown Web Design', d: 'Terravita pitch in progress.', ts: 4, dn: 1, example: true, createdAt: now },
   ];
 }

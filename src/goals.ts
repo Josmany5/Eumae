@@ -1,3 +1,5 @@
+import type { Milestone } from './milestones';
+
 /* Goals: the long game. Fields follow the mockup's Goals page
  * (`{id,t,d,st,td}` — title, detail, status, target date). Example seeds are
  * the mockup's own rows, labeled until live data replaces them.
@@ -12,6 +14,8 @@ export interface Goal {
   st: GoalStatus;
   /** Target date, YYYY-MM-DD. Empty means none. */
   td: string;
+  /** Dated checkpoints on the way. */
+  ms?: Milestone[];
   /** True for a labeled example seed. Never synced anywhere. */
   example?: boolean;
   /** ms since epoch. */

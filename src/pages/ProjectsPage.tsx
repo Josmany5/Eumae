@@ -10,6 +10,7 @@ import { useNav } from '../nav';
 import {
   getProjects,
   createProject,
+  saveProject,
   getPinnedProjectId,
   setPinnedProjectId,
   projectStatus,
@@ -17,6 +18,8 @@ import {
 } from '../projects';
 import { QuickAdd } from '../components/QuickAdd';
 import { Icon } from '../components/shell/icons';
+import { fmtShort } from '../quickadd';
+import { nextMilestone } from '../milestones';
 import type { PageProps } from './index';
 
 type ProjFilter = 'all' | 'active' | 'done';
@@ -38,11 +41,11 @@ export default function ProjectsPage(_props: PageProps) {
     <div className="qaPage">
       <QuickAdd
         kind="project"
-        parse={false}
         placeholder="New project"
-        hint="Name the outcome, not the activity: “Launch the Saggio site”"
+        hint="Name the outcome, add a deadline if there is one: “Launch the Saggio site by Nov 20”"
         onAdd={(q) => {
           const p = createProject(q.title.slice(0, 48));
+          if (q.date) saveProject({ ...p, due: q.date });
           refresh();
           notify('Project created.');
           go('project', p.id);
@@ -74,6 +77,16 @@ export default function ProjectsPage(_props: PageProps) {
                   </span>
                 </span>
                 {p.d ? <span className="xs m pjDesc">{p.d}</span> : null}
+                {p.due || nextMilestone(p.ms) ? (
+                  <span className="xs pjDates">
+                    {p.due ? <span className="m">Due {fmtShort(p.due)}</span> : null}
+                    {nextMilestone(p.ms) ? (
+                      <span className="msNext">
+                        ◆ {nextMilestone(p.ms)!.t} · {fmtShort(nextMilestone(p.ms)!.d)}
+                      </span>
+                    ) : null}
+                  </span>
+                ) : null}
                 <span className={'pjBar' + (pc >= 100 ? ' done' : '')}>
                   <i style={{ width: `${pc}%` }} />
                 </span>

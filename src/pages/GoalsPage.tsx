@@ -9,6 +9,8 @@ import { useState } from 'react';
 import { useNav } from '../nav';
 import { getGoals, createGoal, saveGoal, deleteGoal, type Goal, type GoalStatus } from '../goals';
 import { QuickAdd } from '../components/QuickAdd';
+import { MilestonesEditor } from '../components/Milestones';
+import { nextMilestone } from '../milestones';
 import { fmtShort } from '../quickadd';
 import type { PageProps } from './index';
 
@@ -111,6 +113,12 @@ export default function GoalsPage(_props: PageProps) {
                   {g.st === 'completed' ? <s className="m">{g.t}</s> : g.t}
                 </button>
                 {g.d ? <div className="xs m">{g.d}</div> : null}
+                {nextMilestone(g.ms) ? (
+                  <div className="xs msNext">
+                    ◆ {nextMilestone(g.ms)!.t} · {fmtShort(nextMilestone(g.ms)!.d)}
+                    <span className="m"> · {(g.ms ?? []).filter((m) => m.done).length}/{(g.ms ?? []).length} milestones</span>
+                  </div>
+                ) : null}
               </div>
               {g.td ? (
                 <span className="xs" style={{ color: late ? 'var(--rd)' : 'var(--mut)', textAlign: 'right', flex: 'none' }}>
@@ -167,6 +175,8 @@ function GoalForm({
           </select>
         </label>
       </div>
+      <span className="xs m">Milestones</span>
+      <MilestonesEditor value={g.ms ?? []} onChange={(ms) => set({ ms })} />
       <div className="btns">
         <button className="pri" onClick={() => g.t.trim() && onSave({ ...g, t: g.t.trim(), d: g.d.trim() })}>
           {isNew ? 'Set goal' : 'Save'}

@@ -1228,17 +1228,15 @@ input,textarea,select{ font-family:inherit; }
   border-radius:99px; padding:4px 6px 4px 11px; font-size:13px; font-weight:600; }
 .qaChip button{ width:22px; height:22px; border-radius:50%; padding:0; background:transparent; color:var(--mut); font-size:15px; line-height:1; }
 .qaChip button:hover{ background:var(--card3); color:var(--tx); }
-/* Desktop: bar on top, chips/hint under it. */
-@media (min-width:900px){
-  .qa .qaBar{ order:-1; }
-}
 /* Phone: the bar docks at the bottom of the page, above the tab bar, with
    the hint/chips sitting just above it. Pages that use it set .qaPage. */
-@media (max-width:899px){
-  .qaPage{ display:flex; flex-direction:column; min-height:100%; }
-  .qaPage > .qa{ order:99; position:sticky; bottom:0; z-index:6; margin:auto -16px 0; padding:14px 16px 10px;
-    background:linear-gradient(to bottom, transparent, var(--bg) 22px); }
-  .qaPage > .qaSpacer{ order:98; height:8px; flex:none; }
+/* Phone and desktop: the add bar lives at the bottom, under the list. */
+.qaPage{ display:flex; flex-direction:column; min-height:100%; }
+.qaPage > .qa{ order:99; position:sticky; bottom:0; z-index:6; margin:auto -16px 0; padding:14px 16px 10px;
+  background:linear-gradient(to bottom, transparent, var(--bg) 22px); }
+.qaPage > .qaSpacer{ order:98; height:8px; flex:none; }
+@media (min-width:900px){
+  .qaPage > .qa{ margin:auto 0 0; padding:18px 0 14px; }
 }
 
 .evForm{ display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
@@ -1402,3 +1400,98 @@ input,textarea,select{ font-family:inherit; }
 .pgrid, .dashWide .pgrid{ grid-template-columns:1fr !important; }
 .wc, .wc.half{ grid-column:1 / -1; }
 .pnName{ display:flex; flex-direction:column; gap:4px; margin:0 0 12px; max-width:320px; }
+
+/* Paged dashboards: large mid-page arrows, an edit toolbar, and moving
+   widgets between pages the way you move apps on a phone. */
+.pdStage{ position:relative; }
+.pgArr{ display:none; position:absolute; top:clamp(120px, 38%, 320px); z-index:5; width:52px; height:52px;
+  border-radius:50%; padding:0; background:var(--card2); color:var(--tx); font-size:30px; line-height:1;
+  align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(0,0,0,.35); border:1px solid var(--hair);
+  transition:transform .15s, background .15s; }
+.pgArr:hover{ background:var(--card3); transform:scale(1.06); }
+.pgArr.l{ left:-70px; } .pgArr.r{ right:-70px; }
+@media (min-width:900px){
+  .pgArr{ display:flex; }
+  .dashWide{ padding-left:70px; padding-right:70px; }
+}
+@media (min-width:900px) and (max-width:1100px){
+  .dashWide{ padding-left:0; padding-right:0; }
+  .pgArr.l{ left:-8px; } .pgArr.r{ right:-8px; }
+}
+/* Phone: arrows only while carrying a widget, pinned mid-screen. */
+@media (max-width:899px){
+  .pdash.picking .pgArr{ display:flex; position:fixed; top:46%; }
+  .pdash.picking .pgArr.l{ left:8px; } .pdash.picking .pgArr.r{ right:8px; }
+}
+.pdash.picking .pgArr{ background:var(--ac); color:#fff; border-color:transparent; }
+.pdCell{ transition:opacity .15s, transform .15s; border-radius:20px; }
+.pdCell.picked{ opacity:.45; transform:scale(.97); }
+.pdCell.over{ outline:2px solid var(--ac); outline-offset:3px; }
+.pdTools{ display:flex; flex-direction:column; gap:12px; margin:0 0 14px; }
+.pdTools .pnName{ margin:0; max-width:none; }
+.pdBtns{ display:flex; flex-wrap:wrap; gap:8px; }
+.pdAdd{ border-top:1px solid var(--hair); padding-top:6px; }
+.pdAdd .sr{ padding:10px 4px; }
+.pdEmpty{ border:1.5px dashed var(--hair); border-radius:18px; padding:40px 16px; text-align:center; color:var(--mut); font-size:14px; min-height:140px; display:flex; align-items:center; justify-content:center; }
+.ed8 .cpg{ min-height:120px; }
+
+/* Month view on desktop: every week row gets the same tall height. */
+@media (min-width:900px){
+  .mGrid{ grid-template-rows:auto; grid-auto-rows:minmax(118px, 1fr); gap:4px; padding:10px; }
+  .mCell{ align-items:stretch; justify-content:flex-start; padding:6px 6px; border:1px solid var(--hair); border-radius:10px; min-height:0; overflow:hidden; }
+  .mCell .mNum{ align-self:flex-start; }
+  .mItems{ gap:3px; }
+}
+.c-goal{ --k:#bf5af2; } .c-project{ --k:#64d2ff; } .c-milestone{ --k:#ffd60a; }
+[data-theme="light"] .c-goal{ --k:#8944ab; } [data-theme="light"] .c-project{ --k:#0071a4; } [data-theme="light"] .c-milestone{ --k:#a05a00; }
+.mItem.c-goal i, .mItem.c-project i, .mItem.c-milestone i, .agRow.c-goal > i, .agRow.c-project > i, .agRow.c-milestone > i{ border-radius:2px; transform:rotate(45deg); }
+
+/* Milestones editor (goals + projects). */
+.msList{ display:flex; flex-direction:column; }
+.msRow{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--hair); }
+.msRow:last-child{ border-bottom:0; }
+.msRow .g{ flex:1; min-width:0; }
+.msRow .g.done{ text-decoration:line-through; color:var(--mut); }
+.msRow input[type=date]{ width:150px; flex:none; margin:0; color-scheme:dark; }
+[data-theme="light"] .msRow input[type=date]{ color-scheme:light; }
+.msDot{ flex:none; width:12px; height:12px; transform:rotate(45deg); border-radius:2px; box-shadow:inset 0 0 0 2px #ffd60a; background:transparent; padding:0; }
+.msDot.on{ background:#ffd60a; }
+.msX{ flex:none; background:none; color:var(--mut); font-size:18px; padding:0 6px; }
+.msAdd{ display:flex; gap:8px; margin-top:6px; }
+.msAdd .sinput{ margin:0; }
+.msAdd .sinput:first-child{ flex:1; min-width:0; }
+.msAdd input[type=date]{ width:150px; flex:none; color-scheme:dark; }
+@media (max-width:520px){ .msRow input[type=date], .msAdd input[type=date]{ width:128px; } }
+.msNext{ color:#ffd60a; margin-top:2px; }
+[data-theme="light"] .msNext{ color:#a05a00; }
+.pjDates{ display:flex; gap:10px; flex-wrap:wrap; }
+
+/* Studio tiles: phone = rows, desktop = even cards in a grid. */
+.stGrid{ display:grid; grid-template-columns:1fr; gap:8px; }
+.stTile{ display:grid; grid-template-columns:28px 1fr; grid-template-rows:auto auto; column-gap:12px; row-gap:2px; align-items:center;
+  width:100%; text-align:left; background:var(--card); border:1px solid var(--hair); border-radius:14px; padding:12px 14px; color:var(--tx); }
+.stTile svg{ grid-row:1 / span 2; width:22px; height:22px; stroke:var(--ac); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.stTile .stName{ font-weight:600; font-size:15px; min-width:0; }
+.stTile .stSub{ font-size:12px; color:var(--mut); min-width:0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.4; }
+.stTile:hover{ background:var(--card2); }
+@media (min-width:900px){
+  .stGrid{ grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)) !important; gap:12px; }
+  .stTile{ grid-template-columns:1fr; grid-template-rows:auto auto 1fr; align-items:start; align-content:start; min-height:132px; padding:16px; row-gap:6px; }
+  .stTile svg{ grid-row:auto; width:24px; height:24px; margin-bottom:4px; }
+  .tplList{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:0 16px; }
+  .tplList .sr{ border-bottom:1px solid var(--hair); border-radius:0; }
+}
+
+/* Flow editor. */
+.flEdit{ max-width:720px; padding-bottom:20px; }
+.flName{ font-size:18px; font-weight:600; }
+.flStep{ display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--hair); }
+.flStep:last-child{ border-bottom:0; }
+.flNum{ flex:none; width:24px; height:24px; border-radius:50%; background:var(--card2); color:var(--mut); font-size:12px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; }
+.flStep.add .flNum{ background:var(--acsoft); color:var(--ac); }
+.flIn{ flex:1; min-width:0; background:transparent; border:0; color:var(--tx); font:inherit; font-size:15px; padding:8px 4px; border-radius:8px; outline:none; }
+.flIn:focus{ background:var(--card2); }
+.flStep .msX:disabled{ opacity:.25; }
+.flSave{ position:sticky; bottom:0; display:flex; gap:8px; align-items:center; padding:14px 0 10px; margin-top:12px;
+  background:linear-gradient(to bottom, transparent, var(--bg) 18px); }

@@ -166,15 +166,10 @@ function StudioRoot({ published, made, showDrafts, onToggleDrafts, onPickCat, on
       <h3 className="sec">What can I make?</h3>
       <div className="stGrid">
         {STUDIO_CATEGORY_ORDER.map((cat) => (
-          <button
-            key={cat}
-            className="dr"
-            style={{ border: '1px solid var(--hair)', borderRadius: 12, margin: '4px 0' }}
-            onClick={() => onPickCat(cat)}
-          >
+          <button key={cat} className="stTile" onClick={() => onPickCat(cat)}>
             <Icon name={STUDIO_CATEGORY_ICONS[cat] || 'pls'} />
-            <span className="g">{cat}</span>
-            <span className="x">{STUDIO_CATEGORIES[cat].length}</span>
+            <span className="stName">{cat}</span>
+            <span className="stSub">{STUDIO_CATEGORIES[cat].length} kinds</span>
           </button>
         ))}
       </div>
@@ -239,15 +234,10 @@ function GalleryView({ onBack, onPickCat }: { onBack: () => void; onPickCat: (ca
       <h3 className="sec">Can make</h3>
       <div className="stGrid">
       {STUDIO_CATEGORY_ORDER.map((cat) => (
-        <button
-          key={cat}
-          className="dr"
-          style={{ border: '1px solid var(--hair)', borderRadius: 12, margin: '4px 0' }}
-          onClick={() => onPickCat(cat)}
-        >
+        <button key={cat} className="stTile" onClick={() => onPickCat(cat)}>
           <Icon name={STUDIO_CATEGORY_ICONS[cat] || 'pls'} />
-          <span className="g">{cat}</span>
-          <span className="xs m">{STUDIO_CATEGORIES[cat].join(' · ')}</span>
+          <span className="stName">{cat}</span>
+          <span className="stSub">{STUDIO_CATEGORIES[cat].join(' · ')}</span>
         </button>
       ))}
       </div>
@@ -267,7 +257,7 @@ function CategoryView({ cat, onBack, onPickTpl, onPickCat }: {
       <BackBar onBack={onBack} />
       <div className="screenT">{cat}</div>
       <div className="s m">Kinds of {cat.toLowerCase()} Eumae can make.</div>
-      <div className="card cardPad">
+      <div className="card cardPad tplList">
         {(STUDIO_CATEGORIES[cat] || []).map((tpl) => (
           <button key={tpl} className="sr" onClick={() => onPickTpl(tpl)}>
             <span className="g">{tpl}</span>

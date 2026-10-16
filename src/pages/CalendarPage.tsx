@@ -18,6 +18,8 @@ import { getTasks, toggleTask, type Task } from '../tasks';
 import { QuickAdd, EventForm, EventDetail, quickToEvent } from '../components/QuickAdd';
 import { fmtTime } from '../quickadd';
 import { useMedia } from '../useMedia';
+import { getGoals } from '../goals';
+import { getProjects } from '../projects';
 import type { PageProps } from './index';
 
 type CalView = 'day' | 'week' | 'month';
@@ -47,7 +49,9 @@ function monthShift(day: string, n: number): string {
 /** One thing on the calendar: an event occurrence or a dated task. */
 interface Item {
   key: string;
-  kind: 'event' | 'task';
+  kind: 'event' | 'task' | 'goal' | 'project' | 'milestone';
+  /** Where tapping it goes, for goals, projects and milestones. */
+  link?: { page: string; arg?: string };
   title: string;
   day: string;
   start?: number; // minutes; undefined = all day
@@ -89,7 +93,19 @@ function itemsOn(day: string, tasks: Task[]): Item[] {
         task: t,
       };
     });
-  return [...evs, ...ts].sort((a, b) => (a.start ?? -1) - (b.start ?? -1));
+  /* Goal targets, project deadlines, and their milestones: all-day markers. */
+  const marks: Item[] = [];
+  for (const g of getGoals()) {
+    if (g.td === day) marks.push({ key: 'g' + g.id, kind: 'goal', title: 'Goal: ' + g.t, day, color: 'goal', done: g.st === 'completed', link: { page: 'goals' } });
+    for (const m of g.ms ?? [])
+      if (m.d === day) marks.push({ key: 'gm' + m.id, kind: 'milestone', title: m.t + ' · ' + g.t, day, color: 'milestone', done: !!m.done, link: { page: 'goals' } });
+  }
+  for (const p of getProjects()) {
+    if (p.due === day) marks.push({ key: 'p' + p.id, kind: 'project', title: 'Due: ' + p.n, day, color: 'project', link: { page: 'project', arg: p.id } });
+    for (const m of p.ms ?? [])
+      if (m.d === day) marks.push({ key: 'pm' + m.id, kind: 'milestone', title: m.t + ' · ' + p.n, day, color: 'milestone', done: !!m.done, link: { page: 'project', arg: p.id } });
+  }
+  return [...marks, ...evs, ...ts].sort((a, b) => (a.start ?? -1) - (b.start ?? -1));
 }
 
 export default function CalendarPage(_props: PageProps) {
@@ -149,6 +165,10 @@ export default function CalendarPage(_props: PageProps) {
   };
 
   const openItem = (it: Item) => {
+    if (it.link) {
+      go(it.link.page, it.link.arg);
+      return;
+    }
     if (it.kind === 'task' && it.task) {
       setForm(null);
       setView1(null);
