@@ -47,23 +47,31 @@ export default function ChatPage({ arg }: PageProps) {
 
   return (
     <div className="qaPage">
-      <div id="thread" style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '14px 0' }}>
-        {t.msgs.map((m, i) =>
-          m.who ? (
-            <div key={i} className="b me">
-              <div className="w">You</div>
-              <div>{m.text}</div>
-            </div>
-          ) : (
-            <div key={i} className="b">
-              <div className="w">{p ? p.n : 'Guild'}</div>
-              <div>{m.text}</div>
-            </div>
-          ),
-        )}
-        <div ref={bottomRef} />
-      </div>
+      <Bubbles msgs={t.msgs.map((m) => ({ me: !!m.who, who: p ? p.n : 'Guild', text: m.text }))} />
+      <div ref={bottomRef} />
       <MsgBar placeholder={p ? `Message ${p.n}` : 'Message'} value={draft} onChange={setDraft} onSend={send} />
+    </div>
+  );
+}
+
+/* iMessage-style thread: blue bubbles on the right for you, grey on the
+ * left for them; runs from one sender stack tight and only the last one
+ * gets a tail. Groups show the sender's name above each run. */
+function Bubbles({ msgs, group }: { msgs: { me: boolean; who: string; text: string }[]; group?: boolean }) {
+  return (
+    <div className="im">
+      {msgs.map((m, i) => {
+        const prev = msgs[i - 1];
+        const next = msgs[i + 1];
+        const first = !prev || prev.me !== m.me || prev.who !== m.who;
+        const last = !next || next.me !== m.me || next.who !== m.who;
+        return (
+          <div key={i} className={'imRow' + (m.me ? ' me' : '') + (first ? ' first' : '')}>
+            {group && !m.me && first ? <div className="imWho">{m.who}</div> : null}
+            <div className={'imB' + (last ? ' tail' : '')}>{m.text}</div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -111,21 +119,7 @@ export function GroupChatPage({ arg }: PageProps) {
       <div className="s m" style={{ marginBottom: 8 }}>
         {gr.msgs.length} messages · {gr.last}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '14px 0' }}>
-        {gr.msgs.map(([who, text], i) =>
-          who === 'You' ? (
-            <div key={i} className="b me">
-              <div className="w">You</div>
-              <div>{text}</div>
-            </div>
-          ) : (
-            <div key={i} className="b">
-              <div className="w">{who}</div>
-              <div>{text}</div>
-            </div>
-          ),
-        )}
-      </div>
+      <Bubbles group msgs={gr.msgs.map(([who, text]) => ({ me: who === 'You', who, text }))} />
       <MsgBar placeholder={`Message ${gr.n}`} value={draft} onChange={setDraft} onSend={sendG} />
     </div>
   );
