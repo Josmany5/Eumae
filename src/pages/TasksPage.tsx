@@ -19,6 +19,13 @@ import {
   cyclePriority,
   toggleSubtask,
   addSubtask,
+  renameSubtask,
+  deleteSubtask,
+  renameList,
+  deleteList,
+  getTask,
+  snapshotTasks,
+  restoreTasks,
   type Task,
   type TaskPriority,
 } from '../tasks';
@@ -48,6 +55,7 @@ export default function TasksPage(_props: PageProps) {
   const [addingList, setAddingList] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [newSub, setNewSub] = useState('');
+  const [editLists, setEditLists] = useState(false);
   const refresh = () => setTick((t) => t + 1);
   void tick;
 
@@ -95,6 +103,26 @@ export default function TasksPage(_props: PageProps) {
     setList(added.id);
     refresh();
   };
+
+  /* Deletes snapshot the store first; the toast's Undo puts it back. */
+  const undoable = (msg: string, act: () => boolean | void) => {
+    const snap = snapshotTasks();
+    if (act() === false) return;
+    refresh();
+    notify(msg, {
+      undo: () => {
+        restoreTasks(snap);
+        refresh();
+      },
+    });
+  };
+  const removeList = (id: string) =>
+    undoable('List deleted. Its tasks moved to ' + lists[0].n + '.', () => {
+      const ok = deleteList(id);
+      if (ok && list === id) setList('all');
+      return ok;
+    });
+
   return (
     <div className="qaPage">
       <QuickAdd
@@ -113,6 +141,15 @@ export default function TasksPage(_props: PageProps) {
           task={draft}
           lists={lists}
           onCancel={() => setDraft(null)}
+          onDelete={
+            getTask(draft.id)
+              ? () => {
+                  const id = draft.id;
+                  setDraft(null);
+                  undoable('Task deleted.', () => deleteTask(id));
+                }
+              : undefined
+          }
           onSave={(t) => {
             saveTask(t);
             setDraft(null);
@@ -152,7 +189,39 @@ export default function TasksPage(_props: PageProps) {
             + List
           </button>
         )}
+        <button className={editLists ? 'on' : 'gho'} onClick={() => setEditLists((v) => !v)}>
+          {editLists ? 'Done' : 'Edit'}
+        </button>
       </div>
+      {editLists ? (
+        <div className="card cardPad">
+          {lists.map((l, i) => (
+            <span key={l.id} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+              <input
+                className="lib2-search"
+                defaultValue={l.n}
+                aria-label={`Rename ${l.n}`}
+                onBlur={(e) => {
+                  if (e.target.value.trim() && e.target.value.trim() !== l.n) {
+                    renameList(l.id, e.target.value);
+                    refresh();
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                }}
+              />
+              {i === 0 ? (
+                <span className="xs m" style={{ alignSelf: 'center' }}>Default</span>
+              ) : (
+                <button className="fb gho danger" onClick={() => removeList(l.id)}>
+                  Delete
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <div className="tkBar">
         <div className="calSeg" role="tablist" aria-label="Show">
           {(['active', 'completed', 'all'] as Filter[]).map((f) => (
@@ -185,6 +254,7 @@ export default function TasksPage(_props: PageProps) {
               setNewSub('');
             }}
             onEdit={() => setDraft(t)}
+            onDeleteSub={(i) => undoable('Subtask deleted.', () => deleteSubtask(t.id, i))}
             refresh={refresh}
           />
         ))}
@@ -203,6 +273,7 @@ function TaskRow({
   onNewSub,
   onToggleExpand,
   onEdit,
+  onDeleteSub,
   refresh,
 }: {
   task: Task;
@@ -211,9 +282,17 @@ function TaskRow({
   onNewSub: (s: string) => void;
   onToggleExpand: () => void;
   onEdit: () => void;
+  onDeleteSub: (index: number) => void;
   refresh: () => void;
 }) {
   const [leaving, setLeaving] = useState(false);
+  const [editSub, setEditSub] = useState<number | null>(null);
+  const [subText, setSubText] = useState('');
+  const saveSub = () => {
+    if (editSub !== null && subText.trim()) renameSubtask(task.id, editSub, subText);
+    setEditSub(null);
+    refresh();
+  };
   const subs = task.sub ?? [];
   const pr = task.pr ?? 'none';
   const submitSub = () => {
@@ -263,7 +342,34 @@ function TaskRow({
                   refresh();
                 }}
               />
-              <div className="g s">{s.d ? <s className="m">{s.t}</s> : s.t}</div>
+              {editSub === i ? (
+                <input
+                  className="lib2-search g"
+                  value={subText}
+                  autoFocus
+                  onChange={(e) => setSubText(e.target.value)}
+                  onBlur={saveSub}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveSub();
+                    if (e.key === 'Escape') setEditSub(null);
+                  }}
+                  aria-label="Edit subtask"
+                />
+              ) : (
+                <button
+                  className="g s tkTitle"
+                  aria-label={`Edit ${s.t}`}
+                  onClick={() => {
+                    setEditSub(i);
+                    setSubText(s.t);
+                  }}
+                >
+                  {s.d ? <s className="m">{s.t}</s> : s.t}
+                </button>
+              )}
+              <button className="fb gho danger" aria-label={`Delete ${s.t}`} onClick={() => onDeleteSub(i)}>
+                ×
+              </button>
             </div>
           ))}
           <span style={{ display: 'flex', gap: 8, marginTop: 6 }}>
@@ -315,8 +421,8 @@ function TaskMeta({ task, subs }: { task: Task; subs: string }) {
 }
 
 /* Full task fields (wove's add modal, distilled). */
-function TaskForm({ task, lists, onSave, onCancel }: {
-  task: Task; lists: { id: string; n: string }[]; onSave: (t: Task) => void; onCancel: () => void;
+function TaskForm({ task, lists, onSave, onCancel, onDelete }: {
+  task: Task; lists: { id: string; n: string }[]; onSave: (t: Task) => void; onCancel: () => void; onDelete?: () => void;
 }) {
   const [t, setT] = useState<Task>(task);
   const set = (p: Partial<Task>) => setT((x) => ({ ...x, ...p }));
@@ -394,6 +500,7 @@ function TaskForm({ task, lists, onSave, onCancel }: {
       <div className="btns">
         <button className="pri" onClick={() => t.t.trim() && onSave({ ...t, t: t.t.trim() })}>Save task</button>
         <button className="gho" onClick={onCancel}>Cancel</button>
+        {onDelete ? <button className="gho danger" onClick={onDelete}>Delete</button> : null}
       </div>
     </div>
   );

@@ -1,14 +1,14 @@
 /* Guild thread — bubbles, marks read on open, inline send. Group variant
  * (gchatg) reads groups[].msgs ([who, text] pairs) instead of threads. */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNav } from '../nav';
-import { getGuild, saveGuild, sendGuildMessage, sendGroupMessage } from '../guild';
+import { getGuild, saveGuild, sendGuildMessage, sendGroupMessage, deleteThread, leaveGroup, snapshotGuild, restoreGuild } from '../guild';
 import { Icon } from '../components/shell/icons';
 import type { PageProps } from './index';
 
 export default function ChatPage({ arg }: PageProps) {
-  const { notify } = useNav();
+  const { notify, back } = useNav();
   const index = typeof arg === 'number' ? arg : -1;
   const [tick, setTick] = useState(0);
   const [draft, setDraft] = useState('');
@@ -45,10 +45,25 @@ export default function ChatPage({ arg }: PageProps) {
     setTick((x) => x + 1);
   };
 
+  const remove = () => {
+    if (!window.confirm(`Delete this chat${p ? ` with ${p.n}` : ''}?`)) return;
+    const snap = snapshotGuild();
+    if (!deleteThread(index)) return;
+    back();
+    notify('Chat deleted.', { undo: () => restoreGuild(snap) });
+  };
+
   return (
     <div className="qaPage">
-      <ImHead name={p ? p.n : 'Guild'} />
-      <Bubbles msgs={t.msgs.map((m) => ({ me: !!m.who, who: p ? p.n : 'Guild', text: m.text }))} />
+      <ImHead
+        name={p ? p.n : 'Guild'}
+        action={
+          <button className="fb gho danger" onClick={remove}>
+            Delete chat
+          </button>
+        }
+      />
+      <Bubbles msgs={t.msgs.map((m) => ({ me: !!m.who, who: p ? p.n : 'Guild', text: m.text, at: m.at }))} />
       <div ref={bottomRef} />
       <MsgBar placeholder={p ? `Message ${p.n}` : 'Message'} value={draft} onChange={setDraft} onSend={send} />
     </div>
@@ -56,13 +71,14 @@ export default function ChatPage({ arg }: PageProps) {
 }
 
 /* iMessage-style header: initials avatar over the name, centered. */
-function ImHead({ name, sub }: { name: string; sub?: string }) {
+function ImHead({ name, sub, action }: { name: string; sub?: string; action?: ReactNode }) {
   const ini = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
   return (
     <div className="imHead">
       <div className="imAv">{ini || '?'}</div>
       <div className="imName">{name}</div>
       {sub ? <div className="xs m">{sub}</div> : null}
+      {action}
     </div>
   );
 }
@@ -70,16 +86,28 @@ function ImHead({ name, sub }: { name: string; sub?: string }) {
 /* iMessage-style thread: blue bubbles on the right for you, grey on the
  * left for them; runs from one sender stack tight and only the last one
  * gets a tail. Groups show the sender's name above each run. */
-function Bubbles({ msgs, group }: { msgs: { me: boolean; who: string; text: string }[]; group?: boolean }) {
+function Bubbles({ msgs, group }: { msgs: { me: boolean; who: string; text: string; at?: number }[]; group?: boolean }) {
+  /* Time labels, iMessage-style: before the first stamped message, then
+     whenever an hour or more has passed since the last stamped one. Old
+     messages carry no stamp and get no label. */
+  let lastAt: number | undefined;
+  const labels = msgs.map((m) => {
+    if (m.at === undefined) return null;
+    const show = lastAt === undefined || m.at - lastAt > 60 * 60 * 1000;
+    lastAt = m.at;
+    return show ? fmtStamp(m.at) : null;
+  });
   return (
     <div className="im">
       {msgs.map((m, i) => {
         const prev = msgs[i - 1];
         const next = msgs[i + 1];
-        const first = !prev || prev.me !== m.me || prev.who !== m.who;
-        const last = !next || next.me !== m.me || next.who !== m.who;
+        /* A time label breaks a run, like iMessage. */
+        const first = !prev || prev.me !== m.me || prev.who !== m.who || !!labels[i];
+        const last = !next || next.me !== m.me || next.who !== m.who || !!labels[i + 1];
         return (
           <div key={i} className={'imRow' + (m.me ? ' me' : '') + (first ? ' first' : '')}>
+            {labels[i] ? <div className="imTime xs m">{labels[i]}</div> : null}
             {group && !m.me && first ? <div className="imWho">{m.who}</div> : null}
             <div className={'imB' + (last ? ' tail' : '')}>{m.text}</div>
           </div>
@@ -87,6 +115,19 @@ function Bubbles({ msgs, group }: { msgs: { me: boolean; who: string; text: stri
       })}
     </div>
   );
+}
+
+/* "Today 6:14 PM", "Yesterday 9:02 AM", "Mon 3:10 PM" within the week,
+   "Oct 12, 3:10 PM" before that. */
+function fmtStamp(at: number): string {
+  const d = new Date(at);
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((day(new Date()) - day(d)) / 86400000);
+  if (days === 0) return `Today ${time}`;
+  if (days === 1) return `Yesterday ${time}`;
+  if (days > 1 && days < 7) return `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${time}`;
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${time}`;
 }
 
 /* The Guild message bar — same look as the quick-add bars, docked at the
@@ -116,6 +157,7 @@ function MsgBar({ placeholder, value, onChange, onSend }: { placeholder: string;
 }
 
 export function GroupChatPage({ arg }: PageProps) {
+  const { notify, back } = useNav();
   const name = typeof arg === 'string' ? arg : '';
   const [draft, setDraft] = useState('');
   const [, setTick] = useState(0);
@@ -127,10 +169,25 @@ export function GroupChatPage({ arg }: PageProps) {
     setDraft('');
     setTick((x) => x + 1);
   };
+  const leave = () => {
+    if (!window.confirm(`Leave ${gr.n}?`)) return;
+    const snap = snapshotGuild();
+    if (!leaveGroup(gr.n)) return;
+    back();
+    notify(`Left ${gr.n}.`, { undo: () => restoreGuild(snap) });
+  };
   return (
     <div className="qaPage">
-      <ImHead name={gr.n} sub={`${gr.msgs.length} messages`} />
-      <Bubbles group msgs={gr.msgs.map(([who, text]) => ({ me: who === 'You', who, text }))} />
+      <ImHead
+        name={gr.n}
+        sub={`${gr.msgs.length} messages`}
+        action={
+          <button className="fb gho danger" onClick={leave}>
+            Leave group
+          </button>
+        }
+      />
+      <Bubbles group msgs={gr.msgs.map(([who, text, at]) => ({ me: who === 'You', who, text, at }))} />
       <MsgBar placeholder={`Message ${gr.n}`} value={draft} onChange={setDraft} onSend={sendG} />
     </div>
   );

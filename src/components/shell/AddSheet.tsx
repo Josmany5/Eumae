@@ -75,7 +75,7 @@ interface AddSheetProps {
   /** The Role section's "+ Create your own…" row. Attaching is not a row in here
    *  any more (I2), so the paperclip is where a file comes in and this window has
    *  no file handler to be handed. */
-  onCreateRole: () => void;
+  onCreateRole: (name?: string) => void;
 }
 
 /** One choice — the mockup's `rd` (line 1281): the label on the left, a check
@@ -198,13 +198,24 @@ export default function AddSheet({ open, onClose, onCreateRole }: AddSheetProps)
             />
           ))}
           {getRoles().map((r) => (
-            <Row
-              key={r.n}
-              label={r.n}
-              desc={[r.tone, r.style, r.purpose].filter(Boolean).join(' · ') || undefined}
-              on={turn.role === r.n}
-              onClick={pick({ role: r.n }, `Set role to ${r.n}`)}
-            />
+            <div key={r.n} className="srEd">
+              <Row
+                label={r.n}
+                desc={[r.tone, r.style, r.purpose].filter(Boolean).join(' · ') || undefined}
+                on={turn.role === r.n}
+                onClick={pick({ role: r.n }, `Set role to ${r.n}`)}
+              />
+              <button
+                className="fb gho"
+                aria-label={`Edit ${r.n}`}
+                onClick={() => {
+                  onClose();
+                  onCreateRole(r.n);
+                }}
+              >
+                Edit
+              </button>
+            </div>
           ))}
           <button
             className="sr"

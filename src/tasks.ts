@@ -254,3 +254,49 @@ export function addList(n: string): TaskList | null {
   saveLists([...loadLists(), list]);
   return list;
 }
+
+export function renameSubtask(id: string, index: number, t: string): void {
+  const task = getTask(id);
+  const name = t.trim();
+  if (!task || !task.sub || !task.sub[index] || !name) return;
+  saveTask({ ...task, sub: task.sub.map((s, i) => (i === index ? { ...s, t: name } : s)) });
+}
+
+export function deleteSubtask(id: string, index: number): void {
+  const task = getTask(id);
+  if (!task || !task.sub || !task.sub[index]) return;
+  saveTask({ ...task, sub: task.sub.filter((_, i) => i !== index) });
+}
+
+export function renameList(id: string, n: string): void {
+  const name = n.trim().slice(0, 48);
+  if (!name) return;
+  saveLists(loadLists().map((l) => (l.id === id ? { ...l, n: name } : l)));
+}
+
+/* The first list is the default home for tasks and is never deleted; a
+   deleted list's tasks move there rather than vanish. Returns false when
+   the list could not be deleted. */
+export function deleteList(id: string): boolean {
+  const lists = loadLists();
+  if (lists.length <= 1 || lists[0].id === id || !lists.some((l) => l.id === id)) return false;
+  const home = lists[0].id;
+  saveLists(lists.filter((l) => l.id !== id));
+  save(load().map((t) => ((t.list ?? 'inbox') === id ? { ...t, list: home } : t)));
+  return true;
+}
+
+/* Undo: snapshot both stores before a delete, put them back on Undo. */
+export interface TasksSnapshot {
+  tasks: Task[];
+  lists: TaskList[];
+}
+
+export function snapshotTasks(): TasksSnapshot {
+  return { tasks: JSON.parse(JSON.stringify(load())), lists: JSON.parse(JSON.stringify(loadLists())) };
+}
+
+export function restoreTasks(s: TasksSnapshot): void {
+  save(s.tasks);
+  saveLists(s.lists);
+}

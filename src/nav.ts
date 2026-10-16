@@ -77,6 +77,19 @@ export const DEFAULT_TURN: Turn = {
  * prop through every one of them. The composer's context button was a third
  * until it was retired: the mockup's composer row has no such control.
  */
+/** Optional extras on a toast. `undo` puts an Undo button in it: the caller
+ *  snapshots its store before deleting and hands back the restore. */
+export interface NotifyOpts {
+  undo?: () => void;
+}
+
+/** What App holds while a toast is up. `id` restarts the timer for a repeat. */
+export interface ToastMsg {
+  msg: string;
+  undo?: () => void;
+  id: number;
+}
+
 export interface Nav {
   go: (page: string, arg?: unknown) => void;
   back: () => void;
@@ -89,7 +102,7 @@ export interface Nav {
    *  is its newest caller, and it has two sentences it must be able to say
    *  ("Voice typing is not available in this browser.", "Voice stopped. Tap the
    *  mic to start again." — 1789, 1777), neither of which can be silent. */
-  notify: (message: string) => void;
+  notify: (message: string, opts?: NotifyOpts) => void;
 
   /** Right panel. `openPanel` sets the view as it opens, so a doorway can point
    *  straight at the reading it means instead of opening on whatever was last

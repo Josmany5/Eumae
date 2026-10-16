@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { useNav } from '../nav';
-import { getGuild } from '../guild';
+import { getGuild, createGroup } from '../guild';
 import type { PageProps } from './index';
 
 export default function MessagesPage(_props: PageProps) {
   void _props;
-  const { go } = useNav();
+  const { go, notify } = useNav();
   const [q, setQ] = useState('');
+  const [naming, setNaming] = useState(false);
+  const [groupName, setGroupName] = useState('');
   const [tick, setTick] = useState(0);
   void tick;
   const g = getGuild();
@@ -20,6 +22,16 @@ export default function MessagesPage(_props: PageProps) {
       const p = g.people[t.p];
       return (p?.n ?? '').toLowerCase().includes(query) || t.last.toLowerCase().includes(query);
     });
+  const submitGroup = () => {
+    const msg = createGroup(groupName);
+    notify(msg);
+    if (msg !== 'Group created.') return;
+    const n = groupName.trim().slice(0, 48);
+    setNaming(false);
+    setGroupName('');
+    setTick((x) => x + 1);
+    go('gchatg', n);
+  };
   return (
     <div>
       <input
@@ -62,7 +74,33 @@ export default function MessagesPage(_props: PageProps) {
         );
       })}
       {rows.length === 0 ? <div className="s m">No conversations yet.</div> : null}
-      <h3 className="sec">Groups</h3>
+      <div className="row" style={{ alignItems: 'baseline' }}>
+        <h3 className="sec">Groups</h3>
+        {naming ? null : (
+          <button className="fb gho" style={{ marginLeft: 'auto' }} onClick={() => setNaming(true)}>
+            New group
+          </button>
+        )}
+      </div>
+      {naming ? (
+        <span style={{ display: 'flex', gap: 8, margin: '8px 0' }}>
+          <input
+            className="lib2-search"
+            placeholder="Group name"
+            value={groupName}
+            autoFocus
+            onChange={(e) => setGroupName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitGroup();
+              if (e.key === 'Escape') setNaming(false);
+            }}
+            aria-label="New group name"
+          />
+          <button className="fb" onClick={submitGroup}>
+            Create
+          </button>
+        </span>
+      ) : null}
       {g.groups.map((gr) => (
         <button
           key={gr.n}

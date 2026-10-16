@@ -10,7 +10,7 @@ import RightPanel from './components/shell/RightPanel';
 import { Icon } from './components/shell/icons';
 import { SCREENS, LABELS } from './screens';
 import { PAGES, pageTitle } from './pages';
-import { NavContext, DEFAULT_TURN, type Nav, type PanelView, type Ref, type Turn } from './nav';
+import { NavContext, DEFAULT_TURN, type Nav, type PanelView, type Ref, type Turn, type NotifyOpts, type ToastMsg } from './nav';
 import {
   createThread,
   deleteThread,
@@ -89,7 +89,7 @@ export default function App() {
      rule (main on phone, Personalization on desktop). */
   const [settingsOpen, setSettingsOpen] = useState(() => snap.settingsOpen);
   const [settingsView, setSettingsView] = useState<string | null>(() => snap.settingsView);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastMsg | null>(null);
 
   // The panel. `panelView` deliberately outlives `panelOpen`, so closing it and
   // coming back lands you on the reading you were in, not back on Context.
@@ -104,7 +104,7 @@ export default function App() {
    *  the input reads it back. */
   const [turn, setTurnState] = useState<Turn>(DEFAULT_TURN);
 
-  const notify = useCallback((msg: string) => setToast(msg), []);
+  const notify = useCallback((msg: string, opts?: NotifyOpts) => setToast({ msg, undo: opts?.undo, id: Date.now() }), []);
 
   const closePanel = useCallback(() => setPanelOpen(false), []);
   const openPanel = useCallback((view: PanelView = 'context') => {
@@ -181,9 +181,9 @@ export default function App() {
      (§4.13): building a role. "Scope to a project" is the rail's row again and
      toasts through `pickMenu` like every other unbuilt row, so there is no
      second branch to keep in step here. */
-  const onCreateRole = useCallback(() => {
+  const onCreateRole = useCallback((name?: string) => {
     setTab('console');
-    setStack([{ page: 'role' }]);
+    setStack([name ? { page: 'role', arg: name } : { page: 'role' }]);
   }, []);
 
   // The mockup's go(): switching tab clears the page stack.
@@ -491,7 +491,7 @@ export default function App() {
             filter — every file type goes to the Library. */}
         <input id="file-input" ref={fileRef} type="file" onChange={onFile} hidden />
 
-        <Toast message={toast} onDone={() => setToast(null)} />
+        <Toast toast={toast} onDone={() => setToast(null)} />
       </div>
     </NavContext.Provider>
   );

@@ -74,3 +74,16 @@ export function saveRole(role: CustomRole): string {
   save([...roles, next]);
   return n;
 }
+
+export function deleteRole(name: string): void {
+  save(load().filter((r) => r.n !== name));
+}
+
+/* Undo: the whole list before a delete, put back as it was. */
+export function snapshotRoles(): CustomRole[] {
+  return getRoles();
+}
+
+export function restoreRoles(roles: CustomRole[]): void {
+  save(roles.map((r) => ({ ...r })));
+}

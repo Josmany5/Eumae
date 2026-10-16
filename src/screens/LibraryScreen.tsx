@@ -3,6 +3,7 @@ import { useNav } from '../nav';
 import {
   getFiles, allFolders, getFavs, getTrash, filedFolder, fileUpload,
   folderPrefs, setFolderPrefs, filesIn, addFolder, addFile, sortFiles,
+  getFolders, renameFolder, deleteFolder, snapshotLibrary, restoreLibrary,
   LIB_VIEWS, TYPE_TABS, TYPE_FILTERS,
   liveOnly, folderOf,
   type LibFile, type LibView, type LibSortKey, type LibKind,
@@ -159,6 +160,7 @@ export default function LibraryScreen({ initial }: { initial?: Sel }) {
             onDetail={openDetail}
             onUpload={openUpload}
             onSelectFolder={(folder) => { setSel({ kind: 'folder', folder }); setQuery(''); }}
+            onFolderChange={(folder) => setSel(folder ? { kind: 'folder', folder } : { kind: 'view', view: 'Folders' })}
             newFolderOpen={newFolderOpen}
             newFolderName={newFolderName}
             onNewFolderName={setNewFolderName}
@@ -265,6 +267,7 @@ function LibContents(props: {
   refresh: () => void;
   onDetail: (f: LibFile) => void; onUpload: (u: Upload) => void;
   onSelectFolder: (folder: string) => void;
+  onFolderChange: (folder: string | null) => void;
   newFolderOpen: boolean; newFolderName: string;
   onNewFolderName: (n: string) => void; onNewFolderOpen: () => void; onNewFolderClose: () => void;
 }) {
@@ -341,6 +344,7 @@ function LibContents(props: {
       {ups.length ? <UploadRows uploads={ups} onUpload={props.onUpload} refresh={props.refresh} folder={folder} /> : null}
       {!authored.length && !ups.length ? <div className="s m">Nothing here yet.</div> : null}
       <FolderActions folder={folder} notify={props.notify} refresh={props.refresh} />
+      {getFolders().includes(folder) ? <FolderEdit folder={folder} refresh={props.refresh} onChange={props.onFolderChange} /> : null}
     </>
   );
 }
@@ -631,3 +635,59 @@ function FolderActions({ folder, notify, refresh }: { folder: string; notify: (m
 }
 /* Trash + file detail live in components/shell/FileDetail (shared with
    Studio's sitem page). */
+
+/* Rename / delete for folders you made (built-ins never get these). Delete
+   sends files back to their kind folder and offers Undo. */
+function FolderEdit({ folder, refresh, onChange }: { folder: string; refresh: () => void; onChange: (folder: string | null) => void }) {
+  const { notify } = useNav();
+  const [renaming, setRenaming] = useState(false);
+  const [name, setName] = useState(folder);
+  const submit = () => {
+    const msg = renameFolder(folder, name);
+    notify(msg);
+    if (/renamed/.test(msg)) {
+      setRenaming(false);
+      onChange(name.trim());
+      refresh();
+    }
+  };
+  const remove = () => {
+    const snap = snapshotLibrary();
+    if (!deleteFolder(folder)) return;
+    onChange(null);
+    refresh();
+    notify('Folder deleted. Its files moved back.', {
+      undo: () => {
+        restoreLibrary(snap);
+        refresh();
+      },
+    });
+  };
+  if (renaming) {
+    return (
+      <div className="btns">
+        <span className="g" style={{ display: 'flex', gap: 8, flex: 1 }}>
+          <input
+            className="lib2-search"
+            placeholder="Folder name"
+            value={name}
+            autoFocus
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submit();
+              if (e.key === 'Escape') setRenaming(false);
+            }}
+            aria-label="Rename folder"
+          />
+          <button className="gho" onClick={submit}>Save</button>
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="btns">
+      <button className="gho" onClick={() => { setName(folder); setRenaming(true); }}>Rename folder</button>
+      <button className="gho danger" onClick={remove}>Delete folder</button>
+    </div>
+  );
+}

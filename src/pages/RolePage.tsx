@@ -1,23 +1,39 @@
 /* Create-your-own role — the mockup's pgRole: name, tone, style,
- * purpose. Save stores it and makes it the chat's active role. */
+ * purpose. Save stores it and makes it the chat's active role. With an
+ * arg naming a saved role it edits that one (prefilled) and can delete it. */
 
 import { useState } from 'react';
 import { useNav } from '../nav';
-import { saveRole } from '../roles';
+import { saveRole, findRole, deleteRole, snapshotRoles, restoreRoles } from '../roles';
 import { logEv } from '../log';
 import type { PageProps } from './index';
 
-export default function RolePage(_props: PageProps) {
-  void _props;
-  const { notify, back, setTurn } = useNav();
-  const [n, setN] = useState('');
-  const [tone, setTone] = useState('');
-  const [style, setStyle] = useState('');
-  const [purpose, setPurpose] = useState('');
+export default function RolePage({ arg }: PageProps) {
+  const { notify, back, setTurn, turn } = useNav();
+  const existing = typeof arg === 'string' ? findRole(arg) : undefined;
+  const [n, setN] = useState(existing?.n ?? '');
+  const [tone, setTone] = useState(existing?.tone ?? '');
+  const [style, setStyle] = useState(existing?.style ?? '');
+  const [purpose, setPurpose] = useState(existing?.purpose ?? '');
+
+  const remove = () => {
+    if (!existing) return;
+    const snap = snapshotRoles();
+    const wasActive = turn.role === existing.n;
+    deleteRole(existing.n);
+    if (wasActive) setTurn({ role: '' });
+    notify('Role deleted.', {
+      undo: () => {
+        restoreRoles(snap);
+        if (wasActive) setTurn({ role: existing.n });
+      },
+    });
+    back();
+  };
 
   return (
     <div>
-      <div className="screenT">Create your own role</div>
+      <div className="screenT">{existing ? 'Edit role' : 'Create your own role'}</div>
       <div className="s m" style={{ marginBottom: 10 }}>
         A role is how Eumae shows up for a chat — its tone, style, and purpose.
       </div>
@@ -53,6 +69,8 @@ export default function RolePage(_props: PageProps) {
         <button
           className="pri"
           onClick={() => {
+            /* Renamed: drop the old row so the edit doesn't leave a twin. */
+            if (existing && existing.n !== (n.trim() || 'Custom role')) deleteRole(existing.n);
             const name = saveRole({ n, tone, style, purpose });
             setTurn({ role: name });
             logEv({ area: 'Chat', text: `Set role to ${name}` });
@@ -65,6 +83,11 @@ export default function RolePage(_props: PageProps) {
         <button className="gho" onClick={back}>
           Cancel
         </button>
+        {existing ? (
+          <button className="gho danger" onClick={remove}>
+            Delete
+          </button>
+        ) : null}
       </div>
     </div>
   );

@@ -3,12 +3,12 @@
 
 import { useState } from 'react';
 import { useNav } from '../nav';
-import { getGuild, setSharedPerm, threadWith } from '../guild';
+import { getGuild, setSharedPerm, threadWith, removePerson, snapshotGuild, restoreGuild } from '../guild';
 import { getFiles } from '../library';
 import type { PageProps } from './index';
 
 export default function PersonPage({ arg }: PageProps) {
-  const { go, back } = useNav();
+  const { go, back, notify } = useNav();
   const [tick, setTick] = useState(0);
   const refresh = () => setTick((t) => t + 1);
   void tick;
@@ -23,6 +23,13 @@ export default function PersonPage({ arg }: PageProps) {
   const th = g.threads.findIndex((t) => t.p === i);
   const rel = g.shared.map((x, xi) => ({ x, xi })).filter((o) => o.x.p === i);
   const linked = getFiles().slice(0, 3);
+  const remove = () => {
+    if (!window.confirm(`Remove ${p.n} from your Guild? Your chat with them goes too.`)) return;
+    const snap = snapshotGuild();
+    if (!removePerson(i)) return;
+    back();
+    notify(`${p.n} removed.`, { undo: () => restoreGuild(snap) });
+  };
 
   return (
     <div>
@@ -86,6 +93,11 @@ export default function PersonPage({ arg }: PageProps) {
             </button>
           </div>
         ))}
+      </div>
+      <div className="btns">
+        <button className="gho danger" onClick={remove}>
+          Remove contact
+        </button>
       </div>
     </div>
   );

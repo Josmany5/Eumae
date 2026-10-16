@@ -14,6 +14,8 @@ export interface GuildMessage {
   /** 0 = them, 1 = you. A number like the mockup. */
   who: 0 | 1;
   text: string;
+  /** Sent at, ms. Absent on messages that predate timestamps. */
+  at?: number;
 }
 
 export interface GuildThread {
@@ -80,12 +82,14 @@ export interface GuildAssignment {
 }
 
 /* Group chats — the mockup's GGRP9 seed. Message pairs are [who, text],
- * like the mockup. */
+ * like the mockup; new ones carry a third element, sent-at in ms. */
+export type GuildGroupMsg = [string, string] | [string, string, number];
+
 export interface GuildGroup {
   n: string;
   un: number;
   last: string;
-  msgs: [string, string][];
+  msgs: GuildGroupMsg[];
   example?: boolean;
 }
 
@@ -260,6 +264,16 @@ function normalizeShared(list: unknown): GuildShared[] {
   return list.filter(isGuildShared).map((x) => ({ ...x, perm: x.perm ?? ('view' as const) }));
 }
 
+function isGroupMsg(m: unknown): m is GuildGroupMsg {
+  return (
+    Array.isArray(m) &&
+    (m.length === 2 || m.length === 3) &&
+    typeof m[0] === 'string' &&
+    typeof m[1] === 'string' &&
+    (m.length === 2 || typeof m[2] === 'number')
+  );
+}
+
 function isGuildGroup(g: unknown): g is GuildGroup {
   if (!g || typeof g !== 'object') return false;
   const o = g as Record<string, unknown>;
@@ -267,7 +281,8 @@ function isGuildGroup(g: unknown): g is GuildGroup {
     typeof o.n === 'string' &&
     typeof o.un === 'number' &&
     typeof o.last === 'string' &&
-    Array.isArray(o.msgs)
+    Array.isArray(o.msgs) &&
+    o.msgs.every(isGroupMsg)
   );
 }
 
@@ -381,7 +396,7 @@ export function sendGuildMessage(index: number, text: string): string {
     ...g,
     threads: g.threads.map((x, i) =>
       i === index
-        ? { ...x, un: 0, last: `You: ${v.slice(0, 80)}`, msgs: [...x.msgs, { who: 1 as const, text: v.slice(0, 500) }] }
+        ? { ...x, un: 0, last: `You: ${v.slice(0, 80)}`, msgs: [...x.msgs, { who: 1 as const, text: v.slice(0, 500), at: Date.now() }] }
         : x,
     ),
   });
@@ -398,7 +413,7 @@ export function sendGroupMessage(name: string, text: string): string {
     ...g,
     groups: g.groups.map((x) =>
       x.n === name
-        ? { ...x, un: 0, last: `You: ${v.slice(0, 80)}`, msgs: [...x.msgs, ['You', v.slice(0, 500)] as [string, string]] }
+        ? { ...x, un: 0, last: `You: ${v.slice(0, 80)}`, msgs: [...x.msgs, ['You', v.slice(0, 500), Date.now()] as GuildGroupMsg] }
         : x,
     ),
   });
@@ -425,4 +440,63 @@ export function takeMarketplace(index: number): string {
   if (!item) return 'Nothing there.';
   save({ ...g, market: g.market.map((x, i) => (i === index ? { ...x, got: 1 as const } : x)) });
   return 'Added to your Studio.';
+}
+
+/* Delete a 1:1 thread. The person stays in your Guild. */
+export function deleteThread(index: number): boolean {
+  const g = load();
+  if (!g.threads[index]) return false;
+  save({ ...g, threads: g.threads.filter((_, i) => i !== index) });
+  return true;
+}
+
+/* Leave a group — it drops off your list. */
+export function leaveGroup(name: string): boolean {
+  const g = getGuild();
+  if (!g.groups.some((x) => x.n === name)) return false;
+  save({ ...g, groups: g.groups.filter((x) => x.n !== name) });
+  return true;
+}
+
+/* Remove a contact. Everything that points at people by index (threads,
+ * requests, shared) drops their rows and shifts the indexes above them
+ * down one, so nobody else's thread ends up pointing at the wrong person. */
+export function removePerson(index: number): boolean {
+  const g = getGuild();
+  if (!g.people[index]) return false;
+  const shift = <T extends { p: number }>(rows: T[]): T[] =>
+    rows.filter((r) => r.p !== index).map((r) => (r.p > index ? { ...r, p: r.p - 1 } : r));
+  save({
+    ...g,
+    people: g.people.filter((_, i) => i !== index),
+    threads: shift(g.threads),
+    reqIn: shift(g.reqIn),
+    reqOut: shift(g.reqOut),
+    shared: shift(g.shared),
+  });
+  return true;
+}
+
+/* Start a group. Members are names only for now (groups carry names, not
+ * people indexes). Returns a sentence for the toast. */
+export function createGroup(name: string, memberNames?: string[]): string {
+  const g = getGuild();
+  const n = name.trim().slice(0, 48);
+  if (!n) return 'Name it first.';
+  if (g.groups.some((x) => x.n.toLowerCase() === n.toLowerCase())) return 'That group already exists.';
+  const members = (memberNames ?? []).map((m) => m.trim()).filter(Boolean);
+  save({
+    ...g,
+    groups: [{ n, un: 0, last: members.length ? `With ${members.join(', ')}` : '', msgs: [] }, ...g.groups],
+  });
+  return 'Group created.';
+}
+
+/* Undo: the whole Guild before a delete, put back as it was. */
+export function snapshotGuild(): Guild {
+  return JSON.parse(JSON.stringify(load()));
+}
+
+export function restoreGuild(snap: Guild): void {
+  save(JSON.parse(JSON.stringify(snap)));
 }

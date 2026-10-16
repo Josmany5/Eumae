@@ -87,7 +87,7 @@ export function liveOnly(files: LibFile[]): LibFile[] {
   return files.filter((f) => f.st === 'live');
 }
 
-interface LibState {
+export interface LibState {
   files: LibFile[];
   folders: string[];
   favs: string[];
@@ -347,6 +347,60 @@ export function restoreTrash(index: number): boolean {
   };
   save({ ...s, files: [f, ...s.files], trash: s.trash.filter((_, i) => i !== index) });
   return true;
+}
+
+/* Rename/delete apply to folders you made, never the built-ins. Renaming
+   carries its files (fol8), filed uploads and look (prefs) along; deleting
+   sends its files back to their kind folder and its uploads to Uploads. */
+export function renameFolder(old: string, next: string): string {
+  const s = load();
+  const n = next.trim();
+  if (!s.folders.includes(old) || BUILT_IN_FOLDERS.includes(old)) return 'That folder can’t be renamed.';
+  if (!n) return 'Name it first.';
+  if (n === old) return 'Folder renamed.';
+  if (allFolders().includes(n)) return 'That folder already exists.';
+  const prefs = { ...s.prefs };
+  if (prefs[old]) {
+    prefs[n] = prefs[old];
+    delete prefs[old];
+  }
+  save({
+    ...s,
+    folders: s.folders.map((f) => (f === old ? n : f)),
+    files: s.files.map((f) => (f.fol8 === old ? { ...f, fol8: n } : f)),
+    filed: Object.fromEntries(Object.entries(s.filed).map(([k, v]) => [k, v === old ? n : v])),
+    prefs,
+  });
+  return 'Folder renamed.';
+}
+
+export function deleteFolder(name: string): boolean {
+  const s = load();
+  if (!s.folders.includes(name) || BUILT_IN_FOLDERS.includes(name)) return false;
+  const prefs = { ...s.prefs };
+  delete prefs[name];
+  save({
+    ...s,
+    folders: s.folders.filter((f) => f !== name),
+    files: s.files.map((f) => {
+      if (f.fol8 !== name) return f;
+      const { fol8: _drop, ...rest } = f;
+      void _drop;
+      return rest;
+    }),
+    filed: Object.fromEntries(Object.entries(s.filed).filter(([, v]) => v !== name)),
+    prefs,
+  });
+  return true;
+}
+
+/* Undo: the whole shelf before a delete, put back as it was. */
+export function snapshotLibrary(): LibState {
+  return JSON.parse(JSON.stringify(load()));
+}
+
+export function restoreLibrary(snap: LibState): void {
+  save(JSON.parse(JSON.stringify(snap)));
 }
 
 export function emptyTrash(): void {
