@@ -49,6 +49,8 @@ export function isGuildHalf(id: GuildWidgetId, pageLen: number): boolean {
 export interface GuildDashboard {
   pages: GuildWidgetId[][];
   sizes: Partial<Record<GuildWidgetId, GuildWidgetSize>>;
+  /** User-chosen page names, by index. Missing = the default name. */
+  names?: string[];
 }
 
 const KEY = 'eumae:gdash';
@@ -116,7 +118,7 @@ function isGuildDashboard(d: unknown): d is GuildDashboard {
 
 export function getGuildDashboard(): GuildDashboard {
   const d = load();
-  return { pages: d.pages.map((p) => [...p]), sizes: { ...d.sizes } };
+  return { pages: d.pages.map((p) => [...p]), sizes: { ...d.sizes }, names: d.names ? [...d.names] : undefined };
 }
 
 export function guildSizeOf(dash: GuildDashboard, id: GuildWidgetId): GuildWidgetSize {
@@ -125,7 +127,7 @@ export function guildSizeOf(dash: GuildDashboard, id: GuildWidgetId): GuildWidge
 
 export function setGuildSize(id: GuildWidgetId, size: GuildWidgetSize): void {
   const d = load();
-  save({ pages: d.pages, sizes: { ...d.sizes, [id]: size } });
+  save({ pages: d.pages, sizes: { ...d.sizes, [id]: size }, names: d.names });
 }
 
 /* Remove a widget from its page. Empty pages stay (dots keep their place)
@@ -135,7 +137,7 @@ export function removeGuildWidget(page: number, id: GuildWidgetId): void {
   const pages = d.pages.map((p) => [...p]);
   if (!pages[page]) return;
   pages[page] = pages[page].filter((w) => w !== id);
-  save({ pages, sizes: { ...d.sizes } });
+  save({ pages, sizes: { ...d.sizes }, names: d.names });
 }
 
 /* Add a widget to a page (no duplicates anywhere — one home per widget). */
@@ -145,7 +147,7 @@ export function addGuildWidget(page: number, id: GuildWidgetId): void {
   if (pages.flat().includes(id)) return;
   while (pages.length <= page) pages.push([]);
   pages[page] = [...pages[page], id];
-  save({ pages, sizes: { ...d.sizes } });
+  save({ pages, sizes: { ...d.sizes }, names: d.names });
 }
 
 /* Move a widget: within a page (reorder) or across pages. The mockup has no
@@ -158,13 +160,13 @@ export function moveGuildWidget(fromPage: number, fromIdx: number, toPage: numbe
   const [w] = pages[fromPage].splice(fromIdx, 1);
   const clamped = Math.max(0, Math.min(toIdx, pages[toPage].length));
   pages[toPage].splice(clamped, 0, w);
-  save({ pages, sizes: { ...d.sizes } });
+  save({ pages, sizes: { ...d.sizes }, names: d.names });
 }
 
 export function addGuildPage(): number {
   const d = load();
   const pages = [...d.pages.map((p) => [...p]), []];
-  save({ pages, sizes: { ...d.sizes } });
+  save({ pages, sizes: { ...d.sizes }, names: d.names });
   return pages.length - 1;
 }
 
@@ -173,5 +175,21 @@ export function removeGuildPage(page: number): void {
   if (d.pages.length <= 1) return;
   const pages = d.pages.map((p) => [...p]);
   pages.splice(page, 1);
-  save({ pages, sizes: { ...d.sizes } });
+  const names = d.names ? [...d.names] : undefined;
+  names?.splice(page, 1);
+  save({ pages, sizes: { ...d.sizes }, names });
+}
+
+/** Page names as shown: the user's name, else the seeded default, else
+ *  "Page N". */
+export function guildPageNames(): string[] {
+  const d = load();
+  return d.pages.map((_, i) => String(d.names?.[i] ?? '').trim() || GUILD_PAGE_NAMES[i] || 'Page ' + (i + 1));
+}
+
+export function renameGuildPage(page: number, name: string): void {
+  const d = load();
+  const names = d.pages.map((_, i) => d.names?.[i] ?? '');
+  names[page] = name.trim().slice(0, 24);
+  save({ pages: d.pages.map((p) => [...p]), sizes: { ...d.sizes }, names });
 }

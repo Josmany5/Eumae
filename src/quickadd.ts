@@ -124,11 +124,12 @@ export function parseQuick(input: string, now: Date = new Date()): Quick {
     q.date = plus(0);
     if (m[1].toLowerCase() === 'tonight' && !q.time) q.time = '20:00';
   });
-  if (!q.date) take(/\s(tomorrow|tmrw|tmr)(?=\s)/i, () => (q.date = plus(1)));
+  if (!q.date) take(/\s(?:by\s+)?(tomorrow|tmrw|tmr)(?=\s)/i, () => (q.date = plus(1)));
   if (!q.date) take(/\sin\s+(\d+)\s+days?(?=\s)/i, (m) => (q.date = plus(+m[1])));
-  if (!q.date) take(/\snext\s+week(?=\s)/i, () => (q.date = plus(7)));
+  if (!q.date) take(/\s(?:by\s+)?(?:the\s+)?end\s+of\s+(?:the\s+)?year(?=\s)/i, () => (q.date = `${today.getFullYear()}-12-31`));
+  if (!q.date) take(/\s(?:by\s+)?next\s+week(?=\s)/i, () => (q.date = plus(7)));
   if (!q.date)
-    take(new RegExp(`\\s(?:on\\s+)?(next\\s+)?${DAY_RE}(?=\\s)`, 'i'), (m) => {
+    take(new RegExp(`\\s(?:on\\s+|by\\s+)?(next\\s+)?${DAY_RE}(?=\\s)`, 'i'), (m) => {
       /* "Tue" = the coming Tuesday (today if it's Tuesday);
          "next Tue" = the one in the following week. */
       const want = dayIndex(m[2]);
@@ -137,11 +138,11 @@ export function parseQuick(input: string, now: Date = new Date()): Quick {
       q.date = plus(n);
     });
   if (!q.date)
-    take(/\s(?:on\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?=\s)/i, (m) => {
+    take(/\s(?:on\s+|by\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?=\s)/i, (m) => {
       q.date = futureDate(today, MONTHS.indexOf(m[1].slice(0, 3).toLowerCase()), +m[2]);
     });
   if (!q.date)
-    take(/\s(?:on\s+)?(\d{1,2})\/(\d{1,2})(?=\s)/, (m) => {
+    take(/\s(?:on\s+|by\s+)?(\d{1,2})\/(\d{1,2})(?=\s)/, (m) => {
       q.date = futureDate(today, +m[1] - 1, +m[2]);
     });
   if (q.rep && !q.date) {

@@ -19,7 +19,7 @@ import {
   type CalEvent,
   type EventType,
 } from '../events';
-import { QuickAdd, EventForm, quickToEvent } from '../components/QuickAdd';
+import { QuickAdd, EventForm, EventDetail, quickToEvent } from '../components/QuickAdd';
 import { fmtTime, repLabel } from '../quickadd';
 import type { PageProps } from './index';
 
@@ -38,6 +38,7 @@ export default function EventsPage(_props: PageProps) {
   const [filter, setFilter] = useState<Filter>('all');
   const [tick, setTick] = useState(0);
   const [form, setForm] = useState<{ ev: CalEvent; editing: boolean } | null>(null);
+  const [view1, setView1] = useState<{ ev: CalEvent; day: string } | null>(null);
   const refresh = () => setTick((t) => t + 1);
   const today = ymd(new Date());
 
@@ -66,10 +67,11 @@ export default function EventsPage(_props: PageProps) {
 
 
   return (
-    <div>
+    <div className="qaPage">
       <QuickAdd
         kind="event"
-        placeholder="Add an event — “Kung fu every Mon Wed 7-8:30pm”"
+        placeholder="New event"
+        hint="Type it how you'd say it: “Kung fu every Mon Wed 7-8:30pm”"
         onAdd={(q) => {
           const e = saveEvent(quickToEvent(q, today));
           refresh();
@@ -77,6 +79,23 @@ export default function EventsPage(_props: PageProps) {
         }}
         onMore={(q) => setForm({ ev: quickToEvent(q, today), editing: false })}
       />
+      {view1 && !form ? (
+        <EventDetail
+          ev={view1.ev}
+          day={view1.day}
+          onClose={() => setView1(null)}
+          onEdit={() => {
+            setForm({ ev: view1.ev, editing: true });
+            setView1(null);
+          }}
+          onDelete={() => {
+            deleteEvent(view1.ev);
+            setView1(null);
+            refresh();
+            notify(view1.ev.rep ? 'Event and its repeats deleted.' : 'Event deleted.');
+          }}
+        />
+      ) : null}
       {form ? (
         <EventForm
           initial={form.ev}
@@ -116,7 +135,10 @@ export default function EventsPage(_props: PageProps) {
                 <button
                   key={(e.id ?? e.t) + e.d}
                   className={'agRow c-' + (e.type ?? 'other')}
-                  onClick={() => setForm({ ev: (e.id && getEvent(e.id)) || e, editing: true })}
+                  onClick={() => {
+                    setForm(null);
+                    setView1({ ev: (e.id && getEvent(e.id)) || e, day: e.d });
+                  }}
                 >
                   <span className="agTm">
                     {g.title === 'Today' || g.title === 'Tomorrow' ? '' : <span className="xs m">{g.title === 'Repeating' ? 'Next ' : ''}{dayLabel(e.d)}<br /></span>}

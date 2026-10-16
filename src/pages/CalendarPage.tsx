@@ -15,7 +15,7 @@ import { useMemo, useState } from 'react';
 import { useNav } from '../nav';
 import { dayEvents, getEvent, saveEvent, deleteEvent, ymd, mins, type CalEvent } from '../events';
 import { getTasks, toggleTask, type Task } from '../tasks';
-import { QuickAdd, EventForm, quickToEvent } from '../components/QuickAdd';
+import { QuickAdd, EventForm, EventDetail, quickToEvent } from '../components/QuickAdd';
 import { fmtTime } from '../quickadd';
 import { useMedia } from '../useMedia';
 import type { PageProps } from './index';
@@ -100,6 +100,8 @@ export default function CalendarPage(_props: PageProps) {
   const [day, setDay] = useState(() => todayStr());
   const [tick, setTick] = useState(0);
   const [form, setForm] = useState<{ ev: CalEvent; editing: boolean } | null>(null);
+  const [view1, setView1] = useState<{ ev: CalEvent; day: string } | null>(null);
+  const [taskView, setTaskView] = useState<Task | null>(null);
   const refresh = () => setTick((t) => t + 1);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -148,25 +150,27 @@ export default function CalendarPage(_props: PageProps) {
 
   const openItem = (it: Item) => {
     if (it.kind === 'task' && it.task) {
-      toggleTask(it.task.id);
-      refresh();
-      notify(it.task.d ? 'Task reopened.' : 'Task done.');
+      setForm(null);
+      setView1(null);
+      setTaskView(it.task);
       return;
     }
     if (it.ev) {
       /* Edit the series, not the occurrence: repeats are one row. */
       const src = (it.ev.id && getEvent(it.ev.id)) || it.ev;
-      setForm({ ev: src, editing: true });
+      setForm(null);
+      setView1({ ev: src, day: it.day });
     }
   };
 
   const days = view === 'week' ? weekOf(day) : [day];
 
   return (
-    <div className="calPage">
+    <div className="calPage qaPage">
       <QuickAdd
         kind="event"
-        placeholder="Add an event — “Dentist Tue 3pm at Main St”"
+        placeholder="New event"
+        hint="Type it how you'd say it: “Dentist Tue 3pm at Main St”"
         onAdd={(q) => {
           const e = saveEvent(quickToEvent(q, day));
           setDay(e.d);
@@ -176,6 +180,58 @@ export default function CalendarPage(_props: PageProps) {
         onMore={(q) => setForm({ ev: quickToEvent(q, day), editing: false })}
       />
 
+      {taskView ? (
+        <div className="card evDetail c-task">
+          <div className="evDHead">
+            <i />
+            <b>{taskView.t}</b>
+            <button className="evDX" aria-label="Close" onClick={() => setTaskView(null)}>
+              ×
+            </button>
+          </div>
+          <div className="evDRow">
+            {taskView.due
+              ? new Date(taskView.due + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+              : ''}
+            {taskView.tm ? ' · ' + fmtTime(taskView.tm) : ''}
+            {taskView.est ? ' · ' + taskView.est + ' min' : ''}
+          </div>
+          <div className="evDRow m">Task{taskView.pr && taskView.pr !== 'none' ? ' · ' + taskView.pr : ''}</div>
+          <div className="btns">
+            <button
+              className="fb"
+              onClick={() => {
+                toggleTask(taskView.id);
+                notify(taskView.d ? 'Task reopened.' : 'Task done.');
+                setTaskView(null);
+                refresh();
+              }}
+            >
+              {taskView.d ? 'Reopen' : 'Mark done'}
+            </button>
+            <button className="fb" onClick={() => go('tasks')}>
+              Open Tasks
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {view1 && !form ? (
+        <EventDetail
+          ev={view1.ev}
+          day={view1.day}
+          onClose={() => setView1(null)}
+          onEdit={() => {
+            setForm({ ev: view1.ev, editing: true });
+            setView1(null);
+          }}
+          onDelete={() => {
+            deleteEvent(view1.ev);
+            setView1(null);
+            refresh();
+            notify(view1.ev.rep ? 'Event and its repeats deleted.' : 'Event deleted.');
+          }}
+        />
+      ) : null}
       {form ? (
         <EventForm
           initial={form.ev}
@@ -386,8 +442,9 @@ function HourGrid({
 }) {
   const perDay = days.map((d) => itemsOn(d, tasks));
   const timed = perDay.flat().filter((i) => i.start !== undefined);
-  const first = Math.min(7, ...timed.map((i) => Math.floor(i.start! / 60)));
-  const last = Math.max(22, ...timed.map((i) => Math.ceil((i.end ?? i.start! + 60) / 60)));
+  /* The day runs 5 AM to midnight; anything earlier pulls the grid up. */
+  const first = Math.min(5, ...timed.map((i) => Math.floor(i.start! / 60)));
+  const last = 24;
   const hours = Array.from({ length: Math.min(24, last) - first }, (_, i) => first + i);
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
   const cols = { gridTemplateColumns: `44px repeat(${days.length}, minmax(0,1fr))` };

@@ -1,11 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
-import { PageNav, usePageKeys } from '../components/shell/PageNav';
+import { PageNav, PageNameField, usePageKeys } from '../components/shell/PageNav';
 import { useNav } from '../nav';
 import { getGuild } from '../guild';
 import {
   getGuildDashboard,
-  setGuildSize,
-  guildSizeOf,
   removeGuildWidget,
   addGuildWidget,
   moveGuildWidget,
@@ -13,7 +11,8 @@ import {
   removeGuildPage,
   GUILD_WIDGET_IDS,
   GUILD_WIDGET_TITLES,
-  GUILD_PAGE_NAMES,
+  guildPageNames,
+  renameGuildPage,
   type GuildDashboard,
   type GuildWidgetId,
 } from '../gdash';
@@ -69,7 +68,7 @@ export default function GuildScreen() {
   };
 
   usePageKeys(rootRef, safePage, pages.length, jump, !dragId);
-  const pageNames = pages.map((_, i) => GUILD_PAGE_NAMES[i] || 'Page ' + (i + 1));
+  const pageNames = guildPageNames();
 
   /* 600ms hold enters edit — the mockup's onpointerdown timer. */
   const holdStart = () => {
@@ -132,6 +131,16 @@ export default function GuildScreen() {
         </button>
       </div>
       <PageNav names={pageNames} page={safePage} onJump={jump} />
+      {editing ? (
+        <PageNameField
+          key={safePage}
+          value={pageNames[safePage]}
+          onSave={(name) => {
+            renameGuildPage(safePage, name);
+            refresh();
+          }}
+        />
+      ) : null}
       <div
         className={dir > 0 ? 'cswipe fwd' : 'cswipe back'}
         ref={swipeRef}
@@ -192,10 +201,6 @@ export default function GuildScreen() {
                     onTab={openTab}
                     onRemove={() => {
                       removeGuildWidget(pi, w);
-                      refresh();
-                    }}
-                    onFlipSize={() => {
-                      setGuildSize(w, guildSizeOf(dash, w) === 'full' ? 'quick' : 'full');
                       refresh();
                     }}
                     onRefresh={refresh}

@@ -96,10 +96,11 @@ export default function TasksPage(_props: PageProps) {
     refresh();
   };
   return (
-    <div>
+    <div className="qaPage">
       <QuickAdd
         kind="task"
-        placeholder="Add a task — “Call Marcus tomorrow 4pm 30m !urgent #work”"
+        placeholder="New task"
+        hint="Type it how you'd say it: “Call Marcus tomorrow 4pm 30m !urgent #work”"
         onAdd={addQuick}
         onMore={(q) => {
           const t = fromQuick(q.title.trim() ? q : { ...q, title: 'New task' });
@@ -212,6 +213,7 @@ function TaskRow({
   onEdit: () => void;
   refresh: () => void;
 }) {
+  const [leaving, setLeaving] = useState(false);
   const subs = task.sub ?? [];
   const pr = task.pr ?? 'none';
   const submitSub = () => {
@@ -222,18 +224,15 @@ function TaskRow({
   };
   return (
     <>
-      <div className="task">
+      <div className={'task' + (leaving ? ' leaving' : '')}>
         <button
-          className={'ck' + (task.d ? ' d' : '')}
+          className={'ck' + (task.d || leaving ? ' d' : '')}
           aria-label={task.d ? `Reopen ${task.t}` : `Done: ${task.t}`}
-          onClick={() => {
-            toggleTask(task.id);
-            refresh();
-          }}
+          onClick={() => complete(task, leaving, setLeaving, refresh)}
         />
         <div className="g">
           <button className="tkTitle" onClick={onEdit}>
-            {task.d ? <s className="m">{task.t}</s> : task.t}
+            {task.d ? <s className="m">{task.t}</s> : <span className="strike">{task.t}</span>}
           </button>
           <TaskMeta task={task} subs={subs.length ? `${subs.filter((s) => s.d).length}/${subs.length} subtasks` : ''} />
         </div>
@@ -445,22 +444,7 @@ function Matrix({ tasks, refresh, onEdit }: { tasks: Task[]; refresh: () => void
             </div>
             <div className="xs m" style={{ marginBottom: 6 }}>{q.sub}</div>
             {rows.map((t) => (
-              <div key={t.id} className="task" draggable onDragStart={() => setDrag(t.id)} onDragEnd={() => { setDrag(null); setOver(null); }}>
-                <button
-                  className={'ck' + (t.d ? ' d' : '')}
-                  aria-label={t.d ? `Reopen ${t.t}` : `Done: ${t.t}`}
-                  onClick={() => {
-                    toggleTask(t.id);
-                    refresh();
-                  }}
-                />
-                <div className="g">
-                  <button className="tkTitle" onClick={() => onEdit(t)}>
-                    {t.d ? <s className="m">{t.t}</s> : t.t}
-                  </button>
-                  <TaskMeta task={t} subs="" />
-                </div>
-              </div>
+              <MatrixRow key={t.id} t={t} refresh={refresh} onEdit={onEdit} onDrag={setDrag} onEnd={() => { setDrag(null); setOver(null); }} />
             ))}
             {rows.length === 0 ? <div className="xs m">Drag a task here.</div> : null}
           </div>
@@ -468,4 +452,43 @@ function Matrix({ tasks, refresh, onEdit }: { tasks: Task[]; refresh: () => void
       })}
     </div>
   );
+}
+
+function MatrixRow({ t, refresh, onEdit, onDrag, onEnd }: {
+  t: Task; refresh: () => void; onEdit: (t: Task) => void; onDrag: (id: string) => void; onEnd: () => void;
+}) {
+  const [leaving, setLeaving] = useState(false);
+  return (
+              <div className={'task' + (leaving ? ' leaving' : '')} draggable onDragStart={() => onDrag(t.id)} onDragEnd={onEnd}>
+                <button
+                  className={'ck' + (t.d || leaving ? ' d' : '')}
+                  aria-label={t.d ? `Reopen ${t.t}` : `Done: ${t.t}`}
+                  onClick={() => complete(t, leaving, setLeaving, refresh)}
+                />
+                <div className="g">
+                  <button className="tkTitle" onClick={() => onEdit(t)}>
+                    {t.d ? <s className="m">{t.t}</s> : <span className="strike">{t.t}</span>}
+                  </button>
+                  <TaskMeta task={t} subs="" />
+                </div>
+              </div>
+  );
+}
+
+/* Done: the check fills, a line draws through the title, then the row
+   fades and folds away (~0.9s) before the list drops it. Reopening is
+   instant. Reduced motion skips straight to done. */
+function complete(t: Task, leaving: boolean, setLeaving: (v: boolean) => void, refresh: () => void) {
+  if (leaving) return;
+  if (t.d || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    toggleTask(t.id);
+    refresh();
+    return;
+  }
+  setLeaving(true);
+  window.setTimeout(() => {
+    toggleTask(t.id);
+    setLeaving(false);
+    refresh();
+  }, 900);
 }

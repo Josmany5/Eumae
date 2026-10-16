@@ -14,7 +14,7 @@ import { getPinnedProject } from '../../projects';
 import { listUploads } from '../../uploads';
 import { getGuild } from '../../guild';
 import { useLog } from '../../log';
-import { WIDGET_TITLES, WIDGET_ICONS, sizeOf, isHalf, type Dashboard, type WidgetId } from '../../dash';
+import { WIDGET_TITLES, WIDGET_ICONS, type Dashboard, type WidgetId } from '../../dash';
 import { Icon } from './icons';
 
 /** Where a quick-view tap lands — the mockup's WNAV8. */
@@ -375,7 +375,6 @@ export function WidgetCard({
   onNavigate,
   onBrief,
   onRemove,
-  onFlipSize,
   onRefresh,
 }: {
   id: WidgetId;
@@ -387,15 +386,18 @@ export function WidgetCard({
   onNavigate: (id: WidgetId) => void;
   onBrief: () => void;
   onRemove: () => void;
-  onFlipSize: () => void;
   onRefresh: () => void;
 }) {
-  const full = sizeOf(dash, id) === 'full';
+  /* One size: every widget shows its full view, full width (Oct 2026 -
+     the quick/full toggle barely changed anything). */
+  const full = true;
+  void dash;
+  void pageLen;
   const openCount = id === 'today8' ? getTasks().filter((t) => !t.d).length : 0;
   const go = () => onNavigate(id);
   return (
     <div
-      className={'wc' + (!full && isHalf(id, pageLen) ? ' half' : '')}
+      className="wc"
       onClick={() => {
         if (!editing) go();
       }}
@@ -418,18 +420,6 @@ export function WidgetCard({
           }}
         >
           ×
-        </button>
-      ) : null}
-      {editing ? (
-        <button
-          className="rm rmSz"
-          aria-label={full ? 'Switch to Quick view' : 'Switch to Full view'}
-          onClick={(e) => {
-            e.stopPropagation();
-            onFlipSize();
-          }}
-        >
-          {full ? 'Full view' : 'Quick view'}
         </button>
       ) : null}
       <div className="wt">

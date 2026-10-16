@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { parseQuick, fmtShort, fmtTime, repLabel, type Quick } from '../quickadd';
+import { Icon } from './shell/icons';
 import { EVENT_TYPES, type CalEvent, type EventType, type Repeat } from '../events';
 
 /* Quick add: one field, typed naturally. What it understands shows live as
@@ -10,16 +11,23 @@ type Field = 'date' | 'time' | 'loc' | 'rep' | 'mins' | 'pr' | 'list';
 
 export function QuickAdd({
   placeholder,
+  hint,
   kind,
   onAdd,
   onMore,
   autoFocus,
+  parse = true,
 }: {
+  /** Short, inside the bar ("New event"). */
   placeholder: string;
-  kind: 'event' | 'task';
+  /** The example, shown OUTSIDE the bar so it stays legible. */
+  hint?: string;
+  kind: 'event' | 'task' | 'goal' | 'project';
   onAdd: (q: Quick) => void;
-  onMore: (q: Quick) => void;
+  onMore?: (q: Quick) => void;
   autoFocus?: boolean;
+  /** false: the whole line is the title (projects). */
+  parse?: boolean;
 }) {
   const [text, setText] = useState('');
   const [off, setOff] = useState<Field[]>([]);
@@ -29,9 +37,8 @@ export function QuickAdd({
   }, [autoFocus]);
 
   const parsed = useMemo(() => {
+    if (!parse) return { title: text.trim() } as Quick;
     const q = parseQuick(text);
-    /* A removed chip drops the field; its words stay out of the title, the
-       user can retype them. */
     const out: Quick = { ...q };
     for (const f of off) {
       if (f === 'time') {
@@ -40,53 +47,31 @@ export function QuickAdd({
       } else (out as unknown as Record<string, unknown>)[f] = undefined;
     }
     return out;
-  }, [text, off]);
+  }, [text, off, parse]);
 
   const chips: { f: Field; label: string }[] = [];
-  if (parsed.date) chips.push({ f: 'date', label: fmtShort(parsed.date) });
-  if (parsed.time)
+  if (parsed.date) chips.push({ f: 'date', label: (kind === 'goal' ? 'By ' : '') + fmtShort(parsed.date) });
+  if (parsed.time && kind !== 'goal')
     chips.push({ f: 'time', label: fmtTime(parsed.time) + (parsed.end ? ' – ' + fmtTime(parsed.end) : '') });
   if (parsed.mins && kind === 'task') chips.push({ f: 'mins', label: parsed.mins + ' min' });
-  if (parsed.rep) chips.push({ f: 'rep', label: repLabel(parsed.rep, parsed.date) });
-  if (parsed.loc) chips.push({ f: 'loc', label: parsed.loc });
-  if (parsed.pr) chips.push({ f: 'pr', label: parsed.pr[0].toUpperCase() + parsed.pr.slice(1) });
-  if (parsed.list) chips.push({ f: 'list', label: '#' + parsed.list });
+  if (parsed.rep && kind !== 'goal') chips.push({ f: 'rep', label: repLabel(parsed.rep, parsed.date) });
+  if (parsed.loc && kind === 'event') chips.push({ f: 'loc', label: parsed.loc });
+  if (parsed.pr && kind === 'task') chips.push({ f: 'pr', label: parsed.pr[0].toUpperCase() + parsed.pr.slice(1) });
+  if (parsed.list && kind === 'task') chips.push({ f: 'list', label: '#' + parsed.list });
 
   const reset = () => {
     setText('');
     setOff([]);
   };
+  const ready = !!parsed.title.trim();
   const submit = () => {
-    if (!parsed.title.trim()) return;
+    if (!ready) return;
     onAdd(parsed);
     reset();
   };
 
   return (
     <div className="qa">
-      <div className="qaRow">
-        <input
-          ref={ref}
-          className="qaIn"
-          placeholder={placeholder}
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            setOff([]);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') submit();
-            if (e.key === 'Escape') reset();
-          }}
-          aria-label={placeholder}
-        />
-        <button className="gho qaMore" onClick={() => onMore(parsed)}>
-          More
-        </button>
-        <button className="pri" onClick={submit} disabled={!parsed.title.trim()}>
-          Add
-        </button>
-      </div>
       {chips.length ? (
         <div className="qaChips" aria-label="Understood">
           {chips.map((c) => (
@@ -98,13 +83,35 @@ export function QuickAdd({
             </span>
           ))}
         </div>
-      ) : text.trim() ? null : (
-        <div className="xs m qaHint">
-          {kind === 'event'
-            ? 'Try “Dentist Tue 3pm at Main St” or “Kung fu every Mon Wed 7-8:30pm”'
-            : 'Try “Call Marcus tomorrow 4pm 30m !urgent #work”'}
-        </div>
-      )}
+      ) : hint ? (
+        <div className="qaHint">{hint}</div>
+      ) : null}
+      <div className={'qaBar' + (ready ? ' ready' : '')}>
+        <input
+          ref={ref}
+          className="qaIn"
+          placeholder={placeholder}
+          value={text}
+          enterKeyHint="send"
+          onChange={(e) => {
+            setText(e.target.value);
+            setOff([]);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') submit();
+            if (e.key === 'Escape') reset();
+          }}
+          aria-label={placeholder}
+        />
+        {onMore ? (
+          <button className="qaMore" onClick={() => onMore(parsed)} aria-label="All fields">
+            More
+          </button>
+        ) : null}
+        <button className="qaSend" onClick={submit} disabled={!ready} aria-label="Add">
+          <Icon name="up" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -131,14 +138,18 @@ export function EventForm({
   onCancel: () => void;
 }) {
   const [e, setE] = useState<CalEvent>(initial);
+  const box = useRef<HTMLDivElement>(null);
   useEffect(() => setE(initial), [initial]);
+  useEffect(() => {
+    box.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [initial]);
   const set = (p: Partial<CalEvent>) => setE((x) => ({ ...x, ...p }));
   const rep = e.rep;
   const setRep = (r: Repeat | undefined) => set({ rep: r });
   const editing = !!onDelete;
 
   return (
-    <div className="card evForm">
+    <div className="card evForm" ref={box}>
       <b>{editing ? 'Edit event' : 'New event'}</b>
       <input
         className="sinput"
@@ -285,4 +296,54 @@ export function quickToEvent(q: Quick, fallbackDay: string): CalEvent {
     rep: q.rep,
     type: q.type,
   };
+}
+
+/* ── Event details: what tapping an event shows. Read-only, same look as
+   the list; Edit opens the full form. ─────────────────────────────── */
+export function EventDetail({
+  ev,
+  day,
+  onEdit,
+  onDelete,
+  onClose,
+}: {
+  ev: CalEvent;
+  /** The occurrence's date (a repeat shows the day you tapped). */
+  day?: string;
+  onEdit: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    box.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [ev]);
+  const d = day ?? ev.d;
+  const when =
+    new Date(d + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) +
+    (ev.allDay || !ev.tm ? ' · All day' : ' · ' + fmtTime(ev.tm) + (ev.end ? ' – ' + fmtTime(ev.end) : ''));
+  return (
+    <div className={'card evDetail c-' + (ev.type ?? 'other')} ref={box}>
+      <div className="evDHead">
+        <i />
+        <b>{ev.t}</b>
+        <button className="evDX" aria-label="Close" onClick={onClose}>
+          ×
+        </button>
+      </div>
+      <div className="evDRow">{when}</div>
+      {ev.loc ? <div className="evDRow">{ev.loc}</div> : null}
+      {ev.rep ? <div className="evDRow m">↻ {repLabel(ev.rep, ev.d)}</div> : null}
+      <div className="evDRow m">{TYPE_LABEL[ev.type ?? 'other']}</div>
+      {ev.note ? <div className="evDNote">{ev.note}</div> : null}
+      <div className="btns">
+        <button className="fb" onClick={onEdit}>
+          Edit
+        </button>
+        <button className="fb" style={{ color: 'var(--rd)' }} onClick={onDelete}>
+          Delete{ev.rep ? ' series' : ''}
+        </button>
+      </div>
+    </div>
+  );
 }

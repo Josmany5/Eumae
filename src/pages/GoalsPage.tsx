@@ -1,174 +1,185 @@
-/* Goals full page — the mockup's pgGoals, rebuilt as React.
+/* Goals full page — same shape as Tasks and Events.
  *
- * Status ftabs, cards with status tag + Set status/Edit/Delete, New goal.
- * Inline forms, no prompt().
+ * One-line add ("Run a half marathon by Mar 1" -> goal + target date),
+ * a status segment, one card of rows. The status dot cycles
+ * not started -> in progress -> done; tap a goal to edit everything.
  */
 
 import { useState } from 'react';
 import { useNav } from '../nav';
 import { getGoals, createGoal, saveGoal, deleteGoal, type Goal, type GoalStatus } from '../goals';
+import { QuickAdd } from '../components/QuickAdd';
+import { fmtShort } from '../quickadd';
 import type { PageProps } from './index';
 
-const FILTERS: ('all' | GoalStatus)[] = ['all', 'not-started', 'in-progress', 'completed'];
-
-const ST_STYLE: Record<GoalStatus, string> = {
-  'not-started': 'var(--mut)',
-  'in-progress': 'var(--ac)',
-  completed: 'var(--gr)',
+type Filter = 'all' | GoalStatus;
+const FILTERS: Filter[] = ['all', 'in-progress', 'not-started', 'completed'];
+const LABEL: Record<Filter, string> = {
+  all: 'All',
+  'not-started': 'Not started',
+  'in-progress': 'In progress',
+  completed: 'Done',
 };
+const ORDER: GoalStatus[] = ['not-started', 'in-progress', 'completed'];
+
+function daysLeft(td: string): number {
+  const now = new Date();
+  const a = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const [y, m, d] = td.split('-').map(Number);
+  return Math.round((Date.UTC(y, m - 1, d) - a) / 86400000);
+}
 
 export default function GoalsPage(_props: PageProps) {
   void _props;
   const { notify } = useNav();
-  const [filter, setFilter] = useState<'all' | GoalStatus>('all');
+  const [filter, setFilter] = useState<Filter>('all');
   const [tick, setTick] = useState(0);
-  const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<string | null>(null);
-  const [t, setT] = useState('');
-  const [d, setD] = useState('');
-  const [td, setTd] = useState('');
+  const [edit, setEdit] = useState<Goal | null>(null);
   const refresh = () => setTick((t) => t + 1);
   void tick;
 
-  const goals = getGoals().filter((g) => (filter === 'all' ? true : g.st === filter));
-  const openAdd = () => {
-    setT('');
-    setD('');
-    setTd('');
-    setEditing(null);
-    setAdding(true);
-  };
-
-  const openEdit = (g: Goal) => {
-    setT(g.t);
-    setD(g.d);
-    setTd(g.td);
-    setAdding(false);
-    setEditing(g.id);
-  };
-
-  const submitAdd = () => {
-    if (!t.trim()) {
-      notify('Name it first.');
-      return;
-    }
-    const g = createGoal(t.trim());
-    saveGoal({ ...g, d: d.trim(), td: td.trim() });
-    setAdding(false);
-    refresh();
-  };
-
-  const submitEdit = () => {
-    if (!editing) return;
-    const g = getGoals().find((x) => x.id === editing);
-    if (!g) return;
-    if (!t.trim()) {
-      notify('Name it first.');
-      return;
-    }
-    saveGoal({ ...g, t: t.trim(), d: d.trim(), td: td.trim() });
-    setEditing(null);
-    refresh();
-  };
-
-  const cycleStatus = (g: Goal) => {
-    const order: GoalStatus[] = ['not-started', 'in-progress', 'completed'];
-    saveGoal({ ...g, st: order[(order.indexOf(g.st) + 1) % order.length] });
-    refresh();
-  };
-
-  const form = (submit: () => void, cancel: () => void, cta: string) => (
-    <>
-      <input placeholder="Goal" value={t} onChange={(e) => setT(e.target.value)} aria-label="Goal title" />
-      <input
-        placeholder="Why it matters"
-        value={d}
-        onChange={(e) => setD(e.target.value)}
-        style={{ marginTop: 8 }}
-        aria-label="Why it matters"
-      />
-      <input
-        placeholder="Target date (YYYY-MM-DD)"
-        value={td}
-        onChange={(e) => setTd(e.target.value)}
-        style={{ marginTop: 8 }}
-        aria-label="Target date"
-      />
-      <div className="btns">
-        <button className="pri" onClick={submit}>
-          {cta}
-        </button>
-        <button className="gho" onClick={cancel}>
-          Cancel
-        </button>
-      </div>
-    </>
-  );
+  const all = getGoals();
+  const goals = all.filter((g) => filter === 'all' || g.st === filter);
+  const active = all.filter((g) => g.st === 'in-progress').length;
 
   return (
-    <div>
-      <div className="s m">Long-term objectives and milestones.</div>
-      <div className="ftabs">
-        {FILTERS.map((f) => (
-          <button key={f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
-            {f}
-          </button>
-        ))}
-      </div>
-      {goals.map((g) => (
-        <div key={g.id} className="card">
-          {editing === g.id ? (
-            form(submitEdit, () => setEditing(null), 'Save')
-          ) : (
-            <>
-              <div className="row">
-                <div className="g">
-                  <b>{g.t}</b>
-                  <div className="s m">{g.d}</div>
-                  {g.td ? <div className="xs m">Target: {g.td}</div> : null}
-                </div>
-                <span className="tag" style={{ color: ST_STYLE[g.st] }}>
-                  {g.st}
-                </span>
-              </div>
-              <div className="btns">
-                <button className="fb" onClick={() => cycleStatus(g)}>
-                  Set status
-                </button>
-                <button className="fb" onClick={() => openEdit(g)}>
-                  Edit
-                </button>
-                <button
-                  className="fb"
-                  style={{ color: 'var(--rd)' }}
-                  onClick={() => {
-                    deleteGoal(g.id);
-                    refresh();
-                    notify('Goal deleted.');
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      ))}
-      {goals.length === 0 ? (
-        <div className="s m">No goals yet. A goal is the long game — set one and Eumae breaks it into steps with you.</div>
+    <div className="qaPage">
+      <QuickAdd
+        kind="goal"
+        placeholder="New goal"
+        hint="Type it how you'd say it: “Run a half marathon by Mar 1”"
+        onAdd={(q) => {
+          const g = createGoal(q.title);
+          saveGoal({ ...g, td: q.date ?? '' });
+          refresh();
+          notify(`Goal set${q.date ? ' · by ' + fmtShort(q.date) : ''}.`);
+        }}
+        onMore={(q) => {
+          const g = createGoal(q.title || 'New goal');
+          deleteGoal(g.id); /* the form saves for real */
+          setEdit({ ...g, td: q.date ?? '' });
+        }}
+      />
+      {edit ? (
+        <GoalForm
+          goal={edit}
+          isNew={!all.some((g) => g.id === edit.id)}
+          onCancel={() => setEdit(null)}
+          onSave={(g) => {
+            saveGoal(g);
+            setEdit(null);
+            refresh();
+            notify('Goal saved.');
+          }}
+          onDelete={() => {
+            deleteGoal(edit.id);
+            setEdit(null);
+            refresh();
+            notify('Goal deleted.');
+          }}
+        />
       ) : null}
-      {adding ? (
-        <div className="card">
-          <b>New goal</b>
-          <div style={{ marginTop: 8 }}>{form(submitAdd, () => setAdding(false), 'Create')}</div>
+      <div className="tkBar">
+        <div className="calSeg" role="tablist" aria-label="Status">
+          {FILTERS.map((f) => (
+            <button key={f} role="tab" aria-selected={filter === f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
+              {LABEL[f]}
+            </button>
+          ))}
         </div>
-      ) : (
-        <div className="btns">
-          <button className="pri" onClick={openAdd}>
-            New goal
+        <span className="xs m" style={{ alignSelf: 'center' }}>
+          {all.length} goal{all.length === 1 ? '' : 's'} · {active} in progress
+        </span>
+      </div>
+      <div className="card cardPad">
+        {goals.map((g) => {
+          const left = g.td ? daysLeft(g.td) : null;
+          const late = left !== null && left < 0 && g.st !== 'completed';
+          return (
+            <div key={g.id} className="task">
+              <button
+                className={'gSt st-' + g.st}
+                aria-label={`${LABEL[g.st]}, tap to change`}
+                title={LABEL[g.st]}
+                onClick={() => {
+                  saveGoal({ ...g, st: ORDER[(ORDER.indexOf(g.st) + 1) % ORDER.length] });
+                  refresh();
+                }}
+              />
+              <div className="g">
+                <button className="tkTitle" onClick={() => setEdit(g)}>
+                  {g.st === 'completed' ? <s className="m">{g.t}</s> : g.t}
+                </button>
+                {g.d ? <div className="xs m">{g.d}</div> : null}
+              </div>
+              {g.td ? (
+                <span className="xs" style={{ color: late ? 'var(--rd)' : 'var(--mut)', textAlign: 'right', flex: 'none' }}>
+                  {fmtShort(g.td)}
+                  <br />
+                  {g.st === 'completed' ? 'done' : late ? `${-left!}d late` : left === 0 ? 'today' : `${left}d left`}
+                </span>
+              ) : null}
+            </div>
+          );
+        })}
+        {goals.length === 0 ? (
+          <div className="s m">
+            {filter === 'all' ? 'No goals yet. A goal is the long game: set one and Eumae breaks it into steps with you.' : `Nothing ${LABEL[filter].toLowerCase()}.`}
+          </div>
+        ) : null}
+      </div>
+      <div className="xs m calFoot">Tap the circle to move a goal along: not started, in progress, done.</div>
+    </div>
+  );
+}
+
+function GoalForm({
+  goal,
+  isNew,
+  onSave,
+  onDelete,
+  onCancel,
+}: {
+  goal: Goal;
+  isNew: boolean;
+  onSave: (g: Goal) => void;
+  onDelete: () => void;
+  onCancel: () => void;
+}) {
+  const [g, setG] = useState<Goal>(goal);
+  const set = (p: Partial<Goal>) => setG((x) => ({ ...x, ...p }));
+  return (
+    <div className="card evForm">
+      <b>{isNew ? 'New goal' : 'Edit goal'}</b>
+      <input className="sinput" value={g.t} onChange={(e) => set({ t: e.target.value })} aria-label="Goal" autoFocus />
+      <input className="sinput" placeholder="Why it matters" value={g.d} onChange={(e) => set({ d: e.target.value })} aria-label="Why it matters" />
+      <div className="evRow">
+        <label>
+          <span className="xs m">Target date</span>
+          <input className="sinput" type="date" value={g.td} onChange={(e) => set({ td: e.target.value })} />
+        </label>
+        <label>
+          <span className="xs m">Status</span>
+          <select className="sinput" value={g.st} onChange={(e) => set({ st: e.target.value as GoalStatus })}>
+            <option value="not-started">Not started</option>
+            <option value="in-progress">In progress</option>
+            <option value="completed">Done</option>
+          </select>
+        </label>
+      </div>
+      <div className="btns">
+        <button className="pri" onClick={() => g.t.trim() && onSave({ ...g, t: g.t.trim(), d: g.d.trim() })}>
+          {isNew ? 'Set goal' : 'Save'}
+        </button>
+        <button className="gho" onClick={onCancel}>
+          Cancel
+        </button>
+        {!isNew ? (
+          <button className="gho" style={{ color: 'var(--rd)' }} onClick={onDelete}>
+            Delete
           </button>
-        </div>
-      )}
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useMedia } from '../../useMedia';
 
 /* Shared page switching for the paged dashboards (Console + Guild).
@@ -116,4 +116,26 @@ export function usePageKeys(
   }, [ref, desktop, enabled]);
 
   return desktop;
+}
+
+/* Edit mode: name the page you're on. Saves on Enter or when you leave the
+   field; empty goes back to the default name. */
+export function PageNameField({ value, onSave }: { value: string; onSave: (name: string) => void }) {
+  const [v, setV] = useState(value);
+  return (
+    <label className="pnName">
+      <span className="xs m">Page name</span>
+      <input
+        className="sinput"
+        value={v}
+        maxLength={24}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => v.trim() !== value && onSave(v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+        }}
+        aria-label="Page name"
+      />
+    </label>
+  );
 }

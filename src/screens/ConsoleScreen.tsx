@@ -1,16 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
-import { PageNav, usePageKeys } from '../components/shell/PageNav';
+import { PageNav, PageNameField, usePageKeys } from '../components/shell/PageNav';
 import { useNav } from '../nav';
 import { getTasks, type Task } from '../tasks';
 import {
   getDashboard,
-  setSize,
-  sizeOf,
   removeWidget,
   addWidget,
   moveWidget,
   addPage,
-  CONSOLE_PAGE_NAMES,
+  consolePageNames,
+  renameConsolePage,
   removePage,
   WIDGET_IDS,
   WIDGET_TITLES,
@@ -72,7 +71,7 @@ export default function ConsoleScreen() {
   };
 
   usePageKeys(rootRef, safePage, pages.length, jump, !dragId);
-  const pageNames = pages.map((_, i) => CONSOLE_PAGE_NAMES[i] || 'Page ' + (i + 1));
+  const pageNames = consolePageNames();
 
   /* 600ms hold enters edit — the mockup's onpointerdown timer. */
   const holdStart = () => {
@@ -127,6 +126,16 @@ export default function ConsoleScreen() {
         </button>
       </div>
       <PageNav names={pageNames} page={safePage} onJump={jump} />
+      {editing ? (
+        <PageNameField
+          key={safePage}
+          value={pageNames[safePage]}
+          onSave={(name) => {
+            renameConsolePage(safePage, name);
+            refresh();
+          }}
+        />
+      ) : null}
       <div
         className={dir > 0 ? 'cswipe fwd' : 'cswipe back'}
         ref={swipeRef}
@@ -205,10 +214,6 @@ export default function ConsoleScreen() {
                     onBrief={() => setBriefOpen((v) => !v)}
                     onRemove={() => {
                       removeWidget(pi, w);
-                      refresh();
-                    }}
-                    onFlipSize={() => {
-                      setSize(w, sizeOf(dash, w) === 'full' ? 'quick' : 'full');
                       refresh();
                     }}
                     onRefresh={refresh}

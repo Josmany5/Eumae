@@ -49,6 +49,8 @@ export function isHalf(id: WidgetId, pageLen: number): boolean {
 export interface Dashboard {
   pages: WidgetId[][];
   sizes: Partial<Record<WidgetId, WidgetSize>>;
+  /** User-chosen page names, by index. Missing = the default name. */
+  names?: string[];
 }
 
 const KEY = 'eumae:dash';
@@ -119,7 +121,7 @@ function isDashboard(d: unknown): d is Dashboard {
 
 export function getDashboard(): Dashboard {
   const d = load();
-  return { pages: d.pages.map((p) => [...p]), sizes: { ...d.sizes } };
+  return { pages: d.pages.map((p) => [...p]), sizes: { ...d.sizes }, names: d.names ? [...d.names] : undefined };
 }
 
 export function sizeOf(dash: Dashboard, id: WidgetId): WidgetSize {
@@ -128,7 +130,7 @@ export function sizeOf(dash: Dashboard, id: WidgetId): WidgetSize {
 
 export function setSize(id: WidgetId, size: WidgetSize): void {
   const d = load();
-  save({ pages: d.pages, sizes: { ...d.sizes, [id]: size } });
+  save({ pages: d.pages, sizes: { ...d.sizes, [id]: size }, names: d.names });
 }
 
 /* Remove a widget from its page. Empty pages stay (dots keep their place)
@@ -138,7 +140,7 @@ export function removeWidget(page: number, id: WidgetId): void {
   const pages = d.pages.map((p) => [...p]);
   if (!pages[page]) return;
   pages[page] = pages[page].filter((w) => w !== id);
-  save({ pages, sizes: { ...d.sizes } });
+  save({ pages, sizes: { ...d.sizes }, names: d.names });
 }
 
 /* Add a widget to a page (no duplicates anywhere — one home per widget). */
@@ -148,7 +150,7 @@ export function addWidget(page: number, id: WidgetId): void {
   if (pages.flat().includes(id)) return;
   while (pages.length <= page) pages.push([]);
   pages[page] = [...pages[page], id];
-  save({ pages, sizes: { ...d.sizes } });
+  save({ pages, sizes: { ...d.sizes }, names: d.names });
 }
 
 /* Move a widget: within a page (reorder) or across pages. The mockup has no
@@ -161,13 +163,13 @@ export function moveWidget(fromPage: number, fromIdx: number, toPage: number, to
   const [w] = pages[fromPage].splice(fromIdx, 1);
   const clamped = Math.max(0, Math.min(toIdx, pages[toPage].length));
   pages[toPage].splice(clamped, 0, w);
-  save({ pages, sizes: { ...d.sizes } });
+  save({ pages, sizes: { ...d.sizes }, names: d.names });
 }
 
 export function addPage(): number {
   const d = load();
   const pages = [...d.pages.map((p) => [...p]), []];
-  save({ pages, sizes: { ...d.sizes } });
+  save({ pages, sizes: { ...d.sizes }, names: d.names });
   return pages.length - 1;
 }
 
@@ -176,5 +178,21 @@ export function removePage(page: number): void {
   if (d.pages.length <= 1) return;
   const pages = d.pages.map((p) => [...p]);
   pages.splice(page, 1);
-  save({ pages, sizes: { ...d.sizes } });
+  const names = d.names ? [...d.names] : undefined;
+  names?.splice(page, 1);
+  save({ pages, sizes: { ...d.sizes }, names });
+}
+
+/** Page names as shown: the user's name, else the seeded default, else
+ *  "Page N". */
+export function consolePageNames(): string[] {
+  const d = load();
+  return d.pages.map((_, i) => String(d.names?.[i] ?? '').trim() || CONSOLE_PAGE_NAMES[i] || 'Page ' + (i + 1));
+}
+
+export function renameConsolePage(page: number, name: string): void {
+  const d = load();
+  const names = d.pages.map((_, i) => d.names?.[i] ?? '');
+  names[page] = name.trim().slice(0, 24);
+  save({ pages: d.pages.map((p) => [...p]), sizes: { ...d.sizes }, names });
 }

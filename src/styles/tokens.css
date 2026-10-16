@@ -1210,19 +1210,36 @@ input,textarea,select{ font-family:inherit; }
 .c-meeting{ --k:var(--ac); } .c-appointment{ --k:var(--gr); } .c-class{ --k:var(--am); }
 .c-other{ --k:var(--mut); } .c-task{ --k:var(--tx); }
 
-.qa{ margin:6px 0 14px; }
-.qaRow{ display:flex; gap:8px; align-items:center; }
-.qaIn{ flex:1; min-width:0; background:var(--card); border:1px solid var(--hair); border-radius:12px;
-  padding:12px 14px; font:inherit; font-size:15px; color:var(--tx); }
-.qaIn:focus{ outline:none; border-color:var(--ac); }
-.qaRow .pri, .qaRow .gho{ flex:none; padding:11px 14px; border-radius:12px; }
-.qaRow .pri:disabled{ opacity:.4; }
-.qaChips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.qa{ display:flex; flex-direction:column; gap:8px; margin:4px 0 14px; }
+.qaHint{ font-size:13px; color:var(--mut); line-height:1.35; }
+.qaBar{ display:flex; align-items:center; gap:4px; background:var(--card); border:1px solid var(--hair);
+  border-radius:24px; padding:5px 5px 5px 16px; }
+.qaBar:focus-within{ border-color:color-mix(in srgb, var(--ac) 60%, var(--hair)); }
+.qaIn{ flex:1; min-width:0; background:none; border:0; outline:none; padding:9px 0; font:inherit; font-size:16px; color:var(--tx); }
+.qaIn::placeholder{ color:var(--mut); }
+.qaMore{ flex:none; background:none; color:var(--mut); font-size:13px; font-weight:600; padding:8px 10px; border-radius:16px; }
+.qaMore:hover{ color:var(--tx); background:var(--card2); }
+.qaSend{ flex:none; width:36px; height:36px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center;
+  background:var(--card3); color:var(--mut); transition:background .15s, color .15s; }
+.qaBar.ready .qaSend{ background:var(--ac); color:#fff; }
+.qaSend svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+.qaChips{ display:flex; flex-wrap:wrap; gap:6px; }
 .qaChip{ display:inline-flex; align-items:center; gap:4px; background:var(--card2); color:var(--tx);
-  border-radius:99px; padding:4px 6px 4px 10px; font-size:12.5px; font-weight:600; }
-.qaChip button{ width:20px; height:20px; border-radius:50%; padding:0; background:transparent; color:var(--mut); font-size:14px; line-height:1; }
+  border-radius:99px; padding:4px 6px 4px 11px; font-size:13px; font-weight:600; }
+.qaChip button{ width:22px; height:22px; border-radius:50%; padding:0; background:transparent; color:var(--mut); font-size:15px; line-height:1; }
 .qaChip button:hover{ background:var(--card3); color:var(--tx); }
-.qaHint{ margin-top:6px; }
+/* Desktop: bar on top, chips/hint under it. */
+@media (min-width:900px){
+  .qa .qaBar{ order:-1; }
+}
+/* Phone: the bar docks at the bottom of the page, above the tab bar, with
+   the hint/chips sitting just above it. Pages that use it set .qaPage. */
+@media (max-width:899px){
+  .qaPage{ display:flex; flex-direction:column; min-height:100%; }
+  .qaPage > .qa{ order:99; position:sticky; bottom:0; z-index:6; margin:auto -16px 0; padding:14px 16px 10px;
+    background:linear-gradient(to bottom, transparent, var(--bg) 22px); }
+  .qaPage > .qaSpacer{ order:98; height:8px; flex:none; }
+}
 
 .evForm{ display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
 .evForm .sinput{ margin:0; }
@@ -1320,3 +1337,68 @@ input,textarea,select{ font-family:inherit; }
 .mtxQ .task[draggable]{ cursor:grab; }
 .task > .g{ flex:1; min-width:0; }
 .mtx .mtxQ{ margin:0; }
+
+/* Form rows: inputs never push past the card (iOS date/time inputs carry a
+   wide intrinsic size). Phone: two columns, a lone first field spans both. */
+.evRow > label{ min-width:0; }
+.evRow input, .evRow select{ width:100%; min-width:0; max-width:100%; box-sizing:border-box; }
+.evForm .sinput{ box-sizing:border-box; max-width:100%; }
+@media (max-width:899px){
+  .evRow{ grid-template-columns:1fr 1fr; }
+  .evRow:has(> :nth-child(3)) > :first-child{ grid-column:1 / -1; }
+  .evRow input[type="date"], .evRow input[type="time"]{ -webkit-appearance:none; appearance:none; min-height:44px; }
+}
+
+/* Event / task mini view: tapping something on the grid shows its details
+   in a small floating card (phone: a sheet above the tab bar). */
+.evDetail{ position:fixed; z-index:40; margin:0; display:flex; flex-direction:column; gap:6px;
+  box-shadow:0 18px 50px rgba(0,0,0,.45); border:1px solid var(--hair); animation:evIn .16s ease-out; }
+@media (min-width:900px){ .evDetail{ top:84px; right:28px; width:340px; } }
+@media (max-width:899px){ .evDetail{ left:12px; right:12px; bottom:calc(84px + env(safe-area-inset-bottom)); } }
+@keyframes evIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+.evDHead{ display:flex; align-items:center; gap:10px; }
+.evDHead > i{ flex:none; width:10px; height:10px; border-radius:50%; background:var(--k); }
+.c-task .evDHead > i{ background:transparent; box-shadow:inset 0 0 0 1.5px var(--mut); }
+.evDHead b{ flex:1; font-size:17px; line-height:1.25; }
+.evDX{ flex:none; width:30px; height:30px; border-radius:50%; padding:0; background:var(--card2); color:var(--mut); font-size:18px; }
+.evDRow{ font-size:14px; padding-left:20px; }
+.evDNote{ font-size:14px; padding:8px 0 0 20px; white-space:pre-wrap; color:var(--tx); }
+
+/* Task done: line draws through, then the row fades and folds. */
+.strike{ background-image:linear-gradient(currentColor, currentColor); background-repeat:no-repeat;
+  background-position:0 55%; background-size:0 1.5px; }
+.task.leaving .strike{ background-size:100% 1.5px; transition:background-size .35s ease-out; color:var(--mut); }
+.task.leaving{ animation:tkOut .9s ease-in forwards; overflow:hidden; }
+@keyframes tkOut{
+  0%,45%{ opacity:1; max-height:80px; }
+  80%{ opacity:0; max-height:80px; padding-top:11px; padding-bottom:11px; }
+  100%{ opacity:0; max-height:0; padding-top:0; padding-bottom:0; border-width:0; }
+}
+.ck.d{ transition:background .2s, border-color .2s; }
+
+/* Goals: the status circle. */
+.gSt{ flex:none; width:22px; height:22px; border-radius:50%; padding:0; background:transparent;
+  box-shadow:inset 0 0 0 2px var(--mut); position:relative; }
+.gSt.st-in-progress{ box-shadow:inset 0 0 0 2px var(--ac); background:conic-gradient(var(--ac) 0 50%, transparent 50% 100%); }
+.gSt.st-completed{ background:var(--gr); box-shadow:none; }
+.gSt.st-completed::after{ content:''; position:absolute; left:7px; top:4px; width:5px; height:10px; border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg); }
+
+/* Projects: one card of rows. */
+.pjRow{ display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--hair); }
+.pjRow:last-child{ border-bottom:0; }
+.pjMain{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; text-align:left; background:none; padding:12px 0; color:var(--tx); }
+.pjTop{ display:flex; align-items:baseline; gap:10px; }
+.pjTop b{ flex:1; min-width:0; font-weight:600; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pjDesc{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pjBar{ display:block; height:4px; border-radius:2px; background:var(--card3); overflow:hidden; margin-top:2px; }
+.pjBar i{ display:block; height:100%; background:var(--ac); border-radius:2px; }
+.pjBar.done i{ background:var(--gr); }
+.pjPin{ flex:none; width:36px; height:36px; border-radius:50%; padding:0; background:none; color:var(--mut); display:flex; align-items:center; justify-content:center; }
+.pjPin svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linejoin:round; }
+.pjPin.on{ color:var(--am); }
+.pjPin.on svg{ fill:currentColor; }
+
+/* Dashboards (Console + Guild): one size, full width, one page at a time. */
+.pgrid, .dashWide .pgrid{ grid-template-columns:1fr !important; }
+.wc, .wc.half{ grid-column:1 / -1; }
+.pnName{ display:flex; flex-direction:column; gap:4px; margin:0 0 12px; max-width:320px; }

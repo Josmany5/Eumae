@@ -11,8 +11,6 @@ import { getGuild, answerRequest, takeMarketplace } from '../../guild';
 import {
   GUILD_WIDGET_TITLES,
   GUILD_WIDGET_ICONS,
-  guildSizeOf,
-  isGuildHalf,
   type GuildDashboard,
   type GuildWidgetId,
 } from '../../gdash';
@@ -473,7 +471,6 @@ export function GuildWidgetCard({
   onPage,
   onTab,
   onRemove,
-  onFlipSize,
   onRefresh,
   notify,
 }: {
@@ -487,16 +484,19 @@ export function GuildWidgetCard({
   onPage: (page: string, arg?: unknown) => void;
   onTab: (tab: string) => void;
   onRemove: () => void;
-  onFlipSize: () => void;
   onRefresh: () => void;
   notify: (message: string) => void;
 }) {
-  const full = guildSizeOf(dash, id) === 'full';
+  /* One size: every widget shows its full view, full width (Oct 2026 -
+     the quick/full toggle barely changed anything). */
+  const full = true;
+  void dash;
+  void pageLen;
   const unread = id === 'gmsg9' ? getGuild().threads.reduce((a, t) => a + (t.un || 0), 0) : 0;
   const go = () => onNavigate(id);
   return (
     <div
-      className={'wc' + (!full && isGuildHalf(id, pageLen) ? ' half' : '')}
+      className="wc"
       onClick={() => {
         if (!editing) go();
       }}
@@ -519,18 +519,6 @@ export function GuildWidgetCard({
           }}
         >
           ×
-        </button>
-      ) : null}
-      {editing ? (
-        <button
-          className="rm rmSz"
-          aria-label={full ? 'Switch to Quick view' : 'Switch to Full view'}
-          onClick={(e) => {
-            e.stopPropagation();
-            onFlipSize();
-          }}
-        >
-          {full ? 'Full view' : 'Quick view'}
         </button>
       ) : null}
       <div className="wt">
