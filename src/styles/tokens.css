@@ -1493,5 +1493,4 @@ input,textarea,select{ font-family:inherit; }
 .flIn{ flex:1; min-width:0; background:transparent; border:0; color:var(--tx); font:inherit; font-size:15px; padding:8px 4px; border-radius:8px; outline:none; }
 .flIn:focus{ background:var(--card2); }
 .flStep .msX:disabled{ opacity:.25; }
-.flSave{ position:sticky; bottom:0; display:flex; gap:8px; align-items:center; padding:14px 0 10px; margin-top:12px;
-  background:linear-gradient(to bottom, transparent, var(--bg) 18px); }
+.flSave{ margin-top:16px; padding-bottom:10px; }
