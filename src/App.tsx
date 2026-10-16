@@ -360,11 +360,12 @@ export default function App() {
         Contacts: { tab: 'guild', page: 'gsec', arg: 'Contacts' },
         Messages: { tab: 'guild', page: 'gmsg' },
         Requests: { tab: 'guild', page: 'greq' },
-        'Assigned work': { tab: 'guild', page: 'greq' },
+
         Activity: { tab: 'guild', page: 'gsec', arg: 'Activity' },
         'Shared work': { tab: 'guild', page: 'gsec', arg: 'Shared work' },
         Marketplace: { tab: 'guild', page: 'gsec', arg: 'Marketplace' },
         'Shared with me': { tab: 'guild', page: 'gsec', arg: 'Shared work' },
+        'Assigned work': { tab: 'guild', page: 'asn' },
         'Spanish \u00b7 Lesson 5': { tab: 'classroom', page: 'course', arg: 'Spanish' },
         'AI Engineering \u00b7 Ch 3': { tab: 'classroom', page: 'course', arg: 'AI Engineering' },
         'Sales onboarding \u00b7 assigned to you': { tab: 'classroom', page: 'cxsec', arg: 'Training' },

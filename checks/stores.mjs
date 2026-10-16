@@ -96,16 +96,16 @@ const guild = loadMod('../src/guild.ts');
 }
 
 // Guild: people + threads + requests + shared + market + assigned + groups,
-// verbatim counts.
+// verbatim counts. Shared rows default to view access.
 {
   const { out } = run(
     guild,
     () => {},
-    `(() => { const g = getGuild(); return { people: g.people.length, threads: g.threads.length, reqIn: g.reqIn.length, reqOut: g.reqOut.length, act: g.act.length, shared: g.shared.length, market: g.market.length, assigned: g.assigned.length, groups: g.groups.length }; })()`,
+    `(() => { const g = getGuild(); return { people: g.people.length, threads: g.threads.length, reqIn: g.reqIn.length, reqOut: g.reqOut.length, act: g.act.length, shared: g.shared.length, market: g.market.length, assigned: g.assigned.length, groups: g.groups.length, perm: g.shared[0].perm }; })()`,
   );
   check(
     'guild-seed-counts',
-    out.people === 4 && out.threads === 3 && out.reqIn === 3 && out.reqOut === 3 && out.act === 4 && out.shared === 4 && out.market === 3 && out.assigned === 4 && out.groups === 2,
+    out.people === 4 && out.threads === 3 && out.reqIn === 3 && out.reqOut === 3 && out.act === 4 && out.shared === 4 && out.market === 3 && out.assigned === 4 && out.groups === 2 && out.perm === 'view',
     JSON.stringify(out),
   );
 }
@@ -152,8 +152,18 @@ const guild = loadMod('../src/guild.ts');
   check('guild-old-saves', out.assigned === 0 && out.groups === 0, JSON.stringify(out));
 }
 
+// Guild shared access: set + unshare round-trip.
+{
+  const { out } = run(
+    guild,
+    () => {},
+    `(() => { setSharedPerm(0, 'edit'); const p = getGuild().shared[0].perm; const u = unshare(0); return { p, u, n: getGuild().shared.length }; })()`,
+  );
+  check('guild-perm', out.p === 'edit' && out.u === 'Unshared.' && out.n === 3, JSON.stringify(out));
+}
+
 if (failures.length) {
   console.error(`stores: ${failures.length} failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log('all 10 passed');
+console.log('all 11 passed');

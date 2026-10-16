@@ -55,6 +55,9 @@ export interface GuildShared {
   n: string;
   k: string;
   p: number;
+  /** Access level — the mockup's x.perm (view/edit picker). Old rows
+   * default to view. */
+  perm?: 'view' | 'edit';
   example?: boolean;
 }
 
@@ -241,6 +244,22 @@ function isGuildAssignment(a: unknown): a is GuildAssignment {
   );
 }
 
+function isGuildShared(s: unknown): s is GuildShared {
+  if (!s || typeof s !== 'object') return false;
+  const o = s as Record<string, unknown>;
+  return (
+    typeof o.n === 'string' &&
+    typeof o.k === 'string' &&
+    typeof o.p === 'number' &&
+    (o.perm === undefined || o.perm === 'view' || o.perm === 'edit')
+  );
+}
+
+function normalizeShared(list: unknown): GuildShared[] {
+  if (!Array.isArray(list)) return [];
+  return list.filter(isGuildShared).map((x) => ({ ...x, perm: x.perm ?? ('view' as const) }));
+}
+
 function isGuildGroup(g: unknown): g is GuildGroup {
   if (!g || typeof g !== 'object') return false;
   const o = g as Record<string, unknown>;
@@ -279,16 +298,35 @@ function isGuild(g: unknown): g is Guild {
 
 export function getGuild(): Guild {
   const g = load();
-  /* Old saves predate assigned + groups — normalize to empty, never crash. */
+  /* Old saves predate assigned + groups + perm — normalize to empty /
+     view, never crash. */
   return {
     ...g,
     assigned: Array.isArray(g.assigned) ? g.assigned : [],
     groups: Array.isArray(g.groups) ? g.groups : [],
+    shared: normalizeShared(g.shared),
   };
 }
 
 export function saveGuild(guild: Guild): void {
   save(guild);
+}
+
+/* Set a shared item's access — the mockup's perm select. */
+export function setSharedPerm(index: number, perm: 'view' | 'edit'): void {
+  const g = load();
+  const x = g.shared[index];
+  if (!x) return;
+  save({ ...g, shared: g.shared.map((s, i) => (i === index ? { ...s, perm } : s)) });
+}
+
+/* Unshare — the mockup's Unshare button: removes it. */
+export function unshare(index: number): string {
+  const g = load();
+  const x = g.shared[index];
+  if (!x) return 'Nothing there.';
+  save({ ...g, shared: g.shared.filter((_, i) => i !== index) });
+  return 'Unshared.';
 }
 
 /* Request pipeline stages — the mockup's GSTEPS. reqOut.step indexes in. */

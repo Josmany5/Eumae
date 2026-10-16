@@ -54,7 +54,9 @@ export default function GuildSectionPage({ arg }: PageProps) {
                   <div className="fi" style={{ borderRadius: '50%' }}>
                     {p.ini}
                   </div>
-                  <div className="g">{p.n}</div>
+                  <button className="g" style={{ textAlign: 'left' }} onClick={() => go('person', pi)}>
+                    {p.n}
+                  </button>
                   <button
                     className="fb"
                     onClick={() => {
@@ -91,19 +93,17 @@ export default function GuildSectionPage({ arg }: PageProps) {
             ))
           : null}
         {section === 'Shared work'
-          ? g.shared.map((x) => {
+          ? g.shared.map((x, xi) => {
               const p = g.people[x.p];
               return (
-                <div key={x.n} className="li">
+                <button key={x.n} className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => go('sharedv', xi)}>
                   <div className="fi">{x.k.slice(0, 3).toUpperCase()}</div>
                   <div className="g">
                     {x.n}
                     <div className="xs m">with {p ? p.n : 'Guild'}</div>
                   </div>
-                  <button className="fb" onClick={() => goTab('library')}>
-                    Open
-                  </button>
-                </div>
+                  <span className="m">›</span>
+                </button>
               );
             })
           : null}
