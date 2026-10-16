@@ -23,7 +23,7 @@ export default function MessagesPage(_props: PageProps) {
   return (
     <div>
       <input
-        className="lib2-search"
+        className="sinput"
         placeholder="Search messages"
         value={q}
         onChange={(e) => setQ(e.target.value)}

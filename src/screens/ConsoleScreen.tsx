@@ -68,7 +68,7 @@ export default function ConsoleScreen() {
   };
 
   const briefing = (
-    <div className="card briefFull">
+    <div className="card briefFull" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>
           <b>Today&apos;s briefing</b>
           <div className="s" style={{ marginTop: 4 }}>
             Mirror: you finish work best before 9 AM and slip after 4.
