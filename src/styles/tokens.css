@@ -1404,19 +1404,14 @@ input,textarea,select{ font-family:inherit; }
 /* Paged dashboards: large mid-page arrows, an edit toolbar, and moving
    widgets between pages the way you move apps on a phone. */
 .pdStage{ position:relative; }
-.pgArr{ display:none; position:absolute; top:clamp(120px, 38%, 320px); z-index:5; width:52px; height:52px;
-  border-radius:50%; padding:0; background:var(--card2); color:var(--tx); font-size:30px; line-height:1;
-  align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(0,0,0,.35); border:1px solid var(--hair);
-  transition:transform .15s, background .15s; }
-.pgArr:hover{ background:var(--card3); transform:scale(1.06); }
-.pgArr.l{ left:-70px; } .pgArr.r{ right:-70px; }
+.pgArr{ display:none; position:absolute; top:clamp(100px, 34%, 260px); z-index:5; width:36px; height:36px;
+  border-radius:50%; padding:0; background:var(--card2); color:var(--tx); font-size:22px; line-height:1;
+  align-items:center; justify-content:center; border:1px solid var(--hair); transition:background .15s; }
+.pgArr:hover{ background:var(--card3); }
+.pgArr.l{ left:-44px; } .pgArr.r{ right:-44px; }
 @media (min-width:900px){
   .pgArr{ display:flex; }
-  .dashWide{ padding-left:70px; padding-right:70px; }
-}
-@media (min-width:900px) and (max-width:1100px){
-  .dashWide{ padding-left:0; padding-right:0; }
-  .pgArr.l{ left:-8px; } .pgArr.r{ right:-8px; }
+  .dashWide .pdStage{ margin:0 44px; }
 }
 /* Phone: arrows only while carrying a widget, pinned mid-screen. */
 @media (max-width:899px){
