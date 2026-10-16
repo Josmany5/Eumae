@@ -38,7 +38,7 @@ function run(setup, body) {
 // 1. 12 categories, every template resolves + maps back to its category.
 {
   const { out } = run(() => {}, '(() => { const cats = STUDIO_CATEGORY_ORDER; const names = cats.flatMap((c) => STUDIO_CATEGORIES[c]); const bad = names.filter((n) => !STUDIO_TEMPLATES[n] || categoryOf(n) === null); return { cats: cats.length, names: names.length, bad }; })()');
-  check('catalog-covers', out.cats === 12 && out.names === 33 && out.bad.length === 0, JSON.stringify({ cats: out.cats, names: out.names, bad: out.bad }));
+  check('catalog-covers', out.cats === 21 && out.names === 58 && out.bad.length === 0, JSON.stringify({ cats: out.cats, names: out.names, bad: out.bad }));
 }
 
 // 2. Brief string matches the mockup shape.
@@ -59,10 +59,10 @@ function run(setup, body) {
   check('drafts-flag', out.a === false && out.b === true, JSON.stringify(out));
 }
 
-// 5. Category icons resolve for gallery rows.
+// 5. Every category has an icon (root grid + gallery rows).
 {
   const { out } = run(() => {}, '(() => STUDIO_CATEGORY_ORDER.filter((c) => !STUDIO_CATEGORY_ICONS[c]))()');
-  check('cat-icons', out.length === 4, JSON.stringify(out));
+  check('cat-icons', out.length === 0, JSON.stringify(out));
 }
 
 if (failures.length) {

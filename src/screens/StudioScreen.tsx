@@ -103,6 +103,12 @@ export default function StudioScreen() {
         showDrafts={showDrafts}
         onToggleDrafts={toggleDrafts}
         onPickCat={(cat) => setWalk({ cat, tpl: null })}
+        onPickTpl={(tpl) => {
+          setWalk({ cat: categoryOf(tpl), tpl });
+          setVariant(0);
+          setPurpose('');
+          setDetails('');
+        }}
         onOpen={(f) => go('sitem', f.id)}
       />
     );
@@ -112,6 +118,7 @@ export default function StudioScreen() {
       <CategoryView
         cat={walk.cat}
         onBack={() => setWalk({ cat: null, tpl: null })}
+        onPickCat={(cat) => setWalk({ cat, tpl: null })}
         onPickTpl={(tpl) => {
           setWalk({ cat: walk.cat, tpl });
           setVariant(0);
@@ -136,17 +143,17 @@ export default function StudioScreen() {
       onPurpose={setPurpose}
       details={details}
       onDetails={setDetails}
-      onBack={() => setWalk({ cat: walk.cat, tpl: null })}
+      onBack={() => setWalk({ cat: categoryOf(walk.tpl!) ?? walk.cat, tpl: null })}
       onBuild={build}
       onLearn={() => go('lesson', walk.tpl)}
     />
   );
 }
 
-function StudioRoot({ published, made, showDrafts, onToggleDrafts, onPickCat, onOpen }: {
+function StudioRoot({ published, made, showDrafts, onToggleDrafts, onPickCat, onPickTpl, onOpen }: {
   published: LibFile[]; made: LibFile[];
   showDrafts: boolean; onToggleDrafts: () => void;
-  onPickCat: (cat: string) => void; onOpen: (f: LibFile) => void;
+  onPickCat: (cat: string) => void; onPickTpl: (tpl: string) => void; onOpen: (f: LibFile) => void;
 }) {
   return (
     <div>
@@ -154,6 +161,22 @@ function StudioRoot({ published, made, showDrafts, onToggleDrafts, onPickCat, on
       <div className="s m">Everything you have made - drafts, published, every version.</div>
       <div className="btns">
         <button className="pri" onClick={() => onPickCat("__gallery__")}>Make something new</button>
+      </div>
+      <TemplateSearch onPickTpl={onPickTpl} />
+      <h3 className="sec">What can I make?</h3>
+      <div className="stGrid">
+        {STUDIO_CATEGORY_ORDER.map((cat) => (
+          <button
+            key={cat}
+            className="dr"
+            style={{ border: '1px solid var(--hair)', borderRadius: 12, margin: '4px 0' }}
+            onClick={() => onPickCat(cat)}
+          >
+            <Icon name={STUDIO_CATEGORY_ICONS[cat] || 'pls'} />
+            <span className="g">{cat}</span>
+            <span className="x">{STUDIO_CATEGORIES[cat].length}</span>
+          </button>
+        ))}
       </div>
       {made.length ? (
         <>
@@ -232,11 +255,13 @@ function GalleryView({ onBack, onPickCat }: { onBack: () => void; onPickCat: (ca
   );
 }
 
-function CategoryView({ cat, onBack, onPickTpl }: {
-  cat: string; onBack: () => void; onPickTpl: (tpl: string) => void;
+function CategoryView({ cat, onBack, onPickTpl, onPickCat }: {
+  cat: string; onBack: () => void; onPickTpl: (tpl: string) => void; onPickCat: (cat: string) => void;
 }) {
-  /* Gallery pseudo-category: show the picker, not a template list. */
-  if (cat === '__gallery__') return <GalleryView onBack={onBack} onPickCat={onPickTpl} />;
+  /* Gallery pseudo-category: show the picker, not a template list. Picking a
+     category walks INTO it (cat), it is not a template - wiring it to
+     onPickTpl bounced every tap back to the gallery. */
+  if (cat === '__gallery__') return <GalleryView onBack={onBack} onPickCat={onPickCat} />;
   return (
     <div>
       <BackBar onBack={onBack} />
@@ -331,6 +356,47 @@ function TemplateView({ name, cat, variant, onVariant, purpose, onPurpose, detai
         <button className="gho" onClick={onLearn}>Learn what makes a good one</button>
       </div>
       <div className="xs m" style={{ marginTop: 6 }}>Category: {cat}</div>
+    </div>
+  );
+}
+
+/* Search every template by name, category, or what it is for. */
+function TemplateSearch({ onPickTpl }: { onPickTpl: (tpl: string) => void }) {
+  const [q, setQ] = useState('');
+  const term = q.trim().toLowerCase();
+  const hits = term
+    ? STUDIO_CATEGORY_ORDER.flatMap((cat) =>
+        STUDIO_CATEGORIES[cat]
+          .filter((t) =>
+            (t + ' ' + cat + ' ' + (templateOf(t)?.u ?? '')).toLowerCase().includes(term),
+          )
+          .map((t) => ({ t, cat })),
+      ).slice(0, 8)
+    : [];
+  return (
+    <div style={{ marginTop: 12 }}>
+      <input
+        className="lib2-search"
+        placeholder="Search templates - résumé, budget, quiz..."
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        aria-label="Search templates"
+      />
+      {term ? (
+        <div className="card cardPad" style={{ marginTop: 8 }}>
+          {hits.length ? (
+            hits.map(({ t, cat }) => (
+              <button key={cat + t} className="sr" onClick={() => onPickTpl(t)}>
+                <span className="g">{t}</span>
+                <span className="xs m">{cat}</span>
+                <span className="ch">›</span>
+              </button>
+            ))
+          ) : (
+            <div className="s m">No template matches. Try a broader word.</div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
