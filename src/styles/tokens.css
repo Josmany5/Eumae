@@ -1501,3 +1501,8 @@ input,textarea,select{ font-family:inherit; }
 /* Add bars sit at the true bottom: the page body stretches to fill the screen. */
 .pageBody:has(> .qaPage){ display:flex; flex-direction:column; }
 .pageBody > .qaPage{ flex:1 0 auto; min-height:0; }
+/* Phone: the add bar sits flush on the tab bar, no gap under it. */
+@media (max-width:899px){
+  .pageBody:has(> .qaPage){ padding-bottom:0; }
+  .pageBody > .qaPage > .qa{ padding-bottom:6px; }
+}
