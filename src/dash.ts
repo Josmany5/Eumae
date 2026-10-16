@@ -72,6 +72,9 @@ function load(): Dashboard {
   }
 }
 
+/* Names for the seeded pages; later pages fall back to "Page N". */
+export const CONSOLE_PAGE_NAMES = ['Today', 'Work'];
+
 /* The mockup's own seed (`dash8` default): two pages. */
 function seed(): Dashboard {
   return {

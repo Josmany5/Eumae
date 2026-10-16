@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { PageNav, usePageKeys } from '../components/shell/PageNav';
 import { useNav } from '../nav';
 import { getTasks, type Task } from '../tasks';
 import {
@@ -9,6 +10,7 @@ import {
   addWidget,
   moveWidget,
   addPage,
+  CONSOLE_PAGE_NAMES,
   removePage,
   WIDGET_IDS,
   WIDGET_TITLES,
@@ -36,6 +38,7 @@ export default function ConsoleScreen() {
   const [editing, setEditing] = useState(false);
   const [briefOpen, setBriefOpen] = useState(false);
   const swipeRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const holdTimer = useRef<number | null>(null);
   /* Drag state: which card is moving + the drop slot. Set on drag start /
      over, cleared on drop — the move writes the store once, so a drag never
@@ -60,10 +63,16 @@ export default function ConsoleScreen() {
     const i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
     if (i !== page && i >= 0 && i < pages.length) setPage(i);
   };
+  const [dir, setDir] = useState<1 | -1>(1);
   const jump = (i: number) => {
+    if (i < 0 || i >= pages.length) return;
+    setDir(i >= safePage ? 1 : -1);
     setPage(i);
     swipeRef.current?.scrollTo({ left: i * swipeRef.current.clientWidth, behavior: 'smooth' });
   };
+
+  usePageKeys(rootRef, safePage, pages.length, jump, !dragId);
+  const pageNames = pages.map((_, i) => CONSOLE_PAGE_NAMES[i] || 'Page ' + (i + 1));
 
   /* 600ms hold enters edit — the mockup's onpointerdown timer. */
   const holdStart = () => {
@@ -104,7 +113,7 @@ export default function ConsoleScreen() {
   }, [pages]);
 
   return (
-    <div className={editing ? 'ed8 dashWide' : 'dashWide'}>
+    <div ref={rootRef} className={editing ? 'ed8 dashWide' : 'dashWide'}>
       <div className="row">
         <div className="g">
           <div className="screenT">Console</div>
@@ -117,8 +126,9 @@ export default function ConsoleScreen() {
           {editing ? 'Done' : 'Edit'}
         </button>
       </div>
+      <PageNav names={pageNames} page={safePage} onJump={jump} />
       <div
-        className="cswipe"
+        className={dir > 0 ? 'cswipe fwd' : 'cswipe back'}
         ref={swipeRef}
         onScroll={onSwipeScroll}
         onPointerDown={holdStart}
@@ -128,7 +138,7 @@ export default function ConsoleScreen() {
         {pages.map((widgets, pi) => (
           <div
             key={pi}
-            className="cpg"
+            className={pi === safePage ? 'cpg on' : 'cpg'}
             onDragOver={(e) => {
               if (dragId) e.preventDefault();
             }}
@@ -221,7 +231,7 @@ export default function ConsoleScreen() {
           </div>
         ))}
         {editing ? (
-          <div className="cpg">
+          <div className="cpg add">
             <button
               className="card"
               style={{ width: '100%', padding: 28 }}

@@ -383,8 +383,15 @@ input,textarea,select{ font-family:inherit; }
   /* Dashboard grid: phone keeps swipe + dots + 2-col pgrid. Desktop turns
      the swipe off — pages become sections under the tab row, grid goes
      2-col here, 3-col at 1200px. Dots are a swipe affordance: hidden. */
+  /* Desktop: one page at a time. The page is state (.cpg.on), not scroll;
+     PageNav arrows, ←/→ and trackpad swipe switch it. Edit mode keeps the
+     + New page slot visible under the current page. */
   .dashWide .cswipe{ display:block; overflow:visible; margin:0; }
-  .dashWide .cpg{ min-width:0; padding:0; margin-bottom:20px; }
+  .dashWide .cpg{ min-width:0; padding:0; margin-bottom:20px; display:none; }
+  .dashWide .cpg.on, .dashWide .cpg.add{ display:block; }
+  .dashWide .cswipe.fwd .cpg.on{ animation:pgInR .22s ease-out; }
+  .dashWide .cswipe.back .cpg.on{ animation:pgInL .22s ease-out; }
+  .dashWide .pn .pnArrow{ display:inline-flex; }
   .dashWide .cdots{ display:none; }
   .dashWide .pgrid{ grid-template-columns:1fr 1fr; gap:12px; }
   .dashWide .pn{ margin:0 0 14px; }
@@ -1103,7 +1110,7 @@ input,textarea,select{ font-family:inherit; }
 .big small{ font-size:15px; font-weight:600; color:var(--mut); margin-left:6px;
   letter-spacing:0; }
 /* Page grid: 2 columns, half cards share a row. The mockup's .pgrid. */
-.pgrid{ display:grid; grid-template-columns:1fr 1fr; gap:0 10px; align-content:start; }
+.pgrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; align-content:start; }
 /* Edit shake: dashed outline + jiggle on cards, from the mockup's .ed8 .wc
    + jg keyframes. Honors reduce-motion via the existing global rule. */
 .ed8 .wc{ outline:1.5px dashed var(--card3); outline-offset:4px;
@@ -1119,6 +1126,15 @@ input,textarea,select{ font-family:inherit; }
 .pn button{ background:var(--card2); border-radius:99px; padding:6px 12px;
   font-size:13px; font-weight:600; color:var(--mut); }
 .pn button.on{ background:var(--ac); color:#fff; }
+/* Page arrows: desktop only — phones swipe. */
+.pn .pnArrow{ display:none; align-items:center; justify-content:center; width:32px; height:32px;
+  padding:0; font-size:18px; line-height:1; background:transparent; color:var(--mut); }
+.pn .pnArrow:first-child{ order:-1; }
+.pn .pnArrow:disabled{ opacity:.3; cursor:default; }
+.pn .pnArrow:not(:disabled):hover{ color:var(--tx); background:var(--card2); }
+@keyframes pgInR{ from{ opacity:0; transform:translateX(24px); } to{ opacity:1; transform:none; } }
+@keyframes pgInL{ from{ opacity:0; transform:translateX(-24px); } to{ opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce){ .cswipe .cpg.on{ animation:none !important; } }
 /* Swipe pages + dots: the Console's Today/Tasks/Calendar/Pinned pager. The
    mockup's #sw/.pg/#dots/.pl, rebuilt on tokens. */
 .cswipe{ display:flex; overflow-x:auto; scroll-snap-type:x mandatory;
