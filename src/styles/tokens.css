@@ -1518,3 +1518,6 @@ input,textarea,select{ font-family:inherit; }
 .imRow.me .imB{ background:var(--ac); color:#fff; }
 .imB.tail{ border-bottom-left-radius:5px; }
 .imRow.me .imB.tail{ border-bottom-left-radius:18px; border-bottom-right-radius:5px; }
+.imHead{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 0 12px; border-bottom:1px solid var(--hair); }
+.imAv{ width:52px; height:52px; border-radius:50%; display:grid; place-items:center; background:var(--card3); color:var(--tx); font-weight:600; font-size:19px; }
+.imName{ font-size:15px; font-weight:600; }

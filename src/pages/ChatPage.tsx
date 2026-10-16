@@ -47,9 +47,22 @@ export default function ChatPage({ arg }: PageProps) {
 
   return (
     <div className="qaPage">
+      <ImHead name={p ? p.n : 'Guild'} />
       <Bubbles msgs={t.msgs.map((m) => ({ me: !!m.who, who: p ? p.n : 'Guild', text: m.text }))} />
       <div ref={bottomRef} />
       <MsgBar placeholder={p ? `Message ${p.n}` : 'Message'} value={draft} onChange={setDraft} onSend={send} />
+    </div>
+  );
+}
+
+/* iMessage-style header: initials avatar over the name, centered. */
+function ImHead({ name, sub }: { name: string; sub?: string }) {
+  const ini = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('');
+  return (
+    <div className="imHead">
+      <div className="imAv">{ini || '?'}</div>
+      <div className="imName">{name}</div>
+      {sub ? <div className="xs m">{sub}</div> : null}
     </div>
   );
 }
@@ -116,9 +129,7 @@ export function GroupChatPage({ arg }: PageProps) {
   };
   return (
     <div className="qaPage">
-      <div className="s m" style={{ marginBottom: 8 }}>
-        {gr.msgs.length} messages · {gr.last}
-      </div>
+      <ImHead name={gr.n} sub={`${gr.msgs.length} messages`} />
       <Bubbles group msgs={gr.msgs.map(([who, text]) => ({ me: who === 'You', who, text }))} />
       <MsgBar placeholder={`Message ${gr.n}`} value={draft} onChange={setDraft} onSend={sendG} />
     </div>
