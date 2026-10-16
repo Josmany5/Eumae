@@ -1494,3 +1494,4 @@ input,textarea,select{ font-family:inherit; }
 .dashEdit.pri{ background:var(--ac); color:#fff; }
 .pdBtns{ margin-top:0; }
 @media (min-width:900px){ .pdBtns button{ flex:0 1 auto; padding:10px 18px; } }
+.briefFull{ margin-top:10px; animation:evIn .16s ease-out; }

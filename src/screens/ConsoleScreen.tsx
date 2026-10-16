@@ -67,6 +67,23 @@ export default function ConsoleScreen() {
     if (nav.page) go(nav.page);
   };
 
+  const briefing = (
+    <div className="card briefFull">
+          <b>Today&apos;s briefing</b>
+          <div className="s" style={{ marginTop: 4 }}>
+            Mirror: you finish work best before 9 AM and slip after 4.
+          </div>
+          <div className="s" style={{ marginTop: 6 }}>
+            Nudge: nothing is scheduled after 3 PM — move the demo rehearsal there?
+          </div>
+          <div className="btns">
+            <button className="fb" onClick={() => setBriefOpen(false)}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+  );
+
   return (
     <div className={editing ? 'ed8 dashWide' : 'dashWide'} onPointerDown={holdStart} onPointerUp={holdEnd} onPointerLeave={holdEnd}>
       <div className="row dashHead">
@@ -94,6 +111,7 @@ export default function ConsoleScreen() {
           rename: renameConsolePage,
         }}
         renderCard={(w, pi, wi, len) => (
+          <>
           <WidgetCard
             id={w as WidgetId}
             dash={dash}
@@ -108,24 +126,10 @@ export default function ConsoleScreen() {
             }}
             onRefresh={refresh}
           />
+          {w === 'brief8' && briefOpen && !editing ? briefing : null}
+          </>
         )}
       />
-      {briefOpen ? (
-        <div className="card">
-          <b>Today&apos;s briefing</b>
-          <div className="s" style={{ marginTop: 4 }}>
-            Mirror: you finish work best before 9 AM and slip after 4.
-          </div>
-          <div className="s" style={{ marginTop: 6 }}>
-            Nudge: nothing is scheduled after 3 PM — move the demo rehearsal there?
-          </div>
-          <div className="btns">
-            <button className="fb" onClick={() => setBriefOpen(false)}>
-              Dismiss
-            </button>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
