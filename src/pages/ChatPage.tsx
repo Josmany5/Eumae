@@ -3,7 +3,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav';
-import { getGuild, saveGuild, sendGuildMessage } from '../guild';
+import { getGuild, saveGuild, sendGuildMessage, sendGroupMessage } from '../guild';
+import { Icon } from '../components/shell/icons';
 import type { PageProps } from './index';
 
 export default function ChatPage({ arg }: PageProps) {
@@ -45,7 +46,7 @@ export default function ChatPage({ arg }: PageProps) {
   };
 
   return (
-    <div>
+    <div className="qaPage">
       <div id="thread" style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '14px 0' }}>
         {t.msgs.map((m, i) =>
           m.who ? (
@@ -62,19 +63,31 @@ export default function ChatPage({ arg }: PageProps) {
         )}
         <div ref={bottomRef} />
       </div>
-      <div className="card" style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 8 }}>
+      <MsgBar placeholder={p ? `Message ${p.n}` : 'Message'} value={draft} onChange={setDraft} onSend={send} />
+    </div>
+  );
+}
+
+/* The Guild message bar — same look as the quick-add bars, docked at the
+ * page bottom via .qaPage. */
+function MsgBar({ placeholder, value, onChange, onSend }: { placeholder: string; value: string; onChange: (v: string) => void; onSend: () => void }) {
+  const ready = value.trim().length > 0;
+  return (
+    <div className="qa">
+      <div className={'qaBar' + (ready ? ' ready' : '')}>
         <input
-          placeholder={p ? `Message ${p.n}` : 'Message'}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          className="qaIn"
+          placeholder={placeholder}
+          value={value}
+          enterKeyHint="send"
+          onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') send();
+            if (e.key === 'Enter') onSend();
           }}
-          style={{ flex: 1 }}
           aria-label="Message"
         />
-        <button className="fb" onClick={send}>
-          Send
+        <button className="qaSend" onClick={onSend} disabled={!ready} aria-label="Send">
+          <Icon name="up" />
         </button>
       </div>
     </div>
@@ -83,11 +96,18 @@ export default function ChatPage({ arg }: PageProps) {
 
 export function GroupChatPage({ arg }: PageProps) {
   const name = typeof arg === 'string' ? arg : '';
+  const [draft, setDraft] = useState('');
+  const [, setTick] = useState(0);
   const g = getGuild();
   const gr = g.groups.find((x) => x.n === name);
   if (!gr) return <div className="empty">No group here.</div>;
+  const sendG = () => {
+    if (sendGroupMessage(name, draft) === 'Nothing there.') return;
+    setDraft('');
+    setTick((x) => x + 1);
+  };
   return (
-    <div>
+    <div className="qaPage">
       <div className="s m" style={{ marginBottom: 8 }}>
         {gr.msgs.length} messages · {gr.last}
       </div>
@@ -106,6 +126,7 @@ export function GroupChatPage({ arg }: PageProps) {
           ),
         )}
       </div>
+      <MsgBar placeholder={`Message ${gr.n}`} value={draft} onChange={setDraft} onSend={sendG} />
     </div>
   );
 }

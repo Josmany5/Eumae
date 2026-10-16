@@ -389,6 +389,22 @@ export function sendGuildMessage(index: number, text: string): string {
   return 'Sent.';
 }
 
+/* Send a message in a group — appends ['You', text] and stamps last. */
+export function sendGroupMessage(name: string, text: string): string {
+  const g = load();
+  const v = text.trim();
+  if (!v || !g.groups.some((x) => x.n === name)) return 'Nothing there.';
+  save({
+    ...g,
+    groups: g.groups.map((x) =>
+      x.n === name
+        ? { ...x, un: 0, last: `You: ${v.slice(0, 80)}`, msgs: [...x.msgs, ['You', v.slice(0, 500)] as [string, string]] }
+        : x,
+    ),
+  });
+  return 'Sent.';
+}
+
 /* Open-or-create a thread with someone — the mockup's msgP9. Returns the
  * thread index. Stamp is passed in (Date is stubbed in checks). */
 export function threadWith(person: number, stamp?: string): number {
