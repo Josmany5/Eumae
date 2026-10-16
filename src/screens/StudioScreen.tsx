@@ -138,7 +138,7 @@ export default function StudioScreen() {
       onDetails={setDetails}
       onBack={() => setWalk({ cat: walk.cat, tpl: null })}
       onBuild={build}
-      onLearn={() => notify(`Lessons for ${walk.tpl} live in Classroom. Only two tutorials exist so far.`)}
+      onLearn={() => go('lesson', walk.tpl)}
     />
   );
 }
@@ -191,12 +191,13 @@ function StudioRoot({ published, made, showDrafts, onToggleDrafts, onPickCat, on
 }
 
 function StudioRow({ file, onOpen }: { file: LibFile; onOpen: (f: LibFile) => void }) {
+  const vers = (file.hist?.length ?? 0) + 1;
   return (
     <div className="li">
       <div className="fi">{file.k.slice(0, 4)}</div>
       <div className="g">
         <div>{file.t}</div>
-        <div className="xs m">{file.k} · {file.st} · v{file.v}</div>
+        <div className="xs m">{file.k} · {file.st} · v{file.v}{vers > 1 ? ` · ${vers} versions` : ''}</div>
       </div>
       <span className={'tag ' + (file.st === 'draft' ? 'am' : 'gr')}>{file.st}</span>
       <button className="fb" onClick={() => onOpen(file)}>Open</button>
