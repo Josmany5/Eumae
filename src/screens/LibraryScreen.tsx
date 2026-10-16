@@ -405,12 +405,17 @@ function FileGrid({ files, prefs, favs, onDetail, empty }: {
   files: LibFile[]; prefs: { view: 'icon' | 'list'; sort: LibSortKey; dir: 'asc' | 'desc' };
   favs: string[]; onDetail: (f: LibFile) => void; empty: string;
 }) {
+  const { go } = useNav();
+  const open = (f: LibFile) => {
+    onDetail(f);
+    go('view', f.id);
+  };
   if (!files.length) return empty ? <div className="s m">{empty}</div> : null;
   if (prefs.view === 'icon') {
     return (
       <div className="lib2-grid">
         {files.map((f) => (
-          <button key={f.id} className="lib2-tile" onClick={() => onDetail(f)} aria-label={f.t}>
+          <button key={f.id} className="lib2-tile" onClick={() => open(f)} aria-label={f.t}>
             <span className="lib2-tileIcon">
               <Icon name={KIND_ICON[f.k] || 'doc'} />
             </span>
@@ -426,7 +431,7 @@ function FileGrid({ files, prefs, favs, onDetail, empty }: {
       {files.map((f) => (
         <div key={f.id} className="li">
           <div className="fi">{f.k.slice(0, 4)}</div>
-          <button className="g" style={{ textAlign: 'left' }} onClick={() => onDetail(f)}>
+          <button className="g" style={{ textAlign: 'left' }} onClick={() => open(f)}>
             <div>{f.t}</div>
             <div className="xs m">v{f.v} · {f.st} · {folderOf(f)} · {fmtDate(f.createdAt)}</div>
           </button>
