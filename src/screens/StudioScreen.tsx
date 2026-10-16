@@ -335,17 +335,19 @@ function TemplateView({ name, cat, variant, onVariant, purpose, onPurpose, detai
         <b>Define it first</b>
         <div className="s m">Answer what you can - the more Eumae knows up front, the closer the first try lands.</div>
         <input
+          className="sinput"
           placeholder="What is it for?"
           value={purpose}
           onChange={(e) => onPurpose(e.target.value)}
-          style={{ margin: '8px 0' }}
+          style={{ margin: '10px 0 8px', display: 'block' }}
           aria-label="What is it for?"
         />
         <textarea
+          className="sinput"
           placeholder="Anything it must include - names, numbers, steps..."
           value={details}
           onChange={(e) => onDetails(e.target.value)}
-          style={{ minHeight: 70 }}
+          style={{ minHeight: 70, display: 'block', font: 'inherit', resize: 'vertical' }}
           aria-label="Anything it must include"
         />
       </div>
@@ -377,6 +379,7 @@ function TemplateSearch({ onPickTpl }: { onPickTpl: (tpl: string) => void }) {
     <div style={{ marginTop: 12 }}>
       <input
         className="lib2-search"
+        style={{ width: '100%', maxWidth: 420, padding: '10px 12px' }}
         placeholder="Search templates - résumé, budget, quiz..."
         value={q}
         onChange={(e) => setQ(e.target.value)}

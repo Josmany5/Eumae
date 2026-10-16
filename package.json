@@ -44,7 +44,8 @@
     "check:library": "node checks/library.mjs",
     "check:studio": "node checks/studio.mjs",
     "check:classroom": "node checks/classroom.mjs",
-    "check:roles": "node checks/roles.mjs"
+    "check:roles": "node checks/roles.mjs",
+    "check:quickadd": "node checks/quickadd.mjs"
   },
   "type": "module",
   "version": "0.1.0"

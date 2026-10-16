@@ -1202,3 +1202,121 @@ input,textarea,select{ font-family:inherit; }
    first move (Reload). */
 .crash-btn-ghost{ background:none; border:1px solid var(--hair); color:var(--mut);
   font-weight:500; font-size:14px; padding:10px 20px; }
+
+/* ─── Quick add + Calendar + Events (Oct 2026) ───────────────────────────
+   Graphite surfaces; color only on dots (kind), the today marker and the
+   now line. Kinds: meeting = accent, appointment = green, class = amber,
+   other = muted, task = text outline. */
+.c-meeting{ --k:var(--ac); } .c-appointment{ --k:var(--gr); } .c-class{ --k:var(--am); }
+.c-other{ --k:var(--mut); } .c-task{ --k:var(--tx); }
+
+.qa{ margin:6px 0 14px; }
+.qaRow{ display:flex; gap:8px; align-items:center; }
+.qaIn{ flex:1; min-width:0; background:var(--card); border:1px solid var(--hair); border-radius:12px;
+  padding:12px 14px; font:inherit; font-size:15px; color:var(--tx); }
+.qaIn:focus{ outline:none; border-color:var(--ac); }
+.qaRow .pri, .qaRow .gho{ flex:none; padding:11px 14px; border-radius:12px; }
+.qaRow .pri:disabled{ opacity:.4; }
+.qaChips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.qaChip{ display:inline-flex; align-items:center; gap:4px; background:var(--card2); color:var(--tx);
+  border-radius:99px; padding:4px 6px 4px 10px; font-size:12.5px; font-weight:600; }
+.qaChip button{ width:20px; height:20px; border-radius:50%; padding:0; background:transparent; color:var(--mut); font-size:14px; line-height:1; }
+.qaChip button:hover{ background:var(--card3); color:var(--tx); }
+.qaHint{ margin-top:6px; }
+
+.evForm{ display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+.evForm .sinput{ margin:0; }
+.evForm textarea.sinput{ resize:vertical; font:inherit; }
+.evForm select.sinput{ appearance:none; font:inherit; color:var(--tx); }
+.evRow{ display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:8px; }
+.evRow label{ display:flex; flex-direction:column; gap:4px; }
+.evRow input, .evRow select{ color-scheme:dark; }
+[data-theme="light"] .evRow input{ color-scheme:light; }
+.evCheck{ display:flex; align-items:center; gap:8px; font-size:14px; }
+.evTypes{ display:flex; flex-wrap:wrap; gap:6px; }
+.evType{ display:inline-flex; align-items:center; gap:6px; background:var(--card2); color:var(--mut);
+  border-radius:99px; padding:7px 12px; font-size:13px; font-weight:600; }
+.evType i{ width:8px; height:8px; border-radius:50%; background:var(--k); }
+.evType.on{ color:var(--tx); box-shadow:inset 0 0 0 1.5px var(--k); }
+.evType.t-meeting{ --k:var(--ac); } .evType.t-appointment{ --k:var(--gr); } .evType.t-class{ --k:var(--am); } .evType.t-other{ --k:var(--mut); }
+.evDays{ display:flex; gap:6px; }
+.evDays button{ width:34px; height:34px; border-radius:50%; background:var(--card2); color:var(--mut); font-weight:700; font-size:13px; padding:0; }
+.evDays button.on{ background:var(--ac); color:#fff; }
+
+.calBar{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:4px 0 10px; }
+.calNav{ display:flex; align-items:center; gap:6px; min-width:0; }
+.calNav .hb{ width:34px; height:34px; font-size:20px; }
+.calNav .fb:disabled{ opacity:.4; }
+.calLabel{ font-size:17px; margin-left:6px; white-space:nowrap; }
+.calSeg{ display:flex; background:var(--card); border-radius:10px; padding:3px; gap:2px; }
+.calSeg button{ padding:6px 14px; border-radius:8px; font-size:13px; font-weight:600; color:var(--mut); background:transparent; }
+.calSeg button.on{ background:var(--card3); color:var(--tx); }
+.calFoot{ margin:14px 0 4px; text-align:center; }
+.lnkBtn{ background:none; padding:0; color:var(--ac); font:inherit; font-weight:600; }
+
+.mGrid{ display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:2px; padding:8px; }
+.mDow{ text-align:center; font-size:11px; font-weight:700; color:var(--mut); padding:4px 0; text-transform:uppercase; letter-spacing:.04em; }
+.mCell{ display:flex; flex-direction:column; align-items:center; gap:3px; min-height:46px; padding:6px 2px;
+  border-radius:10px; background:transparent; color:var(--tx); min-width:0; }
+.mCell.out{ color:var(--mut); opacity:.5; }
+.mCell:hover{ background:var(--card2); }
+.mCell.sel{ background:var(--card2); }
+.mNum{ font-size:14px; font-weight:600; width:26px; height:26px; line-height:26px; border-radius:50%; text-align:center; }
+.mCell.today .mNum{ background:var(--ac); color:#fff; }
+.mDots{ display:flex; gap:3px; }
+.mDots i{ width:5px; height:5px; border-radius:50%; background:var(--k); }
+.mItems{ display:flex; flex-direction:column; gap:2px; width:100%; }
+.mItem{ display:flex; align-items:center; gap:4px; font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--tx); text-align:left; }
+.mItem i{ flex:none; width:6px; height:6px; border-radius:50%; background:var(--k); }
+.mItem em{ font-style:normal; color:var(--mut); }
+.mItem.done, .agRow.done, .hEv.done, .hChip.done{ opacity:.45; text-decoration:line-through; }
+
+.agRow{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:none; padding:11px 0;
+  border-bottom:1px solid var(--hair); color:var(--tx); font-size:15px; }
+.agRow:last-child{ border-bottom:0; }
+.agRow > i{ flex:none; width:8px; height:8px; border-radius:50%; background:var(--k); }
+.c-task.agRow > i{ background:transparent; box-shadow:inset 0 0 0 1.5px var(--mut); }
+.agTm{ flex:none; width:100px; font-size:13px; color:var(--mut); font-variant-numeric:tabular-nums; }
+
+.wkstrip .today{ color:var(--ac); }
+.hGrid{ padding:8px 8px 10px; overflow:hidden; }
+.hHead, .hAll, .hBody{ display:grid; }
+.hDay{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px 0 8px; background:none; color:var(--tx); }
+.hDay b{ font-size:17px; width:30px; height:30px; line-height:30px; border-radius:50%; }
+.hDay.today b{ background:var(--ac); color:#fff; }
+.hAll{ border-top:1px solid var(--hair); border-bottom:1px solid var(--hair); min-height:30px; }
+.hLbl{ align-self:center; text-align:right; padding-right:8px; font-size:10px; }
+.hAllCell{ display:flex; flex-direction:column; gap:2px; padding:3px 2px; border-left:1px solid var(--hair); min-width:0; cursor:pointer; }
+.hChip{ display:block; text-align:left; font-size:11.5px; font-weight:600; padding:3px 6px; border-radius:6px; background:var(--card2);
+  color:var(--tx); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-shadow:inset 3px 0 0 var(--k); }
+.hBody{ position:relative; }
+.hLbls{ position:relative; }
+.hLbls span{ position:absolute; right:8px; transform:translateY(-6px); font-size:10px; white-space:nowrap; }
+.hCol{ position:relative; border-left:1px solid var(--hair); cursor:pointer; min-width:0; }
+.hCol:hover{ background:rgba(127,127,127,.03); }
+.hLine{ position:absolute; left:0; right:0; border-top:1px solid var(--hair); pointer-events:none; }
+.hNow{ position:absolute; left:-1px; right:0; border-top:2px solid var(--rd); z-index:2; pointer-events:none; }
+.hNow::before{ content:''; position:absolute; left:-4px; top:-5px; width:8px; height:8px; border-radius:50%; background:var(--rd); }
+.hEv{ position:absolute; z-index:1; display:flex; flex-direction:column; align-items:flex-start; gap:1px; text-align:left;
+  background:var(--card2); color:var(--tx); border-radius:8px; padding:4px 6px 4px 9px; overflow:hidden;
+  box-shadow:inset 3px 0 0 var(--k); font-size:12px; line-height:1.25; }
+.hEv:hover{ background:var(--card3); }
+.hEv b{ font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.hEv span{ color:var(--mut); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.ftabs .fdot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--k); margin-right:6px; vertical-align:middle; }
+@media (max-width:899px){
+  .hEv{ padding:3px 4px 3px 6px; font-size:11px; }
+  .calLabel{ font-size:15px; }
+}
+.tkBar{ display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin:10px 0; }
+.tkTitle{ background:none; padding:0; color:inherit; font:inherit; text-align:left; }
+.mtx{ display:grid; grid-template-columns:1fr; gap:12px; }
+@media (min-width:700px){ .mtx{ grid-template-columns:1fr 1fr; } }
+.mtxQ{ min-height:120px; padding:14px 16px; }
+.mtxQ.over{ box-shadow:inset 0 0 0 1.5px var(--ac); }
+.mtxH{ display:flex; align-items:center; gap:8px; }
+.mtxH i{ width:8px; height:8px; border-radius:50%; }
+.mtxH .xs{ margin-left:auto; }
+.mtxQ .task[draggable]{ cursor:grab; }
+.task > .g{ flex:1; min-width:0; }
+.mtx .mtxQ{ margin:0; }

@@ -14,6 +14,33 @@ export interface CalEvent {
   t: string;
   /** True for a labeled example seed. Never synced anywhere. */
   example?: boolean;
+  /* ── Richer fields (wove's Event, Oct 2026). All optional, so the
+     mockup's {d,tm,t} rows stay valid. ── */
+  /** Stable id. Rows saved before ids existed get one on load. */
+  id?: string;
+  /** End time, HH:MM. */
+  end?: string;
+  /** All day: no time on the grid, sits in the all-day row. */
+  allDay?: boolean;
+  /** Where. */
+  loc?: string;
+  /** Kind: drives the dot color. */
+  type?: EventType;
+  /** Repeat rule. Occurrences are computed, never stored. */
+  rep?: Repeat;
+  /** Notes. */
+  note?: string;
+}
+
+export type EventType = 'class' | 'meeting' | 'appointment' | 'other';
+export const EVENT_TYPES: EventType[] = ['meeting', 'appointment', 'class', 'other'];
+
+export interface Repeat {
+  f: 'daily' | 'weekly' | 'monthly';
+  /** Weekly: days of week 0-6 (Sun-Sat). Empty = the start date's weekday. */
+  days?: number[];
+  /** Last date it repeats, YYYY-MM-DD. Absent = forever. */
+  until?: string;
 }
 
 const KEY = 'eumae:events';
@@ -25,16 +52,28 @@ function load(): CalEvent[] {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) {
-      cache = seeds();
+      cache = withIds(seeds());
       return cache;
     }
     const parsed = JSON.parse(raw);
-    cache = Array.isArray(parsed) ? parsed.filter(isEvent) : seeds();
+    cache = withIds(Array.isArray(parsed) ? parsed.filter(isEvent) : seeds());
     return cache;
   } catch {
-    cache = seeds();
+    cache = withIds(seeds());
     return cache;
   }
+}
+
+let idSeq = 0;
+export function newEventId(): string {
+  idSeq += 1;
+  return 'ev' + Date.now().toString(36) + idSeq.toString(36);
+}
+
+/* Older rows have no id: derive a stable one from their fields so edits
+   and deletes target one row even when two share a title. */
+function withIds(events: CalEvent[]): CalEvent[] {
+  return events.map((e, i) => (e.id ? e : { ...e, id: 'evl' + i + '-' + e.d + '-' + e.tm }));
 }
 
 /* The mockup's own rows: the Console's schedule and calendar read these. */
@@ -66,28 +105,80 @@ export function getEvents(): CalEvent[] {
   return [...load()];
 }
 
-/** The day's events, time-sorted — the mockup's `dayEvents(calDay)`. Times
- *  are "H:MM" so a numeric split sorts them; an unparseable time sorts last,
- *  never first. */
+/** Minutes past midnight for "H:MM"; unparseable sorts last. */
+export function mins(tm: string | undefined): number {
+  const m = /^(\d+):(\d+)/.exec(tm ?? '');
+  if (!m) return 24 * 60 + 1;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+function dow(day: string): number {
+  return new Date(day + 'T12:00').getDay();
+}
+
+/** Does this event happen on `day`? Its own date, or a repeat of it. */
+export function occursOn(e: CalEvent, day: string): boolean {
+  if (e.d === day) return true;
+  const r = e.rep;
+  if (!r || day < e.d) return false;
+  if (r.until && day > r.until) return false;
+  if (r.f === 'daily') return true;
+  if (r.f === 'weekly') {
+    const days = r.days && r.days.length ? r.days : [dow(e.d)];
+    return days.includes(dow(day));
+  }
+  return day.slice(8) === e.d.slice(8);
+}
+
+/** The day's events, time-sorted — the mockup's `dayEvents(calDay)`.
+ *  Repeating events appear on every day they occur, carrying that day as
+ *  `d`; the series keeps its own start date in the store. All-day events
+ *  sort first. */
 export function dayEvents(day: string): CalEvent[] {
-  const mins = (tm: string): number => {
-    const m = /^(\d+):(\d+)/.exec(tm);
-    if (!m) return 24 * 60 + 1;
-    return Number(m[1]) * 60 + Number(m[2]);
-  };
   return load()
-    .filter((e) => e.d === day)
-    .sort((a, b) => mins(a.tm) - mins(b.tm));
+    .filter((e) => occursOn(e, day))
+    .map((e) => (e.d === day ? e : { ...e, d: day }))
+    .sort((a, b) => (a.allDay ? -1 : mins(a.tm)) - (b.allDay ? -1 : mins(b.tm)));
 }
 
-export function saveEvent(event: CalEvent): void {
+/** Every occurrence from `from` for `days` days, in order. */
+export function eventsBetween(from: string, days: number): CalEvent[] {
+  const out: CalEvent[] = [];
+  const base = new Date(from + 'T12:00');
+  for (let i = 0; i < days; i++) {
+    const d = new Date(base);
+    d.setDate(base.getDate() + i);
+    out.push(...dayEvents(ymd(d)));
+  }
+  return out;
+}
+
+export function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function getEvent(id: string): CalEvent | undefined {
+  return load().find((e) => e.id === id);
+}
+
+/** Save by id (new rows get one). Rows without an id fall back to the
+ *  mockup's d+tm+t match. */
+export function saveEvent(event: CalEvent): CalEvent {
   const events = load();
-  const i = events.findIndex((e) => e.d === event.d && e.tm === event.tm && e.t === event.t);
-  if (i >= 0) events[i] = event;
-  else events.push(event);
+  const e = event.id ? event : { ...event, id: newEventId() };
+  const i = events.findIndex((x) =>
+    event.id ? x.id === event.id : x.d === event.d && x.tm === event.tm && x.t === event.t,
+  );
+  if (i >= 0) events[i] = e;
+  else events.push(e);
   save(events);
+  return e;
 }
 
-export function deleteEvent(event: CalEvent): void {
-  save(load().filter((e) => !(e.d === event.d && e.tm === event.tm && e.t === event.t)));
+export function deleteEvent(event: Pick<CalEvent, 'd' | 'tm' | 't'> & { id?: string }): void {
+  save(
+    load().filter((e) =>
+      event.id ? e.id !== event.id : !(e.d === event.d && e.tm === event.tm && e.t === event.t),
+    ),
+  );
 }

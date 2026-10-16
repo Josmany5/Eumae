@@ -352,7 +352,7 @@ export default function App() {
          without a row here toasts, as before. */
       const hit = {
         Tasks: { tab: 'console', page: 'tasks' },
-        Events: { tab: 'console', page: 'cal' },
+        Events: { tab: 'console', page: 'events' },
         Calendar: { tab: 'console', page: 'cal' },
         Goals: { tab: 'console', page: 'goals' },
         Projects: { tab: 'console', page: 'projects' },

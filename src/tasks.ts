@@ -39,6 +39,10 @@ export interface Task {
   est?: number;
   /** Repeat: none (default), daily, weekly, monthly. */
   rep?: 'none' | 'daily' | 'weekly' | 'monthly';
+  /** Weekly repeat: days of week 0-6. Empty = the due date's weekday. */
+  repDays?: number[];
+  /** Last date it repeats, YYYY-MM-DD. */
+  repUntil?: string;
   /** Which list — the mockup's t.list, default inbox. */
   list?: string;
   /** Priority — the mockup's t.pr, default none. */

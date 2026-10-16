@@ -4,6 +4,7 @@ import NotesPage from './NotesPage';
 import NoteViewPage from './NoteViewPage';
 import TasksPage from './TasksPage';
 import CalendarPage from './CalendarPage';
+import EventsPage from './EventsPage';
 import GoalsPage from './GoalsPage';
 import ProjectsPage from './ProjectsPage';
 import ProjectPage from './ProjectPage';
@@ -50,6 +51,7 @@ export const PAGES: Record<string, PageDef> = {
   note: { title: '', page: NoteViewPage },
   tasks: { title: 'Tasks', page: TasksPage },
   cal: { title: 'Calendar', page: CalendarPage },
+  events: { title: 'Events', page: EventsPage },
   goals: { title: 'Goals', page: GoalsPage },
   projects: { title: 'Projects', page: ProjectsPage },
   project: { title: 'Project', page: ProjectPage },
