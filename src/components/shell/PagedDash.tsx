@@ -160,7 +160,7 @@ export function PagedDash({
       {editing ? (
         <div className="pdTools card">
           <PageNameField key={cur + ':' + names[cur]} value={names[cur] ?? ''} onSave={(v) => { ops.rename(cur, v); onChange(); }} />
-          <div className="pdBtns">
+          <div className="btns pdBtns">
             <button className="pri" onClick={() => setAddOpen((v) => !v)} aria-expanded={addOpen}>
               + Add widget
             </button>

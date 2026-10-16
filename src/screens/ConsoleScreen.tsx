@@ -69,12 +69,12 @@ export default function ConsoleScreen() {
 
   return (
     <div className={editing ? 'ed8 dashWide' : 'dashWide'} onPointerDown={holdStart} onPointerUp={holdEnd} onPointerLeave={holdEnd}>
-      <div className="row">
+      <div className="row dashHead">
         <div className="g">
           <div className="screenT">Console</div>
           <div className="screenS">{editing ? 'Editing this dashboard.' : `${today} · ${openCount} left today`}</div>
         </div>
-        <button className={editing ? 'pri' : 'fb'} onClick={() => setEditing((v) => !v)}>
+        <button className={'dashEdit' + (editing ? ' pri' : '')} onClick={() => setEditing((v) => !v)}>
           {editing ? 'Done' : 'Edit'}
         </button>
       </div>
