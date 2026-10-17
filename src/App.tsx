@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import Header from './components/shell/Header';
 import TabBar, { type TabId } from './components/shell/TabBar';
 import Drawer from './components/shell/Drawer';
@@ -80,6 +80,12 @@ export default function App() {
      flash chat for a frame on every reload of Library/Studio/notes/Settings. */
   const [tab, setTab] = useState<TabId>(() => snap.tab);
   const [stack, setStack] = useState<Pushed[]>(() => snap.stack);
+  /* Graphite Midnight: the accent follows the space. Layout effect so the
+     first paint already has the right color, with no blue flash on reload
+     into Console or Guild. */
+  useLayoutEffect(() => {
+    document.documentElement.dataset.space = tab;
+  }, [tab]);
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   /* Settings' open state + section seed from boot. `settingsView` is owned

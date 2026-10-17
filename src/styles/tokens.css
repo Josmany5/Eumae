@@ -1,7 +1,7 @@
 :root{
   --bg:#000; --card:#1c1c1e; --card2:#2c2c2e; --card3:#3a3a3c;
   --tx:#fff; --mut:#98989f; --hair:rgba(255,255,255,.12);
-  --ac:#0a84ff; --acsoft:rgba(10,132,255,.16);
+  --ac:#0a84ff; --acsoft:rgba(10,132,255,.16); --acink:#fff;
   --am:#ff9f0a; --amsoft:rgba(255,159,10,.15);
   --rd:#ff453a; --rdsoft:rgba(255,69,58,.13);
   --gr:#30d158; --grsoft:rgba(48,209,88,.14);
@@ -32,7 +32,7 @@
 html[data-theme="light"]{
   --bg:#f2f2f7; --card:#fff; --card2:#e9e9ee; --card3:#dcdce2;
   --tx:#000; --mut:#6b6b70; --hair:rgba(0,0,0,.1);
-  --ac:#007aff; --acsoft:rgba(0,122,255,.12);
+  --ac:#007aff; --acsoft:rgba(0,122,255,.12); --acink:#fff;
   --am:#b26a00; --amsoft:rgba(178,106,0,.12);
   --rd:#d70015; --rdsoft:rgba(215,0,21,.08);
   --gr:#248a3d; --grsoft:rgba(36,138,61,.12);
@@ -45,6 +45,27 @@ html[data-theme="light"]{
    still lands, it just stops travelling. 0.001ms instead of none so anything
    waiting on a transition still resolves, and one iteration instead of infinite so
    the dots settle rather than restart for ever. */
+/* Graphite Midnight: one accent per space. The surfaces never change; only
+   --ac follows the tab you're on (App sets html[data-space]). Chat's blue is
+   also your chat bubble (Josmany, Oct 17: "make chat bubble same blue as chat
+   blue"). Amber, green and teal are light enough that white text washes out,
+   so their fills take dark ink (--acink). Light theme uses darker accents. */
+html[data-space="chat"]{ --ac:#4a8dff; --acsoft:rgba(74,141,255,.14); --acink:#fff; }
+html[data-space="console"]{ --ac:#e0a040; --acsoft:rgba(224,160,64,.14); --acink:#0b0b0c; }
+html[data-space="studio"]{ --ac:#9a86ff; --acsoft:rgba(154,134,255,.14); --acink:#fff; }
+html[data-space="library"]{ --ac:#4fbf7f; --acsoft:rgba(79,191,127,.14); --acink:#0b0b0c; }
+html[data-space="classroom"]{ --ac:#3fbfbf; --acsoft:rgba(63,191,191,.14); --acink:#0b0b0c; }
+html[data-space="guild"]{ --ac:#e0708f; --acsoft:rgba(224,112,143,.14); --acink:#fff; }
+html[data-theme="light"][data-space="chat"]{ --ac:#2f6fe0; --acsoft:rgba(47,111,224,.12); --acink:#fff; }
+html[data-theme="light"][data-space="console"]{ --ac:#b97a1a; --acsoft:rgba(185,122,26,.12); --acink:#fff; }
+html[data-theme="light"][data-space="studio"]{ --ac:#6f5ad6; --acsoft:rgba(111,90,214,.12); --acink:#fff; }
+html[data-theme="light"][data-space="library"]{ --ac:#2f9a5c; --acsoft:rgba(47,154,92,.12); --acink:#fff; }
+html[data-theme="light"][data-space="classroom"]{ --ac:#1f9a9a; --acsoft:rgba(31,154,154,.12); --acink:#fff; }
+html[data-theme="light"][data-space="guild"]{ --ac:#c24d6e; --acsoft:rgba(194,77,110,.12); --acink:#fff; }
+/* The accent cross-fades when you switch tabs instead of snapping. */
+.pri, .tbar button, .ftabs button, .seg button, .msg.you .bubble, .cmpSend, .tag, .bar i, .sbItem, .stab{
+  transition:color .18s ease, background-color .18s ease, border-color .18s ease; }
+
 html[data-motion="reduce"] *,
 html[data-motion="reduce"] *::before,
 html[data-motion="reduce"] *::after{
@@ -242,7 +263,7 @@ input,textarea,select{ font-family:inherit; }
    same inline style handwritten ~25 times. */
 .cardPad{ padding:6px 14px; }
 .danger{ color:var(--rd); }
-.pri{ background:var(--ac); color:#fff; }
+.pri{ background:var(--ac); color:var(--acink); }
 .gho{ background:none; color:var(--ac); }
 /* Destructive wins over the ghost/btns colors it sits beside. */
 .gho.danger, .btns button.danger{ color:var(--rd); }
@@ -456,7 +477,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
      breaks. Without this they collapse to spaces and a list of steps reads as one
      run-on sentence. */
   white-space:pre-wrap; }
-.msg.you .bubble{ background:var(--ac); color:#fff; }
+.msg.you .bubble{ background:var(--ac); color:var(--acink); }
 /* Each message is a column: what was said, then what you can do with it. The
    mockup puts that row *beside* the bubble (rowA, 1642) because its own bubble
    has no width to speak of; here the pair wraps instead, so the actions sit under
@@ -592,7 +613,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .editBtns{ display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
 .editCancel{ background:none; border:none; color:inherit; opacity:.7; font-size:14px; padding:7px 10px; }
 .editCancel:hover{ opacity:1; }
-.editSend{ background:var(--ac); color:#fff; border:none; border-radius:10px; padding:7px 16px; font-size:14px; }
+.editSend{ background:var(--ac); color:var(--acink); border:none; border-radius:10px; padding:7px 16px; font-size:14px; }
 /* While a reply is on its way (mockup 1866): three dots in a card-coloured pill,
    each one bouncing a seventh of a second after the one before (its `.wxpill`
    and `@keyframes wxdot`, 1836). The only keyframes in the shell — which is why
@@ -735,7 +756,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 /* Send is `.cb.send` with the accent carried one step further: a shadow the
    colour of itself, so it reads as the primary action without a label. */
 .cmpSend{ width:40px; height:40px; flex:none; border-radius:50%; display:inline-flex;
-  align-items:center; justify-content:center; background:var(--ac); color:#fff;
+  align-items:center; justify-content:center; background:var(--ac); color:var(--acink);
   box-shadow:0 2px 12px color-mix(in srgb, var(--ac) 40%, transparent);
   transition:transform .15s ease, box-shadow .18s ease, opacity .18s ease; }
 .cmpSend:hover:not(:disabled){ transform:translateY(-1px);
@@ -1146,7 +1167,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .pn{ display:flex; gap:6px; margin:4px 0 12px; align-items:center; flex-wrap:wrap; }
 .pn button{ background:var(--card2); border-radius:99px; padding:6px 12px;
   font-size:13px; font-weight:600; color:var(--mut); }
-.pn button.on{ background:var(--ac); color:#fff; }
+.pn button.on{ background:var(--ac); color:var(--acink); }
 /* Page arrows: desktop only — phones swipe. */
 .pn .pnArrow{ display:none; align-items:center; justify-content:center; width:32px; height:32px;
   padding:0; font-size:18px; line-height:1; background:transparent; color:var(--mut); }
@@ -1217,7 +1238,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .wkstrip button.sel{ background:var(--acsoft); color:var(--ac); font-weight:700; }
 
 .crash-btn{ border:none; border-radius:12px; padding:12px 20px; font-size:15px;
-  font-weight:600; background:var(--ac); color:#fff; cursor:pointer; }
+  font-weight:600; background:var(--ac); color:var(--acink); cursor:pointer; }
 /* The escape hatch: a quieter second button, not a second primary. Same
    shape, no fill — findable in a crash without competing with the safe
    first move (Reload). */
@@ -1242,7 +1263,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .qaMore:hover{ color:var(--tx); background:var(--card2); }
 .qaSend{ flex:none; width:36px; height:36px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center;
   background:var(--card3); color:var(--mut); transition:background .15s, color .15s; }
-.qaBar.ready .qaSend{ background:var(--ac); color:#fff; }
+.qaBar.ready .qaSend{ background:var(--ac); color:var(--acink); }
 .qaSend svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
 .qaChips{ display:flex; flex-wrap:wrap; gap:6px; }
 .qaChip{ display:inline-flex; align-items:center; gap:4px; background:var(--card2); color:var(--tx);
@@ -1277,7 +1298,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .evType.t-meeting{ --k:var(--ac); } .evType.t-appointment{ --k:var(--gr); } .evType.t-class{ --k:var(--am); } .evType.t-other{ --k:var(--mut); }
 .evDays{ display:flex; gap:6px; }
 .evDays button{ width:34px; height:34px; border-radius:50%; background:var(--card2); color:var(--mut); font-weight:700; font-size:13px; padding:0; }
-.evDays button.on{ background:var(--ac); color:#fff; }
+.evDays button.on{ background:var(--ac); color:var(--acink); }
 
 .calBar{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:4px 0 10px; }
 .calNav{ display:flex; align-items:center; gap:6px; min-width:0; }
@@ -1298,7 +1319,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .mCell:hover{ background:var(--card2); }
 .mCell.sel{ background:var(--card2); }
 .mNum{ font-size:14px; font-weight:600; width:26px; height:26px; line-height:26px; border-radius:50%; text-align:center; }
-.mCell.today .mNum{ background:var(--ac); color:#fff; }
+.mCell.today .mNum{ background:var(--ac); color:var(--acink); }
 .mDots{ display:flex; gap:3px; }
 .mDots i{ width:5px; height:5px; border-radius:50%; background:var(--k); }
 .mItems{ display:flex; flex-direction:column; gap:2px; width:100%; }
@@ -1319,7 +1340,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .hHead, .hAll, .hBody{ display:grid; }
 .hDay{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px 0 8px; background:none; color:var(--tx); }
 .hDay b{ font-size:17px; width:30px; height:30px; line-height:30px; border-radius:50%; }
-.hDay.today b{ background:var(--ac); color:#fff; }
+.hDay.today b{ background:var(--ac); color:var(--acink); }
 .hAll{ border-top:1px solid var(--hair); border-bottom:1px solid var(--hair); min-height:30px; }
 .hLbl{ align-self:center; text-align:right; padding-right:8px; font-size:10px; }
 .hAllCell{ display:flex; flex-direction:column; gap:2px; padding:3px 2px; border-left:1px solid var(--hair); min-width:0; cursor:pointer; }
@@ -1439,7 +1460,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   .pdash.picking .pgArr{ display:flex; position:fixed; top:46%; }
   .pdash.picking .pgArr.l{ left:8px; } .pdash.picking .pgArr.r{ right:8px; }
 }
-.pdash.picking .pgArr{ background:var(--ac); color:#fff; border-color:transparent; }
+.pdash.picking .pgArr{ background:var(--ac); color:var(--acink); border-color:transparent; }
 .pdCell{ transition:opacity .15s, transform .15s; border-radius:20px; }
 .pdCell.picked{ opacity:.45; transform:scale(.97); }
 .pdCell.over{ outline:2px solid var(--ac); outline-offset:3px; }
@@ -1512,7 +1533,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .flSave{ margin-top:16px; padding-bottom:10px; }
 .dashHead{ align-items:center; margin-bottom:6px; }
 .dashEdit{ flex:none; min-width:84px; padding:11px 20px; border-radius:12px; font-size:15px; font-weight:600; background:var(--card2); color:var(--tx); }
-.dashEdit.pri{ background:var(--ac); color:#fff; }
+.dashEdit.pri{ background:var(--ac); color:var(--acink); }
 .pdBtns{ margin-top:0; }
 @media (min-width:900px){ .pdBtns button{ flex:0 1 auto; padding:10px 18px; } }
 .briefFull{ margin-top:10px; animation:evIn .16s ease-out; }
@@ -1536,7 +1557,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .imWho{ font-size:12px; color:var(--mut); margin:0 0 2px 14px; }
 .imB{ position:relative; max-width:min(75%, 520px); padding:8px 13px; border-radius:18px; font-size:16px; line-height:1.35;
   background:var(--card2); color:var(--tx); white-space:pre-wrap; overflow-wrap:anywhere; }
-.imRow.me .imB{ background:var(--ac); color:#fff; }
+.imRow.me .imB{ background:var(--ac); color:var(--acink); }
 .imB.tail{ border-bottom-left-radius:5px; }
 .imRow.me .imB.tail{ border-bottom-left-radius:18px; border-bottom-right-radius:5px; }
 .imHead{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 0 12px; border-bottom:1px solid var(--hair); }
