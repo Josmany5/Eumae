@@ -539,7 +539,12 @@ export async function copyInvite(notify: (m: string) => void): Promise<void> {
   let ok = false;
   try {
     if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(link);
+      /* Some browsers leave writeText pending behind a permission prompt
+         that never shows; don't let that swallow the toast. */
+      await Promise.race([
+        navigator.clipboard.writeText(link),
+        new Promise((_, reject) => window.setTimeout(() => reject(new Error('clipboard timeout')), 1500)),
+      ]);
       ok = true;
     }
   } catch {
