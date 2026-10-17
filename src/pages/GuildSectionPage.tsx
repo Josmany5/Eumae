@@ -4,7 +4,9 @@
 import { useState } from 'react';
 import { getFromMarket } from '../market';
 import { useNav } from '../nav';
-import { getGuild, threadWith, copyInvite } from '../guild';
+import { getGuild, threadWith, copyInvite, removePerson, snapshotGuild, restoreGuild } from '../guild';
+import { ItemMenu } from '../components/ItemMenu';
+import { undoable } from '../undo';
 import type { PageProps } from './index';
 
 const SECTIONS = ['Contacts', 'Activity', 'Shared work', 'Marketplace'];
@@ -63,6 +65,12 @@ export default function GuildSectionPage({ arg }: PageProps) {
                   >
                     Message
                   </button>
+                  <ItemMenu
+                    name={p.n}
+                    open={() => go('person', pi)}
+                    deleteLabel="Remove contact"
+                    onDelete={() => undoable(notify, `${p.n} removed.`, snapshotGuild, restoreGuild, () => removePerson(pi), refresh)}
+                  />
                 </div>
               )),
               <div key="invite" className="li">

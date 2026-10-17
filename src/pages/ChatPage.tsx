@@ -6,9 +6,10 @@ import { useNav } from '../nav';
 import { getGuild, saveGuild, sendGuildMessage, sendGroupMessage, deleteThread, leaveGroup, snapshotGuild, restoreGuild } from '../guild';
 import { Icon } from '../components/shell/icons';
 import type { PageProps } from './index';
+import { ItemMenu } from '../components/ItemMenu';
 
 export default function ChatPage({ arg }: PageProps) {
-  const { notify, back } = useNav();
+  const { notify, back, go } = useNav();
   const index = typeof arg === 'number' ? arg : -1;
   const [tick, setTick] = useState(0);
   const [draft, setDraft] = useState('');
@@ -57,9 +58,12 @@ export default function ChatPage({ arg }: PageProps) {
       <ImHead
         name={p ? p.n : 'Guild'}
         action={
-          <button className="fb gho danger" onClick={remove}>
-            Delete chat
-          </button>
+          <ItemMenu
+            name={p ? p.n : 'this chat'}
+            extra={p ? [{ label: `Open ${p.n}'s page`, onClick: () => go('person', t.p) }] : undefined}
+            deleteLabel="Delete chat"
+            onDelete={remove}
+          />
         }
       />
       <Bubbles msgs={t.msgs.map((m) => ({ me: !!m.who, who: p ? p.n : 'Guild', text: m.text, at: m.at }))} />
@@ -179,11 +183,7 @@ export function GroupChatPage({ arg }: PageProps) {
       <ImHead
         name={gr.n}
         sub={`${gr.msgs.length} messages`}
-        action={
-          <button className="fb gho danger" onClick={leave}>
-            Leave group
-          </button>
-        }
+        action={<ItemMenu name={gr.n} deleteLabel="Leave group" onDelete={leave} />}
       />
       <Bubbles group msgs={gr.msgs.map(([who, text, at]) => ({ me: who === 'You', who, text, at }))} />
       <MsgBar placeholder={`Message ${gr.n}`} value={draft} onChange={setDraft} onSend={sendG} />

@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useNav } from '../nav';
-import { getGuild, createGroup } from '../guild';
+import { getGuild, createGroup, deleteThread, leaveGroup, snapshotGuild, restoreGuild } from '../guild';
+import { ItemMenu } from '../components/ItemMenu';
+import { undoable } from '../undo';
 import type { PageProps } from './index';
 
 export default function MessagesPage(_props: PageProps) {
@@ -46,10 +48,9 @@ export default function MessagesPage(_props: PageProps) {
         const p = g.people[t.p];
         if (!p) return null;
         return (
+          <div key={i} className="card imWrap" style={{ padding: '0 6px 0 0', marginBottom: 8 }}>
           <button
-            key={i}
-            className="card"
-            style={{ width: '100%', textAlign: 'left', padding: '12px 14px', marginBottom: 8 }}
+            style={{ textAlign: 'left', padding: '12px 14px' }}
             onClick={() => {
               go('gchat', i);
               setTick((x) => x + 1);
@@ -71,6 +72,13 @@ export default function MessagesPage(_props: PageProps) {
               </div>
             </div>
           </button>
+          <ItemMenu
+            name={p.n}
+            open={() => go('gchat', i)}
+            deleteLabel="Delete chat"
+            onDelete={() => undoable(notify, 'Chat deleted.', snapshotGuild, restoreGuild, () => deleteThread(i), () => setTick((x) => x + 1))}
+          />
+          </div>
         );
       })}
       {rows.length === 0 ? <div className="s m">No conversations yet.</div> : null}
@@ -102,12 +110,8 @@ export default function MessagesPage(_props: PageProps) {
         </span>
       ) : null}
       {g.groups.map((gr) => (
-        <button
-          key={gr.n}
-          className="card"
-          style={{ width: '100%', textAlign: 'left', padding: '12px 14px', marginBottom: 8 }}
-          onClick={() => go('gchatg', gr.n)}
-        >
+        <div key={gr.n} className="card imWrap" style={{ padding: '0 6px 0 0', marginBottom: 8 }}>
+        <button style={{ textAlign: 'left', padding: '12px 14px' }} onClick={() => go('gchatg', gr.n)}>
           <div className="row">
             <div className="fi" style={{ borderRadius: '50%' }}>
               {gr.n
@@ -125,6 +129,13 @@ export default function MessagesPage(_props: PageProps) {
             </div>
           </div>
         </button>
+        <ItemMenu
+          name={gr.n}
+          open={() => go('gchatg', gr.n)}
+          deleteLabel="Leave group"
+          onDelete={() => undoable(notify, `Left ${gr.n}.`, snapshotGuild, restoreGuild, () => leaveGroup(gr.n), () => setTick((x) => x + 1))}
+        />
+        </div>
       ))}
     </div>
   );

@@ -6,6 +6,7 @@ import { useNav } from '../nav';
 import { getGuild, setSharedPerm, threadWith, removePerson, snapshotGuild, restoreGuild } from '../guild';
 import { getFiles } from '../library';
 import type { PageProps } from './index';
+import { ItemMenu } from '../components/ItemMenu';
 
 export default function PersonPage({ arg }: PageProps) {
   const { go, back, notify } = useNav();
@@ -40,6 +41,7 @@ export default function PersonPage({ arg }: PageProps) {
           <b>{p.n}</b>
           <div className="xs m">Guild contact</div>
         </div>
+        <ItemMenu name={p.n} deleteLabel="Remove contact" onDelete={remove} />
         {th >= 0 ? (
           <button className="fb" onClick={() => go('gchat', th)}>
             Message
@@ -93,11 +95,6 @@ export default function PersonPage({ arg }: PageProps) {
             </button>
           </div>
         ))}
-      </div>
-      <div className="btns">
-        <button className="gho danger" onClick={remove}>
-          Remove contact
-        </button>
       </div>
     </div>
   );
