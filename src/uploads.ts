@@ -170,7 +170,7 @@ export function removeUploadUndoable(id: string): (() => void) | null {
   writeIndex(list.filter((u) => u.id !== id));
   const timer = window.setTimeout(() => {
     void dropBytes(id);
-  }, 8000);
+  }, 15000);
   return () => {
     window.clearTimeout(timer);
     const now = readIndex();
