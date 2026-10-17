@@ -16,7 +16,10 @@ import {
   deleteThread,
   getThread,
   getThreads,
+  saveThread,
   setCurrentThreadId,
+  snapshotThreads,
+  restoreThreads,
   type Thread,
 } from './threads';
 import { boot, saveNav } from './boot';
@@ -248,10 +251,14 @@ export default function App() {
     goTab('chat');
   }, [goTab]);
 
+  /* Delete never asks: the chat goes, the toast offers Undo, and Undo puts
+     it back and reopens it if it was the one on screen. */
   const removeThread = useCallback((id: string) => {
+    const snap = snapshotThreads();
+    const wasCurrent = currentThreadId === id;
     deleteThread(id);
     const remaining = getThreads();
-    if (currentThreadId === id) {
+    if (wasCurrent) {
       if (remaining.length > 0) {
         setCurrentThreadId(remaining[0].id);
         setCurrentId(remaining[0].id);
@@ -262,7 +269,24 @@ export default function App() {
       }
     }
     setThreads(getThreads());
-  }, [currentThreadId, goTab]);
+    notify('Chat deleted.', {
+      undo: () => {
+        restoreThreads(snap);
+        if (wasCurrent) {
+          setCurrentThreadId(id);
+          setCurrentId(id);
+        }
+        setThreads(getThreads());
+      },
+    });
+  }, [currentThreadId, notify]);
+
+  const renameThread = useCallback((id: string, title: string) => {
+    const t = getThread(id);
+    if (!t || !title.trim()) return;
+    saveThread({ ...t, title: title.trim().slice(0, 80) });
+    setThreads(getThreads());
+  }, []);
 
   const nav = useMemo<Nav>(
     () => ({
@@ -289,6 +313,7 @@ export default function App() {
       newChat,
       switchThread,
       removeThread,
+      renameThread,
     }),
     [
       go,
@@ -314,6 +339,7 @@ export default function App() {
       newChat,
       switchThread,
       removeThread,
+      renameThread,
     ],
   );
 
@@ -351,6 +377,18 @@ export default function App() {
       }
       if (label === 'Scope to a project') {
         go('projects');
+        return;
+      }
+      /* The Library rail's rows open the Library's own views. One page on
+         the Library tab at a time: goTab clears the stack first. */
+      const libView = { Favorites: 'view:Favorites', Recent: 'view:Recent', Trash: 'trash' }[label];
+      if (libView && tab === 'library') {
+        goTab('library');
+        go('libf', libView);
+        return;
+      }
+      if (label === 'Sources') {
+        notify('Sources comes soon: the pages and links Eumae reads for you will collect here.');
         return;
       }
       /* Menu rows that navigate: every page they point at exists in PAGES.
@@ -437,6 +475,8 @@ export default function App() {
           currentThreadId={currentThreadId}
           onThreadPick={switchThread}
           onNewChat={newChat}
+          onThreadDelete={removeThread}
+          onThreadRename={renameThread}
         />
         <div className="col">
           <Header

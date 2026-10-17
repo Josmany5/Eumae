@@ -10,6 +10,8 @@ import { useNav } from '../nav';
 import { getFiles, getFavs, folderOf } from '../library';
 import { renderMd } from '../md';
 import type { PageProps } from './index';
+import { FileMenu } from '../components/FileMenu';
+import { ProjectChip } from '../components/ItemMenu';
 
 function fmtEdited(ms: number): string {
   const d = new Date(ms);
@@ -89,8 +91,9 @@ export function FileHero({ k, t, b }: { k: string; t: string; b: string }) {
 }
 
 export default function ViewPage({ arg }: PageProps) {
-  const { go } = useNav();
+  const { go, back } = useNav();
   const [infoOpen, setInfoOpen] = useState(false);
+  const [, setTick] = useState(0);
   const id = typeof arg === 'string' ? arg : '';
   const f = getFiles().find((x) => x.id === id);
   const html = useMemo(() => renderMd(f?.b || ''), [f?.b]);
@@ -99,8 +102,14 @@ export default function ViewPage({ arg }: PageProps) {
   const meta = `${folderOf(f)} · v${f.v} · edited ${fmtEdited(f.createdAt)} · ${readMins(f.b)} min read`;
   return (
     <div style={{ maxWidth: '68ch' }}>
-      <div className="screenT">{f.t}</div>
-      <div className="screenS">{meta}</div>
+      <div className="itemHead">
+        <div className="g">
+          <div className="screenT">{f.t}</div>
+          <div className="screenS">{meta}</div>
+          <ProjectChip k="file" id={f.id} />
+        </div>
+        <FileMenu file={f} showOpen={false} onChange={() => setTick((t) => t + 1)} onDeleted={back} />
+      </div>
       <div style={{ marginTop: 12 }}>
         <FileHero k={f.k} t={f.t} b={f.b} />
       </div>

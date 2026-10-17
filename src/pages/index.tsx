@@ -65,7 +65,7 @@ export const PAGES: Record<string, PageDef> = {
   flow: { title: '', page: FlowPage },
   flowedit: { title: '', page: FlowEditPage },
   sitem: { title: '', page: StudioItemPage },
-  libf: { title: '', page: LibraryFolderPage },
+  libf: { title: 'Library', page: LibraryFolderPage },
   course: { title: '', page: CoursePage },
   cxsec: { title: '', page: CxSectionPage },
   tut: { title: '', page: TutorialPage },

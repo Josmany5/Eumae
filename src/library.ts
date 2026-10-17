@@ -264,6 +264,17 @@ export function toggleFav(id: string): boolean {
   return on;
 }
 
+/* A name change is not an edit: no new version, body untouched. */
+export function renameFile(id: string, t: string): LibFile | null {
+  const s = load();
+  const name = t.trim().slice(0, 120);
+  const f = s.files.find((x) => x.id === id);
+  if (!f || !name) return null;
+  const next = { ...f, t: name };
+  save({ ...s, files: s.files.map((x) => (x.id === id ? next : x)) });
+  return { ...next };
+}
+
 export function toggleStatus(id: string): LibFile | null {
   const s = load();
   const f = s.files.find((x) => x.id === id);

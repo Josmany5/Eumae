@@ -114,6 +114,27 @@ export function createThread(): Thread {
   return thread;
 }
 
+/* A chat as a Markdown file, downloaded. Shared by the phone drawer and the
+   desktop rail so both export the same thing. */
+export function downloadThread(id: string): void {
+  const thread = getThread(id);
+  if (!thread) return;
+  const lines = [`# ${thread.title}`, ''];
+  lines.push(`_${new Date(thread.createdAt).toLocaleString()}_`, '');
+  for (const m of thread.messages) {
+    const who = m.role === 'you' ? '**You**' : '**Eumae**';
+    const time = m.ts ? ` <sub>${new Date(m.ts).toLocaleTimeString()}</sub>` : '';
+    lines.push(`${who}${time}`, '', m.text || '', '');
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${thread.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function deleteThread(id: string): void {
   save(load().filter((t) => t.id !== id));
 }

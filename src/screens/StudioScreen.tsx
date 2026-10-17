@@ -1,3 +1,5 @@
+import { FileMenu } from '../components/FileMenu';
+import { ProjectChip } from '../components/ItemMenu';
 import { useEffect, useState } from 'react';
 import { useNav } from '../nav';
 import {
@@ -213,12 +215,13 @@ function StudioRow({ file, onOpen }: { file: LibFile; onOpen: (f: LibFile) => vo
   return (
     <div className="li">
       <div className="fi">{file.k.slice(0, 4)}</div>
-      <div className="g">
+      <button className="g" style={{ textAlign: 'left' }} onClick={() => onOpen(file)}>
         <div>{file.t}</div>
         <div className="xs m">{file.k} · {file.st} · v{file.v}{vers > 1 ? ` · ${vers} versions` : ''}</div>
-      </div>
+        <ProjectChip k="file" id={file.id} />
+      </button>
       <span className={'tag ' + (file.st === 'draft' ? 'am' : 'gr')}>{file.st}</span>
-      <button className="fb" onClick={() => onOpen(file)}>Open</button>
+      <FileMenu file={file} openTo={() => onOpen(file)} />
     </div>
   );
 }

@@ -1615,3 +1615,13 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .pjItem{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
 .pjItemSub{ font-size:13px; color:var(--mut); }
 .dlgLink{ display:block; margin:-4px 0 16px; text-align:left; }
+/* Desktop rail chat rows: the ⋯ shows on hover, keyboard focus, an open
+   menu, and the chat on screen, so twelve rows don't read as twelve icons. */
+.sbThread .imBtn{ width:30px; height:30px; opacity:0; }
+.sbThread:hover .imBtn, .sbThread.on .imBtn, .sbThread .imBtn:focus-visible, .sbThread .imBtn[aria-expanded="true"]{ opacity:1; }
+.railCollapsed .sbThread .imBtn{ display:none; }
+.drSwipe .imBtn{ margin-right:-8px; }
+/* Library tile + its ⋯ in the corner. */
+.lib2-tileWrap{ position:relative; min-width:0; display:flex; }
+.lib2-tileWrap > .lib2-tile{ flex:1; }
+.lib2-tileWrap > .imBtn{ position:absolute; top:2px; right:2px; width:32px; height:32px; }

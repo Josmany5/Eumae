@@ -149,7 +149,9 @@ export interface Nav {
   currentThreadId: string | null;
   newChat: () => void;
   switchThread: (id: string) => void;
+  /** Deletes without asking; the toast carries Undo. */
   removeThread: (id: string) => void;
+  renameThread: (id: string, title: string) => void;
 }
 
 export const NavContext = createContext<Nav>({
@@ -176,6 +178,7 @@ export const NavContext = createContext<Nav>({
   newChat: () => {},
   switchThread: () => {},
   removeThread: () => {},
+  renameThread: () => {},
 });
 
 export function useNav(): Nav {

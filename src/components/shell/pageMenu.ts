@@ -3,6 +3,8 @@ import type { TabId } from './TabBar';
 export interface MenuItem {
   label: string;
   icon: string;
+  /** Not built yet: drawn with the app's `.soon` tag, and tapping says so. */
+  soon?: boolean;
 }
 
 export interface MenuSection {
@@ -73,7 +75,7 @@ export const PAGE_MENU: Record<TabId, MenuSection[]> = {
         { label: 'Recent', icon: 'clk' },
         { label: 'Shared with me', icon: 'lnk' },
         { label: 'Trash', icon: 'doc' },
-        { label: 'Sources', icon: 'lnk' },
+        { label: 'Sources', icon: 'lnk', soon: true },
       ],
     },
   ],

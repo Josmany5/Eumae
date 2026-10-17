@@ -4,9 +4,26 @@ export function TrashPane({ trash, notify, refresh }: {
   notify: (m: string) => void;
   refresh: () => void;
 }) {
+  /* Emptying is the one delete with no way back, so it is the one that
+     asks — in the app's own dialog, not the browser's. */
+  const [asking, setAsking] = useState(false);
   if (!trash.length) return <div className="s m">Trash is empty.</div>;
   return (
     <>
+      {asking ? (
+        <ConfirmDialog
+          title="Empty trash?"
+          body={`${trash.length} item${trash.length === 1 ? '' : 's'} will be gone for good. This can't be undone.`}
+          ok="Empty trash"
+          onCancel={() => setAsking(false)}
+          onOk={() => {
+            setAsking(false);
+            emptyTrash();
+            notify('Trash emptied.');
+            refresh();
+          }}
+        />
+      ) : null}
       <div className="card cardPad">
         {trash.map((x, i) => (
           <div key={x.t + i} className="li">
@@ -28,12 +45,8 @@ export function TrashPane({ trash, notify, refresh }: {
       <div className="btns">
         <button
           className="gho"
-          onClick={() => {
-            if (!window.confirm('Empty trash? This cannot be undone.')) return;
-            emptyTrash();
-            notify('Trash emptied.');
-            refresh();
-          }}
+          style={{ color: 'var(--rd)' }}
+          onClick={() => setAsking(true)}
         >
           Empty trash
         </button>
@@ -47,7 +60,10 @@ export function TrashPane({ trash, notify, refresh }: {
  * with Publish flip, Edit bump, fav star, trash. */
 
 import { useState } from 'react';
-import { toggleFav, toggleStatus, bumpVersion, trashFile, restoreTrash, emptyTrash, folderOf, type LibFile } from '../../library';
+import { toggleFav, toggleStatus, restoreTrash, emptyTrash, folderOf, type LibFile } from '../../library';
+import { useNav } from '../../nav';
+import { ConfirmDialog } from '../ItemMenu';
+import { removeFile } from '../FileMenu';
 
 export default function FileDetail({
   file,
@@ -62,6 +78,7 @@ export default function FileDetail({
   refresh: () => void;
   onClose: () => void;
 }) {
+  const { go, notify: toast } = useNav();
   const [f, setF] = useState<LibFile>(file);
   const act = (msg: string, fn: () => LibFile | boolean | null) => {
     const out = fn();
@@ -107,18 +124,17 @@ export default function FileDetail({
         >
           {f.st === 'draft' ? 'Publish' : 'Unpublish'}
         </button>
-        <button className="gho" onClick={() => act('Edited.', () => bumpVersion(f.id))}>
+        <button className="gho" onClick={() => go('edit', f.id)}>
           Edit
         </button>
         <button
-          className="gho"
+          className="gho danger"
           onClick={() => {
-            trashFile(f.id);
-            notify('Trashed.');
             onClose();
+            removeFile(toast, f.id, refresh);
           }}
         >
-          Trash
+          Delete
         </button>
       </div>
     </div>

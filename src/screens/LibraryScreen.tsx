@@ -8,8 +8,10 @@ import {
   liveOnly, folderOf,
   type LibFile, type LibView, type LibSortKey, type LibKind,
 } from '../library';
-import FileDetail, { TrashPane } from '../components/shell/FileDetail';
-import { deleteUpload, listUploads, uploadData, type Upload } from '../uploads';
+import { TrashPane } from '../components/shell/FileDetail';
+import { removeUploadUndoable, listUploads, uploadData, type Upload } from '../uploads';
+import { FileMenu } from '../components/FileMenu';
+import { ItemMenu, ProjectChip } from '../components/ItemMenu';
 import { getProjects } from '../projects';
 import { getGuild } from '../guild';
 import { Icon } from '../components/shell/icons';
@@ -52,7 +54,6 @@ export default function LibraryScreen({ initial }: { initial?: Sel }) {
   const [typeTab, setTypeTab] = useState<string>('All');
   const [query, setQuery] = useState('');
   const [tick, setTick] = useState(0);
-  const [detail, setDetail] = useState<LibFile | null>(null);
   const [preview, setPreview] = useState<{ upload: Upload; url: string } | null>(null);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -100,7 +101,9 @@ export default function LibraryScreen({ initial }: { initial?: Sel }) {
   const q = query.trim().toLowerCase();
   const matches = (t: string) => !q || t.toLowerCase().includes(q);
 
-  const openDetail = (f: LibFile) => setDetail(f);
+  /* Opening a file is one page (ViewPage). It used to also raise the
+     FileDetail overlay underneath, so Back landed on a second copy. */
+  const openDetail = (_f: LibFile) => {};
   const openUpload = async (u: Upload) => {
     const url = await uploadData(u.id);
     if (!url) {
@@ -168,25 +171,6 @@ export default function LibraryScreen({ initial }: { initial?: Sel }) {
             onNewFolderClose={() => setNewFolderOpen(false)}
           />
         </section>
-      {detail ? (
-        <div className="lib-preview" role="dialog" aria-label={detail.t}>
-          <div className="lib-preview-head">
-            <span>{detail.t}</span>
-            <button onClick={() => { setDetail(null); refresh(); }} aria-label="Close detail">
-              ×
-            </button>
-          </div>
-          <div className="pageBody" style={{ padding: '0 14px 14px' }}>
-            <FileDetail
-              file={detail}
-              fav={favs.includes(detail.id)}
-              notify={notify}
-              refresh={refresh}
-              onClose={() => { setDetail(null); refresh(); }}
-            />
-          </div>
-        </div>
-      ) : null}
       {preview ? (
         <div className="lib-preview" role="dialog" aria-label={preview.upload.name}>
           <div className="lib-preview-head">
@@ -410,6 +394,8 @@ function FileGrid({ files, prefs, favs, onDetail, empty }: {
   favs: string[]; onDetail: (f: LibFile) => void; empty: string;
 }) {
   const { go } = useNav();
+  const [, setTick] = useState(0);
+  const changed = () => setTick((t) => t + 1);
   const open = (f: LibFile) => {
     onDetail(f);
     go('view', f.id);
@@ -419,13 +405,16 @@ function FileGrid({ files, prefs, favs, onDetail, empty }: {
     return (
       <div className="lib2-grid">
         {files.map((f) => (
-          <button key={f.id} className="lib2-tile" onClick={() => open(f)} aria-label={f.t}>
-            <span className="lib2-tileIcon">
-              <Icon name={KIND_ICON[f.k] || 'doc'} />
-            </span>
-            <span className="lib2-tileName">{f.t}</span>
-            <span className="lib2-tileSub">{f.k} · v{f.v}</span>
-          </button>
+          <div key={f.id} className="lib2-tileWrap">
+            <button className="lib2-tile" onClick={() => open(f)} aria-label={f.t}>
+              <span className="lib2-tileIcon">
+                <Icon name={KIND_ICON[f.k] || 'doc'} />
+              </span>
+              <span className="lib2-tileName">{f.t}</span>
+              <span className="lib2-tileSub">{f.k} · v{f.v}</span>
+            </button>
+            <FileMenu file={f} onChange={changed} />
+          </div>
         ))}
       </div>
     );
@@ -438,9 +427,11 @@ function FileGrid({ files, prefs, favs, onDetail, empty }: {
           <button className="g" style={{ textAlign: 'left' }} onClick={() => open(f)}>
             <div>{f.t}</div>
             <div className="xs m">v{f.v} · {f.st} · {folderOf(f)} · {fmtDate(f.createdAt)}</div>
+            <ProjectChip k="file" id={f.id} />
           </button>
           {favs.includes(f.id) ? <span className="tag">★</span> : null}
           <span className={'tag ' + (f.st === 'draft' ? 'am' : 'gr')}>{f.st}</span>
+          <FileMenu file={f} onChange={changed} />
         </div>
       ))}
     </div>
@@ -513,7 +504,8 @@ function ClassroomPane({ files, matches, prefs, favs, onDetail }: {
 
 /* Upload rows inside a folder + the Uploads view. Filing moves the upload's
    home - the mockup's libUpload names a file; here real paperclip files
-   get filed. Delete stays destructive (bytes in IndexedDB) with a confirm. */
+   get filed. Delete asks nothing: the row goes, Undo brings it back, and
+   the bytes in IndexedDB are only dropped once the Undo window has passed. */
 function UploadRows({ uploads, onUpload, refresh, folder }: {
   uploads: Upload[]; onUpload: (u: Upload) => void;
   refresh: () => void; folder: string;
@@ -531,11 +523,18 @@ function UploadRow({ upload, onUpload, refresh, folder }: {
   upload: Upload; onUpload: (u: Upload) => void;
   refresh: () => void; folder: string;
 }) {
+  const { notify } = useNav();
   const [filing, setFiling] = useState(false);
-  const remove = async () => {
-    if (!window.confirm('Delete ' + upload.name + '? This cannot be undone.')) return;
-    await deleteUpload(upload.id);
+  const remove = () => {
+    const undo = removeUploadUndoable(upload.id);
+    if (!undo) return;
     refresh();
+    notify('Upload deleted.', {
+      undo: () => {
+        undo();
+        refresh();
+      },
+    });
   };
   return (
     <div className="li">
@@ -548,7 +547,7 @@ function UploadRow({ upload, onUpload, refresh, folder }: {
         <div className="lib-name">{upload.name}</div>
         <div className="xs m">{fmtSize(upload.size)} · {fmtDate(upload.createdAt)}</div>
       </button>
-      {folder === 'Uploads' || !filing ? (
+      {!filing ? (
         <button className="fb" onClick={() => setFiling((v) => !v)} aria-label={'File ' + upload.name}>
           {folder === 'Uploads' ? filedFolder(upload.id) : 'File'}
         </button>
@@ -564,9 +563,12 @@ function UploadRow({ upload, onUpload, refresh, folder }: {
           ))}
         </select>
       )}
-      <button className="lib-del" aria-label={'Delete ' + upload.name} onClick={remove}>
-        ×
-      </button>
+      <ItemMenu
+        name={upload.name}
+        open={() => onUpload(upload)}
+        extra={[{ label: 'Move to folder', onClick: () => setFiling(true) }]}
+        onDelete={remove}
+      />
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { getThread, getThreads } from '../../threads';
+import { getThreads, downloadThread } from '../../threads';
+import { ItemMenu } from '../ItemMenu';
+import { useNav } from '../../nav';
 import type { TabId } from './TabBar';
 import { PAGE_MENU } from './pageMenu';
 import { Icon } from './icons';
@@ -18,25 +20,6 @@ interface DrawerProps {
 /** The phone's second level: the same per-page menu the desktop rail shows,
  *  behind the hamburger. The mockup puts the search field above everything,
  *  so it does too. */
-function exportThread(id: string) {
-  const thread = getThread(id);
-  if (!thread) return;
-  const lines = [`# ${thread.title}`, ''];
-  lines.push(`_${new Date(thread.createdAt).toLocaleString()}_`, '');
-  for (const m of thread.messages) {
-    const who = m.role === 'you' ? '**You**' : '**Eumae**';
-    const time = m.ts ? ` <sub>${new Date(m.ts).toLocaleTimeString()}</sub>` : '';
-    lines.push(`${who}${time}`, '', m.text || '', '');
-  }
-  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${thread.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.md`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 /** A thread row that swipes left to reveal Delete and Export. */
 function SwipeRow({
   thread: t,
@@ -47,6 +30,7 @@ function SwipeRow({
   onPick,
   onDelete,
   onExport,
+  onRename,
 }: {
   thread: { id: string; title: string; updatedAt: number };
   current: boolean;
@@ -56,6 +40,7 @@ function SwipeRow({
   onPick: () => void;
   onDelete: () => void;
   onExport: () => void;
+  onRename: (title: string) => void;
 }) {
   const startX = useRef(0);
   const liveDx = useRef(0);
@@ -109,18 +94,13 @@ function SwipeRow({
         <span className="drDate">
           {new Date(t.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
         </span>
-      </div>
-      <div className="drDesktop">
-        <button className="drIconBtn" onClick={onExport} aria-label="Export chat">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-          </svg>
-        </button>
-        <button className="drIconBtn danger" onClick={onDelete} aria-label="Delete chat">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
-          </svg>
-        </button>
+        <ItemMenu
+          name={t.title}
+          open={onPick}
+          rename={{ value: t.title, title: 'Rename chat', save: onRename }}
+          extra={[{ label: 'Export', onClick: onExport }]}
+          onDelete={onDelete}
+        />
       </div>
     </div>
   );
@@ -131,14 +111,14 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch, currentTh
      stale when a title updates mid-chat (the 2026-10-10 stale list). */
   const [threads, setThreads] = useState<{ id: string; title: string; updatedAt: number }[]>([]);
   const [openRow, setOpenRow] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  /* App's list changes on delete, Undo and rename: follow it, reading fresh. */
+  const { threads: appThreads, renameThread } = useNav();
   useEffect(() => {
     if (open && tab === 'chat') {
       setThreads(getThreads());
       setOpenRow(null);
-      setDeleteTarget(null);
     }
-  }, [open, tab]);
+  }, [open, tab, appThreads]);
   const [q, setQ] = useState('');
 
   const submit = () => {
@@ -180,11 +160,15 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch, currentTh
                         onOpen={() => setOpenRow(t.id)}
                         onClose={() => setOpenRow(null)}
                         onPick={() => onThreadPick?.(t.id)}
-                        onDelete={() => setDeleteTarget({ id: t.id, title: t.title })}
+                        onDelete={() => {
+                          setOpenRow(null);
+                          onThreadDelete?.(t.id);
+                        }}
                         onExport={() => {
-                          exportThread(t.id);
+                          downloadThread(t.id);
                           setOpenRow(null);
                         }}
+                        onRename={(title) => renameThread(t.id, title)}
                       />
                     ))
                   )}
@@ -197,7 +181,7 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch, currentTh
                 s.items.map((it) => (
                   <button key={it.label} className="dr" onClick={() => onPick(it.label)}>
                     <Icon name={it.icon} />
-                    <span className="g">{it.label}</span>
+                    <span className={'g' + (it.soon ? ' soon' : '')}>{it.label}</span>
                   </button>
                 ))
               )}
@@ -210,31 +194,6 @@ export default function Drawer({ open, onClose, tab, onPick, onSearch, currentTh
           </button>
         </div>
       </aside>
-      {deleteTarget ? (
-        <>
-          <div className="dlgScrim" onClick={() => setDeleteTarget(null)} />
-          <div className="dlg" role="alertdialog" aria-label="Delete chat">
-            <div className="dlgTitle">Delete this chat?</div>
-            <div className="dlgBody">"{deleteTarget.title}" will be gone for good.</div>
-            <div className="dlgBtns">
-              <button className="dlgCancel" onClick={() => setDeleteTarget(null)}>
-                Cancel
-              </button>
-              <button
-                className="dlgDanger"
-                onClick={() => {
-                  onThreadDelete?.(deleteTarget.id);
-                  setDeleteTarget(null);
-                  setOpenRow(null);
-                  setThreads(getThreads());
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </>
-      ) : null}
     </>
   );
 }

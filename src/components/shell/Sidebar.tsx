@@ -1,7 +1,8 @@
 import { TABS, type TabId } from './TabBar';
 import { PAGE_MENU } from './pageMenu';
 import { Icon } from './icons';
-import type { Thread } from '../../threads';
+import { downloadThread, type Thread } from '../../threads';
+import { ItemMenu } from '../ItemMenu';
 
 interface SidebarProps {
   active: TabId;
@@ -14,6 +15,8 @@ interface SidebarProps {
   currentThreadId: string | null;
   onThreadPick: (id: string) => void;
   onNewChat: () => void;
+  onThreadDelete: (id: string) => void;
+  onThreadRename: (id: string, title: string) => void;
 }
 
 /** The desktop rail. The mockup's two levels in one column: Search at the top
@@ -33,6 +36,8 @@ export default function Sidebar({
   currentThreadId,
   onThreadPick,
   onNewChat,
+  onThreadDelete,
+  onThreadRename,
 }: SidebarProps) {
   return (
     <aside className="sb">
@@ -77,9 +82,10 @@ export default function Sidebar({
           <div key={s.heading ?? i}>
             {s.heading ? <div className="sbSect">{s.heading}</div> : null}
             {/* Recent chats is live threads, not menu rows: same data as the
-                phone drawer's swipe list, minus the swipe (hover delete lives
-                on the chat screen's own history, not here). New chat opens a
-                fresh thread; a row switches to it. */}
+                phone drawer's swipe list. Each row carries the same ⋯ as
+                the drawer (Rename, Export, Delete with Undo), shown on hover,
+                focus and the open chat. New chat opens a fresh thread; a row
+                switches to it. */}
             {s.heading === 'Recent chats' && active === 'chat' ? (
               <>
                 <button className="sbItem" onClick={onNewChat} title="New chat">
@@ -90,15 +96,23 @@ export default function Sidebar({
                   <div className="sbEmpty">No chats yet</div>
                 ) : (
                   threads.slice(0, 12).map((t: Thread) => (
-                    <button
-                      key={t.id}
-                      className={`sbItem${t.id === currentThreadId ? ' on' : ''}`}
-                      onClick={() => onThreadPick(t.id)}
-                      title={t.title}
-                    >
-                      <Icon name="chat" />
-                      <span className="g">{t.title}</span>
-                    </button>
+                    <div key={t.id} className={`imWrap sbThread${t.id === currentThreadId ? ' on' : ''}`}>
+                      <button
+                        className={`sbItem${t.id === currentThreadId ? ' on' : ''}`}
+                        onClick={() => onThreadPick(t.id)}
+                        title={t.title}
+                      >
+                        <Icon name="chat" />
+                        <span className="g">{t.title}</span>
+                      </button>
+                      <ItemMenu
+                        name={t.title}
+                        open={() => onThreadPick(t.id)}
+                        rename={{ value: t.title, title: 'Rename chat', save: (v) => onThreadRename(t.id, v) }}
+                        extra={[{ label: 'Export', onClick: () => downloadThread(t.id) }]}
+                        onDelete={() => onThreadDelete(t.id)}
+                      />
+                    </div>
                   ))
                 )}
               </>
@@ -108,7 +122,7 @@ export default function Sidebar({
               s.items.map((it) => (
                 <button key={it.label} className="sbItem" onClick={() => onPick(it.label)} title={it.label}>
                   <Icon name={it.icon} />
-                  <span className="g">{it.label}</span>
+                  <span className={'g' + (it.soon ? ' soon' : '')}>{it.label}</span>
                 </button>
               ))
             )}

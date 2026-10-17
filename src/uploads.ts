@@ -157,6 +157,40 @@ export function listUploads(): Upload[] {
   return readIndex();
 }
 
+/** Take an upload off the list now and drop its bytes a little later, so
+ *  the toast's Undo can put it back. Returns the undo, or null when there was
+ *  nothing to remove. If the page closes inside the window the bytes stay
+ *  orphaned in IndexedDB; nothing lists them, and that beats losing a photo
+ *  someone meant to keep. */
+export function removeUploadUndoable(id: string): (() => void) | null {
+  const list = readIndex();
+  const at = list.findIndex((u) => u.id === id);
+  if (at < 0) return null;
+  const row = list[at];
+  writeIndex(list.filter((u) => u.id !== id));
+  const timer = window.setTimeout(() => {
+    void dropBytes(id);
+  }, 8000);
+  return () => {
+    window.clearTimeout(timer);
+    const now = readIndex();
+    if (now.some((u) => u.id === id)) return;
+    now.splice(Math.min(at, now.length), 0, row);
+    writeIndex(now);
+  };
+}
+
+async function dropBytes(id: string): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => resolve();
+  });
+  db.close();
+}
+
 /** Drop an upload from the index and the database. */
 export async function deleteUpload(id: string): Promise<void> {
   writeIndex(readIndex().filter((u) => u.id !== id));

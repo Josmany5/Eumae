@@ -4,7 +4,9 @@
 
 import { useState } from 'react';
 import { useNav } from '../nav';
-import { getFiles, getFavs, toggleFav, toggleStatus, trashFile, folderOf } from '../library';
+import { getFiles, getFavs, toggleFav, toggleStatus, folderOf } from '../library';
+import { FileMenu, removeFile } from '../components/FileMenu';
+import { ProjectChip } from '../components/ItemMenu';
 import { queueBrief } from '../studio';
 import { FileHero } from './ViewPage';
 import type { PageProps } from './index';
@@ -43,6 +45,7 @@ export default function StudioItemPage(_props: PageProps) {
       <div className="row" style={{ marginBottom: 8 }}>
         <div className="g">
           <div className="screenT">{f.t}</div>
+          <ProjectChip k="file" id={f.id} />
         </div>
         <button
           className="fb"
@@ -53,6 +56,7 @@ export default function StudioItemPage(_props: PageProps) {
         >
           {fav ? '★ Favorited' : '☆ Favorite'}
         </button>
+        <FileMenu file={f} showOpen={false} onChange={refresh} onDeleted={back} />
       </div>
       <FileHero k={f.k} t={f.t} b={f.b} />
       <div className="kv" style={{ marginTop: 8 }}>
@@ -130,9 +134,8 @@ export default function StudioItemPage(_props: PageProps) {
           className="gho"
           style={{ color: 'var(--rd)' }}
           onClick={() => {
-            trashFile(f.id);
-            notify('Trashed.');
             back();
+            removeFile(notify, f.id);
           }}
         >
           Delete
