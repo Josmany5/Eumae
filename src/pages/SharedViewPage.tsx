@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { useNav } from '../nav';
-import { getGuild, setSharedPerm, unshare } from '../guild';
+import { getGuild, setSharedPerm, unshare, snapshotGuild, restoreGuild } from '../guild';
 import { getFiles } from '../library';
 import type { PageProps } from './index';
 
@@ -71,8 +71,10 @@ export default function SharedViewPage({ arg }: PageProps) {
           className="gho"
           style={{ color: 'var(--rd)' }}
           onClick={() => {
-            notify(unshare(i));
+            const snap = snapshotGuild();
+            const msg = unshare(i);
             back();
+            notify(msg, { undo: () => restoreGuild(snap) });
           }}
         >
           Unshare

@@ -5,6 +5,8 @@ import { useMedia } from '../../useMedia';
 import { speak } from '../../voice';
 import { DEFAULT_SPEED, DEFAULT_VOICE, SPEEDS, VOICES, voiceById } from '../../voices';
 import { createAccount, emailLink, signIn, signOutUser, useAuth } from '../../auth';
+import { ItemMenu, ConfirmDialog } from '../ItemMenu';
+import type { NotifyOpts } from '../../nav';
 
 // Who the cards show when nobody is signed in. The placeholder is deliberate: this
 // file is public and the app is deployed, so a real name or address must never be
@@ -72,11 +74,11 @@ function useStored<T>(key: string, initial: T): [T, (v: T) => void] {
   return [val, set];
 }
 
-function Row({ icon, title, value, onClick }: { icon: string; title: string; value?: string; onClick: () => void }) {
+function Row({ icon, title, value, onClick, soon }: { icon: string; title: string; value?: string; onClick: () => void; soon?: boolean }) {
   return (
     <button className="sr" onClick={onClick}>
       <Icon name={icon} />
-      <span className="g">{title}</span>
+      <span className={'g' + (soon ? ' soon' : '')}>{title}</span>
       {value ? <span className="v m">{value}</span> : null}
     </button>
   );
@@ -148,7 +150,7 @@ const GRANT_LABELS: Record<string, string> = {
 interface SettingsProps {
   open: boolean;
   onClose: () => void;
-  notify: (msg: string) => void;
+  notify: (msg: string, opts?: NotifyOpts) => void;
   view: string | null;
   onView: (view: string | null) => void;
 }
@@ -191,6 +193,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
   const [style, setStyle] = useStored('personalization', '');
   const [draft, setDraft] = useState('');
   const [report, setReport] = useState('');
+  const [askWipe, setAskWipe] = useState(false);
   // The four accessibility switches. Only "Reduce motion" has a writer today:
   // the type scale is px-based, so larger/bold text are stored preferences the
   // pane admits are not applied yet, and voice answers wait on replies.
@@ -256,7 +259,6 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
   };
 
   const wipeData = async () => {
-    if (!window.confirm('Delete everything? This erases what is stored on this device and signs you out.')) return;
     const keys: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
@@ -445,9 +447,9 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
           <div className="card">
             <div className="s m" style={{ marginBottom: 8 }}>How should Eumae talk to you?</div>
             <input id="personalization" className="sinput" placeholder="e.g. blunt, short, no fluff" value={style} onChange={(e) => setStyle(e.target.value)} />
-            <div className="btns">
-              <button className="pri" onClick={() => { notify('Saved'); setView('main'); }}>Save</button>
-            </div>
+            {/* No Save button: it saved on every keystroke already, and a
+                button that only toasted said otherwise. */}
+            <div className="s m" style={{ marginTop: 8 }}>Saved automatically. Eumae starts using this soon.</div>
           </div>
         )}
 
@@ -460,7 +462,20 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
                 mems.map((x) => (
                   <div className="gr" key={x.id}>
                     <div className="g">{x.t}</div>
-                    <button className="fb gho danger" onClick={() => setMems(mems.filter((y) => y.id !== x.id))}>Forget</button>
+                    <ItemMenu
+                      name={x.t}
+                      rename={{
+                        value: x.t,
+                        title: 'Edit memory',
+                        save: (v) => setMems(mems.map((y) => (y.id === x.id ? { ...y, t: v.slice(0, 280) } : y))),
+                      }}
+                      deleteLabel="Forget"
+                      onDelete={() => {
+                        const before = mems;
+                        setMems(mems.filter((y) => y.id !== x.id));
+                        notify('Forgotten.', { undo: () => setMems(before) });
+                      }}
+                    />
                   </div>
                 ))
               )}
@@ -485,7 +500,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
               {Object.entries(grants).map(([k, v]) => (
                 <div className="gr" key={k}>
                   <div className="g" style={{ textTransform: 'capitalize' }}><b>{GRANT_LABELS[k] || k}</b></div>
-                  <select id={`grant-${k}`} value={v} onChange={(e) => { setGrants({ ...grants, [k]: e.target.value }); notify('Permission updated'); }}>
+                  <select id={`grant-${k}`} className="selIn" value={v} onChange={(e) => { setGrants({ ...grants, [k]: e.target.value }); notify('Saved.'); }}>
                     {['never', 'ask', 'always'].map((o) => (
                       <option key={o} value={o}>{o}</option>
                     ))}
@@ -494,6 +509,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
               ))}
             </div>
             <div className="s m">"Never delete files" is a standing never — revoke the delete grant and files can't be deleted, ever.</div>
+            <div className="s m" style={{ marginTop: 6 }}>Saved on this device. Eumae starts using these soon.</div>
           </>
         )}
 
@@ -519,6 +535,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
                 </div>
               ))}
             </div>
+            <div className="s m">Saved on this device. Eumae starts using these soon.</div>
             <div className="btns">
               <button className="pri soon" onClick={() => notify('Automations arrive in a later stage')}>New automation</button>
             </div>
@@ -658,7 +675,19 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
             <div className="btns">
               <button onClick={exportData}>Export my data</button>
               <button className="gho soon" onClick={() => notify('Restoring from a file arrives in a later stage')}>Restore from a file</button>
-              <button className="gho danger" onClick={wipeData}>Delete everything</button>
+              <button className="gho danger" onClick={() => setAskWipe(true)}>Delete everything</button>
+              {askWipe ? (
+                <ConfirmDialog
+                  title="Delete everything?"
+                  body="This erases what is stored on this device and signs you out. It can't be undone."
+                  ok="Delete everything"
+                  onCancel={() => setAskWipe(false)}
+                  onOk={() => {
+                    setAskWipe(false);
+                    void wipeData();
+                  }}
+                />
+              ) : null}
             </div>
             <div className="s m">One plain JSON file, written on this device. Nothing is uploaded.</div>
           </>
@@ -674,9 +703,9 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
         {view === 'help' && (
           <>
             <div className="sg">
-              <Row icon="chat" title="How Chat modes work" onClick={() => notify('Ask, Build, Learn — Eumae switches, you can override')} />
-              <Row icon="chat" title="Where do files live?" onClick={() => notify('Library — one true home per file')} />
-              <Row icon="chat" title="What is the Guild handshake?" onClick={() => notify('Nothing sends until you say so')} />
+              <Row icon="chat" soon title="How Chat modes work" onClick={() => notify('Full help comes soon. Short answer: Ask, Build, Learn. Eumae switches, you can override.')} />
+              <Row icon="chat" soon title="Where do files live?" onClick={() => notify('Full help comes soon. Short answer: the Library, one true home per file.')} />
+              <Row icon="chat" soon title="What is the Guild handshake?" onClick={() => notify('Full help comes soon. Short answer: nothing sends until you say so.')} />
             </div>
             <div className="btns">
               <button className="pri soon" onClick={() => notify('Support chat arrives in a later stage')}>Contact support</button>
@@ -744,7 +773,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
             <div className="bar"><i style={{ width: '0%' }} /></div>
             <div className="xs m">No charge today. Model spend lives in Usage — shown, never blocking.</div>
             <div className="btns">
-              <button className="pri" onClick={() => notify('Checkout opens at launch')}>Upgrade at launch</button>
+              <button className="pri soon" onClick={() => notify('Upgrading comes at launch. Everything is free while we build.')}>Upgrade at launch</button>
             </div>
           </div>
         )}

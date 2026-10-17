@@ -2,9 +2,9 @@
  * arg. Messages + Requests redirect to their pages. */
 
 import { useState } from 'react';
+import { getFromMarket } from '../market';
 import { useNav } from '../nav';
-import { getGuild, takeMarketplace, threadWith } from '../guild';
-import { addFile } from '../library';
+import { getGuild, threadWith, copyInvite } from '../guild';
 import type { PageProps } from './index';
 
 const SECTIONS = ['Contacts', 'Activity', 'Shared work', 'Marketplace'];
@@ -30,10 +30,7 @@ export default function GuildSectionPage({ arg }: PageProps) {
   const take = (i: number) => {
     const item = g.market[i];
     if (!item) return;
-    notify(takeMarketplace(i));
-    if (!item.got) {
-      addFile(item.n, (item.k || '').toLowerCase().includes('widget') ? 'WIDGET' : 'DOC', 'Documents');
-    }
+    notify(getFromMarket(i));
     refresh();
   };
 
@@ -73,7 +70,7 @@ export default function GuildSectionPage({ arg }: PageProps) {
                   +
                 </div>
                 <div className="g">Invite someone</div>
-                <button className="fb" onClick={() => notify('Invite link copied.')}>
+                <button className="fb" onClick={() => void copyInvite(notify)}>
                   Invite
                 </button>
               </div>,

@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import { PagedDash } from '../components/shell/PagedDash';
+import { snapshotGuildDash, restoreGuildDash } from '../gdash';
+import { undoable } from '../undo';
 import { useNav } from '../nav';
 import { getGuild } from '../guild';
 import {
@@ -97,6 +99,8 @@ export default function GuildScreen() {
           add: (p, id) => addGuildWidget(p, id as GuildWidgetId),
           addPage: addGuildPage,
           removePage: removeGuildPage,
+          snapshot: snapshotGuildDash,
+          restore: (x) => restoreGuildDash(x as GuildDashboard),
           rename: renameGuildPage,
         }}
         renderCard={(w, pi, wi, len) => (
@@ -109,10 +113,9 @@ export default function GuildScreen() {
             onNavigate={navigate}
             onPage={openPage}
             onTab={openTab}
-            onRemove={() => {
-              removeGuildWidget(pi, w as GuildWidgetId);
-              refresh();
-            }}
+            onRemove={() =>
+              undoable(notify, 'Widget removed.', snapshotGuildDash, restoreGuildDash, () => removeGuildWidget(pi, w as GuildWidgetId), refresh)
+            }
             onRefresh={refresh}
             notify={notify}
           />

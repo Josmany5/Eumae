@@ -46,7 +46,6 @@ export default function ChatPage({ arg }: PageProps) {
   };
 
   const remove = () => {
-    if (!window.confirm(`Delete this chat${p ? ` with ${p.n}` : ''}?`)) return;
     const snap = snapshotGuild();
     if (!deleteThread(index)) return;
     back();
@@ -170,7 +169,6 @@ export function GroupChatPage({ arg }: PageProps) {
     setTick((x) => x + 1);
   };
   const leave = () => {
-    if (!window.confirm(`Leave ${gr.n}?`)) return;
     const snap = snapshotGuild();
     if (!leaveGroup(gr.n)) return;
     back();

@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
+import type { NotifyOpts } from '../../nav';
 import { PageNav, PageNameField, usePageKeys } from './PageNav';
 
 /* Shared paged dashboard for Console and Guild, laid out like phone home screens.
@@ -22,6 +23,9 @@ export interface PagedDashOps {
   addPage: () => number;
   removePage: (page: number) => void;
   rename: (page: number, name: string) => void;
+  /** Whole-dashboard copy and restore, for Undo after a page is removed. */
+  snapshot: () => unknown;
+  restore: (snap: unknown) => void;
 }
 
 type Slot = { page: number; idx: number };
@@ -44,7 +48,7 @@ export function PagedDash({
   editing: boolean;
   ops: PagedDashOps;
   onChange: () => void;
-  notify: (m: string) => void;
+  notify: (m: string, opts?: NotifyOpts) => void;
   renderCard: (id: string, page: number, idx: number, pageLen: number) => ReactNode;
 }) {
   const [page, setPage] = useState(0);
@@ -180,10 +184,20 @@ export function PagedDash({
                 className="fb"
                 style={{ color: 'var(--rd)' }}
                 onClick={() => {
-                  if ((pages[cur] ?? []).length && !window.confirm('Remove this page? Its widgets come off the dashboard.')) return;
+                  /* No question: the page goes, Undo brings it back with
+                     its widgets where they were. */
+                  const snap = ops.snapshot();
+                  const was = cur;
                   ops.removePage(cur);
                   onChange();
                   setPage(Math.max(0, cur - 1));
+                  notify('Page removed.', {
+                    undo: () => {
+                      ops.restore(snap);
+                      onChange();
+                      setPage(was);
+                    },
+                  });
                 }}
               >
                 Remove page

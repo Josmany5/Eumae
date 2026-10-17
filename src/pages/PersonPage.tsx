@@ -24,7 +24,6 @@ export default function PersonPage({ arg }: PageProps) {
   const rel = g.shared.map((x, xi) => ({ x, xi })).filter((o) => o.x.p === i);
   const linked = getFiles().slice(0, 3);
   const remove = () => {
-    if (!window.confirm(`Remove ${p.n} from your Guild? Your chat with them goes too.`)) return;
     const snap = snapshotGuild();
     if (!removePerson(i)) return;
     back();

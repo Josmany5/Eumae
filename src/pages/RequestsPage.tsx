@@ -3,12 +3,14 @@
 
 import { useState } from 'react';
 import { useNav } from '../nav';
-import { getGuild, answerRequest, assignWork, GSTEPS } from '../guild';
+import { getGuild, answerRequest, assignWork, snapshotGuild, restoreGuild, GSTEPS } from '../guild';
+import { AssignedMenu } from '../components/AssignedMenu';
+import { undoable } from '../undo';
 import type { PageProps } from './index';
 
 export default function RequestsPage(_props: PageProps) {
   void _props;
-  const { notify, goTab } = useNav();
+  const { notify } = useNav();
   const [tick, setTick] = useState(0);
   const [tab, setTab] = useState<'by' | 'to'>('by');
   const [assigning, setAssigning] = useState(false);
@@ -18,9 +20,17 @@ export default function RequestsPage(_props: PageProps) {
   void tick;
 
   const g = getGuild();
-  const shown = (tab === 'by' ? g.assigned.filter((a) => !a.mine) : g.assigned.filter((a) => a.mine)) ?? [];
+  /* Keep each row's place in `assigned`: edits and deletes go by it. */
+  const shown = g.assigned.map((a, i) => ({ a, i })).filter(({ a }) => (tab === 'by' ? !a.mine : !!a.mine));
 
   const act = (i: number, a: 0 | 1 | 2 | 3) => {
+    if (a === 0) {
+      /* Declining removes the request — with Undo, like every delete. */
+      undoable(notify, 'Request declined.', snapshotGuild, restoreGuild, () => {
+        answerRequest(i, 0);
+      }, refresh);
+      return;
+    }
     notify(answerRequest(i, a));
     refresh();
   };
@@ -156,14 +166,15 @@ export default function RequestsPage(_props: PageProps) {
           ? 'You see status for work you assigned. Classroom builds it; Guild tracks it here.'
           : 'You see only your own progress.'}
       </div>
-      {shown.map((a) => (
-        <div key={`${a.who}${a.t}`} className="card" style={{ padding: '12px 14px', marginBottom: 8 }}>
+      {shown.map(({ a, i }) => (
+        <div key={`${i}${a.who}${a.t}`} className="card" style={{ padding: '12px 14px', marginBottom: 8 }}>
           <div className="row">
             <div className="g">
               <b>{a.t}</b>
               <div className="xs m">{tab === 'by' ? `assigned to ${a.who}` : 'assigned to you'}</div>
             </div>
             <span className="tag">{a.pct}%</span>
+            {tab === 'by' ? <AssignedMenu index={i} onChange={refresh} /> : null}
           </div>
           <div className="bar">
             <i style={{ width: `${a.pct}%` }} />
@@ -171,11 +182,8 @@ export default function RequestsPage(_props: PageProps) {
           {tab === 'to' ? (
             <div className="btns">
               <button
-                className="pri"
-                onClick={() => {
-                  notify('Training opens in Classroom once its course ships.');
-                  goTab('classroom');
-                }}
+                className="pri soon"
+                onClick={() => notify('Opening assigned training in Classroom comes soon. Its course has not shipped yet.')}
               >
                 Open in Classroom
               </button>

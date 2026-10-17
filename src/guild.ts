@@ -384,6 +384,31 @@ export function assignWork(title: string, person: number): string {
   return `Assigned to ${p.n}.`;
 }
 
+/* Edit or remove work you assigned. Rows have no id, so they go by their
+ * index in `assigned` — callers keep that index when they filter. */
+export function renameAssigned(index: number, t: string): boolean {
+  const g = load();
+  const v = t.trim();
+  if (!g.assigned[index] || !v) return false;
+  save({ ...g, assigned: g.assigned.map((a, i) => (i === index ? { ...a, t: v.slice(0, 48) } : a)) });
+  return true;
+}
+
+export function reassign(index: number, person: number): boolean {
+  const g = load();
+  const p = g.people[person];
+  if (!g.assigned[index] || !p) return false;
+  save({ ...g, assigned: g.assigned.map((a, i) => (i === index ? { ...a, who: p.n } : a)) });
+  return true;
+}
+
+export function deleteAssigned(index: number): boolean {
+  const g = load();
+  if (!g.assigned[index]) return false;
+  save({ ...g, assigned: g.assigned.filter((_, i) => i !== index) });
+  return true;
+}
+
 /* Send a message in a thread — marks read, appends, stamps last. The
  * mockup's gSend; the canned reply arrives via Chat, not here. */
 export function sendGuildMessage(index: number, text: string): string {
@@ -434,6 +459,8 @@ export function threadWith(person: number, stamp?: string): number {
 }
 
 /* Take a marketplace item into your Studio: the mockup's gAdd — got flips. */
+/* Marks a Marketplace item got. The Library file is added by getFromMarket
+   (src/market.ts), which is what screens call. */
 export function takeMarketplace(index: number): string {
   const g = load();
   const item = g.market[index];
@@ -499,4 +526,43 @@ export function snapshotGuild(): Guild {
 
 export function restoreGuild(snap: Guild): void {
   save(JSON.parse(JSON.stringify(snap)));
+}
+
+/* Invite: a real link on the clipboard. Nothing is sent and nobody joins
+   yet — the link opens Eumae with an invite param no one reads so far —
+   and the toast says exactly that. Clipboard API first, the old
+   select-and-copy for browsers without it, and the link itself in the
+   toast when both fail. */
+export async function copyInvite(notify: (m: string) => void): Promise<void> {
+  const code = Math.random().toString(36).slice(2, 10);
+  const link = `${window.location.origin}/?invite=${code}`;
+  let ok = false;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(link);
+      ok = true;
+    }
+  } catch {
+    ok = false;
+  }
+  if (!ok) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = link;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      ok = document.execCommand('copy');
+      ta.remove();
+    } catch {
+      ok = false;
+    }
+  }
+  notify(
+    ok
+      ? 'Invite link copied. Joining comes soon: for now the link just opens Eumae.'
+      : `Copy this invite link: ${link}`,
+  );
 }

@@ -6,11 +6,12 @@
 import { useState } from 'react';
 import { useNav } from '../nav';
 import { getGuild, assignWork } from '../guild';
+import { AssignedMenu } from '../components/AssignedMenu';
 import type { PageProps } from './index';
 
 export default function AssignedPage(_props: PageProps) {
   void _props;
-  const { notify, goTab } = useNav();
+  const { notify } = useNav();
   const [tick, setTick] = useState(0);
   const [assigning, setAssigning] = useState(false);
   const [title, setTitle] = useState('');
@@ -19,7 +20,7 @@ export default function AssignedPage(_props: PageProps) {
   void tick;
 
   const g = getGuild();
-  const by = g.assigned.filter((a) => !a.mine) ?? [];
+  const by = g.assigned.map((a, i) => ({ a, i })).filter(({ a }) => !a.mine);
   const to = g.assigned.filter((a) => a.mine) ?? [];
 
   const submitAssign = () => {
@@ -39,13 +40,14 @@ export default function AssignedPage(_props: PageProps) {
           <b>Assigned by you</b>
           <div className="xs m">Classroom builds the training — Guild assigns it. You see everyone's status.</div>
         </div>
-        {by.map((a) => (
-          <div key={`${a.who}${a.t}`} style={{ marginTop: 10 }}>
-            <div className="kv">
-              <span className="s">
+        {by.map(({ a, i }) => (
+          <div key={`${i}${a.who}${a.t}`} style={{ marginTop: 10 }}>
+            <div className="kv" style={{ alignItems: 'center' }}>
+              <span className="s g">
                 {a.who} · {a.t}
               </span>
               <span>{a.pct}%</span>
+              <AssignedMenu index={i} onChange={refresh} />
             </div>
             <div className="bar">
               <i style={{ width: `${a.pct}%` }} />
@@ -71,11 +73,8 @@ export default function AssignedPage(_props: PageProps) {
         ))}
         <div className="btns">
           <button
-            className="pri"
-            onClick={() => {
-              notify('Training opens in Classroom once its course ships.');
-              goTab('classroom');
-            }}
+            className="pri soon"
+            onClick={() => notify('Opening assigned training in Classroom comes soon. Its course has not shipped yet.')}
           >
             Open in Classroom
           </button>

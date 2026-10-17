@@ -10,7 +10,7 @@ import { Icon } from '../components/shell/icons';
 import type { PageProps } from './index';
 
 export default function CoursePage({ arg }: PageProps) {
-  const { notify } = useNav();
+  const { notify, goTab } = useNav();
   const [tick, setTick] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const refresh = () => {
@@ -82,8 +82,13 @@ export default function CoursePage({ arg }: PageProps) {
         <button
           className="gho"
           onClick={() => {
-            queueBrief(`Continue my ${name} lesson`);
-            notify('Continuing in Chat.');
+            /* Like Distill: hand Chat the real context and go there. */
+            const next = c.les.find((l) => !isLessonDone(name, l.t));
+            queueBrief(
+              `I'm taking the ${name} course in Classroom (${p}% done). ` +
+                (next ? `My next lesson is "${next.t}". Teach it to me, one step at a time.` : 'I finished every lesson. Quiz me on the whole course.'),
+            );
+            goTab('chat');
           }}
         >
           Continue in Chat

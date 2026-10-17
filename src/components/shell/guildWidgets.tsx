@@ -7,7 +7,8 @@
  * are the mockup's GNAV9.
  */
 
-import { getGuild, answerRequest, takeMarketplace } from '../../guild';
+import { getGuild, answerRequest } from '../../guild';
+import { getFromMarket } from '../../market';
 import {
   GUILD_WIDGET_TITLES,
   GUILD_WIDGET_ICONS,
@@ -600,7 +601,7 @@ function GuildWidgetFull({
           onPage={onPage}
           onTab={onTab}
           onTake={(i) => {
-            notify(takeMarketplace(i));
+            notify(getFromMarket(i));
             onRefresh();
           }}
         />

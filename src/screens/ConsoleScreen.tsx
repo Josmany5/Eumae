@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import { PagedDash } from '../components/shell/PagedDash';
+import { snapshotDash, restoreDash } from '../dash';
+import { undoable } from '../undo';
 import { useNav } from '../nav';
 import { getTasks, type Task } from '../tasks';
 import {
@@ -108,6 +110,8 @@ export default function ConsoleScreen() {
           add: (p, id) => addWidget(p, id as WidgetId),
           addPage,
           removePage,
+          snapshot: snapshotDash,
+          restore: (x) => restoreDash(x as Dashboard),
           rename: renameConsolePage,
         }}
         renderCard={(w, pi, wi, len) => (
@@ -120,10 +124,9 @@ export default function ConsoleScreen() {
             editing={editing}
             onNavigate={navigate}
             onBrief={() => setBriefOpen((v) => !v)}
-            onRemove={() => {
-              removeWidget(pi, w as WidgetId);
-              refresh();
-            }}
+            onRemove={() =>
+              undoable(notify, 'Widget removed.', snapshotDash, restoreDash, () => removeWidget(pi, w as WidgetId), refresh)
+            }
             onRefresh={refresh}
           />
           {w === 'brief8' && briefOpen && !editing ? briefing : null}
