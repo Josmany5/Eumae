@@ -67,6 +67,7 @@ export default function PersonPage({ arg }: PageProps) {
                 <div className="xs m">{o.x.k}</div>
               </div>
               <select
+            className="selIn"
                 aria-label="Access"
                 value={o.x.perm ?? 'view'}
                 onChange={(e) => {

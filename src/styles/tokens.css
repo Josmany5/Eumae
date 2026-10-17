@@ -292,6 +292,17 @@ input,textarea,select{ font-family:inherit; }
 .sinput{ width:100%; background:var(--card2); border:0; border-radius:10px; padding:12px;
   font-size:16px; color:var(--tx); margin-bottom:10px; }
 .sinput::placeholder{ color:var(--mut); }
+/* Small inline picker (a permission, a folder). Bare <select>s were rendering
+   as the browser's white square box on a dark card; this is the same fill
+   and radius as `.gr select`, sized to sit in a row. */
+.selIn{ background:var(--card2); color:var(--tx); border:0; border-radius:8px; padding:8px 10px; font:inherit; font-size:15px; }
+input[type=checkbox]{ accent-color:var(--ac); }
+/* A control whose feature hasn't shipped. It still answers the tap with a
+   toast that names the gap, but it no longer looks like a live button that
+   silently does nothing. */
+.soon{ opacity:.5; }
+.soon::after{ content:" · Soon"; font-weight:500; }
+.btns button:disabled{ opacity:.4; cursor:default; }
 
 /* The composer's `+` window (Phase 5) — the mockup's plusSh(), "Add to this
    chat". Settings' shape, one z-index lower: a full sheet on a phone, a scrim +

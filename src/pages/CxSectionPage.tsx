@@ -6,13 +6,11 @@ import { useState } from 'react';
 import { useNav } from '../nav';
 import { SECTIONS, COURSE_ORDER } from '../classroom';
 import { queueBrief } from '../studio';
-import { addFile } from '../library';
 import type { PageProps } from './index';
 
 export default function CxSectionPage({ arg }: PageProps) {
-  const { notify, go, goTab } = useNav();
-  const [distilled, setDistilled] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { go, goTab } = useNav();
+  const [link, setLink] = useState('');
 
   const name = typeof arg === 'string' ? arg : '';
   const sec = SECTIONS[name];
@@ -53,35 +51,21 @@ export default function CxSectionPage({ arg }: PageProps) {
         <div className="s">{sec.blurb}</div>
       </div>
       {name === 'Digest' ? (
+        /* Distill used to print three canned bullets ("Main argument in one
+           line") no matter what was pasted, which is invented data. Now it
+           hands the real link to Chat, where Mae actually reads it. */
         <div className="card">
-          <input placeholder="Paste a link, or upload a video or book" aria-label="Paste a link, or upload a video or book" />
+          <input
+            className="sinput"
+            placeholder="Paste a link to distill"
+            aria-label="Paste a link to distill"
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && link.trim()) toChat(`Distill this into its main argument, the tactics worth stealing, and what to ignore: ${link.trim()}`); }}
+          />
           <div className="btns">
-            <button className="pri" onClick={() => setDistilled(true)}>
-              Distill
-            </button>
+            <button className="pri" disabled={!link.trim()} onClick={() => toChat(`Distill this into its main argument, the tactics worth stealing, and what to ignore: ${link.trim()}`)}>Distill in Chat</button>
           </div>
-          {distilled ? (
-            <div style={{ marginTop: 10 }}>
-              <b>Distilled:</b>
-              <ul className="st">
-                <li>Main argument in one line</li>
-                <li>Two tactics worth stealing</li>
-                <li>One thing to ignore</li>
-              </ul>
-              <div className="btns">
-                <button
-                  className="gho"
-                  onClick={() => {
-                    addFile('Distilled digest', 'DIGEST', 'Documents');
-                    setSaved(true);
-                    notify('Saved to Digest.');
-                  }}
-                >
-                  {saved ? 'Saved' : 'Save'}
-                </button>
-              </div>
-            </div>
-          ) : null}
         </div>
       ) : null}
       <h3 className="sec">Yours</h3>

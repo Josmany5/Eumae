@@ -38,6 +38,7 @@ export default function RolePage({ arg }: PageProps) {
         A role is how Eumae shows up for a chat — its tone, style, and purpose.
       </div>
       <input
+        className="sinput"
         placeholder="Name — e.g. Co-founder"
         value={n}
         onChange={(e) => setN(e.target.value)}
@@ -45,6 +46,7 @@ export default function RolePage({ arg }: PageProps) {
         style={{ marginBottom: 8 }}
       />
       <input
+        className="sinput"
         placeholder="Tone — e.g. blunt, warm, funny"
         value={tone}
         onChange={(e) => setTone(e.target.value)}
@@ -52,6 +54,7 @@ export default function RolePage({ arg }: PageProps) {
         style={{ marginBottom: 8 }}
       />
       <input
+        className="sinput"
         placeholder="Style — e.g. short answers, asks before doing"
         value={style}
         onChange={(e) => setStyle(e.target.value)}
@@ -59,6 +62,7 @@ export default function RolePage({ arg }: PageProps) {
         style={{ marginBottom: 8 }}
       />
       <input
+        className="sinput"
         placeholder="Purpose — e.g. pressure-test my ideas"
         value={purpose}
         onChange={(e) => setPurpose(e.target.value)}

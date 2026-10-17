@@ -20,6 +20,7 @@ export default function EditPage({ arg }: PageProps) {
   return (
     <div>
       <input
+        className="sinput"
         value={t}
         onChange={(e) => setT(e.target.value)}
         placeholder="Title"
@@ -27,6 +28,7 @@ export default function EditPage({ arg }: PageProps) {
         style={{ fontSize: 22, fontWeight: 700, marginBottom: 10 }}
       />
       <textarea
+        className="sinput"
         value={b}
         onChange={(e) => setB(e.target.value)}
         placeholder="Start writing…"

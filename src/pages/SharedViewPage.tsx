@@ -44,6 +44,7 @@ export default function SharedViewPage({ arg }: PageProps) {
         <span className="m">Permission</span>
         <span>
           <select
+            className="selIn"
             aria-label="Permission"
             value={x.perm ?? 'view'}
             onChange={(e) => {
@@ -62,7 +63,7 @@ export default function SharedViewPage({ arg }: PageProps) {
             Open it
           </button>
         ) : (
-          <button className="pri" onClick={() => notify('Lives in their Studio for now.')}>
+          <button className="pri soon" onClick={() => notify('Lives in their Studio for now.')}>
             Open it
           </button>
         )}

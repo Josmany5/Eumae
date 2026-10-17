@@ -554,6 +554,7 @@ function UploadRow({ upload, onUpload, refresh, folder }: {
         </button>
       ) : (
         <select
+          className="selIn"
           value={filedFolder(upload.id)}
           onChange={(e) => { fileUpload(upload.id, e.target.value); setFiling(false); refresh(); }}
           aria-label={'File ' + upload.name + ' into'}

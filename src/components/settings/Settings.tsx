@@ -520,7 +520,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
               ))}
             </div>
             <div className="btns">
-              <button className="pri" onClick={() => notify('Automations arrive in a later stage')}>New automation</button>
+              <button className="pri soon" onClick={() => notify('Automations arrive in a later stage')}>New automation</button>
             </div>
           </>
         )}
@@ -625,7 +625,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
               <div className="sr"><Icon name="cal" /><span className="g">Google Calendar</span><span className="v m">connected</span></div>
             </div>
             <div className="btns">
-              <button className="pri" onClick={() => notify('Connectors arrive in a later stage')}>Add connector</button>
+              <button className="pri soon" onClick={() => notify('Connectors arrive in a later stage')}>Add connector</button>
             </div>
           </>
         )}
@@ -636,7 +636,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
             <div className="bar"><i style={{ width: '0%' }} /></div>
             <div className="xs m">$20.00 typical — transparency only, never blocking.</div>
             <div className="btns">
-              <button className="gho" onClick={() => notify('Receipts arrive in a later stage')}>Export receipts</button>
+              <button className="gho soon" onClick={() => notify('Receipts arrive in a later stage')}>Export receipts</button>
             </div>
           </div>
         )}
@@ -657,7 +657,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
             </div>
             <div className="btns">
               <button onClick={exportData}>Export my data</button>
-              <button className="gho" onClick={() => notify('Restoring from a file arrives in a later stage')}>Restore from a file</button>
+              <button className="gho soon" onClick={() => notify('Restoring from a file arrives in a later stage')}>Restore from a file</button>
               <button className="gho danger" onClick={wipeData}>Delete everything</button>
             </div>
             <div className="s m">One plain JSON file, written on this device. Nothing is uploaded.</div>
@@ -679,7 +679,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
               <Row icon="chat" title="What is the Guild handshake?" onClick={() => notify('Nothing sends until you say so')} />
             </div>
             <div className="btns">
-              <button className="pri" onClick={() => notify('Support chat arrives in a later stage')}>Contact support</button>
+              <button className="pri soon" onClick={() => notify('Support chat arrives in a later stage')}>Contact support</button>
             </div>
           </>
         )}
@@ -688,7 +688,9 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
           <div className="card">
             <input id="report-input" className="sinput" placeholder="What went wrong?" value={report} onChange={(e) => setReport(e.target.value)} />
             <div className="btns">
-              <button className="pri" onClick={() => { setReport(''); notify('Reports arrive in a later stage'); }}>Send</button>
+              {/* Kept the text instead of clearing it: Send used to wipe what you typed
+                 while nothing was actually sent. */}
+              <button className="pri soon" onClick={() => notify('Reports arrive in a later stage. Your note stays here.')}>Send</button>
             </div>
           </div>
         )}
@@ -881,9 +883,9 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
         {view === 'legal' && (
           <>
             <div className="sg">
-              <Row icon="law" title="Terms of service" onClick={() => notify('Terms publish with the first release')} />
-              <Row icon="law" title="Privacy policy" onClick={() => notify('The privacy policy publishes with the first release')} />
-              <Row icon="law" title="Licenses" onClick={() => notify('Open-source licenses publish with the first release')} />
+              <Row icon="law" title="Terms of service" value="Soon" onClick={() => notify('Terms publish with the first release')} />
+              <Row icon="law" title="Privacy policy" value="Soon" onClick={() => notify('The privacy policy publishes with the first release')} />
+              <Row icon="law" title="Licenses" value="Soon" onClick={() => notify('Open-source licenses publish with the first release')} />
             </div>
             <div className="s m" style={{ marginTop: 8 }}>Eumae 0.1 · Your data stays yours.</div>
           </>

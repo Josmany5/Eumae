@@ -92,6 +92,7 @@ export default function AssignedPage(_props: PageProps) {
             ))}
           </div>
           <input
+            className="sinput"
             placeholder="What do you need?"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
