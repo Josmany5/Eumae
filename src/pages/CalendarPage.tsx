@@ -13,9 +13,11 @@
 
 import { useMemo, useState } from 'react';
 import { useNav } from '../nav';
-import { dayEvents, getEvent, saveEvent, deleteEvent, ymd, mins, type CalEvent } from '../events';
-import { getTasks, toggleTask, type Task } from '../tasks';
-import { QuickAdd, EventForm, EventDetail, quickToEvent } from '../components/QuickAdd';
+import { dayEvents, getEvent, saveEvent, ymd, mins, type CalEvent } from '../events';
+import { getTasks, toggleTask, deleteTask, snapshotTasks, restoreTasks, type Task } from '../tasks';
+import { QuickAdd, EventForm, EventDetail, quickToEvent, removeEvent } from '../components/QuickAdd';
+import { ItemMenu, ProjectChip } from '../components/ItemMenu';
+import { undoable } from '../undo';
 import { fmtTime } from '../quickadd';
 import { useMedia } from '../useMedia';
 import { getGoals } from '../goals';
@@ -205,6 +207,17 @@ export default function CalendarPage(_props: PageProps) {
           <div className="evDHead">
             <i />
             <b>{taskView.t}</b>
+            <ItemMenu
+              name={taskView.t}
+              extra={[{ label: 'Open Tasks', onClick: () => go('tasks') }]}
+              link={{ k: 'task', id: taskView.id }}
+              onChange={refresh}
+              onDelete={() => {
+                const id = taskView.id;
+                setTaskView(null);
+                undoable(notify, 'Task deleted.', snapshotTasks, restoreTasks, () => deleteTask(id), refresh);
+              }}
+            />
             <button className="evDX" aria-label="Close" onClick={() => setTaskView(null)}>
               ×
             </button>
@@ -217,6 +230,7 @@ export default function CalendarPage(_props: PageProps) {
             {taskView.est ? ' · ' + taskView.est + ' min' : ''}
           </div>
           <div className="evDRow m">Task{taskView.pr && taskView.pr !== 'none' ? ' · ' + taskView.pr : ''}</div>
+          <ProjectChip k="task" id={taskView.id} />
           <div className="btns">
             <button
               className="fb"
@@ -244,11 +258,9 @@ export default function CalendarPage(_props: PageProps) {
             setForm({ ev: view1.ev, editing: true });
             setView1(null);
           }}
-          onDelete={() => {
-            deleteEvent(view1.ev);
+          onDelete={(scope) => {
             setView1(null);
-            refresh();
-            notify(view1.ev.rep ? 'Event and its repeats deleted.' : 'Event deleted.');
+            removeEvent(notify, view1.ev, view1.day, scope, refresh);
           }}
         />
       ) : null}
@@ -266,10 +278,8 @@ export default function CalendarPage(_props: PageProps) {
           onDelete={
             form.editing
               ? () => {
-                  deleteEvent(form.ev);
                   setForm(null);
-                  refresh();
-                  notify(form.ev.rep ? 'Event and its repeats deleted.' : 'Event deleted.');
+                  removeEvent(notify, form.ev, undefined, 'all', refresh);
                 }
               : undefined
           }

@@ -1564,3 +1564,54 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .imAv{ width:52px; height:52px; border-radius:50%; display:grid; place-items:center; background:var(--card3); color:var(--tx); font-weight:600; font-size:19px; }
 .imName{ font-size:15px; font-weight:600; }
 .imTime{ align-self:stretch; text-align:center; margin:10px 0 4px; }
+
+/* ⋯ item menu (components/ItemMenu.tsx). One button on every row and in every
+   detail header; the popover and its dialogs reuse the card, hair and accent
+   tokens — no new colors. Nothing here is under 13px. */
+.imBtn{ flex:none; width:36px; height:36px; border-radius:10px; display:inline-flex; align-items:center;
+  justify-content:center; background:none; color:var(--mut); padding:0; }
+.imBtn svg{ width:20px; height:20px; fill:currentColor; }
+.imBtn:hover, .imBtn[aria-expanded="true"]{ background:var(--card2); color:var(--tx); }
+.imScrim{ position:fixed; inset:0; z-index:419; }
+.imPop{ position:fixed; z-index:420; min-width:210px; max-width:min(300px, calc(100vw - 16px));
+  background:var(--card2); border:1px solid var(--hair); border-radius:14px; padding:6px;
+  box-shadow:0 10px 32px rgba(0,0,0,.35); }
+.imItem{ display:block; width:100%; text-align:left; background:none; color:var(--tx);
+  font-size:15px; font-weight:500; padding:11px 12px; border-radius:9px; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; }
+.imItem:hover{ background:var(--card3); }
+.imItem.danger{ color:var(--rd); border-top:1px solid var(--hair); border-radius:0 0 9px 9px; margin-top:4px; }
+.imEmpty{ padding:11px 12px; font-size:14px; color:var(--mut); }
+.dlgWide{ width:min(440px, 92vw); }
+.dlgField{ margin-bottom:16px; font-size:15px; }
+textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
+.dlgOk{ border:none; border-radius:10px; padding:10px 18px; font-size:15px; font-weight:700;
+  background:var(--ac); color:var(--acink); }
+.pickList{ max-height:min(50vh, 360px); overflow-y:auto; margin:0 -6px 16px; }
+.pickRow{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; width:100%; text-align:left;
+  background:none; color:var(--tx); padding:11px 8px; border-radius:10px; }
+.pickRow:hover{ background:var(--card2); }
+.pickLabel{ font-size:15px; font-weight:600; }
+.pickSub{ font-size:13px; color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+.pickEmpty{ padding:12px 8px; font-size:14px; color:var(--mut); }
+/* The way back from a linked item to its project. */
+.pjChip{ display:inline-flex; gap:5px; align-items:baseline; background:none; padding:2px 0; margin-top:2px;
+  font-size:13px; font-weight:600; color:var(--ac); text-align:left; }
+.pjChip .m{ font-weight:500; }
+/* A detail page's header line: title or summary on the left, ⋯ on the right. */
+.itemHead{ display:flex; align-items:center; gap:10px; }
+.itemHead > .g{ flex:1; min-width:0; }
+.imItem.danger + .imItem.danger{ border-top:0; margin-top:0; }
+/* A tappable row with its ⋯ beside it (a button can't hold a button). */
+.imWrap{ display:flex; align-items:center; gap:4px; }
+.imWrap > :first-child{ flex:1; min-width:0; }
+.msName{ background:none; color:var(--tx); text-align:left; padding:4px 0; font-size:15px; }
+.msRow input.g{ margin:0; padding:8px 10px; }
+.noteTop{ display:flex; align-items:center; gap:8px; padding:8px 16px 0 24px; }
+.noteTop .g{ flex:1; }
+/* Project page */
+.imBtn.pjAddBtn{ width:auto; padding:0 14px; font-size:15px; font-weight:600; color:var(--ac); }
+.pjDescBtn{ display:block; background:none; color:var(--mut); font-size:15px; text-align:left; padding:4px 0; line-height:1.45; }
+.pjItem{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
+.pjItemSub{ font-size:13px; color:var(--mut); }
+.dlgLink{ display:block; margin:-4px 0 16px; text-align:left; }

@@ -1,6 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav';
-import { createNote, deleteNote, getNotes, noteText, previewOf, titleOf, type Note } from '../notes';
+import { createNote, deleteNote, getNotes, noteText, previewOf, titleOf, snapshotNotes, restoreNotes, type Note } from '../notes';
+import { ItemMenu, ProjectChip } from '../components/ItemMenu';
+import { undoable } from '../undo';
+import type { NotifyOpts } from '../nav';
+
+/* Share sheet where there is one, clipboard otherwise. Used by the list row
+   and by the open note's ⋯, so both export the same text. */
+export async function exportNote(note: Note, notify: (m: string, o?: NotifyOpts) => void): Promise<void> {
+  const text = titleOf(note) + '\n\n' + noteText(note);
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: titleOf(note), text });
+    } else if (navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      notify('Note copied.');
+    }
+  } catch {
+    /* Dismissed — silent. */
+  }
+}
+
+/* Delete a note without asking; Undo puts it back. */
+export function removeNote(id: string, notify: (m: string, o?: NotifyOpts) => void, after?: () => void): void {
+  undoable(notify, 'Note deleted.', snapshotNotes, restoreNotes, () => deleteNote(id), after);
+}
 import type { PageProps } from './index';
 
 function fmtShort(ts: number): string {
@@ -14,20 +38,19 @@ function NoteRow({
   onOpen,
   onDelete,
   onExport,
+  onChange,
 }: {
   note: Note;
   onOpen: () => void;
   onDelete: () => void;
   onExport: () => void;
+  onChange: () => void;
 }) {
   const startX = useRef(0);
   const liveDx = useRef(0);
   const [shownDx, setShownDx] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [open, setOpen] = useState(false);
-  /* Desktop has no swipe — hover reveals the ghost pair instead. The prop
-     callbacks are shared; only the door differs. */
-  const [hover, setHover] = useState(false);
 
   const onTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
@@ -63,8 +86,6 @@ function NoteRow({
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
     >
       <div className="swipeActions" aria-hidden="true">
         <button className="swExp" onClick={onExport} aria-label={`Export ${title}`} tabIndex={-1}>
@@ -78,8 +99,10 @@ function NoteRow({
           </svg>
         </button>
       </div>
-      <button
+      <div
         className="noteRow"
+        role="button"
+        tabIndex={0}
         style={{
           transform: open ? 'translateX(-140px)' : shownDx ? `translateX(${shownDx}px)` : undefined,
           transition: dragging ? 'none' : undefined,
@@ -88,65 +111,39 @@ function NoteRow({
           if (open) setOpen(false);
           else onOpen();
         }}
+        onKeyDown={(e) => {
+          if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
       >
         <span className="g">
           <span className="noteTitle">{title || 'Untitled'}</span>
           <span className="notePreview">{preview}</span>
-        </span>
-        <span className={`noteTools${hover ? ' show' : ''}`}>
-          <span
-            role="button"
-            tabIndex={0}
-            className="noteTool"
-            aria-label={`Export ${title}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onExport();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-                onExport();
-              }
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8" />
-            </svg>
-          </span>
-          <span
-            role="button"
-            tabIndex={0}
-            className="noteTool danger"
-            aria-label={`Delete ${title}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-                onDelete();
-              }
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" />
-            </svg>
-          </span>
+          <ProjectChip k="note" id={note.id} />
         </span>
         <span className="drDate">{fmtShort(note.updatedAt)}</span>
-      </button>
+        <ItemMenu
+          name={title || 'Untitled'}
+          open={onOpen}
+          extra={[{ label: 'Export', onClick: onExport }]}
+          link={{ k: 'note', id: note.id }}
+          onChange={onChange}
+          onDelete={onDelete}
+        />
+      </div>
     </div>
   );
 }
 
 export default function NotesPage(_: PageProps) {
   const { go, notify } = useNav();
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [deleteTarget, setDeleteTarget] = useState<Note | null>(null);
+  /* Read in render, not copied into state: an Undo fired after leaving an
+     open note restores the store, and the list has to show it. */
+  const [, setTick] = useState(0);
+  const notes = getNotes();
+  const setNotes = (_n?: Note[]) => setTick((t) => t + 1);
 
   useEffect(() => {
     setNotes(getNotes());
@@ -160,20 +157,6 @@ export default function NotesPage(_: PageProps) {
   const newNote = () => {
     const note = createNote();
     go('note', note.id);
-  };
-
-  const exportNote = async (note: Note) => {
-    const text = titleOf(note) + '\n\n' + noteText(note);
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: titleOf(note), text });
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(text);
-        notify('Note copied.');
-      }
-    } catch {
-      /* Dismissed — silent. */
-    }
   };
 
   return (
@@ -191,32 +174,11 @@ export default function NotesPage(_: PageProps) {
             key={n.id}
             note={n}
             onOpen={() => go('note', n.id)}
-            onDelete={() => setDeleteTarget(n)}
-            onExport={() => exportNote(n)}
+            onDelete={() => removeNote(n.id, notify, () => setNotes(getNotes()))}
+            onExport={() => exportNote(n, notify)}
+            onChange={() => setNotes(getNotes())}
           />
         ))}
-      {deleteTarget ? (
-        <>
-          <div className="dlgScrim" onClick={() => setDeleteTarget(null)} />
-          <div className="dlg" role="alertdialog" aria-label="Delete note">
-            <div className="dlgTitle">Delete this note?</div>
-            <div className="dlgBody">“{titleOf(deleteTarget) || 'Untitled'}” will be gone for good.</div>
-            <div className="dlgBtns">
-              <button className="dlgCancel" onClick={() => setDeleteTarget(null)}>Cancel</button>
-              <button
-                className="dlgDanger"
-                onClick={() => {
-                  deleteNote(deleteTarget.id);
-                  setDeleteTarget(null);
-                  setNotes(getNotes());
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </>
-      ) : null}
     </div>
   );
 }

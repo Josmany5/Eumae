@@ -30,6 +30,9 @@ export interface CalEvent {
   rep?: Repeat;
   /** Notes. */
   note?: string;
+  /** Repeating events: dates (YYYY-MM-DD) removed from the series one at a
+   *  time — "delete this occurrence" — while the rest keep repeating. */
+  skip?: string[];
 }
 
 export type EventType = 'class' | 'meeting' | 'appointment' | 'other';
@@ -118,6 +121,7 @@ function dow(day: string): number {
 
 /** Does this event happen on `day`? Its own date, or a repeat of it. */
 export function occursOn(e: CalEvent, day: string): boolean {
+  if (Array.isArray(e.skip) && e.skip.includes(day)) return false;
   if (e.d === day) return true;
   const r = e.rep;
   if (!r || day < e.d) return false;
@@ -181,4 +185,19 @@ export function deleteEvent(event: Pick<CalEvent, 'd' | 'tm' | 't'> & { id?: str
       event.id ? e.id !== event.id : !(e.d === event.d && e.tm === event.tm && e.t === event.t),
     ),
   );
+}
+
+/* Remove one date from a repeating series; the series itself stays. */
+export function skipOccurrence(id: string, day: string): void {
+  save(load().map((e) => (e.id === id ? { ...e, skip: [...(Array.isArray(e.skip) ? e.skip : []), day] } : e)));
+}
+
+/* Undo: a deep copy of the store taken before a delete; the toast's Undo
+   writes it back. Same shape as snapshotTasks / snapshotLibrary. */
+export function snapshotEvents(): CalEvent[] {
+  return JSON.parse(JSON.stringify(load()));
+}
+
+export function restoreEvents(s: CalEvent[]): void {
+  save(s);
 }

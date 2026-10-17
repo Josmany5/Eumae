@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav';
 import { getNote, saveNote, startSession, type Note } from '../notes';
+import { ItemMenu, ProjectChip } from '../components/ItemMenu';
+import { exportNote, removeNote } from './NotesPage';
 import type { PageProps } from './index';
 
 function fmtDay(ts: number): string {
@@ -92,7 +94,8 @@ function sessionDivider(ts: number): HTMLElement {
 }
 
 export default function NoteViewPage({ arg }: PageProps) {
-  const { back } = useNav();
+  const { back, notify } = useNav();
+  const [, setTick] = useState(0);
   const id = typeof arg === 'string' ? arg : '';
   const [note, setNote] = useState<Note | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -149,6 +152,16 @@ export default function NoteViewPage({ arg }: PageProps) {
   }, [id]);
 
   if (!note) return null;
+
+  /* Land the last keystrokes before acting on the whole note, so Export
+     carries them and Undo after a delete brings back what was on screen. */
+  const flush = () => {
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    if (pendingBody.current !== null) {
+      writeBody(id, pendingBody.current);
+      pendingBody.current = null;
+    }
+  };
 
   const onInput = () => {
     const host = editorRef.current;
@@ -258,7 +271,32 @@ export default function NoteViewPage({ arg }: PageProps) {
   return (
     <div className="page noteClean">
       {/* No page chrome of its own: the shell's header/backbar is the one way
-          back. The face is the sheet. */}
+          back. The face is the sheet; the one line above it carries the
+          note's project and its ⋯. */}
+      <div className="noteTop">
+        <ProjectChip k="note" id={id} />
+        <span className="g" />
+        <ItemMenu
+          name={note.title || 'this note'}
+          extra={[
+            {
+              label: 'Export',
+              onClick: () => {
+                flush();
+                const n = getNote(id);
+                if (n) void exportNote(n, notify);
+              },
+            },
+          ]}
+          link={{ k: 'note', id }}
+          onChange={() => setTick((t) => t + 1)}
+          onDelete={() => {
+            flush();
+            removeNote(id, notify);
+            back();
+          }}
+        />
+      </div>
       <div
         ref={editorRef}
         className="ndoc"

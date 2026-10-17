@@ -32,6 +32,7 @@ import {
 import type { PageProps } from './index';
 import { QuickAdd } from '../components/QuickAdd';
 import { fmtShort, fmtTime, type Quick } from '../quickadd';
+import { ItemMenu, ProjectChip } from '../components/ItemMenu';
 
 type Filter = 'active' | 'completed' | 'all';
 type Mode = 'list' | 'matrix';
@@ -43,14 +44,14 @@ const PR_COLOR: Record<TaskPriority, string> = {
   critical: 'var(--rd)',
 };
 
-export default function TasksPage(_props: PageProps) {
-  void _props;
+export default function TasksPage({ arg }: PageProps) {
   const { notify } = useNav();
   const [list, setList] = useState('all');
   const [filter, setFilter] = useState<Filter>('active');
   const [tick, setTick] = useState(0);
   const [mode, setMode] = useState<Mode>('list');
-  const [draft, setDraft] = useState<Task | null>(null);
+  /* Opened with a task id (from a project): land on that task's form. */
+  const [draft, setDraft] = useState<Task | null>(() => (typeof arg === 'string' ? getTask(arg) ?? null : null));
   const [newList, setNewList] = useState('');
   const [addingList, setAddingList] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -239,7 +240,7 @@ export default function TasksPage(_props: PageProps) {
         </div>
       </div>
       {mode === 'matrix' ? (
-        <Matrix tasks={tasks} refresh={refresh} onEdit={(t) => setDraft(t)} />
+        <Matrix tasks={tasks} refresh={refresh} onEdit={(t) => setDraft(t)} onDelete={(t) => undoable('Task deleted.', () => deleteTask(t.id))} />
       ) : (
       <div className="card cardPad">
         {tasks.map((t) => (
@@ -254,6 +255,7 @@ export default function TasksPage(_props: PageProps) {
               setNewSub('');
             }}
             onEdit={() => setDraft(t)}
+            onDelete={() => undoable('Task deleted.', () => deleteTask(t.id))}
             onDeleteSub={(i) => undoable('Subtask deleted.', () => deleteSubtask(t.id, i))}
             refresh={refresh}
           />
@@ -273,6 +275,7 @@ function TaskRow({
   onNewSub,
   onToggleExpand,
   onEdit,
+  onDelete,
   onDeleteSub,
   refresh,
 }: {
@@ -282,6 +285,7 @@ function TaskRow({
   onNewSub: (s: string) => void;
   onToggleExpand: () => void;
   onEdit: () => void;
+  onDelete: () => void;
   onDeleteSub: (index: number) => void;
   refresh: () => void;
 }) {
@@ -314,6 +318,7 @@ function TaskRow({
             {task.d ? <s className="m">{task.t}</s> : <span className="strike">{task.t}</span>}
           </button>
           <TaskMeta task={task} subs={subs.length ? `${subs.filter((s) => s.d).length}/${subs.length} subtasks` : ''} />
+          <ProjectChip k="task" id={task.id} />
         </div>
         <button
           className="fb"
@@ -329,6 +334,14 @@ function TaskRow({
         <button className="fb gho" aria-label={expanded ? 'Collapse' : 'Expand'} onClick={onToggleExpand}>
           ▾
         </button>
+        <ItemMenu
+          name={task.t}
+          edit={onEdit}
+          extra={[{ label: expanded ? 'Hide subtasks' : 'Subtasks', onClick: onToggleExpand }]}
+          link={{ k: 'task', id: task.id }}
+          onChange={refresh}
+          onDelete={onDelete}
+        />
       </div>
       {expanded ? (
         <div style={{ padding: '0 0 8px 35px' }}>
@@ -516,7 +529,7 @@ const QUADS: { pr: TaskPriority; title: string; sub: string }[] = [
   { pr: 'none', title: 'Later', sub: 'Not urgent, not important' },
 ];
 
-function Matrix({ tasks, refresh, onEdit }: { tasks: Task[]; refresh: () => void; onEdit: (t: Task) => void }) {
+function Matrix({ tasks, refresh, onEdit, onDelete }: { tasks: Task[]; refresh: () => void; onEdit: (t: Task) => void; onDelete: (t: Task) => void }) {
   const [drag, setDrag] = useState<string | null>(null);
   const [over, setOver] = useState<TaskPriority | null>(null);
   return (
@@ -551,7 +564,7 @@ function Matrix({ tasks, refresh, onEdit }: { tasks: Task[]; refresh: () => void
             </div>
             <div className="xs m" style={{ marginBottom: 6 }}>{q.sub}</div>
             {rows.map((t) => (
-              <MatrixRow key={t.id} t={t} refresh={refresh} onEdit={onEdit} onDrag={setDrag} onEnd={() => { setDrag(null); setOver(null); }} />
+              <MatrixRow key={t.id} t={t} refresh={refresh} onEdit={onEdit} onDelete={onDelete} onDrag={setDrag} onEnd={() => { setDrag(null); setOver(null); }} />
             ))}
             {rows.length === 0 ? <div className="xs m">Drag a task here.</div> : null}
           </div>
@@ -561,8 +574,8 @@ function Matrix({ tasks, refresh, onEdit }: { tasks: Task[]; refresh: () => void
   );
 }
 
-function MatrixRow({ t, refresh, onEdit, onDrag, onEnd }: {
-  t: Task; refresh: () => void; onEdit: (t: Task) => void; onDrag: (id: string) => void; onEnd: () => void;
+function MatrixRow({ t, refresh, onEdit, onDelete, onDrag, onEnd }: {
+  t: Task; refresh: () => void; onEdit: (t: Task) => void; onDelete: (t: Task) => void; onDrag: (id: string) => void; onEnd: () => void;
 }) {
   const [leaving, setLeaving] = useState(false);
   return (
@@ -577,7 +590,9 @@ function MatrixRow({ t, refresh, onEdit, onDrag, onEnd }: {
                     {t.d ? <s className="m">{t.t}</s> : <span className="strike">{t.t}</span>}
                   </button>
                   <TaskMeta task={t} subs="" />
+                  <ProjectChip k="task" id={t.id} />
                 </div>
+                <ItemMenu name={t.t} edit={() => onEdit(t)} link={{ k: 'task', id: t.id }} onChange={refresh} onDelete={() => onDelete(t)} />
               </div>
   );
 }

@@ -200,3 +200,13 @@ function cleanMessages(messages: unknown): Msg[] {
   if (!Array.isArray(messages)) return [];
   return messages.filter(isMsg);
 }
+
+/* Undo: a deep copy of the store taken before a delete; the toast's Undo
+   writes it back. Same shape as snapshotTasks / snapshotLibrary. */
+export function snapshotThreads(): Thread[] {
+  return JSON.parse(JSON.stringify(load()));
+}
+
+export function restoreThreads(s: Thread[]): void {
+  save(s);
+}

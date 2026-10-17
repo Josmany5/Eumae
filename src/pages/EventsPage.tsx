@@ -13,13 +13,13 @@ import {
   getEvent,
   getEvents,
   saveEvent,
-  deleteEvent,
   ymd,
   EVENT_TYPES,
   type CalEvent,
   type EventType,
 } from '../events';
-import { QuickAdd, EventForm, EventDetail, quickToEvent } from '../components/QuickAdd';
+import { QuickAdd, EventForm, EventDetail, EventMenu, quickToEvent, removeEvent } from '../components/QuickAdd';
+import { ProjectChip } from '../components/ItemMenu';
 import { fmtTime, repLabel } from '../quickadd';
 import type { PageProps } from './index';
 
@@ -32,13 +32,16 @@ const LABEL: Record<Filter, string> = {
   other: 'Other',
 };
 
-export default function EventsPage(_props: PageProps) {
-  void _props;
+export default function EventsPage({ arg }: PageProps) {
   const { notify, go } = useNav();
   const [filter, setFilter] = useState<Filter>('all');
   const [tick, setTick] = useState(0);
   const [form, setForm] = useState<{ ev: CalEvent; editing: boolean } | null>(null);
-  const [view1, setView1] = useState<{ ev: CalEvent; day: string } | null>(null);
+  /* Opened with an event id (from a project): show that event's card. */
+  const [view1, setView1] = useState<{ ev: CalEvent; day: string } | null>(() => {
+    const e = typeof arg === 'string' ? getEvent(arg) : undefined;
+    return e ? { ev: e, day: e.d } : null;
+  });
   const refresh = () => setTick((t) => t + 1);
   const today = ymd(new Date());
 
@@ -88,11 +91,9 @@ export default function EventsPage(_props: PageProps) {
             setForm({ ev: view1.ev, editing: true });
             setView1(null);
           }}
-          onDelete={() => {
-            deleteEvent(view1.ev);
+          onDelete={(scope) => {
             setView1(null);
-            refresh();
-            notify(view1.ev.rep ? 'Event and its repeats deleted.' : 'Event deleted.');
+            removeEvent(notify, view1.ev, view1.day, scope, refresh);
           }}
         />
       ) : null}
@@ -109,10 +110,8 @@ export default function EventsPage(_props: PageProps) {
           onDelete={
             form.editing
               ? () => {
-                  deleteEvent(form.ev);
                   setForm(null);
-                  refresh();
-                  notify('Event deleted.');
+                  removeEvent(notify, form.ev, undefined, 'all', refresh);
                 }
               : undefined
           }
@@ -132,8 +131,8 @@ export default function EventsPage(_props: PageProps) {
             <h3 className="sec">{g.title}</h3>
             <div className="card cardPad">
               {g.rows.map((e) => (
+                <div key={(e.id ?? e.t) + e.d} className="imWrap">
                 <button
-                  key={(e.id ?? e.t) + e.d}
                   className={'agRow c-' + (e.type ?? 'other')}
                   onClick={() => {
                     setForm(null);
@@ -152,8 +151,23 @@ export default function EventsPage(_props: PageProps) {
                       {e.loc ? ' · ' + e.loc : ''}
                       {e.rep ? ' · ↻ ' + repLabel(e.rep, (e.id && getEvent(e.id)?.d) || e.d) : ''}
                     </span>
+                    {e.id ? <ProjectChip k="event" id={e.id} /> : null}
                   </span>
                 </button>
+                <EventMenu
+                  ev={(e.id && getEvent(e.id)) || e}
+                  onOpen={() => {
+                    setForm(null);
+                    setView1({ ev: (e.id && getEvent(e.id)) || e, day: e.d });
+                  }}
+                  onEdit={() => {
+                    setView1(null);
+                    setForm({ ev: (e.id && getEvent(e.id)) || e, editing: true });
+                  }}
+                  onDelete={(scope) => removeEvent(notify, (e.id && getEvent(e.id)) || e, e.d, scope, refresh)}
+                  onChange={refresh}
+                />
+                </div>
               ))}
             </div>
           </div>

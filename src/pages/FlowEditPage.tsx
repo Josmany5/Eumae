@@ -8,7 +8,8 @@
 
 import { useState } from 'react';
 import { useNav } from '../nav';
-import { getFlows, saveFlow, createFlow, deleteFlow, type Flow } from '../flows';
+import { getFlows, saveFlow, createFlow, deleteFlow, snapshotFlows, restoreFlows, type Flow } from '../flows';
+import { undoable } from '../undo';
 import type { PageProps } from './index';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -95,10 +96,9 @@ export default function FlowEditPage({ arg }: PageProps) {
 
   const remove = () => {
     if (!existing) return;
-    if (!window.confirm('Delete this flow?')) return;
-    deleteFlow(existing.id);
-    notify('Flow deleted.');
+    const id = existing.id;
     back();
+    undoable(notify, existing.kind === 'routine' ? 'Routine deleted.' : 'Flow deleted.', snapshotFlows, restoreFlows, () => deleteFlow(id));
   };
 
   return (

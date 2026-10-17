@@ -1,23 +1,24 @@
 /* Flows list — flows + routines sections, New goes to the editor. */
 
-import { getFlows } from '../flows';
+import { useState } from 'react';
+import { getFlows, saveFlow, deleteFlow, snapshotFlows, restoreFlows } from '../flows';
 import { useNav } from '../nav';
+import { ItemMenu } from '../components/ItemMenu';
+import { undoable } from '../undo';
 import { Icon } from '../components/shell/icons';
 import type { PageProps } from './index';
 
 export default function FlowsPage(_props: PageProps) {
   void _props;
-  const { go } = useNav();
+  const { go, notify } = useNav();
+  const [, setTick] = useState(0);
+  const refresh = () => setTick((t) => t + 1);
   const flows = getFlows();
   const fl = flows.filter((f) => f.kind !== 'routine');
   const rt = flows.filter((f) => f.kind === 'routine');
   const row = (id: string, n: string, w: string, streak: number, on: number) => (
-    <button
-      key={id}
-      className="dr"
-      style={{ border: '1px solid var(--hair)', borderRadius: 12, margin: '6px 0' }}
-      onClick={() => go('flow', id)}
-    >
+    <div key={id} className="imWrap" style={{ border: '1px solid var(--hair)', borderRadius: 12, margin: '6px 0', paddingRight: 6 }}>
+    <button className="dr" onClick={() => go('flow', id)}>
       <Icon name="zap" />
       <span className="g">
         <div>
@@ -29,6 +30,21 @@ export default function FlowsPage(_props: PageProps) {
       </span>
       <span className="xs m">{on ? 'on' : 'off'}</span>
     </button>
+    <ItemMenu
+      name={n}
+      open={() => go('flow', id)}
+      edit={() => go('flowedit', id)}
+      rename={{
+        value: n,
+        save: (v) => {
+          const f = getFlows().find((x) => x.id === id);
+          if (f) saveFlow({ ...f, n: v.slice(0, 60) });
+        },
+      }}
+      onChange={refresh}
+      onDelete={() => undoable(notify, 'Deleted ' + n + '.', snapshotFlows, restoreFlows, () => deleteFlow(id), refresh)}
+    />
+    </div>
   );
   return (
     <div>

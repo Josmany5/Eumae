@@ -103,3 +103,13 @@ export function createGoal(t: string): Goal {
 export function deleteGoal(id: string): void {
   save(load().filter((g) => g.id !== id));
 }
+
+/* Undo: a deep copy of the store taken before a delete; the toast's Undo
+   writes it back. Same shape as snapshotTasks / snapshotLibrary. */
+export function snapshotGoals(): Goal[] {
+  return JSON.parse(JSON.stringify(load()));
+}
+
+export function restoreGoals(s: Goal[]): void {
+  save(s);
+}

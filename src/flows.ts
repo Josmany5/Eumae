@@ -146,3 +146,13 @@ export function toggleFlowOn(id: string): void {
   if (!f) return;
   saveFlow({ ...f, on: f.on ? 0 : 1 });
 }
+
+/* Undo: a deep copy of the store taken before a delete; the toast's Undo
+   writes it back. Same shape as snapshotTasks / snapshotLibrary. */
+export function snapshotFlows(): Flow[] {
+  return JSON.parse(JSON.stringify(load()));
+}
+
+export function restoreFlows(s: Flow[]): void {
+  save(s);
+}

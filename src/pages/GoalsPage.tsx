@@ -7,7 +7,9 @@
 
 import { useState } from 'react';
 import { useNav } from '../nav';
-import { getGoals, createGoal, saveGoal, deleteGoal, type Goal, type GoalStatus } from '../goals';
+import { getGoals, createGoal, saveGoal, deleteGoal, snapshotGoals, restoreGoals, type Goal, type GoalStatus } from '../goals';
+import { ItemMenu, ProjectChip } from '../components/ItemMenu';
+import { undoable } from '../undo';
 import { QuickAdd } from '../components/QuickAdd';
 import { MilestonesEditor } from '../components/Milestones';
 import { nextMilestone } from '../milestones';
@@ -31,18 +33,18 @@ function daysLeft(td: string): number {
   return Math.round((Date.UTC(y, m - 1, d) - a) / 86400000);
 }
 
-export default function GoalsPage(_props: PageProps) {
-  void _props;
+export default function GoalsPage({ arg }: PageProps) {
   const { notify } = useNav();
   const [filter, setFilter] = useState<Filter>('all');
   const [tick, setTick] = useState(0);
-  const [edit, setEdit] = useState<Goal | null>(null);
+  const [edit, setEdit] = useState<Goal | null>(() => (typeof arg === 'string' ? getGoals().find((g) => g.id === arg) ?? null : null));
   const refresh = () => setTick((t) => t + 1);
   void tick;
 
   const all = getGoals();
   const goals = all.filter((g) => filter === 'all' || g.st === filter);
   const active = all.filter((g) => g.st === 'in-progress').length;
+  const remove = (id: string) => undoable(notify, 'Goal deleted.', snapshotGoals, restoreGoals, () => deleteGoal(id), refresh);
 
   return (
     <div className="qaPage">
@@ -74,10 +76,8 @@ export default function GoalsPage(_props: PageProps) {
             notify('Goal saved.');
           }}
           onDelete={() => {
-            deleteGoal(edit.id);
             setEdit(null);
-            refresh();
-            notify('Goal deleted.');
+            remove(edit.id);
           }}
         />
       ) : null}
@@ -119,6 +119,7 @@ export default function GoalsPage(_props: PageProps) {
                     <span className="m"> · {(g.ms ?? []).filter((m) => m.done).length}/{(g.ms ?? []).length} milestones</span>
                   </div>
                 ) : null}
+                <ProjectChip k="goal" id={g.id} />
               </div>
               {g.td ? (
                 <span className="xs" style={{ color: late ? 'var(--rd)' : 'var(--mut)', textAlign: 'right', flex: 'none' }}>
@@ -127,6 +128,14 @@ export default function GoalsPage(_props: PageProps) {
                   {g.st === 'completed' ? 'done' : late ? `${-left!}d late` : left === 0 ? 'today' : `${left}d left`}
                 </span>
               ) : null}
+              <ItemMenu
+                name={g.t}
+                edit={() => setEdit(g)}
+                rename={{ value: g.t, save: (v) => saveGoal({ ...g, t: v.slice(0, 120) }) }}
+                link={{ k: 'goal', id: g.id }}
+                onChange={refresh}
+                onDelete={() => remove(g.id)}
+              />
             </div>
           );
         })}

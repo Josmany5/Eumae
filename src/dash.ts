@@ -196,3 +196,13 @@ export function renameConsolePage(page: number, name: string): void {
   names[page] = name.trim().slice(0, 24);
   save({ pages: d.pages.map((p) => [...p]), sizes: { ...d.sizes }, names });
 }
+
+/* Undo: a deep copy of the store taken before a delete; the toast's Undo
+   writes it back. Same shape as snapshotTasks / snapshotLibrary. */
+export function snapshotDash(): Dashboard {
+  return JSON.parse(JSON.stringify(load()));
+}
+
+export function restoreDash(s: Dashboard): void {
+  save(s);
+}

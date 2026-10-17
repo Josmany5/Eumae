@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { parseQuick, fmtShort, fmtTime, repLabel, type Quick } from '../quickadd';
 import { Icon } from './shell/icons';
-import { EVENT_TYPES, type CalEvent, type EventType, type Repeat } from '../events';
+import {
+  EVENT_TYPES,
+  deleteEvent,
+  skipOccurrence,
+  snapshotEvents,
+  restoreEvents,
+  type CalEvent,
+  type EventType,
+  type Repeat,
+} from '../events';
+import { ItemMenu, ProjectChip } from './ItemMenu';
+import { undoable } from '../undo';
+import type { NotifyOpts } from '../nav';
 
 /* Quick add: one field, typed naturally. What it understands shows live as
  * chips under the field; tap a chip's × to keep that part as plain title.
@@ -300,6 +312,56 @@ export function quickToEvent(q: Quick, fallbackDay: string): CalEvent {
 
 /* ── Event details: what tapping an event shows. Read-only, same look as
    the list; Edit opens the full form. ─────────────────────────────── */
+export type DeleteScope = 'one' | 'all';
+
+/* Delete an event without asking. A repeating event can lose just the day
+   you tapped (the series keeps going) or the whole series. Undo either way. */
+export function removeEvent(
+  notify: (m: string, o?: NotifyOpts) => void,
+  ev: CalEvent,
+  day: string | undefined,
+  scope: DeleteScope,
+  after?: () => void,
+): void {
+  const one = scope === 'one' && !!ev.rep && !!ev.id;
+  undoable(
+    notify,
+    one ? 'This one deleted. The rest still repeat.' : ev.rep ? 'Event and its repeats deleted.' : 'Event deleted.',
+    snapshotEvents,
+    restoreEvents,
+    () => (one ? skipOccurrence(ev.id!, day ?? ev.d) : deleteEvent(ev)),
+    after,
+  );
+}
+
+/* The ⋯ for an event, the same on a list row and on the detail card. */
+export function EventMenu({
+  ev,
+  onOpen,
+  onEdit,
+  onDelete,
+  onChange,
+}: {
+  ev: CalEvent;
+  onOpen?: () => void;
+  onEdit: () => void;
+  onDelete: (scope: DeleteScope) => void;
+  onChange?: () => void;
+}) {
+  return (
+    <ItemMenu
+      name={ev.t}
+      open={onOpen}
+      edit={onEdit}
+      link={ev.id ? { k: 'event', id: ev.id } : undefined}
+      onChange={onChange}
+      extra={ev.rep ? [{ label: 'Delete this one', danger: true, onClick: () => onDelete('one') }] : undefined}
+      onDelete={() => onDelete('all')}
+      deleteLabel={ev.rep ? 'Delete the series' : 'Delete'}
+    />
+  );
+}
+
 export function EventDetail({
   ev,
   day,
@@ -311,9 +373,10 @@ export function EventDetail({
   /** The occurrence's date (a repeat shows the day you tapped). */
   day?: string;
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete: (scope: DeleteScope) => void;
   onClose: () => void;
 }) {
+  const [, setTick] = useState(0);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     box.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -327,6 +390,7 @@ export function EventDetail({
       <div className="evDHead">
         <i />
         <b>{ev.t}</b>
+        <EventMenu ev={ev} onEdit={onEdit} onDelete={onDelete} onChange={() => setTick((t) => t + 1)} />
         <button className="evDX" aria-label="Close" onClick={onClose}>
           ×
         </button>
@@ -336,12 +400,18 @@ export function EventDetail({
       {ev.rep ? <div className="evDRow m">↻ {repLabel(ev.rep, ev.d)}</div> : null}
       <div className="evDRow m">{TYPE_LABEL[ev.type ?? 'other']}</div>
       {ev.note ? <div className="evDNote">{ev.note}</div> : null}
+      {ev.id ? <ProjectChip k="event" id={ev.id} /> : null}
       <div className="btns">
         <button className="fb" onClick={onEdit}>
           Edit
         </button>
-        <button className="fb" style={{ color: 'var(--rd)' }} onClick={onDelete}>
-          Delete{ev.rep ? ' series' : ''}
+        {ev.rep ? (
+          <button className="fb" style={{ color: 'var(--rd)' }} onClick={() => onDelete('one')}>
+            Delete this one
+          </button>
+        ) : null}
+        <button className="fb" style={{ color: 'var(--rd)' }} onClick={() => onDelete('all')}>
+          {ev.rep ? 'Delete the series' : 'Delete'}
         </button>
       </div>
     </div>

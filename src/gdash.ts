@@ -193,3 +193,13 @@ export function renameGuildPage(page: number, name: string): void {
   names[page] = name.trim().slice(0, 24);
   save({ pages: d.pages.map((p) => [...p]), sizes: { ...d.sizes }, names });
 }
+
+/* Undo: a deep copy of the store taken before a delete; the toast's Undo
+   writes it back. Same shape as snapshotTasks / snapshotLibrary. */
+export function snapshotGuildDash(): GuildDashboard {
+  return JSON.parse(JSON.stringify(load()));
+}
+
+export function restoreGuildDash(s: GuildDashboard): void {
+  save(s);
+}

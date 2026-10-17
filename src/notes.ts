@@ -215,3 +215,13 @@ export function startEntry(): NoteEntry {
     editedAt: now,
   };
 }
+
+/* Undo: a deep copy of the store taken before a delete; the toast's Undo
+   writes it back. Same shape as snapshotTasks / snapshotLibrary. */
+export function snapshotNotes(): Note[] {
+  return JSON.parse(JSON.stringify(load()));
+}
+
+export function restoreNotes(s: Note[]): void {
+  save(s);
+}

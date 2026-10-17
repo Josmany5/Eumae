@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useNav } from '../nav';
-import { getFlows, toggleFlowStep, toggleFlowOn } from '../flows';
+import { getFlows, saveFlow, deleteFlow, snapshotFlows, restoreFlows, toggleFlowStep, toggleFlowOn } from '../flows';
+import { ItemMenu } from '../components/ItemMenu';
+import { undoable } from '../undo';
 import type { PageProps } from './index';
 
 export default function FlowPage({ arg }: PageProps) {
@@ -19,8 +21,20 @@ export default function FlowPage({ arg }: PageProps) {
   }
   return (
     <div>
-      <div className="s m">
-        {f.w} · {f.streak} day streak
+      <div className="itemHead">
+        <div className="g s m">
+          {f.w} · {f.streak} day streak
+        </div>
+        <ItemMenu
+          name={f.n}
+          edit={() => go('flowedit', f.id)}
+          rename={{ value: f.n, save: (v) => saveFlow({ ...f, n: v.slice(0, 60) }) }}
+          onChange={refresh}
+          onDelete={() => {
+            back();
+            undoable(notify, (f.kind === 'routine' ? 'Routine' : 'Flow') + ' deleted.', snapshotFlows, restoreFlows, () => deleteFlow(f.id));
+          }}
+        />
       </div>
       <h3 className="sec">Steps</h3>
       <div className="card cardPad">
@@ -61,7 +75,7 @@ export default function FlowPage({ arg }: PageProps) {
         </div>
       </div>
       <div className="btns">
-        <button className="pri" onClick={() => notify(`${f.n} running…`)}>
+        <button className="pri soon" onClick={() => notify('Running a flow on its own comes soon. For now, check the steps off here.')}>
           Run now
         </button>
         <button onClick={() => go('flowedit', f.id)}>Edit flow</button>

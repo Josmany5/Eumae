@@ -15,7 +15,12 @@ import {
   setPinnedProjectId,
   projectStatus,
   projectPercent,
+  deleteProject,
+  snapshotProjects,
+  restoreProjects,
 } from '../projects';
+import { ItemMenu } from '../components/ItemMenu';
+import { undoable } from '../undo';
 import { QuickAdd } from '../components/QuickAdd';
 import { Icon } from '../components/shell/icons';
 import { fmtShort } from '../quickadd';
@@ -104,6 +109,23 @@ export default function ProjectsPage(_props: PageProps) {
               >
                 <Icon name="str" />
               </button>
+              <ItemMenu
+                name={p.n}
+                open={() => go('project', p.id)}
+                rename={{ value: p.n, title: 'Rename project', save: (v) => saveProject({ ...p, n: v.slice(0, 48) }) }}
+                extra={[
+                  {
+                    label: pinned ? 'Pinned to Console' : 'Pin to Console',
+                    onClick: () => {
+                      setPinnedProjectId(p.id);
+                      refresh();
+                      notify('Pinned to Console.');
+                    },
+                  },
+                ]}
+                onChange={refresh}
+                onDelete={() => undoable(notify, `Deleted ${p.n}.`, snapshotProjects, restoreProjects, () => deleteProject(p.id), refresh)}
+              />
             </div>
           );
         })}
