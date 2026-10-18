@@ -1739,7 +1739,9 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .con.ed8 .w-tl8 > .wt{ display:flex; }
 .con .pdCell{ border-radius:14px; }
 @media (min-width:900px){
-  #mn > .dashWide.con{ max-width:760px; margin:0 auto; }
+  /* Full-width scroller so the scrollbar sits at the screen edge, content
+     flush left with room, capped near 900px for line length. */
+  #mn > .dashWide.con{ max-width:none; margin:0; padding:24px max(48px, calc(100% - 948px)) 32px 48px; }
 }
 /* Timeline */
 .tl{ display:block; }
@@ -1842,3 +1844,26 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .conBar button.on{ color:var(--tx); font-weight:600; border-bottom-color:var(--ac); }
 .hbMae{ color:var(--ac); }
 @media (min-width:900px){ .conBar{ display:none; } }
+
+/* ── Desktop scale-up for the flat-row style (his call, Oct 18) ───────── */
+@media (min-width:900px){
+  .ft, .tlT, .tlRow .tlT, .wkRow .ft{ font-size:17px; }
+  .fmeta, .fsub{ font-size:14px; }
+  .flbl, .sdiv, .con .wc .wt{ font-size:14px; }
+  .tlNext, .tlAdd input{ font-size:17px; }
+  .frow{ min-height:50px; padding:12px 0; }
+  .tkPill{ font-size:14px; }
+  .pageBody{ padding:16px 48px 32px; }
+  .pageBody > .qaPage{ max-width:900px; }
+  /* Quiet scrollbars: thin, no track, only the thumb. */
+  #mn *, .oBody{ scrollbar-width:thin; scrollbar-color:var(--hair) transparent; }
+  #mn ::-webkit-scrollbar, .oBody::-webkit-scrollbar{ width:8px; height:8px; }
+  #mn ::-webkit-scrollbar-track{ background:transparent; }
+  #mn ::-webkit-scrollbar-thumb{ background:var(--hair); border-radius:8px; }
+}
+@media (min-width:900px){
+  .wkRow{ min-height:48px; padding:10px 16px; grid-template-columns:120px 1fr auto; }
+  .wkRow .wkD{ font-size:14px; }
+  .fchk{ width:20px; height:20px; }
+  .tlActs button, .tkBulk button, .itActs > button{ font-size:15px; }
+}
