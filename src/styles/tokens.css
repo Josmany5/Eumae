@@ -1891,3 +1891,14 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   .agEnd{ font-size:13px; }
   .itNote{ font-size:16px; }
 }
+
+/* Month with the office open: small square cells and dots, not crushed text. */
+@media (min-width:900px){
+  .mGrid.compact{ grid-auto-rows:auto; gap:2px; padding:8px; max-width:560px; }
+  .mGrid.compact .mCell{ align-items:center; justify-content:center; aspect-ratio:1; border:0; padding:4px; gap:4px; }
+  .mGrid.compact .mCell .mNum{ align-self:center; }
+}
+/* Console timeline in the agenda look: no spine dots, Now as a thin line. */
+.tlDay .snow{ display:flex; align-items:center; gap:10px; padding:6px 0; color:var(--ac); font-size:13px; font-weight:600; }
+.tlDay .snow::after{ content:""; flex:1; border-top:1px solid var(--ac); opacity:.5; }
+.fsub.over{ color:var(--rd); }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNav, type PanelView } from '../../nav';
-import { getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists } from '../../tasks';
+import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists } from '../../tasks';
 import { projectOf, linkedIds } from '../../projects';
 import { getGoals } from '../../goals';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
@@ -8,11 +8,64 @@ import { setFocus, requestEditTask, requestEditEvent, type Focus } from '../../f
 import { getEvent, ymd } from '../../events';
 import { removeEvent, TYPE_LABEL } from '../QuickAdd';
 import { ItemMenu } from '../ItemMenu';
+import { itemsOn, minsToTm } from '../../pages/CalendarPage';
+import { evKind } from './Timeline';
 
 /** The tapped item's own tab in Mae's office: what it is, its details, its
  *  steps, and the moves you'd make on it. Read-only; Edit opens the form. */
 export function ItemTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
+  if (focus.k === 'day') return <DayTab day={focus.id} />;
   return focus.k === 'event' ? <EventTab focus={focus} onView={onView} /> : <TaskTab focus={focus} onView={onView} />;
+}
+
+/* A day from the month grid: everything on it, agenda-style. Tap a row and
+   it opens in its own tab; the Day tab's back arrow is the month. */
+function DayTab({ day }: { day: string }) {
+  const { go, openPanel } = useNav();
+  const [, setTick] = useState(0);
+  const items = itemsOn(day, getTasks());
+  const dt = new Date(day + 'T12:00');
+  return (
+    <div className="itab">
+      <h2 className="itT">{dt.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</h2>
+      <p className="fmeta itSub">{items.length ? `${items.length} thing${items.length > 1 ? 's' : ''}` : 'Free'}</p>
+      {items.map((it) => (
+        <div key={it.key} className={'frow top agRow2 c-' + it.color + (it.done ? ' past' : '')}>
+          <span className="agT fmeta">{it.start === undefined ? 'All day' : fmtTime(minsToTm(it.start))}</span>
+          {it.kind === 'task' && it.task ? (
+            <button
+              className={'fchk' + (it.done ? ' on' : '')}
+              aria-label={it.done ? `Reopen ${it.title}` : `Done: ${it.title}`}
+              onClick={() => {
+                toggleTask(it.task!.id);
+                setTick((n) => n + 1);
+              }}
+            />
+          ) : (
+            <i className="agBar" />
+          )}
+          <div className="ft">
+            <button
+              className="tlT"
+              onClick={() => {
+                if (it.link) go(it.link.page, it.link.arg);
+                else if (it.task) {
+                  setFocus({ k: 'task', id: it.task.id });
+                  openPanel('item');
+                } else if (it.ev?.id) {
+                  setFocus({ k: 'event', id: it.ev.id, day });
+                  openPanel('item');
+                }
+              }}
+            >
+              <span className={it.done ? 'tlDone' : ''}>{it.title}</span>
+            </button>
+          </div>
+          <span className="fmeta">{it.kind === 'event' && it.ev ? evKind(it.ev) : it.kind === 'task' ? 'Task' : it.kind[0].toUpperCase() + it.kind.slice(1)}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
@@ -167,18 +220,7 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
       </div>
       <div className="itActs">
-        <button
-          className="pri"
-          onClick={() => {
-            const was = t.d;
-            toggleTask(t.id);
-            if (!was) notify('Done.', { undo: () => { toggleTask(t.id); refresh(); } });
-            refresh();
-          }}
-        >
-          {t.d ? 'Reopen' : 'Mark done'}
-        </button>
-        <button onClick={edit}>Edit</button>
+        <button className="pri" onClick={edit}>Edit</button>
         <ItemMenu
           name={t.t}
           edit={edit}

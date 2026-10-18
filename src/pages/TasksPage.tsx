@@ -73,8 +73,9 @@ export default function TasksPage({ arg }: PageProps) {
   useEffect(
     () =>
       onEditTask((id) => {
+        /* A second tap on Edit closes the form again. */
         const t = getTask(id);
-        if (t) setDraft(t);
+        setDraft((d) => (d?.id === id ? null : t ?? null));
       }),
     [],
   );

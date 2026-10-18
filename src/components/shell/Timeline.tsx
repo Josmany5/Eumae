@@ -5,6 +5,7 @@ import { dayEvents, ymd, mins, type CalEvent } from '../../events';
 import { parseQuick, fmtTime } from '../../quickadd';
 import { logEv } from '../../log';
 import { setFocus } from '../../focus';
+import { TYPE_LABEL } from '../QuickAdd';
 
 /* Console › Timeline widget (Oct 18, his call: Today = Option A as a widget,
  * one column, still draggable). Next line, one add line, then the day's spine:
@@ -109,21 +110,33 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
     } else go('cal');
   };
 
+  /* Agenda-style row (same as the Calendar): time on the left, the check
+     or the event bar, the title, and what it is on the right. */
   const row = (i: Item, opts: { over?: boolean; past?: boolean; actions?: boolean } = {}) => {
     const isDone = i.kind === 'task' && !!i.task.d;
+    const kind = i.kind === 'task' ? 'Task' : evKind(i.ev);
     return (
-      <div key={i.key} className={`frow top tlRow${isDone || opts.past ? ' past' : ''}${i.kind === 'event' ? ' ev' : ''}`}>
+      <div key={i.key} className={`frow top tlRow agRow2${isDone || opts.past ? ' past' : ''}${i.kind === 'event' ? ' ev c-' + (i.ev.type ?? 'other') : ''}`}>
+        <span className={`agT fmeta${opts.over ? ' over' : ''}`}>
+          {opts.over && i.kind === 'task' ? fmtDue(i.task.due!) : i.tm ? fmtTime(i.tm) : i.kind === 'event' ? 'All day' : 'Anytime'}
+        </span>
         {i.kind === 'task' ? (
           <button
             className={`fchk${isDone ? ' on' : ''}`}
             aria-label={isDone ? `Mark ${i.t} not done` : `Mark ${i.t} done`}
             onClick={() => done(i.task)}
           />
-        ) : null}
+        ) : (
+          <i className="agBar" />
+        )}
         <div className="ft">
           <button className="tlT" onClick={() => tap(i)}>
             <span className={isDone ? 'tlDone' : ''}>{i.t}</span>
           </button>
+          {i.kind === 'event' && (i.ev.loc || i.ev.rep) ? (
+            <div className="fsub">{[i.ev.loc, i.ev.rep ? '↻ repeats' : ''].filter(Boolean).join(' · ')}</div>
+          ) : null}
+          {opts.over ? <div className="fsub over">Overdue</div> : null}
           {opts.actions && i.kind === 'task' ? (
             <div className="tlActs">
               <button className="pri" onClick={() => done(i.task)}>Done</button>
@@ -131,9 +144,7 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
             </div>
           ) : null}
         </div>
-        <span className={`fmeta${opts.over ? ' over' : ''}`}>
-          {opts.over && i.kind === 'task' ? `Overdue · ${fmtDue(i.task.due!)}` : i.tm ? fmtTime(i.tm) : i.kind === 'event' ? 'All day' : ''}
-        </span>
+        <span className="fmeta">{kind}</span>
       </div>
     );
   };
@@ -169,7 +180,7 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
           aria-label="Add a task"
         />
       </form>
-      <div className="spine">
+      <div className="tlDay">
         {earlier.length ? (
           <button className="sdiv tlFold" onClick={() => setShowEarlier((v) => !v)} aria-expanded={showEarlier}>
             Earlier · {earlierDone ? `${earlierDone} done` : `${earlier.length} item${earlier.length === 1 ? '' : 's'}`}
@@ -233,4 +244,9 @@ export function WeekStrip() {
       ))}
     </div>
   );
+}
+
+/** What an event is, as one word: its kind, or plain "Event". */
+export function evKind(e: CalEvent): string {
+  return !e.type || e.type === 'other' ? 'Event' : TYPE_LABEL[e.type];
 }

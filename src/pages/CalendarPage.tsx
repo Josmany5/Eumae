@@ -18,13 +18,14 @@ import { dayEvents, getEvent, saveEvent, ymd, mins, type CalEvent } from '../eve
 import { getTasks, toggleTask, type Task } from '../tasks';
 import { QuickAdd, EventForm, quickToEvent, removeEvent } from '../components/QuickAdd';
 import { setFocus, onEditEvent } from '../focus';
+import { evKind } from '../components/shell/Timeline';
 import { fmtTime } from '../quickadd';
 import { useMedia } from '../useMedia';
 import { getGoals } from '../goals';
 import { getProjects } from '../projects';
 import type { PageProps } from './index';
 
-type CalView = 'agenda' | 'month';
+type CalView = 'today' | 'week' | 'month';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -44,7 +45,7 @@ function monthShift(day: string, n: number): string {
 }
 
 /** One thing on the calendar: an event occurrence or a dated task. */
-interface Item {
+export interface Item {
   key: string;
   kind: 'event' | 'task' | 'goal' | 'project' | 'milestone';
   /** Where tapping it goes, for goals, projects and milestones. */
@@ -59,7 +60,7 @@ interface Item {
   task?: Task;
 }
 
-function itemsOn(day: string, tasks: Task[]): Item[] {
+export function itemsOn(day: string, tasks: Task[]): Item[] {
   const evs: Item[] = dayEvents(day).map((e) => {
     const s = e.allDay || !e.tm ? undefined : mins(e.tm);
     const en = s === undefined ? undefined : e.end ? Math.max(mins(e.end), s + 15) : s + 60;
@@ -106,9 +107,9 @@ function itemsOn(day: string, tasks: Task[]): Item[] {
 }
 
 export default function CalendarPage({ arg }: PageProps) {
-  const { notify, go, openPanel } = useNav();
+  const { notify, go, openPanel, panelOpen } = useNav();
   const desktop = useMedia('(min-width:900px)');
-  const [view, setView] = useState<CalView>('agenda');
+  const [view, setView] = useState<CalView>('week');
   const [day, setDay] = useState(() => todayStr());
   const [tick, setTick] = useState(0);
   /* Opened with an event id (Edit from Mae's office): land on its form. */
@@ -120,8 +121,9 @@ export default function CalendarPage({ arg }: PageProps) {
   useEffect(
     () =>
       onEditEvent((id) => {
+        /* A second tap on Edit closes the form again. */
         const e = getEvent(id);
-        if (e) setForm({ ev: e, editing: true });
+        setForm((f) => (f?.editing && f.ev.id === id ? null : e ? { ev: e, editing: true } : null));
       }),
     [],
   );
@@ -131,14 +133,17 @@ export default function CalendarPage({ arg }: PageProps) {
   const today = todayStr();
 
   const step = (n: number) => {
-    if (view === 'agenda') setDay(shift(day, 7 * n));
+    if (view === 'today') setDay(shift(day, n));
+    else if (view === 'week') setDay(shift(day, 7 * n));
     else setDay(monthShift(day, n));
   };
 
   const label =
     view === 'month'
       ? new Date(day + 'T12:00').toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-      : (() => {
+      : view === 'today'
+        ? new Date(day + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+        : (() => {
           const a = new Date(day + 'T12:00');
           const b = new Date(shift(day, 6) + 'T12:00');
           const sameMonth = a.getMonth() === b.getMonth();
@@ -238,9 +243,18 @@ export default function CalendarPage({ arg }: PageProps) {
           <b className="calLabel">{label}</b>
         </div>
         <div className="calSeg" role="tablist">
-          {(['agenda', 'month'] as CalView[]).map((v) => (
-            <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>
-              {v === 'agenda' ? 'Agenda' : 'Month'}
+          {(['today', 'week', 'month'] as CalView[]).map((v) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={view === v}
+              className={view === v ? 'on' : ''}
+              onClick={() => {
+                if (v === 'today') setDay(today);
+                setView(v);
+              }}
+            >
+              {v === 'today' ? 'Day' : v === 'week' ? 'Week' : 'Month'}
             </button>
           ))}
         </div>
@@ -248,9 +262,28 @@ export default function CalendarPage({ arg }: PageProps) {
 
       {view === 'month' ? (
         <>
-          <MonthGrid day={day} today={today} tasks={tasks} desktop={desktop} onDay={setDay} onOpen={(d) => setDay(d)} />
+          <MonthGrid
+            day={day}
+            today={today}
+            tasks={tasks}
+            desktop={desktop}
+            compact={desktop && panelOpen}
+            onDay={(d) => {
+              setDay(d);
+              /* Desktop: the day opens in Mae's office, where you'll see it. */
+              if (desktop) {
+                setFocus({ k: 'day', id: d });
+                openPanel('item');
+              }
+            }}
+            onOpen={(d) => setDay(d)}
+          />
           <DaySection day={day} today={today} items={itemsOn(day, tasks)} onItem={openItem} onCheck={checkTask} onAdd={() => openNew(day)} />
         </>
+      ) : view === 'today' ? (
+        <div className="agList">
+          <DaySection day={day} today={today} items={itemsOn(day, tasks)} onItem={openItem} onCheck={checkTask} onAdd={() => openNew(day)} />
+        </div>
       ) : (
         <div className="agList">
           {Array.from({ length: 7 }, (_, i) => shift(day, i)).map((d) => (
@@ -273,6 +306,7 @@ function MonthGrid({
   today,
   tasks,
   desktop,
+  compact,
   onDay,
   onOpen,
 }: {
@@ -280,6 +314,9 @@ function MonthGrid({
   today: string;
   tasks: Task[];
   desktop: boolean;
+  /** Office open on desktop: small square cells with dots, so the grid
+   *  shrinks instead of getting crushed. */
+  compact?: boolean;
   onDay: (d: string) => void;
   onOpen: (d: string) => void;
 }) {
@@ -289,10 +326,10 @@ function MonthGrid({
   const cells = Array.from({ length: 42 }, (_, i) => shift(start, i));
   const rows = cells[35].slice(5, 7) === String(m).padStart(2, '0') ? 6 : 5;
   return (
-    <div className="card mGrid">
+    <div className={'card mGrid' + (compact ? ' compact' : '')}>
       {DOW.map((d) => (
         <div key={d} className="mDow">
-          {desktop ? d : d[0]}
+          {desktop && !compact ? d : d[0]}
         </div>
       ))}
       {cells.slice(0, rows * 7).map((d) => {
@@ -306,7 +343,7 @@ function MonthGrid({
             aria-label={`${d}, ${its.length} items`}
           >
             <span className="mNum">{+d.slice(8)}</span>
-            {desktop ? (
+            {desktop && !compact ? (
               <span className="mItems">
                 {its.slice(0, 3).map((it) => (
                   <span key={it.key} className={'mItem c-' + it.color + (it.done ? ' done' : '')}>
@@ -331,7 +368,7 @@ function MonthGrid({
   );
 }
 
-function minsToTm(n: number): string {
+export function minsToTm(n: number): string {
   return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
 }
 
@@ -378,7 +415,7 @@ function DaySection({ day, today, items, onItem, onCheck, onAdd }: {
                   </div>
                 ) : null}
               </div>
-              <span className="fmeta">{it.kind === 'event' ? '' : it.kind === 'task' ? 'Task' : it.kind === 'milestone' ? 'Milestone' : it.kind === 'goal' ? 'Goal' : 'Project'}</span>
+              <span className="fmeta">{it.kind === 'event' && it.ev ? evKind(it.ev) : it.kind === 'task' ? 'Task' : it.kind === 'milestone' ? 'Milestone' : it.kind === 'goal' ? 'Goal' : 'Project'}</span>
             </div>
           );
         })
