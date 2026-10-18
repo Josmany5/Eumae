@@ -44,9 +44,14 @@ const threadsBody = stripImports(threadsSrc)
   .replace('export interface Msg extends ThreadTurn {', 'export interface Msg {')
   .replace('body?: ApiChatBody;', 'body?: unknown;');
 const bootBody = stripImports(bootSrc);
+/* boot.ts imports PANEL_VIEWS + PanelView from nav.ts; lift both from the real
+   source so the stub never drifts from the app. */
+const navSrc = readFileSync(new URL('../src/nav.ts', import.meta.url), 'utf8');
+const panelType = navSrc.match(/export type PanelView =[^;]*;/)[0].replace('export ', '');
+const panelViews = navSrc.match(/export const PANEL_VIEWS[^;]*;/)[0].replace('export ', '');
 
 const js = transformSync(
-  `interface ThreadTurn { role: string; text: string; }\ntype TabId = 'chat' | 'console' | 'studio' | 'library' | 'classroom' | 'guild';\ntype PanelView = 'context' | 'activity' | 'studio';\n${threadsBody}\n${bootBody}\nboot;`,
+  `interface ThreadTurn { role: string; text: string; }\ntype TabId = 'chat' | 'console' | 'studio' | 'library' | 'classroom' | 'guild';\n${panelType}\n${panelViews}\n${threadsBody}\n${bootBody}\nboot;`,
   { loader: 'ts' },
 ).code
   // The sources use `export` — strip it so the bundle runs in a Function.
@@ -289,7 +294,7 @@ function run(setup) {
     out.settingsOpen === true &&
       out.settingsView === 'voice' &&
       out.panelOpen === true &&
-      out.panelView === 'activity',
+      out.panelView === 'logbook', // an old stored 'activity' migrates to the Logbook
     JSON.stringify({
       settingsOpen: out.settingsOpen,
       settingsView: out.settingsView,
