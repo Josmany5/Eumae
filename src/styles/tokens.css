@@ -1724,3 +1724,59 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   .panel.office{ background:var(--bg); }
   .oAsk{ background:var(--bg); }
 }
+
+/* ── Console (Oct 18, his call): ONE column of flat widgets, swipe pages,
+   edit + drag kept. Widgets drop the card box for a hairline and a gray
+   label, the screenshot look. ─────────────────────────────────────────── */
+.con .pgrid, .dashWide.con .pgrid{ grid-template-columns:1fr; gap:0; }
+.con .wc{ grid-column:1 / -1; background:none; border-radius:0; padding:14px 0 16px;
+  margin:0; border-top:1px solid var(--hair); cursor:default; }
+.con .pdCell:first-child .wc{ border-top:0; padding-top:4px; }
+.con .wc .wt svg{ display:none; }
+.con .wc .wt{ font-size:13px; }
+.con.ed8 .wc{ padding-left:12px; padding-right:12px; border-radius:14px; }
+.con .w-tl8 > .wt{ display:none; }
+.con.ed8 .w-tl8 > .wt{ display:flex; }
+.con .pdCell{ border-radius:14px; }
+@media (min-width:900px){
+  #mn > .dashWide.con{ max-width:760px; margin:0 auto; }
+}
+/* Timeline */
+.tl{ display:block; }
+.tlNext{ margin:0; font-size:15px; line-height:1.5; color:var(--mut); }
+.tlNext b{ color:var(--tx); font-weight:600; }
+.tlNext .over{ color:var(--rd); }
+.tlAdd input{ width:100%; margin:12px 0 6px; padding:10px 0; background:none; border:0;
+  border-bottom:1px solid var(--hair); color:var(--tx); font:inherit; font-size:15px; outline:none; }
+.tlAdd input::placeholder{ color:var(--mut); }
+.tlAdd input:focus{ border-bottom-color:var(--ac); }
+.sdiv{ display:block; padding:14px 0 2px; font-size:13px; font-weight:600; color:var(--mut); }
+.sdiv.att{ color:var(--rd); }
+.tlFold{ background:none; text-align:left; cursor:pointer; }
+.tlRow .tlT{ display:block; text-align:left; color:inherit; padding:0; background:none; font-size:15px; }
+.tlRow.past .tlT, .tlRow.past .fmeta{ color:var(--mut); }
+.tlDone{ text-decoration:line-through; }
+.spine .tlRow.ev::before{ border-color:var(--ac); }
+.tlRow .fchk{ margin-top:1px; }
+.fchk{ width:18px; height:18px; flex:none; border-radius:50%; border:1.5px solid var(--mut); background:none; padding:0; cursor:pointer; }
+.fchk:hover{ border-color:var(--ac); }
+.fchk.on{ background:var(--ac); border-color:var(--ac); }
+.tlActs{ display:flex; gap:8px; margin-top:8px; }
+.tlActs button{ padding:6px 14px; border-radius:99px; border:1px solid var(--hair); background:none;
+  color:var(--tx); font-size:14px; font-weight:600; }
+.tlActs button.pri{ background:var(--ac); border-color:var(--ac); color:var(--acink); }
+.tlNone{ margin:4px 0 6px; }
+/* This week mini strip */
+.wk7{ display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); border-top:1px solid var(--hair); border-bottom:1px solid var(--hair); }
+.wk7d{ display:flex; flex-direction:column; gap:4px; text-align:left; padding:10px 8px; background:none;
+  border-left:1px solid var(--hair); color:var(--tx); min-width:0; }
+.wk7d:first-child{ border-left:0; padding-left:0; }
+.wk7d b{ font-size:14px; font-weight:600; }
+.wk7d.on b{ color:var(--ac); }
+.wk7d span{ font-size:13px; color:var(--mut); overflow:hidden; text-overflow:ellipsis; display:-webkit-box;
+  -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere; }
+/* Goals with meters */
+.wGoal{ padding:10px 0; border-bottom:1px solid var(--hair); }
+.wGoal .r{ display:flex; gap:12px; align-items:baseline; }
+.wGoal .bar{ display:block; height:3px; margin-top:8px; border-radius:2px; background:var(--card2); }
+.wGoal .bar i{ display:block; height:3px; border-radius:2px; background:var(--ac); }

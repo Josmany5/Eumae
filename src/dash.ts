@@ -6,6 +6,7 @@
  */
 
 export type WidgetId =
+  | 'tl8'
   | 'today8'
   | 'week8'
   | 'goals8'
@@ -16,9 +17,10 @@ export type WidgetId =
 
 export type WidgetSize = 'quick' | 'full';
 
-export const WIDGET_IDS: WidgetId[] = ['today8', 'week8', 'goals8', 'brief8', 'pj8', 'art8', 'nts8'];
+export const WIDGET_IDS: WidgetId[] = ['tl8', 'today8', 'week8', 'goals8', 'brief8', 'pj8', 'art8', 'nts8'];
 
 export const WIDGET_TITLES: Record<WidgetId, string> = {
+  tl8: 'Timeline',
   today8: "Today's tasks",
   week8: 'This week',
   goals8: 'Active goals',
@@ -30,6 +32,7 @@ export const WIDGET_TITLES: Record<WidgetId, string> = {
 
 /* Widget icons, from the mockup's WIC10 — all exist in icons.tsx. */
 export const WIDGET_ICONS: Record<WidgetId, string> = {
+  tl8: 'clk',
   today8: 'chk',
   week8: 'cal',
   goals8: 'str',
@@ -66,7 +69,7 @@ function load(): Dashboard {
       return cache;
     }
     const parsed = JSON.parse(raw);
-    cache = isDashboard(parsed) ? parsed : seed();
+    cache = isDashboard(parsed) ? migrate(parsed) : seed();
     return cache;
   } catch {
     cache = seed();
@@ -77,15 +80,32 @@ function load(): Dashboard {
 /* Names for the seeded pages; later pages fall back to "Page N". */
 export const CONSOLE_PAGE_NAMES = ['Today', 'Work'];
 
-/* The mockup's own seed (`dash8` default): two pages. */
+/* Oct 18 seed (his call): one column. Today = the Timeline, the This week
+   mini strip, the briefing and notifications; the rest swipe to Work. The
+   old task-list widget stays in + Add. */
+const SEED_PAGES: WidgetId[][] = [
+  ['tl8', 'week8', 'brief8', 'nts8'],
+  ['goals8', 'pj8', 'art8'],
+];
+
 function seed(): Dashboard {
-  return {
-    pages: [
-      ['today8', 'week8', 'goals8'],
-      ['brief8', 'pj8', 'art8', 'nts8'],
-    ],
-    sizes: {},
-  };
+  return { pages: SEED_PAGES.map((p) => [...p]), sizes: {} };
+}
+
+/* One-time move to the Oct 18 layout: a stored dashboard without the Timeline
+   gets the new Today and Work pages; any extra pages the user made stay, minus
+   widgets now placed on the first two, and so do their page names. */
+function migrate(d: Dashboard): Dashboard {
+  if (d.pages.some((p) => p.includes('tl8'))) return d;
+  const placed = new Set<WidgetId>(SEED_PAGES.flat());
+  const extra = d.pages.slice(2).map((p) => p.filter((w) => !placed.has(w)));
+  const next: Dashboard = { pages: [...SEED_PAGES.map((p) => [...p]), ...extra], sizes: d.sizes ?? {}, names: d.names };
+  try {
+    localStorage.setItem(KEY, JSON.stringify(next));
+  } catch {
+    /* in-memory still works */
+  }
+  return next;
 }
 
 function save(dash: Dashboard): void {

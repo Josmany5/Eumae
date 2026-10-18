@@ -87,7 +87,7 @@ export default function ConsoleScreen() {
   );
 
   return (
-    <div className={editing ? 'ed8 dashWide' : 'dashWide'} onPointerDown={holdStart} onPointerUp={holdEnd} onPointerLeave={holdEnd}>
+    <div className={editing ? 'ed8 dashWide con' : 'dashWide con'} onPointerDown={holdStart} onPointerUp={holdEnd} onPointerLeave={holdEnd}>
       <div className="row dashHead">
         <div className="g">
           <div className="screenT">Console</div>

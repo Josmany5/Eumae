@@ -16,9 +16,11 @@ import { getGuild } from '../../guild';
 import { useLog } from '../../log';
 import { WIDGET_TITLES, WIDGET_ICONS, type Dashboard, type WidgetId } from '../../dash';
 import { Icon } from './icons';
+import { Timeline, WeekStrip } from './Timeline';
 
 /** Where a quick-view tap lands — the mockup's WNAV8. */
 export const WIDGET_NAV: Record<WidgetId, { tab?: string; page?: string }> = {
+  tl8: {},
   today8: { page: 'tasks' },
   week8: { page: 'cal' },
   goals8: { page: 'goals' },
@@ -229,49 +231,33 @@ function FullToday({ refresh }: { refresh: () => void }) {
   );
 }
 
-function FullWeek({ onOpen }: { onOpen: () => void }) {
-  const evs = dayEvents(new Date().toISOString().slice(0, 10));
-  return (
-    <>
-      {evs.map((e, i) => (
-        <div key={`${e.tm}${e.t}${i}`} className="ev">
-          <div className="tm">{e.tm}</div>
-          <div className="g s">{e.t}</div>
-        </div>
-      ))}
-      {evs.length === 0 ? <div className="s m">Nothing scheduled.</div> : null}
-      <div className="btns">
-        <button
-          className="fb"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpen();
-          }}
-        >
-          Open Calendar
-        </button>
-      </div>
-    </>
-  );
+function goalPct(g: ReturnType<typeof getGoals>[number]): number {
+  if (g.st === 'completed') return 100;
+  const ms = g.ms ?? [];
+  return ms.length ? Math.round((ms.filter((m) => m.done).length / ms.length) * 100) : 0;
 }
 
 function FullGoals({ onOpen }: { onOpen: () => void }) {
-  const goals = getGoals();
+  const goals = getGoals().filter((g) => g.st !== 'completed');
   return (
     <>
-      {goals.map((g) => (
-        <div key={g.id}>
-          <div className="kv">
-            <span className="s">{g.t}</span>
-            <span className="tag">{g.st}</span>
-          </div>
-          {g.td ? (
-            <div className="xs m" style={{ margin: '-2px 0 4px' }}>
-              Target {g.td}
+      {goals.map((g) => {
+        const pct = goalPct(g);
+        const ms = g.ms ?? [];
+        return (
+          <div key={g.id} className="wGoal">
+            <div className="r">
+              <span className="ft">{g.t}</span>
+              <span className="fmeta">
+                {pct}%{ms.length ? ` · ${ms.filter((m) => m.done).length} of ${ms.length} steps` : ''}
+              </span>
             </div>
-          ) : null}
-        </div>
-      ))}
+            <span className="bar">
+              <i style={{ width: `${pct}%` }} />
+            </span>
+          </div>
+        );
+      })}
       {goals.length === 0 ? <div className="s m">No goals yet.</div> : null}
       <div className="btns">
         <button
@@ -394,10 +380,12 @@ export function WidgetCard({
   void dash;
   void pageLen;
   const openCount = id === 'today8' ? getTasks().filter((t) => !t.d).length : 0;
-  const go = () => onNavigate(id);
+  const go = () => {
+    if (id !== 'tl8') onNavigate(id);
+  };
   return (
     <div
-      className="wc"
+      className={'wc w-' + id}
       onClick={() => {
         if (!editing) go();
       }}
@@ -434,7 +422,7 @@ export function WidgetCard({
         </div>
       ) : null}
       {full ? (
-        <WidgetFull id={id} onBrief={onBrief} onRefresh={onRefresh} onNavigate={go} />
+        <WidgetFull id={id} editing={editing} onBrief={onBrief} onRefresh={onRefresh} onNavigate={go} />
       ) : (
         <WidgetQuick id={id} onBrief={onBrief} onRefresh={onRefresh} onNavigate={go} />
       )}
@@ -454,6 +442,8 @@ function WidgetQuick({
   onNavigate: () => void;
 }) {
   switch (id) {
+    case 'tl8':
+      return <Timeline editing={false} onChange={onRefresh} />;
     case 'today8':
       return <QuickToday refresh={onRefresh} />;
     case 'week8':
@@ -473,20 +463,24 @@ function WidgetQuick({
 
 function WidgetFull({
   id,
+  editing,
   onBrief,
   onRefresh,
   onNavigate,
 }: {
   id: WidgetId;
+  editing: boolean;
   onBrief: () => void;
   onRefresh: () => void;
   onNavigate: () => void;
 }) {
   switch (id) {
+    case 'tl8':
+      return <Timeline editing={editing} onChange={onRefresh} />;
+    case 'week8':
+      return <WeekStrip />;
     case 'today8':
       return <FullToday refresh={onRefresh} />;
-    case 'week8':
-      return <FullWeek onOpen={onNavigate} />;
     case 'goals8':
       return <FullGoals onOpen={onNavigate} />;
     case 'brief8':
