@@ -6,7 +6,7 @@ import AddSheet from './components/shell/AddSheet';
 import Toast from './components/shell/Toast';
 import Settings from './components/settings/Settings';
 import Sidebar from './components/shell/Sidebar';
-import RightPanel from './components/shell/RightPanel';
+import Office, { OfficePeek } from './components/shell/Office';
 import { Icon } from './components/shell/icons';
 import { SCREENS, LABELS } from './screens';
 import { PAGES, pageTitle } from './pages';
@@ -116,8 +116,8 @@ export default function App() {
   const notify = useCallback((msg: string, opts?: NotifyOpts) => setToast({ msg, undo: opts?.undo, id: Date.now() }), []);
 
   const closePanel = useCallback(() => setPanelOpen(false), []);
-  const openPanel = useCallback((view: PanelView = 'context') => {
-    setPanelView(view);
+  const openPanel = useCallback((view?: PanelView) => {
+    if (view) setPanelView(view);
     setPanelOpen(true);
   }, []);
   const togglePanel = useCallback(() => setPanelOpen((o) => !o), []);
@@ -482,7 +482,7 @@ export default function App() {
           <Header
             title={top ? pageTitle(top.page) : LABELS[tab]}
             onMenu={() => setDrawerOpen(true)}
-            onActivity={() => openPanel('activity')}
+            onActivity={() => openPanel()}
             onBack={top ? back : undefined}
           />
           <main id="mn">
@@ -508,10 +508,12 @@ export default function App() {
               <Screen />
             )}
           </main>
+          {!panelOpen && !kbdOpen ? <OfficePeek tab={tab} onOpen={() => openPanel()} /> : null}
           <TabBar active={tab} onChange={goTab} />
         </div>
 
-        <RightPanel
+        <Office
+          tab={tab}
           open={panelOpen}
           view={panelView}
           onView={setPanelView}

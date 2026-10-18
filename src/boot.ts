@@ -26,7 +26,7 @@ import {
 } from './threads';
 
 import type { TabId } from './components/shell/TabBar';
-import type { PanelView } from './nav';
+import { PANEL_VIEWS, type PanelView } from './nav';
 
 export interface Boot {
   threadId: string;
@@ -236,8 +236,10 @@ function readNav(): {
     const settingsOpen = parsed.settingsOpen === true;
     const settingsView = typeof parsed.settingsView === 'string' ? parsed.settingsView : null;
     const panelOpen = parsed.panelOpen === true;
-    const panelView: PanelView =
-      parsed.panelView === 'activity' || parsed.panelView === 'studio' ? parsed.panelView : 'context';
+    /* Old readings map onto Mae's office: Activity lives in the Logbook now,
+       and Studio's sandbox is Chat's Sandbox. */
+    const pv = parsed.panelView === 'activity' ? 'logbook' : parsed.panelView === 'studio' ? 'sandbox' : parsed.panelView;
+    const panelView: PanelView = PANEL_VIEWS.includes(pv as PanelView) ? (pv as PanelView) : 'context';
     return { tab, stack, settingsOpen, settingsView, panelOpen, panelView };
   } catch {
     return { ...empty, stack: [] };

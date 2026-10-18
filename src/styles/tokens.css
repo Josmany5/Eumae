@@ -1627,3 +1627,100 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .lib2-tileWrap{ position:relative; min-width:0; display:flex; }
 .lib2-tileWrap > .lib2-tile{ flex:1; }
 .lib2-tileWrap > .imBtn{ position:absolute; top:2px; right:2px; width:32px; height:32px; }
+
+/* ── Flat rows (Oct 18 redesign, step 1) ─────────────────────────────────
+   The shared pieces every redesigned page uses: a flat row on a hairline, a
+   small gray label (no caps), the time spine with its Now marker, Mae's
+   footprint under a row she touched, a receipt with View/Undo, and the thin
+   outline that only Needs you and Proposed get. Text stays full size:
+   22 titles, 15 rows, 13 meta. Colors come from the tokens above. */
+.flbl{ margin:20px 0 4px; font-size:13px; font-weight:600; color:var(--mut);
+  display:flex; justify-content:space-between; gap:8px; }
+.flbl:first-child{ margin-top:6px; }
+.flbl span{ font-weight:400; }
+.frow{ display:flex; align-items:center; gap:12px; padding:10px 0; min-height:44px;
+  border-bottom:1px solid var(--hair); font-size:15px; }
+.frow.top{ align-items:flex-start; }
+.frow > svg{ width:17px; height:17px; flex:none; color:var(--mut); stroke:currentColor; fill:none;
+  stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.ft{ flex:1; min-width:0; overflow-wrap:anywhere; font-size:15px; }
+.fsub{ color:var(--mut); font-size:13px; line-height:1.45; }
+.fmeta{ color:var(--mut); font-size:13px; white-space:nowrap; }
+.frow .over, .ft.over, .fmeta.over{ color:var(--rd); }
+.fp{ margin-top:2px; color:var(--mut); font-size:13px; }
+.fp b{ color:var(--ac); font-weight:600; }
+.fact{ margin-top:10px; color:var(--ac); font-size:14px; font-weight:600; padding:6px 0; }
+.needs{ border:1px solid var(--hair); border-radius:12px; padding:10px 12px; margin:6px 0; }
+.rcpt{ margin-top:8px; padding:8px 12px; border-left:2px solid var(--ac); border-radius:0 8px 8px 0;
+  background:color-mix(in srgb, var(--card2) 50%, transparent); font-size:14px; }
+.rcpt .fact{ margin:0 0 0 12px; padding:0; }
+.spine{ position:relative; padding-left:24px; }
+.spine::before{ content:""; position:absolute; left:5px; top:12px; bottom:12px; width:1px; background:var(--hair); }
+.spine .frow{ position:relative; border-bottom:0; }
+.spine .frow::before{ content:""; position:absolute; left:-23px; top:17px; width:9px; height:9px;
+  border-radius:50%; border:1px solid var(--mut); background:var(--bg); }
+.spine .snow{ position:relative; display:flex; align-items:center; gap:10px; padding:6px 0;
+  color:var(--ac); font-size:13px; font-weight:600; }
+.spine .snow::before{ content:""; position:absolute; left:-25px; width:13px; height:13px; border-radius:50%; background:var(--ac); }
+.spine .snow::after{ content:""; flex:1; border-top:1px solid var(--ac); opacity:.5; }
+.oseg{ display:flex; gap:2px; padding:3px; border-radius:9px; background:var(--card2); }
+.oseg button{ flex:1; padding:5px 8px; border-radius:7px; font-size:13px; color:var(--mut); white-space:nowrap; }
+.oseg button.on{ background:var(--card3); color:var(--tx); font-weight:600; }
+
+/* ── Mae's office (step 2) ──────────────────────────────────────────────
+   Replaces the old Context/Activity/Studio panel. Desktop: the third column.
+   Phone: a peek bar above the tabs that opens the office as a bottom sheet. */
+.oHead{ flex:none; display:flex; align-items:center; gap:8px;
+  padding:calc(12px + env(safe-area-inset-top)) 10px 0 16px; }
+.oHead b{ flex:1; font-size:15px; font-weight:650; }
+.oGrab{ display:none; }
+.otabs{ flex:none; display:flex; gap:18px; padding:0 16px; margin-top:6px;
+  border-bottom:1px solid var(--hair); overflow-x:auto; scrollbar-width:none; }
+.otabs::-webkit-scrollbar{ display:none; }
+.otabs button{ padding:10px 0 9px; font-size:14px; color:var(--mut); white-space:nowrap;
+  border-bottom:2px solid transparent; margin-bottom:-1px; }
+.otabs button.on{ color:var(--tx); font-weight:600; border-bottom-color:var(--ac); }
+.oBody{ padding:4px 16px calc(24px + env(safe-area-inset-bottom)); }
+.oBody > .oseg{ margin:12px 0 4px; }
+.oIntro{ margin:8px 0 0; color:var(--mut); font-size:14px; line-height:1.5; }
+.oEmpty{ padding:22px 0 12px; }
+.oEmpty .ft{ font-weight:600; display:block; margin-bottom:4px; }
+.oEmpty .fsub{ margin:0; font-size:14px; }
+.oPick{ display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:9px 0; border-bottom:1px solid var(--hair); }
+.oPick .oseg{ flex:none; }
+.oPick .selIn{ font-size:14px; padding:6px 10px; }
+.oMae{ display:flex; flex-direction:column; min-height:100%; }
+.oThread{ flex:1; }
+.oMe{ margin:12px 0 0 auto; max-width:85%; width:fit-content; background:var(--ac); color:var(--acink);
+  border-radius:16px; padding:8px 13px; font-size:15px; line-height:1.45; }
+.oMae1{ margin:12px 0 0; font-size:15px; line-height:1.5; white-space:pre-wrap; }
+.oMae1 .n{ color:var(--ac); font-size:13px; font-weight:600; margin-bottom:2px; }
+.oAsk{ position:sticky; bottom:0; display:flex; gap:8px; align-items:center; padding:12px 0 0;
+  background:var(--card); }
+.oAsk .sinput{ padding:10px 12px; font-size:15px; }
+.oSend{ width:36px; height:36px; flex:none; border-radius:50%; background:var(--ac); color:var(--acink);
+  display:inline-flex; align-items:center; justify-content:center; }
+.oSend:disabled{ opacity:.4; }
+.oSend svg{ width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+.peek{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin:0 12px 6px; padding:10px 14px; border-radius:14px; border:1px solid var(--hair);
+  background:var(--card); font-size:14px; text-align:left; }
+.peek b{ font-weight:600; }
+.peek svg{ width:16px; height:16px; color:var(--mut); stroke:currentColor; fill:none; stroke-width:2; }
+
+@media (max-width:899px){
+  /* Phone: the office is a sheet from the bottom, not a drawer from the side. */
+  .panel.office{ top:auto; left:0; right:0; width:auto; height:min(82vh, 720px);
+    border-radius:18px 18px 0 0; transform:translateY(102%); }
+  .panel.office.open{ transform:none; }
+  .office .oHead{ padding-top:8px; flex-wrap:wrap; }
+  .office .oGrab{ display:block; width:100%; height:14px; position:relative; }
+  .office .oGrab::after{ content:""; position:absolute; left:50%; top:4px; width:38px; height:5px;
+    margin-left:-19px; border-radius:3px; background:var(--card3); }
+}
+@media (min-width:900px){
+  .peek{ display:none; }
+  .panel.office{ background:var(--bg); }
+  .oAsk{ background:var(--bg); }
+}

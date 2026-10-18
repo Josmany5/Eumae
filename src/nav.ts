@@ -10,7 +10,13 @@ import type { TabId } from './components/shell/TabBar';
  *  until an artifact exists to show. Studio absorbed the old Code and Preview
  *  readings — two tabs holding two versions of nothing, with no artifact
  *  between them. */
-export type PanelView = 'context' | 'activity' | 'studio';
+export type PanelView =
+  | 'mae' | 'context' | 'sandbox' | 'lookahead' | 'build' | 'details' | 'notes' | 'huddles'
+  | 'desk' | 'logbook';
+
+export const PANEL_VIEWS: PanelView[] = [
+  'mae', 'context', 'sandbox', 'lookahead', 'build', 'details', 'notes', 'huddles', 'desk', 'logbook',
+];
 
 /** A reference attached to this conversation — the mockup's `S.refs` entry. It
  *  lives with the chat's other state rather than in the panel that draws it:
