@@ -3,10 +3,12 @@ import { useSyncExternalStore } from 'react';
 /** The item you tapped, shown in Mae's office as its own tab (Task, Event,
  *  Goal…). One at a time, in memory only: a reload lands back on the page's
  *  normal tabs. */
-export type FocusKind = 'task';
+export type FocusKind = 'task' | 'event';
 export interface Focus {
   k: FocusKind;
   id: string;
+  /** Events: the occurrence's date (a repeat shows the day you tapped). */
+  day?: string;
 }
 
 let cur: Focus | null = null;
@@ -34,7 +36,7 @@ export function useFocus(): Focus | null {
   );
 }
 
-export const FOCUS_LABEL: Record<FocusKind, string> = { task: 'Task' };
+export const FOCUS_LABEL: Record<FocusKind, string> = { task: 'Task', event: 'Event' };
 
 /* "Edit" from the office: the Tasks page, when it's on screen, opens its form
    in place; otherwise the caller navigates there. */
@@ -49,5 +51,19 @@ export function onEditTask(f: (id: string) => void): () => void {
 export function requestEditTask(id: string): boolean {
   if (!editors.size) return false;
   editors.forEach((f) => f(id));
+  return true;
+}
+
+/* Same for events: the Calendar page opens its form in place. */
+const evEditors = new Set<(id: string) => void>();
+export function onEditEvent(f: (id: string) => void): () => void {
+  evEditors.add(f);
+  return () => {
+    evEditors.delete(f);
+  };
+}
+export function requestEditEvent(id: string): boolean {
+  if (!evEditors.size) return false;
+  evEditors.forEach((f) => f(id));
   return true;
 }

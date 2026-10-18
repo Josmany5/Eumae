@@ -1,7 +1,8 @@
 /* Calendar full page — wove's AdvancedCalendar, rebuilt on Eumae tokens.
  *
- * Month / Week / Day. Week and Day are an hour grid; Month is a grid you
- * read with the selected day's agenda under it. The calendar shows events
+ * Agenda / Month (Oct 18: the Option D agenda replaced Day and Week). Agenda
+ * is seven days as flat rows under day headers; Month is a grid you read
+ * with the selected day's rows under it. The calendar shows events
  * AND tasks that have a due date (timed tasks sit in the grid, untimed ones
  * in the all-day row), each with a dot in its kind's color.
  *
@@ -11,23 +12,21 @@
  * store, so the two always agree.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNav } from '../nav';
 import { dayEvents, getEvent, saveEvent, ymd, mins, type CalEvent } from '../events';
-import { getTasks, toggleTask, deleteTask, snapshotTasks, restoreTasks, type Task } from '../tasks';
-import { QuickAdd, EventForm, EventDetail, quickToEvent, removeEvent } from '../components/QuickAdd';
-import { ItemMenu, ProjectChip } from '../components/ItemMenu';
-import { undoable } from '../undo';
+import { getTasks, toggleTask, type Task } from '../tasks';
+import { QuickAdd, EventForm, quickToEvent, removeEvent } from '../components/QuickAdd';
+import { setFocus, onEditEvent } from '../focus';
 import { fmtTime } from '../quickadd';
 import { useMedia } from '../useMedia';
 import { getGoals } from '../goals';
 import { getProjects } from '../projects';
 import type { PageProps } from './index';
 
-type CalView = 'day' | 'week' | 'month';
+type CalView = 'agenda' | 'month';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const HOUR_PX = 48;
 
 function todayStr(): string {
   return ymd(new Date());
@@ -36,10 +35,6 @@ function shift(day: string, n: number): string {
   const d = new Date(day + 'T12:00');
   d.setDate(d.getDate() + n);
   return ymd(d);
-}
-function weekOf(day: string): string[] {
-  const dow = new Date(day + 'T12:00').getDay();
-  return Array.from({ length: 7 }, (_, i) => shift(day, i - dow));
 }
 function monthShift(day: string, n: number): string {
   const d = new Date(day + 'T12:00');
@@ -110,46 +105,49 @@ function itemsOn(day: string, tasks: Task[]): Item[] {
   return [...marks, ...evs, ...ts].sort((a, b) => (a.start ?? -1) - (b.start ?? -1));
 }
 
-export default function CalendarPage(_props: PageProps) {
-  void _props;
-  const { notify, go } = useNav();
+export default function CalendarPage({ arg }: PageProps) {
+  const { notify, go, openPanel } = useNav();
   const desktop = useMedia('(min-width:900px)');
-  const [view, setView] = useState<CalView>(() => (window.matchMedia('(min-width:900px)').matches ? 'week' : 'month'));
+  const [view, setView] = useState<CalView>('agenda');
   const [day, setDay] = useState(() => todayStr());
   const [tick, setTick] = useState(0);
-  const [form, setForm] = useState<{ ev: CalEvent; editing: boolean } | null>(null);
-  const [view1, setView1] = useState<{ ev: CalEvent; day: string } | null>(null);
-  const [taskView, setTaskView] = useState<Task | null>(null);
+  /* Opened with an event id (Edit from Mae's office): land on its form. */
+  const [form, setForm] = useState<{ ev: CalEvent; editing: boolean } | null>(() => {
+    const e = typeof arg === 'string' ? getEvent(arg) : undefined;
+    return e ? { ev: e, editing: true } : null;
+  });
   const refresh = () => setTick((t) => t + 1);
+  useEffect(
+    () =>
+      onEditEvent((id) => {
+        const e = getEvent(id);
+        if (e) setForm({ ev: e, editing: true });
+      }),
+    [],
+  );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const tasks = useMemo(() => getTasks(), [tick]);
   const today = todayStr();
 
   const step = (n: number) => {
-    if (view === 'day') setDay(shift(day, n));
-    else if (view === 'week') setDay(shift(day, 7 * n));
+    if (view === 'agenda') setDay(shift(day, 7 * n));
     else setDay(monthShift(day, n));
   };
 
   const label =
     view === 'month'
       ? new Date(day + 'T12:00').toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-      : view === 'week'
-        ? (() => {
-            const w = weekOf(day);
-            const a = new Date(w[0] + 'T12:00');
-            const b = new Date(w[6] + 'T12:00');
-            const sameMonth = a.getMonth() === b.getMonth();
-            return (
-              a.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
-              ' – ' +
-              b.toLocaleDateString(undefined, sameMonth ? { day: 'numeric' } : { month: 'short', day: 'numeric' }) +
-              ', ' +
-              b.getFullYear()
-            );
-          })()
-        : new Date(day + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+      : (() => {
+          const a = new Date(day + 'T12:00');
+          const b = new Date(shift(day, 6) + 'T12:00');
+          const sameMonth = a.getMonth() === b.getMonth();
+          return (
+            a.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+            ' – ' +
+            b.toLocaleDateString(undefined, sameMonth ? { day: 'numeric' } : { month: 'short', day: 'numeric' })
+          );
+        })();
 
   const openNew = (d: string, minute?: number) => {
     const tm = minute === undefined ? '' : `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
@@ -166,26 +164,28 @@ export default function CalendarPage(_props: PageProps) {
     });
   };
 
+  /* Tap: events and tasks open read-only in Mae's office; goals and
+     projects go to their page. */
   const openItem = (it: Item) => {
     if (it.link) {
       go(it.link.page, it.link.arg);
       return;
     }
     if (it.kind === 'task' && it.task) {
-      setForm(null);
-      setView1(null);
-      setTaskView(it.task);
+      setFocus({ k: 'task', id: it.task.id });
+      openPanel('item');
       return;
     }
-    if (it.ev) {
-      /* Edit the series, not the occurrence: repeats are one row. */
-      const src = (it.ev.id && getEvent(it.ev.id)) || it.ev;
-      setForm(null);
-      setView1({ ev: src, day: it.day });
+    if (it.ev?.id) {
+      setFocus({ k: 'event', id: it.ev.id, day: it.day });
+      openPanel('item');
     }
   };
-
-  const days = view === 'week' ? weekOf(day) : [day];
+  const checkTask = (t: Task) => {
+    toggleTask(t.id);
+    refresh();
+    notify(t.d ? 'Task reopened.' : 'Task done.', { undo: () => { toggleTask(t.id); refresh(); } });
+  };
 
   return (
     <div className="calPage qaPage">
@@ -202,68 +202,6 @@ export default function CalendarPage(_props: PageProps) {
         onMore={(q) => setForm({ ev: quickToEvent(q, day), editing: false })}
       />
 
-      {taskView ? (
-        <div className="card evDetail c-task">
-          <div className="evDHead">
-            <i />
-            <b>{taskView.t}</b>
-            <ItemMenu
-              name={taskView.t}
-              extra={[{ label: 'Open Tasks', onClick: () => go('tasks') }]}
-              link={{ k: 'task', id: taskView.id }}
-              onChange={refresh}
-              onDelete={() => {
-                const id = taskView.id;
-                setTaskView(null);
-                undoable(notify, 'Task deleted.', snapshotTasks, restoreTasks, () => deleteTask(id), refresh);
-              }}
-            />
-            <button className="evDX" aria-label="Close" onClick={() => setTaskView(null)}>
-              ×
-            </button>
-          </div>
-          <div className="evDRow">
-            {taskView.due
-              ? new Date(taskView.due + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
-              : ''}
-            {taskView.tm ? ' · ' + fmtTime(taskView.tm) : ''}
-            {taskView.est ? ' · ' + taskView.est + ' min' : ''}
-          </div>
-          <div className="evDRow m">Task{taskView.pr && taskView.pr !== 'none' ? ' · ' + taskView.pr : ''}</div>
-          <ProjectChip k="task" id={taskView.id} />
-          <div className="btns">
-            <button
-              className="fb"
-              onClick={() => {
-                toggleTask(taskView.id);
-                notify(taskView.d ? 'Task reopened.' : 'Task done.');
-                setTaskView(null);
-                refresh();
-              }}
-            >
-              {taskView.d ? 'Reopen' : 'Mark done'}
-            </button>
-            <button className="fb" onClick={() => go('tasks')}>
-              Open Tasks
-            </button>
-          </div>
-        </div>
-      ) : null}
-      {view1 && !form ? (
-        <EventDetail
-          ev={view1.ev}
-          day={view1.day}
-          onClose={() => setView1(null)}
-          onEdit={() => {
-            setForm({ ev: view1.ev, editing: true });
-            setView1(null);
-          }}
-          onDelete={(scope) => {
-            setView1(null);
-            removeEvent(notify, view1.ev, view1.day, scope, refresh);
-          }}
-        />
-      ) : null}
       {form ? (
         <EventForm
           initial={form.ev}
@@ -300,9 +238,9 @@ export default function CalendarPage(_props: PageProps) {
           <b className="calLabel">{label}</b>
         </div>
         <div className="calSeg" role="tablist">
-          {(['day', 'week', 'month'] as CalView[]).map((v) => (
+          {(['agenda', 'month'] as CalView[]).map((v) => (
             <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>
-              {v[0].toUpperCase() + v.slice(1)}
+              {v === 'agenda' ? 'Agenda' : 'Month'}
             </button>
           ))}
         </div>
@@ -310,38 +248,18 @@ export default function CalendarPage(_props: PageProps) {
 
       {view === 'month' ? (
         <>
-          <MonthGrid day={day} today={today} tasks={tasks} desktop={desktop} onDay={setDay} onOpen={(d) => { setDay(d); setView('day'); }} />
-          <Agenda day={day} items={itemsOn(day, tasks)} onItem={openItem} onAdd={() => openNew(day)} />
+          <MonthGrid day={day} today={today} tasks={tasks} desktop={desktop} onDay={setDay} onOpen={(d) => setDay(d)} />
+          <DaySection day={day} today={today} items={itemsOn(day, tasks)} onItem={openItem} onCheck={checkTask} onAdd={() => openNew(day)} />
         </>
       ) : (
-        <>
-          {view === 'day' ? (
-            <div className="wkstrip">
-              {weekOf(day).map((d) => (
-                <button key={d} className={(d === day ? 'sel' : '') + (d === today ? ' today' : '')} onClick={() => setDay(d)}>
-                  <span className="xs">{DOW[new Date(d + 'T12:00').getDay()]}</span>
-                  <br />
-                  {+d.slice(8)}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          <HourGrid
-            days={days}
-            today={today}
-            tasks={tasks}
-            showHead={view === 'week'}
-            onPickDay={(d) => {
-              setDay(d);
-              setView('day');
-            }}
-            onSlot={openNew}
-            onItem={openItem}
-          />
-        </>
+        <div className="agList">
+          {Array.from({ length: 7 }, (_, i) => shift(day, i)).map((d) => (
+            <DaySection key={d} day={d} today={today} items={itemsOn(d, tasks)} onItem={openItem} onCheck={checkTask} onAdd={() => openNew(d)} />
+          ))}
+        </div>
       )}
       <div className="xs m calFoot">
-        Tap an empty hour to add there. Events list:{' '}
+        All events in one list:{' '}
         <button className="lnkBtn" onClick={() => go('events')}>
           Upcoming
         </button>
@@ -417,176 +335,56 @@ function minsToTm(n: number): string {
   return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
 }
 
-function Agenda({ day, items, onItem, onAdd }: { day: string; items: Item[]; onItem: (i: Item) => void; onAdd: () => void }) {
+/* One day of the agenda: a header (Today · Mon, Oct 19), then flat rows
+   with the time on the left. An empty day says so in one quiet line. */
+function DaySection({ day, today, items, onItem, onCheck, onAdd }: {
+  day: string; today: string; items: Item[]; onItem: (i: Item) => void; onCheck: (t: Task) => void; onAdd: () => void;
+}) {
+  const dt = new Date(day + 'T12:00');
+  const word = day === today ? 'Today' : day === shift(today, 1) ? 'Tomorrow' : day < today ? 'Past' : '';
+  const nowM = new Date().getHours() * 60 + new Date().getMinutes();
   return (
-    <>
-      <div className="row" style={{ marginTop: 16 }}>
-        <h3 className="sec" style={{ margin: 0 }}>
-          {new Date(day + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-        </h3>
-        <span style={{ flex: 1 }} />
-        <button className="fb" onClick={onAdd}>
-          + Event
+    <section className={'agDay' + (day === today ? ' today' : '')}>
+      <div className="sdiv agH">
+        <span>
+          {word ? <b>{word} · </b> : null}
+          {dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+        </span>
+        <button className="fact agAdd" onClick={onAdd} aria-label={`Add an event on ${dt.toDateString()}`}>
+          +
         </button>
       </div>
-      <div className="card cardPad">
-        {items.length ? (
-          items.map((it) => (
-            <button key={it.key} className={'agRow c-' + it.color + (it.done ? ' done' : '')} onClick={() => onItem(it)}>
-              <span className="agTm">
+      {items.length ? (
+        items.map((it) => {
+          const past = day < today || (day === today && it.end !== undefined && it.end < nowM);
+          return (
+            <div key={it.key} className={'frow top agRow2 c-' + it.color + (it.done || past ? ' past' : '')}>
+              <span className="agT fmeta">
                 {it.start === undefined ? 'All day' : fmtTime(minsToTm(it.start))}
-                {it.end !== undefined && it.kind === 'event' ? <span className="xs m"> – {fmtTime(minsToTm(it.end))}</span> : null}
+                {it.end !== undefined && it.kind === 'event' ? <span className="agEnd">{fmtTime(minsToTm(it.end))}</span> : null}
               </span>
-              <i />
-              <span className="g">
-                {it.kind === 'task' ? (it.done ? '✓ ' : '○ ') : ''}
-                {it.title}
-                {it.ev?.loc ? <span className="xs m"> · {it.ev.loc}</span> : null}
-              </span>
-            </button>
-          ))
-        ) : (
-          <div className="s m">Nothing this day. Add one with the line on top, or tap + Event.</div>
-        )}
-      </div>
-    </>
-  );
-}
-
-function HourGrid({
-  days,
-  today,
-  tasks,
-  showHead,
-  onPickDay,
-  onSlot,
-  onItem,
-}: {
-  days: string[];
-  today: string;
-  tasks: Task[];
-  showHead: boolean;
-  onPickDay: (d: string) => void;
-  onSlot: (d: string, minute?: number) => void;
-  onItem: (i: Item) => void;
-}) {
-  const perDay = days.map((d) => itemsOn(d, tasks));
-  const timed = perDay.flat().filter((i) => i.start !== undefined);
-  /* The day runs 5 AM to midnight; anything earlier pulls the grid up. */
-  const first = Math.min(5, ...timed.map((i) => Math.floor(i.start! / 60)));
-  const last = 24;
-  const hours = Array.from({ length: Math.min(24, last) - first }, (_, i) => first + i);
-  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
-  const cols = { gridTemplateColumns: `44px repeat(${days.length}, minmax(0,1fr))` };
-
-  return (
-    <div className="card hGrid">
-      {showHead ? (
-        <div className="hHead" style={cols}>
-          <span />
-          {days.map((d) => (
-            <button key={d} className={'hDay' + (d === today ? ' today' : '')} onClick={() => onPickDay(d)}>
-              <span className="xs m">{DOW[new Date(d + 'T12:00').getDay()]}</span>
-              <b>{+d.slice(8)}</b>
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <div className="hAll" style={cols}>
-        <span className="xs m hLbl">all day</span>
-        {days.map((d, di) => (
-          <div key={d} className="hAllCell" onClick={(e) => e.target === e.currentTarget && onSlot(d)}>
-            {perDay[di]
-              .filter((i) => i.start === undefined)
-              .map((it) => (
-                <button key={it.key} className={'hChip c-' + it.color + (it.done ? ' done' : '')} onClick={() => onItem(it)}>
-                  {it.kind === 'task' ? (it.done ? '✓ ' : '○ ') : ''}
-                  {it.title}
+              {it.kind === 'task' && it.task ? (
+                <button className={'fchk' + (it.done ? ' on' : '')} aria-label={it.done ? `Reopen ${it.title}` : `Done: ${it.title}`} onClick={() => onCheck(it.task!)} />
+              ) : (
+                <i className="agBar" />
+              )}
+              <div className="ft">
+                <button className="tlT" onClick={() => onItem(it)}>
+                  <span className={it.done ? 'tlDone' : ''}>{it.title}</span>
                 </button>
-              ))}
-          </div>
-        ))}
-      </div>
-      <div className="hBody" style={{ ...cols, height: hours.length * HOUR_PX }}>
-        <div className="hLbls">
-          {hours.map((h) => (
-            <span key={h} className="xs m" style={{ top: (h - first) * HOUR_PX }}>
-              {h === 12 ? '12 PM' : h > 12 ? `${h - 12} PM` : `${h} AM`}
-            </span>
-          ))}
-        </div>
-        {days.map((d, di) => (
-          <div
-            key={d}
-            className="hCol"
-            onClick={(e) => {
-              if (e.target !== e.currentTarget) return;
-              const y = e.nativeEvent.offsetY;
-              const minute = first * 60 + Math.floor(y / HOUR_PX) * 60 + (y % HOUR_PX >= HOUR_PX / 2 ? 30 : 0);
-              onSlot(d, minute);
-            }}
-          >
-            {hours.map((h) => (
-              <div key={h} className="hLine" style={{ top: (h - first) * HOUR_PX }} />
-            ))}
-            {d === today && nowMin / 60 >= first && nowMin / 60 < first + hours.length ? (
-              <div className="hNow" style={{ top: ((nowMin - first * 60) / 60) * HOUR_PX }} />
-            ) : null}
-            {layout(perDay[di].filter((i) => i.start !== undefined)).map(({ it, col, ncol }) => {
-              const top = ((it.start! - first * 60) / 60) * HOUR_PX;
-              const h = Math.max(20, (((it.end ?? it.start! + 60) - it.start!) / 60) * HOUR_PX - 2);
-              return (
-                <button
-                  key={it.key}
-                  className={'hEv c-' + it.color + (it.done ? ' done' : '')}
-                  style={{ top, height: h, left: `calc(${(col / ncol) * 100}% + 2px)`, width: `calc(${100 / ncol}% - 4px)` }}
-                  onClick={() => onItem(it)}
-                  title={it.title}
-                >
-                  <b>
-                    {it.kind === 'task' ? (it.done ? '✓ ' : '○ ') : ''}
-                    {it.title}
-                  </b>
-                  {h > 34 ? (
-                    <span>
-                      {fmtTime(minsToTm(it.start!))}
-                      {it.ev?.loc ? ' · ' + it.ev.loc : ''}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
+                {it.ev?.loc || it.ev?.rep ? (
+                  <div className="fsub">
+                    {[it.ev?.loc, it.ev?.rep ? '↻ repeats' : ''].filter(Boolean).join(' · ')}
+                  </div>
+                ) : null}
+              </div>
+              <span className="fmeta">{it.kind === 'event' ? '' : it.kind === 'task' ? 'Task' : it.kind === 'milestone' ? 'Milestone' : it.kind === 'goal' ? 'Goal' : 'Project'}</span>
+            </div>
+          );
+        })
+      ) : (
+        <p className="fsub agFree">Free</p>
+      )}
+    </section>
   );
-}
-
-/* Side-by-side columns for overlapping items. */
-function layout(items: Item[]): { it: Item; col: number; ncol: number }[] {
-  const sorted = [...items].sort((a, b) => a.start! - b.start!);
-  const out: { it: Item; col: number; ncol: number }[] = [];
-  let group: { it: Item; col: number; ncol: number }[] = [];
-  let groupEnd = -1;
-  const flush = () => {
-    const n = Math.max(1, ...group.map((g) => g.col + 1));
-    group.forEach((g) => (g.ncol = n));
-    out.push(...group);
-    group = [];
-  };
-  for (const it of sorted) {
-    const end = it.end ?? it.start! + 60;
-    if (it.start! >= groupEnd) {
-      flush();
-      groupEnd = -1;
-    }
-    const used = group.filter((g) => (g.it.end ?? g.it.start! + 60) > it.start!).map((g) => g.col);
-    let col = 0;
-    while (used.includes(col)) col++;
-    group.push({ it, col, ncol: 1 });
-    groupEnd = Math.max(groupEnd, end);
-  }
-  flush();
-  return out;
 }

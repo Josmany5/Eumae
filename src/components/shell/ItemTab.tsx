@@ -3,13 +3,88 @@ import { useNav, type PanelView } from '../../nav';
 import { getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists } from '../../tasks';
 import { projectOf, linkedIds } from '../../projects';
 import { getGoals } from '../../goals';
-import { fmtShort, fmtTime } from '../../quickadd';
-import { setFocus, requestEditTask, type Focus } from '../../focus';
+import { fmtShort, fmtTime, repLabel } from '../../quickadd';
+import { setFocus, requestEditTask, requestEditEvent, type Focus } from '../../focus';
+import { getEvent, ymd } from '../../events';
+import { removeEvent, TYPE_LABEL } from '../QuickAdd';
 import { ItemMenu } from '../ItemMenu';
 
 /** The tapped item's own tab in Mae's office: what it is, its details, its
  *  steps, and the moves you'd make on it. Read-only; Edit opens the form. */
 export function ItemTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
+  return focus.k === 'event' ? <EventTab focus={focus} onView={onView} /> : <TaskTab focus={focus} onView={onView} />;
+}
+
+function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
+  const { go, notify } = useNav();
+  const [, setTick] = useState(0);
+  const ev = getEvent(focus.id);
+  if (!ev) {
+    return (
+      <div className="oEmpty">
+        <span className="ft">That event is gone</span>
+        <p className="oIntro">It was deleted. Pick another one.</p>
+      </div>
+    );
+  }
+  const d = focus.day ?? ev.d;
+  const today = ymd(new Date());
+  const tmw = new Date();
+  tmw.setDate(tmw.getDate() + 1);
+  const dayWord =
+    d === today ? 'Today' : d === ymd(tmw) ? 'Tomorrow' : new Date(d + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  const time = ev.allDay || !ev.tm ? 'All day' : fmtTime(ev.tm) + (ev.end ? ' – ' + fmtTime(ev.end) : '');
+  const project = projectOf('event', ev.id!);
+  const kv: [string, string][] = [['When', dayWord + ', ' + time]];
+  if (ev.loc) kv.push(['Where', ev.loc]);
+  if (ev.rep) kv.push(['Repeats', repLabel(ev.rep, ev.d)]);
+  kv.push(['Kind', TYPE_LABEL[ev.type ?? 'other']]);
+  if (project) kv.push(['Project', project.n]);
+  const edit = () => {
+    if (!requestEditEvent(ev.id!)) go('cal', ev.id);
+  };
+  const del = (scope: 'one' | 'all') => {
+    setFocus(null);
+    removeEvent(notify, ev, d, scope);
+  };
+  return (
+    <div className="itab">
+      <h2 className="itT">{ev.t}</h2>
+      {d < today ? <p className="fmeta itSub">Past</p> : <div style={{ height: 8 }} />}
+      {kv.map(([k, v]) => (
+        <div key={k} className="frow itKV">
+          <span className="fmeta">{k}</span>
+          <span className="ft">{v}</span>
+        </div>
+      ))}
+      {ev.note ? (
+        <>
+          <div className="flbl">Notes</div>
+          <p className="itNote">{ev.note}</p>
+        </>
+      ) : null}
+      <div className="itMae">
+        <span className="n">Mae</span>
+        <span>Want to prep for this? Ask me for talking points or what to bring.</span>
+        <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
+      </div>
+      <div className="itActs">
+        <button className="pri" onClick={edit}>Edit</button>
+        <ItemMenu
+          name={ev.t}
+          edit={edit}
+          link={{ k: 'event', id: ev.id! }}
+          onChange={() => setTick((n) => n + 1)}
+          extra={ev.rep ? [{ label: 'Delete this one', onClick: () => del('one'), danger: true }] : undefined}
+          deleteLabel={ev.rep ? 'Delete the series' : 'Delete'}
+          onDelete={() => del('all')}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   const { go, notify } = useNav();
   const [, setTick] = useState(0);
   const refresh = () => setTick((n) => n + 1);

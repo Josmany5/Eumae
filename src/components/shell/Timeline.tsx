@@ -103,6 +103,9 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
     if (i.kind === 'task') {
       setFocus({ k: 'task', id: i.task.id });
       openPanel('item');
+    } else if (i.ev.id) {
+      setFocus({ k: 'event', id: i.ev.id, day: ymd(new Date()) });
+      openPanel('item');
     } else go('cal');
   };
 
@@ -195,13 +198,13 @@ export function WeekStrip() {
   const { go, openPanel } = useNav();
   const now = new Date();
   const open = getTasks().filter((t) => !t.d);
-  const rows: { key: string; day: Date; t: string; tm?: string; task?: Task }[] = [];
+  const rows: { key: string; day: Date; t: string; tm?: string; task?: Task; ev?: CalEvent }[] = [];
   for (let n = 1; n <= 7; n++) {
     const d = addDays(now, n);
     const day = ymd(d);
     itemsFor(day, open)
       .sort(byTime)
-      .forEach((i) => rows.push({ key: i.key, day: d, t: i.t, tm: i.tm, task: i.kind === 'task' ? i.task : undefined }));
+      .forEach((i) => rows.push({ key: i.key, day: d, t: i.t, tm: i.tm, task: i.kind === 'task' ? i.task : undefined, ev: i.kind === 'event' ? i.ev : undefined }));
   }
   if (!rows.length) return <p className="oIntro tlNone">Nothing dated this week.</p>;
   return (
@@ -214,6 +217,9 @@ export function WeekStrip() {
             e.stopPropagation();
             if (r.task) {
               setFocus({ k: 'task', id: r.task.id });
+              openPanel('item');
+            } else if (r.ev?.id) {
+              setFocus({ k: 'event', id: r.ev.id, day: ymd(r.day) });
               openPanel('item');
             } else go('cal');
           }}

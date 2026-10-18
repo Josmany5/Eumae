@@ -1867,3 +1867,27 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   .fchk{ width:20px; height:20px; }
   .tlActs button, .tkBulk button, .itActs > button{ font-size:15px; }
 }
+
+/* ── Calendar agenda (Option D): day headers, flat rows, time on the left ── */
+.agList{ margin-top:4px; }
+.agDay + .agDay{ margin-top:6px; }
+.agH{ display:flex; justify-content:space-between; align-items:center; padding:16px 0 4px; border-bottom:1px solid var(--hair); }
+.agH b{ color:var(--tx); font-weight:600; }
+.agDay.today .agH b{ color:var(--ac); }
+.agAdd{ margin:0; padding:0 4px; font-size:18px; line-height:1; }
+.agRow2{ border-bottom:1px solid var(--hair); gap:14px; }
+.agRow2.past .tlT, .agRow2.past .agT{ color:var(--mut); }
+.agT{ flex:none; width:72px; display:flex; flex-direction:column; padding-top:2px; }
+.agEnd{ font-size:12px; opacity:.7; }
+.agBar{ flex:none; width:3px; align-self:stretch; min-height:22px; border-radius:2px; background:var(--ac); }
+.agRow2.c-meeting .agBar{ background:var(--ac); }
+.agRow2.c-appointment .agBar{ background:var(--am); }
+.agRow2.c-class .agBar{ background:var(--gr, var(--ac)); }
+.agRow2.c-other .agBar, .agRow2.c-goal .agBar, .agRow2.c-project .agBar, .agRow2.c-milestone .agBar{ background:var(--mut); }
+.agFree{ margin:8px 0 4px; }
+.itNote{ margin:4px 0 0; font-size:15px; line-height:1.5; white-space:pre-wrap; }
+@media (min-width:900px){
+  .agT{ width:88px; }
+  .agEnd{ font-size:13px; }
+  .itNote{ font-size:16px; }
+}

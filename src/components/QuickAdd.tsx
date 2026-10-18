@@ -130,7 +130,7 @@ export function QuickAdd({
 
 /* ── Full event form: everything an event can hold. ─────────────────── */
 
-const TYPE_LABEL: Record<EventType, string> = {
+export const TYPE_LABEL: Record<EventType, string> = {
   meeting: 'Meeting',
   appointment: 'Appointment',
   class: 'Class',
