@@ -16,10 +16,12 @@ function MenuIcon() {
   );
 }
 
-function ActivityIcon() {
+/** Mae's sparkle: the door to Mae's office. */
+export function MaeIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v5l3 3" />
+      <path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z" />
+      <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
     </svg>
   );
 }
@@ -37,8 +39,8 @@ export default function Header({ onMenu, onActivity, title, onBack }: HeaderProp
         </button>
       )}
       <div className="t">{title}</div>
-      <button className="hb" onClick={onActivity} aria-label="Activity">
-        <ActivityIcon />
+      <button className="hb hbMae" onClick={onActivity} aria-label="Mae's office" title="Mae's office">
+        <MaeIcon />
       </button>
     </header>
   );

@@ -10,6 +10,7 @@ import { streamChat } from '../../chat';
 import { buildRequest, toApiBody, type ThreadTurn } from '../../request';
 import { useFocus, setFocus, FOCUS_LABEL } from '../../focus';
 import { ItemTab } from './ItemTab';
+import { MaeIcon } from './Header';
 
 /** Mae's office: the right panel on desktop, a peek bar and a sheet on a phone.
  *
@@ -412,7 +413,7 @@ export default function Office({ tab, open, view, onView, onClose, onToggle }: O
       <div className={`pscrim${open ? ' open' : ''}`} onClick={onClose} />
       {!open ? (
         <button className="pHandle" onClick={onToggle} aria-label="Open Mae's office" title="Mae's office">
-          <Icon name="panel" />
+          <MaeIcon />
         </button>
       ) : null}
 

@@ -1832,3 +1832,13 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .itActs > button{ padding:7px 16px; border-radius:99px; border:1px solid var(--hair); background:none; color:var(--tx);
   font-size:14px; font-weight:600; }
 .itActs > button.pri{ background:var(--ac); border-color:var(--ac); color:var(--acink); }
+
+/* Phone: Console sub-page bar under the header (p1 mockup). */
+.conBar{ flex:none; display:flex; gap:22px; overflow-x:auto; scrollbar-width:none; padding:2px 18px 8px;
+  border-bottom:1px solid var(--hair); }
+.conBar::-webkit-scrollbar{ display:none; }
+.conBar button{ flex:none; padding:6px 0 7px; font-size:16px; color:var(--mut); background:none; border:0;
+  border-bottom:2px solid transparent; }
+.conBar button.on{ color:var(--tx); font-weight:600; border-bottom-color:var(--ac); }
+.hbMae{ color:var(--ac); }
+@media (min-width:900px){ .conBar{ display:none; } }

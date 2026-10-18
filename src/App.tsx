@@ -6,7 +6,7 @@ import AddSheet from './components/shell/AddSheet';
 import Toast from './components/shell/Toast';
 import Settings from './components/settings/Settings';
 import Sidebar from './components/shell/Sidebar';
-import Office, { OfficePeek } from './components/shell/Office';
+import Office from './components/shell/Office';
 import { Icon } from './components/shell/icons';
 import { SCREENS, LABELS } from './screens';
 import { PAGES, pageTitle } from './pages';
@@ -25,6 +25,16 @@ import {
 import { boot, saveNav } from './boot';
 import { logEv } from './log';
 import { saveUpload, uploadData } from './uploads';
+
+const CON_PAGES: { label: string; page: string | null }[] = [
+  { label: 'Today', page: null },
+  { label: 'Tasks', page: 'tasks' },
+  { label: 'Calendar', page: 'cal' },
+  { label: 'Goals', page: 'goals' },
+  { label: 'Projects', page: 'projects' },
+  { label: 'Notes', page: 'notes' },
+  { label: 'Flows', page: 'flows' },
+];
 
 /** A sub-page pushed on top of the current tab — the mockup's pageSt entry. */
 interface Pushed {
@@ -485,6 +495,25 @@ export default function App() {
             onActivity={() => openPanel()}
             onBack={top ? back : undefined}
           />
+          {tab === 'console' && (!top || CON_PAGES.some((c) => c.page === top.page)) ? (
+            /* Phone: Console's sub-pages as one scrolling row under the
+               header. A shortcut; the Drawer keeps the full list. */
+            <nav className="conBar" aria-label="Console pages">
+              {CON_PAGES.map((c) => {
+                const on = c.page ? top?.page === c.page : !top;
+                return (
+                  <button
+                    key={c.label}
+                    className={on ? 'on' : ''}
+                    aria-current={on ? 'page' : undefined}
+                    onClick={() => setStack(c.page ? [{ page: c.page }] : [])}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+            </nav>
+          ) : null}
           <main id="mn">
             {top ? (
               <div className="pageWrap">
@@ -508,7 +537,6 @@ export default function App() {
               <Screen />
             )}
           </main>
-          {!panelOpen && !kbdOpen ? <OfficePeek tab={tab} onOpen={() => openPanel()} /> : null}
           <TabBar active={tab} onChange={goTab} />
         </div>
 
