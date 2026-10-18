@@ -11,11 +11,11 @@ import type { TabId } from './components/shell/TabBar';
  *  readings — two tabs holding two versions of nothing, with no artifact
  *  between them. */
 export type PanelView =
-  | 'mae' | 'context' | 'sandbox' | 'lookahead' | 'build' | 'details' | 'notes' | 'huddles'
+  | 'mae' | 'context' | 'sandbox' | 'build' | 'details' | 'notes' | 'huddles'
   | 'desk' | 'logbook';
 
 export const PANEL_VIEWS: PanelView[] = [
-  'mae', 'context', 'sandbox', 'lookahead', 'build', 'details', 'notes', 'huddles', 'desk', 'logbook',
+  'mae', 'context', 'sandbox', 'build', 'details', 'notes', 'huddles', 'desk', 'logbook',
 ];
 
 /** A reference attached to this conversation — the mockup's `S.refs` entry. It

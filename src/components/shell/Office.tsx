@@ -30,7 +30,6 @@ const OFFICE: Record<TabId, OTab[]> = {
   ],
   console: [
     { id: 'mae', label: 'Mae' },
-    { id: 'lookahead', label: 'Lookahead' },
     { id: 'desk', label: 'Desk' },
     { id: 'logbook', label: 'Logbook' },
   ],
@@ -299,43 +298,6 @@ function Empty({ title, note }: { title: string; note: string }) {
   );
 }
 
-function Lookahead() {
-  const today = ymd(new Date());
-  const tasks = getTasks()
-    .filter((t) => !t.d && t.due)
-    .sort((a, b) => (a.due! + (a.tm ?? '')).localeCompare(b.due! + (b.tm ?? '')))
-    .slice(0, 8);
-  const evs = eventsBetween(today, 7).slice(0, 8);
-  const day = (d: string) =>
-    d === today ? 'Today' : new Date(d + 'T12:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-  return (
-    <>
-      <div className="flbl">Coming up</div>
-      {evs.length ? (
-        evs.map((e, i) => (
-          <div key={(e.id ?? '') + e.d + i} className="frow">
-            <span className="ft">{e.t}</span>
-            <span className="fmeta">{day(e.d)}{e.allDay ? '' : ` · ${e.tm}`}</span>
-          </div>
-        ))
-      ) : (
-        <p className="oIntro">Nothing on the calendar in the next 7 days.</p>
-      )}
-      <div className="flbl">Due</div>
-      {tasks.length ? (
-        tasks.map((t) => (
-          <div key={t.id} className="frow">
-            <span className={`ft${t.due! < today ? ' over' : ''}`}>{t.t}</span>
-            <span className={`fmeta${t.due! < today ? ' over' : ''}`}>{t.due! < today ? 'Overdue' : day(t.due!)}</span>
-          </div>
-        ))
-      ) : (
-        <p className="oIntro">No tasks with a due date.</p>
-      )}
-    </>
-  );
-}
-
 function Desk() {
   return (
     <>
@@ -469,8 +431,6 @@ export default function Office({ tab, open, view, onView, onClose, onToggle }: O
             <ContextTab />
           ) : v === 'sandbox' ? (
             <Empty title="Nothing built yet" note="When Mae makes something in this chat, like a page, a document or a chart, it opens here." />
-          ) : v === 'lookahead' ? (
-            <Lookahead />
           ) : v === 'build' ? (
             <Empty title="Nothing to build yet" note="Pick something to make in Studio and its steps, preview and Mae's tips show here." />
           ) : v === 'details' ? (
