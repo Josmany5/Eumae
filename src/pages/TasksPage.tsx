@@ -6,7 +6,7 @@
  * Library's folder naming.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNav } from '../nav';
 import {
   getTasks,
@@ -33,9 +33,18 @@ import type { PageProps } from './index';
 import { QuickAdd } from '../components/QuickAdd';
 import { fmtShort, fmtTime, type Quick } from '../quickadd';
 import { ItemMenu, ProjectChip } from '../components/ItemMenu';
+import { projectOf, linkedIds } from '../projects';
+import { getGoals } from '../goals';
+import { setFocus, onEditTask } from '../focus';
 
-type Filter = 'active' | 'completed' | 'all';
-type Mode = 'list' | 'matrix';
+type Mode = 'day' | 'project' | 'goal' | 'matrix' | 'done';
+const MODES: { id: Mode; label: string }[] = [
+  { id: 'day', label: 'By day' },
+  { id: 'project', label: 'By project' },
+  { id: 'goal', label: 'By goal' },
+  { id: 'matrix', label: 'Matrix' },
+  { id: 'done', label: 'Done' },
+];
 
 const PR_COLOR: Record<TaskPriority, string> = {
   none: 'var(--mut)',
@@ -45,11 +54,12 @@ const PR_COLOR: Record<TaskPriority, string> = {
 };
 
 export default function TasksPage({ arg }: PageProps) {
-  const { notify } = useNav();
+  const { notify, openPanel } = useNav();
   const [list, setList] = useState('all');
-  const [filter, setFilter] = useState<Filter>('active');
   const [tick, setTick] = useState(0);
-  const [mode, setMode] = useState<Mode>('list');
+  const [mode, setMode] = useState<Mode>('day');
+  const [selecting, setSelecting] = useState(false);
+  const [sel, setSel] = useState<Set<string>>(() => new Set());
   /* Opened with a task id (from a project): land on that task's form. */
   const [draft, setDraft] = useState<Task | null>(() => (typeof arg === 'string' ? getTask(arg) ?? null : null));
   const [newList, setNewList] = useState('');
@@ -59,11 +69,36 @@ export default function TasksPage({ arg }: PageProps) {
   const [editLists, setEditLists] = useState(false);
   const refresh = () => setTick((t) => t + 1);
   void tick;
+  /* Edit from Mae's office opens the form right here. */
+  useEffect(
+    () =>
+      onEditTask((id) => {
+        const t = getTask(id);
+        if (t) setDraft(t);
+      }),
+    [],
+  );
+  /* Tap a task: it opens read-only in Mae's office (the sheet on a phone). */
+  const openItem = (t: Task) => {
+    setFocus({ k: 'task', id: t.id });
+    openPanel('item');
+  };
+  const toggleSel = (id: string) =>
+    setSel((s0) => {
+      const n = new Set(s0);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const endSelect = () => {
+    setSelecting(false);
+    setSel(new Set());
+  };
 
   const lists = getLists();
   const tasks = getTasks()
     .filter((t) => (list === 'all' ? true : (t.list ?? 'inbox') === list))
-    .filter((t) => (filter === 'all' ? true : filter === 'active' ? !t.d : !!t.d));
+    .filter((t) => (mode === 'done' ? !!t.d : !t.d));
 
   /* Quick add: the parsed line becomes a full task. A #list that doesn't
      exist yet is created, so "#work" just works. */
@@ -224,52 +259,107 @@ export default function TasksPage({ arg }: PageProps) {
         </div>
       ) : null}
       <div className="tkBar">
-        <div className="calSeg" role="tablist" aria-label="Show">
-          {(['active', 'completed', 'all'] as Filter[]).map((f) => (
-            <button key={f} role="tab" aria-selected={filter === f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
-              {f[0].toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
         <div className="calSeg" role="tablist" aria-label="View">
-          {(['list', 'matrix'] as Mode[]).map((m) => (
-            <button key={m} role="tab" aria-selected={mode === m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>
-              {m === 'list' ? 'List' : 'Matrix'}
+          {MODES.map((m) => (
+            <button key={m.id} role="tab" aria-selected={mode === m.id} className={mode === m.id ? 'on' : ''} onClick={() => setMode(m.id)}>
+              {m.label}
             </button>
           ))}
         </div>
+        {mode !== 'matrix' ? (
+          <button className={'fact tkSelBtn' + (selecting ? ' on' : '')} onClick={() => (selecting ? endSelect() : setSelecting(true))}>
+            {selecting ? 'Cancel' : 'Select'}
+          </button>
+        ) : null}
       </div>
+      {selecting && sel.size ? (
+        <div className="tkBulk" role="toolbar" aria-label="Selected tasks">
+          <b>{sel.size} selected</b>
+          <button
+            className="pri"
+            onClick={() => {
+              const ids = [...sel];
+              undoable(`${ids.length} marked ${mode === 'done' ? 'not done' : 'done'}.`, () => ids.forEach((id) => toggleTask(id)));
+              endSelect();
+            }}
+          >
+            {mode === 'done' ? 'Reopen' : 'Done'}
+          </button>
+          <button
+            onClick={() => {
+              const ids = [...sel];
+              const tm = new Date();
+              tm.setDate(tm.getDate() + 1);
+              const due = ymdOf(tm);
+              undoable(`${ids.length} moved to tomorrow.`, () => ids.forEach((id) => { const t = getTask(id); if (t) saveTask({ ...t, due }); }));
+              endSelect();
+            }}
+          >
+            Tomorrow
+          </button>
+          <button
+            className="danger"
+            onClick={() => {
+              const ids = [...sel];
+              undoable(`${ids.length} deleted.`, () => ids.forEach((id) => deleteTask(id)));
+              endSelect();
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      ) : null}
       {mode === 'matrix' ? (
         <Matrix tasks={tasks} refresh={refresh} onEdit={(t) => setDraft(t)} onDelete={(t) => undoable('Task deleted.', () => deleteTask(t.id))} />
       ) : (
-      <div className="card cardPad">
-        {tasks.map((t) => (
-          <TaskRow
-            key={t.id}
-            task={t}
-            expanded={expanded === t.id}
-            newSub={newSub}
-            onNewSub={setNewSub}
-            onToggleExpand={() => {
-              setExpanded((e) => (e === t.id ? null : t.id));
-              setNewSub('');
-            }}
-            onEdit={() => setDraft(t)}
-            onDelete={() => undoable('Task deleted.', () => deleteTask(t.id))}
-            onDeleteSub={(i) => undoable('Subtask deleted.', () => deleteSubtask(t.id, i))}
-            refresh={refresh}
-          />
-        ))}
-        {tasks.length === 0 ? (
-          <div className="s m">No tasks here yet. Type one line above — or tell Eumae in Chat and it lands here.</div>
-        ) : null}
-      </div>
+        <div className="tkList">
+          {groupTasks(tasks, mode).map((g) => (
+            <section key={g.label} className="tkGroup">
+              <div className={'sdiv tkH' + (g.red ? ' att' : '')}>
+                <span>{g.label}</span>
+                <span className="fmeta">{g.tasks.length}</span>
+              </div>
+              {g.tasks.map((t) => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  side={sideLabel(t, mode)}
+                  selecting={selecting}
+                  selected={sel.has(t.id)}
+                  onSelect={() => toggleSel(t.id)}
+                  onOpen={() => openItem(t)}
+                  expanded={expanded === t.id}
+                  newSub={newSub}
+                  onNewSub={setNewSub}
+                  onToggleExpand={() => {
+                    setExpanded((e) => (e === t.id ? null : t.id));
+                    setNewSub('');
+                  }}
+                  onEdit={() => setDraft(t)}
+                  onDelete={() => undoable('Task deleted.', () => deleteTask(t.id))}
+                  onDeleteSub={(i) => undoable('Subtask deleted.', () => deleteSubtask(t.id, i))}
+                  refresh={refresh}
+                />
+              ))}
+            </section>
+          ))}
+          {tasks.length === 0 ? (
+            <p className="oIntro">
+              {mode === 'done' ? 'Nothing done here yet.' : 'No tasks here yet. Type one line above, or tell Eumae in Chat and it lands here.'}
+            </p>
+          ) : null}
+        </div>
       )}
     </div>
   );
 }
 function TaskRow({
   task,
+  side,
+  selecting,
+  selected,
+  onSelect,
+  onOpen,
   expanded,
   newSub,
   onNewSub,
@@ -280,6 +370,11 @@ function TaskRow({
   refresh,
 }: {
   task: Task;
+  side: { text: string; red?: boolean };
+  selecting: boolean;
+  selected: boolean;
+  onSelect: () => void;
+  onOpen: () => void;
   expanded: boolean;
   newSub: string;
   onNewSub: (s: string) => void;
@@ -299,6 +394,9 @@ function TaskRow({
   };
   const subs = task.sub ?? [];
   const pr = task.pr ?? 'none';
+  const project = projectOf('task', task.id);
+  const listName = task.list && task.list !== 'inbox' ? getLists().find((l) => l.id === task.list)?.n : undefined;
+  const pill = project?.n ?? listName;
   const submitSub = () => {
     if (!newSub.trim()) return;
     addSubtask(task.id, newSub);
@@ -307,48 +405,54 @@ function TaskRow({
   };
   return (
     <>
-      <div className={'task' + (leaving ? ' leaving' : '')}>
-        <button
-          className={'ck' + (task.d || leaving ? ' d' : '')}
-          aria-label={task.d ? `Reopen ${task.t}` : `Done: ${task.t}`}
-          onClick={() => complete(task, leaving, setLeaving, refresh)}
-        />
-        <div className="g">
-          <button className="tkTitle" onClick={onEdit}>
-            {task.d ? <s className="m">{task.t}</s> : <span className="strike">{task.t}</span>}
+      <div className={'frow top tkRow' + (leaving ? ' leaving' : '') + (selected ? ' sel' : '')} onClick={selecting ? onSelect : undefined}>
+        {selecting ? (
+          <span className={'tkBox' + (selected ? ' on' : '')} role="checkbox" aria-checked={selected} aria-label={`Select ${task.t}`}>
+            {selected ? '✓' : ''}
+          </span>
+        ) : (
+          <button
+            className={'fchk' + (task.d || leaving ? ' on' : '')}
+            aria-label={task.d ? `Reopen ${task.t}` : `Done: ${task.t}`}
+            onClick={() => complete(task, leaving, setLeaving, refresh)}
+          />
+        )}
+        <div className="ft">
+          <button className="tlT" onClick={selecting ? undefined : onOpen}>
+            <span className={task.d || leaving ? 'tlDone' : ''}>{task.t}</span>
           </button>
-          <TaskMeta task={task} subs={subs.length ? `${subs.filter((s) => s.d).length}/${subs.length} subtasks` : ''} />
-          <ProjectChip k="task" id={task.id} />
+          <TaskMeta task={task} subs={subs.length ? `${subs.filter((s) => s.d).length}/${subs.length} steps` : ''} hideDate />
         </div>
-        <button
-          className="fb"
-          style={{ color: PR_COLOR[pr] }}
-          aria-label={`Priority ${pr}, tap to change`}
-          onClick={() => {
-            cyclePriority(task.id);
-            refresh();
-          }}
-        >
-          {pr === 'none' ? '—' : pr}
-        </button>
-        <button className="fb gho" aria-label={expanded ? 'Collapse' : 'Expand'} onClick={onToggleExpand}>
-          ▾
-        </button>
-        <ItemMenu
-          name={task.t}
-          edit={onEdit}
-          extra={[{ label: expanded ? 'Hide subtasks' : 'Subtasks', onClick: onToggleExpand }]}
-          link={{ k: 'task', id: task.id }}
-          onChange={refresh}
-          onDelete={onDelete}
-        />
+        {pr !== 'none' ? <span className="tkPr" style={{ background: PR_COLOR[pr] }} title={`Priority: ${pr}`} /> : null}
+        {pill ? <span className="tkPill">{pill}</span> : null}
+        <span className={'fmeta' + (side.red ? ' over' : '')}>{side.text}</span>
+        {!selecting ? (
+          <ItemMenu
+            name={task.t}
+            open={onOpen}
+            edit={onEdit}
+            extra={[
+              { label: expanded ? 'Hide steps' : 'Steps', onClick: onToggleExpand },
+              {
+                label: `Priority: ${pr === 'none' ? 'none' : pr} → next`,
+                onClick: () => {
+                  cyclePriority(task.id);
+                  refresh();
+                },
+              },
+            ]}
+            link={{ k: 'task', id: task.id }}
+            onChange={refresh}
+            onDelete={onDelete}
+          />
+        ) : null}
       </div>
       {expanded ? (
-        <div style={{ padding: '0 0 8px 35px' }}>
+        <div className="tkSubs">
           {subs.map((s, i) => (
-            <div key={i} className="task">
+            <div key={i} className="frow">
               <button
-                className={'ck' + (s.d ? ' d' : '')}
+                className={'fchk' + (s.d ? ' on' : '')}
                 aria-label={s.d ? `Reopen ${s.t}` : `Done: ${s.t}`}
                 onClick={() => {
                   toggleSubtask(task.id, i);
@@ -366,18 +470,18 @@ function TaskRow({
                     if (e.key === 'Enter') saveSub();
                     if (e.key === 'Escape') setEditSub(null);
                   }}
-                  aria-label="Edit subtask"
+                  aria-label="Edit step"
                 />
               ) : (
                 <button
-                  className="g s tkTitle"
+                  className="ft tlT"
                   aria-label={`Edit ${s.t}`}
                   onClick={() => {
                     setEditSub(i);
                     setSubText(s.t);
                   }}
                 >
-                  {s.d ? <s className="m">{s.t}</s> : s.t}
+                  <span className={s.d ? 'tlDone' : ''}>{s.t}</span>
                 </button>
               )}
               <button className="fb gho danger" aria-label={`Delete ${s.t}`} onClick={() => onDeleteSub(i)}>
@@ -388,13 +492,13 @@ function TaskRow({
           <span style={{ display: 'flex', gap: 8, marginTop: 6 }}>
             <input
               className="lib2-search"
-              placeholder="New subtask"
+              placeholder="New step"
               value={newSub}
               onChange={(e) => onNewSub(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') submitSub();
               }}
-              aria-label="New subtask"
+              aria-label="New step"
             />
             <button className="fb" onClick={submitSub}>
               Add
@@ -406,6 +510,80 @@ function TaskRow({
   );
 }
 
+function ymdOf(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function addDaysYmd(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return ymdOf(d);
+}
+
+type Group = { label: string; tasks: Task[]; red?: boolean };
+
+const byDue = (a: Task, b: Task) =>
+  (a.due ?? '9999').localeCompare(b.due ?? '9999') || (a.tm ?? '99').localeCompare(b.tm ?? '99');
+
+/* By day: Overdue, Today, Tomorrow, This week, Later, Someday. By project and
+   by goal: one group per project or goal (a task's goal is its project's
+   goal), then the ones with none. Done: newest first in one group. */
+function groupTasks(tasks: Task[], mode: Mode): Group[] {
+  const sorted = [...tasks].sort(byDue);
+  if (mode === 'done') return sorted.length ? [{ label: 'Done', tasks: sorted.reverse() }] : [];
+  if (mode === 'day') {
+    const today = ymdOf(new Date());
+    const tmw = addDaysYmd(1);
+    const wk = addDaysYmd(7);
+    const g: Group[] = [
+      { label: 'Overdue', tasks: [], red: true },
+      { label: 'Today', tasks: [] },
+      { label: 'Tomorrow', tasks: [] },
+      { label: 'This week', tasks: [] },
+      { label: 'Later', tasks: [] },
+      { label: 'Someday', tasks: [] },
+    ];
+    for (const t of sorted) {
+      const d = t.due;
+      const i = !d ? 5 : d < today ? 0 : d === today ? 1 : d === tmw ? 2 : d <= wk ? 3 : 4;
+      g[i].tasks.push(t);
+    }
+    return g.filter((x) => x.tasks.length);
+  }
+  const goals = getGoals();
+  const map = new Map<string, Task[]>();
+  const none: Task[] = [];
+  for (const t of sorted) {
+    const p = projectOf('task', t.id);
+    let key: string | undefined;
+    if (mode === 'project') key = p?.n;
+    else {
+      const gid = p ? linkedIds(p.id, 'goal')[0] : undefined;
+      key = gid ? goals.find((x) => x.id === gid)?.t : undefined;
+    }
+    if (!key) none.push(t);
+    else map.set(key, [...(map.get(key) ?? []), t]);
+  }
+  const out: Group[] = [...map.entries()].map(([label, ts]) => ({ label, tasks: ts }));
+  if (none.length) out.push({ label: mode === 'project' ? 'No project' : 'No goal', tasks: none });
+  return out;
+}
+
+/* The right-hand word on a row: the time today, the weekday this week, the
+   date further out; red when overdue. */
+function sideLabel(t: Task, mode: Mode): { text: string; red?: boolean } {
+  if (!t.due) return { text: '' };
+  const today = ymdOf(new Date());
+  const time = t.tm ? fmtTime(t.tm) : '';
+  const day = new Date(t.due + 'T12:00');
+  if (!t.d && t.due < today) return { text: `${DOW3[day.getDay()]} ${time}`.trim(), red: true };
+  if (mode === 'day') {
+    if (t.due === today || t.due === addDaysYmd(1)) return { text: time || 'Anytime' };
+    if (t.due <= addDaysYmd(7)) return { text: DOW3[day.getDay()] };
+  }
+  return { text: fmtShort(t.due) + (time && mode !== 'done' ? ' ' + time : '') };
+}
+
 function todayYmd(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -414,11 +592,11 @@ function todayYmd(): string {
 const DOW3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /* One quiet line: when, how long, repeat, subtasks. Overdue reads red. */
-function TaskMeta({ task, subs }: { task: Task; subs: string }) {
+function TaskMeta({ task, subs, hideDate }: { task: Task; subs: string; hideDate?: boolean }) {
   const bits: string[] = [];
   const today = todayYmd();
   let late = false;
-  if (task.due) {
+  if (task.due && !hideDate) {
     late = !task.d && task.due < today;
     const tmw = new Date();
     tmw.setDate(tmw.getDate() + 1);
@@ -430,7 +608,7 @@ function TaskMeta({ task, subs }: { task: Task; subs: string }) {
     bits.push('↻ ' + (task.rep === 'weekly' && task.repDays?.length ? task.repDays.map((d) => DOW3[d]).join(' ') : task.rep));
   if (subs) bits.push(subs);
   if (!bits.length) return null;
-  return <div className="xs m" style={late ? { color: 'var(--rd)' } : undefined}>{bits.join(' · ')}</div>;
+  return <div className="fsub" style={late ? { color: 'var(--rd)' } : undefined}>{bits.join(' · ')}</div>;
 }
 
 /* Full task fields (wove's add modal, distilled). */

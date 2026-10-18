@@ -8,6 +8,8 @@ import { getTasks } from '../../tasks';
 import { eventsBetween, ymd } from '../../events';
 import { streamChat } from '../../chat';
 import { buildRequest, toApiBody, type ThreadTurn } from '../../request';
+import { useFocus, setFocus, FOCUS_LABEL } from '../../focus';
+import { ItemTab } from './ItemTab';
 
 /** Mae's office: the right panel on desktop, a peek bar and a sheet on a phone.
  *
@@ -60,7 +62,8 @@ const OFFICE: Record<TabId, OTab[]> = {
 
 /** The reading this page can show: the one you were on if this page has it,
  *  otherwise the page's first tab. */
-export function fitView(tab: TabId, view: PanelView): PanelView {
+export function fitView(tab: TabId, view: PanelView, hasItem = false): PanelView {
+  if (view === 'item' && hasItem) return 'item';
   const tabs = OFFICE[tab];
   return tabs.some((t) => t.id === view) ? view : tabs[0].id;
 }
@@ -398,8 +401,12 @@ interface OfficeProps {
 }
 
 export default function Office({ tab, open, view, onView, onClose, onToggle }: OfficeProps) {
-  const tabs = OFFICE[tab];
-  const v = fitView(tab, view);
+  /* A tapped item gets its own tab, first, on the Console's office only
+     (Tasks, Calendar, Goals… all live under Console). */
+  const focus = useFocus();
+  const item = tab === 'console' ? focus : null;
+  const tabs: OTab[] = item ? [{ id: 'item', label: FOCUS_LABEL[item.k] }, ...OFFICE[tab]] : OFFICE[tab];
+  const v = fitView(tab, view, !!item);
   return (
     <>
       <div className={`pscrim${open ? ' open' : ''}`} onClick={onClose} />
@@ -421,11 +428,27 @@ export default function Office({ tab, open, view, onView, onClose, onToggle }: O
           {tabs.map((t) => (
             <button key={t.id} role="tab" aria-selected={v === t.id} className={v === t.id ? 'on' : ''} onClick={() => onView(t.id)}>
               {t.label}
+              {t.id === 'item' ? (
+                <span
+                  className="otX"
+                  role="button"
+                  aria-label="Close this item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFocus(null);
+                    onView(OFFICE[tab][0].id);
+                  }}
+                >
+                  ×
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
         <div className="pBody oBody">
-          {v === 'mae' ? (
+          {v === 'item' && item ? (
+            <ItemTab focus={item} onView={onView} />
+          ) : v === 'mae' ? (
             <MaeTab tab={tab} />
           ) : v === 'context' ? (
             <ContextTab />

@@ -12,10 +12,10 @@ import type { TabId } from './components/shell/TabBar';
  *  between them. */
 export type PanelView =
   | 'mae' | 'context' | 'sandbox' | 'build' | 'details' | 'notes' | 'huddles'
-  | 'desk' | 'logbook';
+  | 'desk' | 'logbook' | 'item';
 
 export const PANEL_VIEWS: PanelView[] = [
-  'mae', 'context', 'sandbox', 'build', 'details', 'notes', 'huddles', 'desk', 'logbook',
+  'mae', 'context', 'sandbox', 'build', 'details', 'notes', 'huddles', 'desk', 'logbook', 'item',
 ];
 
 /** A reference attached to this conversation — the mockup's `S.refs` entry. It

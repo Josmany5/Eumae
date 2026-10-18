@@ -4,6 +4,7 @@ import { getTasks, toggleTask, createTask, saveTask, type Task } from '../../tas
 import { dayEvents, ymd, mins, type CalEvent } from '../../events';
 import { parseQuick, fmtTime } from '../../quickadd';
 import { logEv } from '../../log';
+import { setFocus } from '../../focus';
 
 /* Console › Timeline widget (Oct 18, his call: Today = Option A as a widget,
  * one column, still draggable). Next line, one add line, then the day's spine:
@@ -44,7 +45,7 @@ function fmtDue(d: string): string {
 }
 
 export function Timeline({ editing, onChange }: { editing: boolean; onChange: () => void }) {
-  const { go, notify } = useNav();
+  const { go, notify, openPanel } = useNav();
   const [, setTick] = useState(0);
   const [text, setText] = useState('');
   const [showEarlier, setShowEarlier] = useState(false);
@@ -99,8 +100,10 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
 
   const tap = (i: Item) => {
     if (editing) return;
-    if (i.kind === 'task') go('tasks', i.task.id);
-    else go('cal');
+    if (i.kind === 'task') {
+      setFocus({ k: 'task', id: i.task.id });
+      openPanel('item');
+    } else go('cal');
   };
 
   const row = (i: Item, opts: { over?: boolean; past?: boolean; actions?: boolean } = {}) => {
@@ -189,7 +192,7 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
    the next seven days after today, events and dated tasks together. The big
    agenda view belongs to the Calendar page. */
 export function WeekStrip() {
-  const { go } = useNav();
+  const { go, openPanel } = useNav();
   const now = new Date();
   const open = getTasks().filter((t) => !t.d);
   const rows: { key: string; day: Date; t: string; tm?: string; task?: Task }[] = [];
@@ -209,8 +212,10 @@ export function WeekStrip() {
           className="wkRow"
           onClick={(e) => {
             e.stopPropagation();
-            if (r.task) go('tasks', r.task.id);
-            else go('cal');
+            if (r.task) {
+              setFocus({ k: 'task', id: r.task.id });
+              openPanel('item');
+            } else go('cal');
           }}
         >
           <span className="wkD">
