@@ -361,7 +361,9 @@ input[type=checkbox]{ accent-color:var(--ac); }
 
   .sb{ display:flex; flex-direction:column; gap:2px; min-height:0;
     background:var(--card); border-right:1px solid var(--hair);
-    padding:12px 10px calc(12px + env(safe-area-inset-bottom)); }
+    padding:12px 10px calc(12px + env(safe-area-inset-bottom));
+    overflow-y:auto; scrollbar-width:none; }
+  .sb::-webkit-scrollbar{ display:none; }
 
   .sbHead{ display:flex; align-items:center; gap:8px; padding:6px 2px 12px 8px; }
   .sbMark{ flex:1; font-size:17px; font-weight:700; letter-spacing:-.02em; }
@@ -387,7 +389,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   .sbNav{ flex:none; display:flex; flex-direction:column; gap:1px; }
   .sbSep{ height:1px; background:var(--hair); margin:10px 8px; flex:none; }
   /* Level 2 — the page's own menu. This is what swaps when you change tabs. */
-  .sbPanel{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:1px; }
+  .sbPanel{ flex:none; display:flex; flex-direction:column; gap:1px; }
   .sbSect{ font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
     color:var(--mut); padding:12px 10px 4px; }
   .sbFoot{ flex:none; margin-top:auto; padding-top:8px; border-top:1px solid var(--hair); }
@@ -396,7 +398,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
      labels and the page menu step aside until you expand again. */
   #app.railCollapsed{ grid-template-columns:64px 1fr; }
   #app.railCollapsed .sb{ padding:12px 8px calc(12px + env(safe-area-inset-bottom)); }
-  #app.railCollapsed .sbMark, #app.railCollapsed .sbSect, #app.railCollapsed .sbSearch,
+  #app.railCollapsed .sbMark, #app.railCollapsed .sbSect, #app.railCollapsed .sbSearchIc,
   #app.railCollapsed .sbPanel, #app.railCollapsed .sbItem .g{ display:none; }
   #app.railCollapsed .sbHead{ padding:6px 0 12px; justify-content:center; }
   #app.railCollapsed .sbItem{ justify-content:center; padding:9px 0; }

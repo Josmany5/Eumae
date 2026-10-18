@@ -39,7 +39,6 @@ export const PAGE_MENU: Record<TabId, MenuSection[]> = {
   ],
   console: [
     {
-      heading: 'Full pages',
       items: [
         { label: 'Notes', icon: 'doc' },
         { label: 'Tasks', icon: 'chk' },

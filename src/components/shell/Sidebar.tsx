@@ -47,19 +47,13 @@ export default function Sidebar({
             panel-shaped icons at the top-left of the window, one of them opening
             something on the far right. The panel's door is in the top-right
             corner of the screen now (.pHandle). */}
+        <button className="sbIcon sbSearchIc" onClick={onSearch} aria-label="Search" title="Search">
+          <Icon name="sea" />
+        </button>
         <button className="sbIcon" onClick={onCollapse} aria-label="Toggle sidebar" title="Toggle sidebar">
           <Icon name="side" />
         </button>
       </div>
-
-      <div className="sbSearch">
-        <button className="sbItem" onClick={onSearch} title="Search">
-          <Icon name="sea" />
-          <span className="g">Search</span>
-        </button>
-      </div>
-
-      <div className="sbSep" />
 
       <nav className="sbNav">
         {TABS.map((t) => (
