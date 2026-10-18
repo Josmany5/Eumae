@@ -185,37 +185,39 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
   );
 }
 
-/* This week mini strip: seven day columns, first thing on each. */
+/* This week, Option A style: one card of dated rows (day · what · time) for
+   the next seven days after today, events and dated tasks together. The big
+   agenda view belongs to the Calendar page. */
 export function WeekStrip() {
   const { go } = useNav();
   const now = new Date();
-  const today = ymd(now);
   const open = getTasks().filter((t) => !t.d);
-  const days = Array.from({ length: 7 }, (_, n) => {
+  const rows: { key: string; day: Date; t: string; tm?: string; task?: Task }[] = [];
+  for (let n = 1; n <= 7; n++) {
     const d = addDays(now, n);
     const day = ymd(d);
-    const evs = dayEvents(day);
-    const due = open.filter((t) => t.due === day);
-    const count = evs.length + due.length;
-    const label = count > 1 ? `${count} items` : evs[0]?.t ?? due[0]?.t ?? '—';
-    return { day, d, label };
-  });
+    itemsFor(day, open)
+      .sort(byTime)
+      .forEach((i) => rows.push({ key: i.key, day: d, t: i.t, tm: i.tm, task: i.kind === 'task' ? i.task : undefined }));
+  }
+  if (!rows.length) return <p className="oIntro tlNone">Nothing dated this week.</p>;
   return (
-    <div className="wk7">
-      {days.map((w) => (
+    <div className="wkCard">
+      {rows.map((r) => (
         <button
-          key={w.day}
-          className={'wk7d' + (w.day === today ? ' on' : '')}
+          key={r.key}
+          className="wkRow"
           onClick={(e) => {
             e.stopPropagation();
-            go('cal');
+            if (r.task) go('tasks', r.task.id);
+            else go('cal');
           }}
         >
-          <b>
-            {w.d.toLocaleDateString(undefined, { weekday: 'short' }).slice(0, 2)}
-            {w.day === today ? ` ${w.d.getDate()}` : ''}
-          </b>
-          <span>{w.label}</span>
+          <span className="wkD">
+            {r.day.toLocaleDateString(undefined, { weekday: 'short' })} {r.day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          </span>
+          <span className="ft">{r.t}</span>
+          <span className="fmeta">{r.tm ? fmtTime(r.tm) : r.task ? 'Task' : 'All day'}</span>
         </button>
       ))}
     </div>
