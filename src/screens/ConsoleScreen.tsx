@@ -1,138 +1,217 @@
-import { useRef, useState } from 'react';
-import { PagedDash } from '../components/shell/PagedDash';
-import { snapshotDash, restoreDash } from '../dash';
-import { undoable } from '../undo';
+import { useState } from 'react';
 import { useNav } from '../nav';
-import { getTasks, type Task } from '../tasks';
-import {
-  getDashboard,
-  removeWidget,
-  addWidget,
-  moveWidget,
-  addPage,
-  consolePageNames,
-  renameConsolePage,
-  removePage,
-  WIDGET_IDS,
-  WIDGET_TITLES,
-  type Dashboard,
-  type WidgetId,
-} from '../dash';
-import { WidgetCard, WIDGET_NAV } from '../components/shell/widgets';
+import { getTasks, toggleTask, createTask, saveTask, type Task } from '../tasks';
+import { dayEvents, ymd, mins, type CalEvent } from '../events';
+import { getGoals } from '../goals';
+import { parseQuick, fmtTime } from '../quickadd';
+import { logEv } from '../log';
 
-/* The Console — the mockup's widget dashboard (second rCon layer), rebuilt
- * as React on tokens.
+/* Console › Today, in the flat-row look (Oct 18 redesign, step 3).
  *
- * Pages come from the dash store (mockup's dash8.pages seed); each page is a
- * grid of widget cards. Edit mode (button + 600ms hold, the mockup's ED8):
- * cards shake with × to remove, size toggles flip quick/full, + Add opens
- * the registry, pages gain + New / Remove. Drag reorders within and across
- * pages — the mockup has remove + add only, so this is the new piece on the
- * same store. Tapping a card (not editing) opens its full page.
- */
+ * One fixed layout, no widget grid: a headline, one add line, the day's spine
+ * (Overdue, Needs attention, earlier today, Now, later today, Anytime,
+ * Tomorrow), and a side column with Eumae noticed, This week and Goals.
+ * Everything is read from the same task, event and goal stores the full pages
+ * use, so a check here is a check everywhere. */
+
+type Item =
+  | { kind: 'task'; key: string; t: string; tm?: string; task: Task }
+  | { kind: 'event'; key: string; t: string; tm?: string; ev: CalEvent };
+
+function addDays(d: Date, n: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+
+const URGENT = new Set(['urgent', 'critical']);
+
+function itemsFor(day: string, tasks: Task[]): Item[] {
+  const evs: Item[] = dayEvents(day).map((e, i) => ({
+    kind: 'event',
+    key: 'e' + (e.id ?? i) + day,
+    t: e.t,
+    tm: e.allDay ? undefined : e.tm || undefined,
+    ev: e,
+  }));
+  const ts: Item[] = tasks
+    .filter((t) => t.due === day)
+    .map((t) => ({ kind: 'task', key: 't' + t.id, t: t.t, tm: t.tm, task: t }));
+  return [...evs, ...ts];
+}
+
+const byTime = (a: Item, b: Item) => mins(a.tm) - mins(b.tm);
 
 export default function ConsoleScreen() {
-  const { notify, go, goTab } = useNav();
-  const [tasks, setTasks] = useState<Task[]>(() => getTasks());
-  const [dash, setDash] = useState<Dashboard>(() => getDashboard());
-  const [editing, setEditing] = useState(false);
-  const [briefOpen, setBriefOpen] = useState(false);
-  const holdTimer = useRef<number | null>(null);
+  const { go, notify } = useNav();
+  const [, setTick] = useState(0);
+  const [text, setText] = useState('');
+  const refresh = () => setTick((n) => n + 1);
 
-  const refresh = () => {
-    setTasks(getTasks());
-    setDash(getDashboard());
+  const now = new Date();
+  const today = ymd(now);
+  const tomorrow = ymd(addDays(now, 1));
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+
+  const all = getTasks();
+  const open = all.filter((t) => !t.d);
+  const overdue = open.filter((t) => t.due && t.due < today);
+  const todayItems = itemsFor(today, all);
+  const attention = todayItems.filter((i) => i.kind === 'task' && !i.task.d && !i.tm && URGENT.has(i.task.pr ?? ''));
+  const timed = todayItems.filter((i) => i.tm && !attention.includes(i)).sort(byTime);
+  const earlier = timed.filter((i) => mins(i.tm) < nowMin);
+  const later = timed.filter((i) => mins(i.tm) >= nowMin);
+  const anytime = todayItems.filter((i) => !i.tm && !attention.includes(i));
+  const tmrw = itemsFor(tomorrow, all.filter((t) => !t.d)).sort(byTime);
+
+  const leftToday = todayItems.filter((i) => i.kind === 'task' && !i.task.d).length + overdue.length;
+  const next = later.find((i) => i.kind === 'event' || !i.task.d);
+
+  const add = () => {
+    const s = text.trim();
+    if (!s) return;
+    const q = parseQuick(s);
+    const t = createTask(q.title || s);
+    saveTask({ ...t, due: q.date ?? today, tm: q.time, est: q.mins, pr: q.pr, list: q.list ?? t.list });
+    logEv({ area: 'Console', text: `Added task: ${q.title || s}` });
+    setText('');
+    refresh();
   };
 
-  const openCount = tasks.filter((t) => !t.d).length;
-  const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  const tap = (i: Item) => (i.kind === 'task' ? go('tasks', i.task.id) : go('cal'));
 
-  /* 600ms hold enters edit — the mockup's onpointerdown timer. */
-  const holdStart = () => {
-    if (editing) return;
-    if (holdTimer.current) window.clearTimeout(holdTimer.current);
-    holdTimer.current = window.setTimeout(() => setEditing(true), 600);
-  };
-  const holdEnd = () => {
-    if (holdTimer.current) {
-      window.clearTimeout(holdTimer.current);
-      holdTimer.current = null;
-    }
+  const row = (i: Item, opts: { over?: boolean; past?: boolean } = {}) => {
+    const done = i.kind === 'task' && !!i.task.d;
+    return (
+      <div key={i.key} className={`frow tdRow${done || opts.past ? ' past' : ''}${i.kind === 'event' ? ' ev' : ''}`}>
+        {i.kind === 'task' ? (
+          <button
+            className={`fchk${done ? ' on' : ''}`}
+            aria-label={done ? `Mark ${i.t} not done` : `Mark ${i.t} done`}
+            onClick={() => {
+              toggleTask(i.task.id);
+              if (!done) notify('Done.', { undo: () => { toggleTask(i.task.id); refresh(); } });
+              refresh();
+            }}
+          />
+        ) : null}
+        <button className="ft tdT" onClick={() => tap(i)}>
+          <span className={done ? 'strike' : ''}>{i.t}</span>
+        </button>
+        <span className={`fmeta${opts.over ? ' over' : ''}`}>
+          {opts.over && i.kind === 'task' ? fmtDue(i.task.due!) : i.tm ? fmtTime(i.tm) : i.kind === 'event' ? 'All day' : ''}
+        </span>
+      </div>
+    );
   };
 
-  const navigate = (id: WidgetId) => {
-    const nav = WIDGET_NAV[id];
-    if (nav.tab === 'library' || nav.tab === 'guild') {
-      goTab(nav.tab);
-      return;
-    }
-    if (nav.page) go(nav.page);
-  };
+  const week = Array.from({ length: 7 }, (_, n) => {
+    const d = addDays(now, n);
+    const day = ymd(d);
+    const evs = dayEvents(day);
+    const due = open.filter((t) => t.due === day).length;
+    return { day, d, evs, due };
+  });
 
-  const briefing = (
-    <div className="card briefFull" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>
-          <b>Today&apos;s briefing</b>
-          <div className="s" style={{ marginTop: 4 }}>
-            Mirror: you finish work best before 9 AM and slip after 4.
-          </div>
-          <div className="s" style={{ marginTop: 6 }}>
-            Nudge: nothing is scheduled after 3 PM — move the demo rehearsal there?
-          </div>
-          <div className="btns">
-            <button className="fb" onClick={() => setBriefOpen(false)}>
-              Dismiss
-            </button>
-          </div>
-        </div>
-  );
+  const goals = getGoals().filter((g) => g.st !== 'completed').slice(0, 4);
+
+  const dateLine = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
-    <div className={editing ? 'ed8 dashWide' : 'dashWide'} onPointerDown={holdStart} onPointerUp={holdEnd} onPointerLeave={holdEnd}>
-      <div className="row dashHead">
-        <div className="g">
-          <div className="screenT">Console</div>
-          <div className="screenS">{editing ? 'Editing this dashboard.' : `${today} · ${openCount} left today`}</div>
-        </div>
-        <button className={'dashEdit' + (editing ? ' pri' : '')} onClick={() => setEditing((v) => !v)}>
-          {editing ? 'Done' : 'Edit'}
-        </button>
+    <div className="today">
+      <div className="tdTop">
+        <h1>Today</h1>
+        <span className="fmeta">{dateLine}</span>
       </div>
-      <PagedDash
-        pages={dash.pages}
-        names={consolePageNames()}
-        allIds={WIDGET_IDS}
-        titles={WIDGET_TITLES}
-        editing={editing}
-        notify={notify}
-        onChange={refresh}
-        ops={{
-          move: moveWidget,
-          add: (p, id) => addWidget(p, id as WidgetId),
-          addPage,
-          removePage,
-          snapshot: snapshotDash,
-          restore: (x) => restoreDash(x as Dashboard),
-          rename: renameConsolePage,
+      <p className="tdHead">
+        {leftToday ? <b>{leftToday} left today.</b> : <b>Nothing left today.</b>}{' '}
+        {overdue.length ? <span className="over">{overdue.length} overdue. </span> : null}
+        {next ? <>Next: {next.t} at {fmtTime(next.tm)}.</> : 'Nothing else on the clock.'}
+      </p>
+      <form
+        className="tdAdd"
+        onSubmit={(e) => {
+          e.preventDefault();
+          add();
         }}
-        renderCard={(w, pi, wi, len) => (
-          <>
-          <WidgetCard
-            id={w as WidgetId}
-            dash={dash}
-            pageLen={len}
-            isFirst={pi === 0 && wi === 0}
-            editing={editing}
-            onNavigate={navigate}
-            onBrief={() => setBriefOpen((v) => !v)}
-            onRemove={() =>
-              undoable(notify, 'Widget removed.', snapshotDash, restoreDash, () => removeWidget(pi, w as WidgetId), refresh)
-            }
-            onRefresh={refresh}
-          />
-          {w === 'brief8' && briefOpen && !editing ? briefing : null}
-          </>
-        )}
-      />
+      >
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Add a task, like “Call Marcus 4pm”"
+          aria-label="Add a task"
+        />
+      </form>
+
+      <div className="tdCols">
+        <div className="tdMain">
+          <div className="flbl">Your day</div>
+          <div className="spine">
+            {overdue.length ? <div className="sdiv att">Overdue</div> : null}
+            {overdue.map((t) => row({ kind: 'task', key: 'o' + t.id, t: t.t, tm: t.tm, task: t }, { over: true }))}
+            {attention.length ? <div className="sdiv att">Needs attention</div> : null}
+            {attention.map((i) => row(i))}
+            {earlier.length ? <div className="sdiv">Earlier</div> : null}
+            {earlier.map((i) => row(i, { past: true }))}
+            <div className="snow">Now · {now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+            {later.map((i) => row(i))}
+            {anytime.length ? <div className="sdiv">Anytime today</div> : null}
+            {anytime.map((i) => row(i))}
+            {!later.length && !anytime.length ? <p className="oIntro tdNone">Nothing else today.</p> : null}
+            <div className="sdiv">Tomorrow</div>
+            {tmrw.length ? tmrw.map((i) => row(i)) : <p className="oIntro tdNone">Nothing yet.</p>}
+          </div>
+        </div>
+
+        <div className="tdSide">
+          <div className="flbl">Eumae noticed</div>
+          <p className="oIntro">Nothing yet. Mae's suggestions land here, and on her Desk, once she can notice things.</p>
+
+          <div className="flbl">
+            This week
+            <button className="fact tdLink" onClick={() => go('cal')}>Calendar</button>
+          </div>
+          {week.map((w) => (
+            <button key={w.day} className={`frow tdDay${w.day === today ? ' on' : ''}`} onClick={() => go('cal')}>
+              <span className="tdDow">{w.d.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+              <span className="ft">{w.evs[0]?.t ?? (w.due ? `${w.due} task${w.due === 1 ? '' : 's'} due` : '')}</span>
+              <span className="fmeta">
+                {w.evs.length > 1 ? `+${w.evs.length - 1}` : ''}
+              </span>
+            </button>
+          ))}
+
+          <div className="flbl">
+            Goals
+            <button className="fact tdLink" onClick={() => go('goals')}>All goals</button>
+          </div>
+          {goals.length ? (
+            goals.map((g) => {
+              const ms = g.ms ?? [];
+              const pct = ms.length ? Math.round((ms.filter((m) => m.done).length / ms.length) * 100) : g.st === 'in-progress' ? 0 : 0;
+              return (
+                <button key={g.id} className="tdGoal" onClick={() => go('goals')}>
+                  <span className="r">
+                    <span className="ft">{g.t}</span>
+                    <span className="fmeta">{ms.length ? `${pct}%` : g.td ? fmtDue(g.td) : ''}</span>
+                  </span>
+                  {ms.length ? (
+                    <span className="bar">
+                      <i style={{ width: `${pct}%` }} />
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })
+          ) : (
+            <p className="oIntro">No goals yet.</p>
+          )}
+        </div>
+      </div>
     </div>
   );
+}
+
+function fmtDue(d: string): string {
+  return new Date(d + 'T12:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }

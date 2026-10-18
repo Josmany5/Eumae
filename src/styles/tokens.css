@@ -1724,3 +1724,42 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   .panel.office{ background:var(--bg); }
   .oAsk{ background:var(--bg); }
 }
+
+/* ── Console › Today (step 3): one fixed layout in flat rows ──────────── */
+#mn > .today.today{ padding:16px 16px calc(24px + env(safe-area-inset-bottom)); }
+.tdTop{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+.tdTop h1{ margin:0; font-size:22px; font-weight:650; letter-spacing:-.015em; }
+.tdHead{ margin:12px 0 0; font-size:15px; line-height:1.5; color:var(--mut); }
+.tdHead b{ color:var(--tx); font-weight:600; }
+.tdHead .over{ color:var(--rd); }
+.tdAdd input{ width:100%; margin:14px 0 4px; padding:10px 0; background:none; border:0;
+  border-bottom:1px solid var(--hair); color:var(--tx); font:inherit; font-size:15px; outline:none; }
+.tdAdd input::placeholder{ color:var(--mut); }
+.tdAdd input:focus{ border-bottom-color:var(--ac); }
+.tdCols{ display:flex; flex-direction:column; gap:8px; }
+.tdMain, .tdSide{ min-width:0; }
+.sdiv{ padding:14px 0 2px; font-size:13px; font-weight:600; color:var(--mut); }
+.sdiv.att{ color:var(--rd); }
+.spine .tdNone{ margin:4px 0 6px; }
+.tdRow .tdT{ text-align:left; color:inherit; padding:0; }
+.tdRow.past .ft, .tdRow.past .fmeta{ color:var(--mut); }
+.tdRow .strike{ text-decoration:line-through; }
+.spine .tdRow.ev::before{ border-color:var(--ac); }
+.fchk{ width:18px; height:18px; flex:none; border-radius:50%; border:1.5px solid var(--mut); }
+.fchk:hover{ border-color:var(--ac); }
+.fchk.on{ background:var(--ac); border-color:var(--ac); }
+.tdLink{ margin:0; padding:0; font-size:13px; }
+.tdDay{ width:100%; text-align:left; }
+.tdDay .tdDow{ width:38px; flex:none; color:var(--mut); font-size:13px; font-weight:600; }
+.tdDay.on .tdDow{ color:var(--ac); }
+.tdDay .ft:empty::after{ content:"—"; color:var(--mut); }
+.tdGoal{ display:block; width:100%; text-align:left; padding:10px 0; border-bottom:1px solid var(--hair); }
+.tdGoal .r{ display:flex; gap:12px; align-items:baseline; }
+.tdGoal .bar{ display:block; height:3px; margin-top:8px; border-radius:2px; background:var(--card2); }
+.tdGoal .bar i{ display:block; height:3px; border-radius:2px; background:var(--ac); }
+@media (min-width:900px){
+  #mn > .today.today{ padding:26px 40px 40px; }
+  .tdCols{ flex-direction:row; gap:40px; }
+  .tdMain{ flex:1; }
+  .tdSide{ flex:0 0 300px; }
+}
