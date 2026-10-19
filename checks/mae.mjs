@@ -222,6 +222,8 @@ const stage = (calls) => {
   const un = stage([{ name: 'unlink_from_goal', args: { items: [{ kind: 'task', id: t.id }] } }]).plan;
   M.executePlan(un);
   check('goal-unlink', !M.goalOf('task', t.id));
+  const li = M.REGISTRY.find((a) => a.name === 'list_items').run({ kind: 'event', goal: g.id }, {});
+  check('goal-list-filter', li.ok && li.data.items.length === 1 && li.data.items[0].goal === 'Write my book', JSON.stringify(li.data));
 }
 
 if (failures.length) {

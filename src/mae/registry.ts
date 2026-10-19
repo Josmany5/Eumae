@@ -217,9 +217,9 @@ function milestones(v: unknown): Milestone[] | undefined {
 
 /* ───────────────────────── reads ───────────────────────── */
 
-const taskRow = (t: Task) => ({ id: t.id, title: t.t, done: !!t.d, due: t.due, time: t.tm, priority: t.pr, list: t.list, project: projectOf('task', t.id)?.n });
-const eventRow = (e: CalEvent) => ({ id: e.id, title: e.t, date: e.d, start: e.allDay ? undefined : e.tm, end: e.end, all_day: !!e.allDay, repeats: e.rep?.f, location: e.loc });
-const goalRow = (g: Goal) => ({ id: g.id, title: g.t, status: g.st, percent: goalPct(g), progress: goalCount(g) || undefined, target_date: g.td || undefined });
+const taskRow = (t: Task) => ({ id: t.id, title: t.t, done: !!t.d, due: t.due, time: t.tm, priority: t.pr, list: t.list, project: projectOf('task', t.id)?.n, goal: goalOf('task', t.id)?.t });
+const eventRow = (e: CalEvent) => ({ id: e.id, title: e.t, date: e.d, start: e.allDay ? undefined : e.tm, end: e.end, all_day: !!e.allDay, repeats: e.rep?.f, location: e.loc, goal: e.id ? goalOf('event', e.id)?.t : undefined });
+const goalRow = (g: Goal) => ({ id: g.id, title: g.t, status: g.st, percent: goalPct(g), progress: goalCount(g) || undefined, target_date: g.td || undefined, steps: GOAL_KINDS.reduce((n, k) => n + goalLinkedIds(g.id, k).length, 0) || undefined });
 
 const reads: Action[] = [
   {
@@ -279,7 +279,7 @@ const reads: Action[] = [
   {
     name: 'list_items',
     risk: 'read',
-    description: 'List items of one kind, optionally by date range, status, or project. Returns up to 50 with ids.',
+    description: 'List items of one kind, optionally by date range, status, project, or goal (the tasks, events or notes a goal owns). Returns up to 50 with ids.',
     params: obj(
       {
         kind: s('Which kind.', { enum: ITEM_KINDS }),
@@ -287,12 +287,17 @@ const reads: Action[] = [
         to: date('End of the range, inclusive.'),
         status: s('Tasks: open, done or all (default open). Goals: active, done, let-go or all (default active).', { enum: ['open', 'done', 'active', 'let-go', 'all'] }),
         project: s('Only items in this project id.'),
+        goal: s('Only tasks, events or notes under this goal id.'),
       },
       ['kind'],
     ),
-    verify: (a) => (a.project && !getProject(a.project) ? missing('project', a.project) : a.from && a.to && a.to < a.from ? '"to" is before "from".' : null),
+    verify: (a) => (a.project && !getProject(a.project) ? missing('project', a.project) : a.goal && !getGoals().some((g) => g.id === a.goal) ? missing('goal', a.goal) : a.goal && !GOAL_KINDS.includes(a.kind) ? 'Only tasks, events and notes sit under a goal.' : a.from && a.to && a.to < a.from ? '"to" is before "from".' : null),
     run: (a) => {
-      const inProject = (k: LinkKind) => (a.project ? new Set(linkedIds(a.project, k)) : null);
+      const inProject = (k: LinkKind) => {
+        const p = a.project ? new Set(linkedIds(a.project, k)) : null;
+        const g = a.goal && GOAL_KINDS.includes(k as GoalLinkKind) ? new Set(goalLinkedIds(a.goal, k as GoalLinkKind)) : null;
+        return p && g ? new Set([...p].filter((x) => g.has(x))) : (p ?? g);
+      };
       let rows: unknown[] = [];
       if (a.kind === 'task') {
         const only = inProject('task');
