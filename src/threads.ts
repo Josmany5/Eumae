@@ -20,6 +20,8 @@ export interface Thread {
   createdAt: number;
   updatedAt: number;
   messages: Msg[];
+  /** Where it started, when not in Chat ("Console office"). */
+  from?: string;
 }
 
 const KEY = 'eumae:threads';
@@ -69,6 +71,16 @@ function load(): Thread[] {
   } catch {
     cache = [];
     return cache;
+  }
+}
+
+/* Something outside Chat (Mae's office) changed a thread: App re-reads. */
+export const THREADS_EVENT = 'eumae:threads';
+export function threadsChanged(): void {
+  try {
+    window.dispatchEvent(new Event(THREADS_EVENT));
+  } catch {
+    /* no window in checks */
   }
 }
 

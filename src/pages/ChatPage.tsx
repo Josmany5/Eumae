@@ -1,6 +1,7 @@
 /* Guild thread — bubbles, marks read on open, inline send. Group variant
  * (gchatg) reads groups[].msgs ([who, text] pairs) instead of threads. */
 
+import { fmtStamp } from '../stamp';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNav } from '../nav';
 import { getGuild, saveGuild, sendGuildMessage, sendGroupMessage, deleteThread, leaveGroup, snapshotGuild, restoreGuild } from '../guild';
@@ -118,19 +119,6 @@ function Bubbles({ msgs, group }: { msgs: { me: boolean; who: string; text: stri
       })}
     </div>
   );
-}
-
-/* "Today 6:14 PM", "Yesterday 9:02 AM", "Mon 3:10 PM" within the week,
-   "Oct 12, 3:10 PM" before that. */
-function fmtStamp(at: number): string {
-  const d = new Date(at);
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const days = Math.round((day(new Date()) - day(d)) / 86400000);
-  if (days === 0) return `Today ${time}`;
-  if (days === 1) return `Yesterday ${time}`;
-  if (days > 1 && days < 7) return `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${time}`;
-  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${time}`;
 }
 
 /* The Guild message bar — same look as the quick-add bars, docked at the

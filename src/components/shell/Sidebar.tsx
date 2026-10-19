@@ -1,3 +1,4 @@
+import { fmtListTime } from '../../stamp';
 import { TABS, type TabId } from './TabBar';
 import { PAGE_MENU } from './pageMenu';
 import { Icon } from './icons';
@@ -98,6 +99,7 @@ export default function Sidebar({
                       >
                         <Icon name="chat" />
                         <span className="g">{t.title}</span>
+                        <span className="thMeta">{t.from ? t.from + ' · ' : ''}{fmtListTime(t.updatedAt)}</span>
                       </button>
                       <ItemMenu
                         name={t.title}

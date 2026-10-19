@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Composer from '../components/shell/Composer';
 import { Icon } from '../components/shell/icons';
 import { useNav, type Mode } from '../nav';
@@ -13,6 +13,7 @@ import { messagesFor, bootSnapshot, msgId } from '../boot';
 import { uploadData, listUploads } from '../uploads';
 import { getNotes } from '../notes';
 import { renderMd } from '../md';
+import { timeLabels } from '../stamp';
 
 /* A photo inside a saved message. The message carries the upload id (§4.15);
  * the bytes are looked up here, at render time. A message saved before the
@@ -641,6 +642,9 @@ export default function ChatScreen() {
   /* The visible window: newest 100 under day lines. Memoized so a stream of
      pieces re-slices only when the thread changes, not per chunk. */
   const visible = useMemo(() => threadRows(msgs), [msgs]);
+  /* Time labels: before the first message, then after an hour's gap. */
+  const stamps = useMemo(() => timeLabels(visible.rows.map((r) => r.msg.ts)), [visible]);
+  const fromLabel = threads.find((t) => t.id === threadId)?.from;
 
   return (
     <div className="chat">
@@ -667,8 +671,15 @@ export default function ChatScreen() {
                 <span>{visible.hidden} older message{visible.hidden === 1 ? '' : 's'} in history</span>
               </div>
             ) : null}
-            {visible.rows.map((row) => (
-                <div key={row.msg.id} className={`msg ${row.msg.role}`}>
+            {fromLabel ? (
+              <div className="dayLine">
+                <span>Started in {fromLabel}</span>
+              </div>
+            ) : null}
+            {visible.rows.map((row, ri) => (
+                <Fragment key={row.msg.id}>
+                {stamps[ri] ? <div className="imTime xs m">{stamps[ri]}</div> : null}
+                <div className={`msg ${row.msg.role}`}>
                   {(() => {
                     const m = row.msg;
                     return (
@@ -828,6 +839,7 @@ export default function ChatScreen() {
                     );
                   })()}
                 </div>
+                </Fragment>
             ))}
           </div>
         )}

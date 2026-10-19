@@ -1,3 +1,4 @@
+import { fmtListTime } from '../../stamp';
 import { useEffect, useRef, useState } from 'react';
 import { getThreads, downloadThread } from '../../threads';
 import { ItemMenu } from '../ItemMenu';
@@ -32,7 +33,7 @@ function SwipeRow({
   onExport,
   onRename,
 }: {
-  thread: { id: string; title: string; updatedAt: number };
+  thread: { id: string; title: string; updatedAt: number; from?: string };
   current: boolean;
   open: boolean;
   onOpen: () => void;
@@ -92,7 +93,8 @@ function SwipeRow({
       >
         <span className="g">{t.title}</span>
         <span className="drDate">
-          {new Date(t.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          {t.from ? t.from + ' · ' : ''}
+          {fmtListTime(t.updatedAt)}
         </span>
         <ItemMenu
           name={t.title}
@@ -109,7 +111,7 @@ function SwipeRow({
 export default function Drawer({ open, onClose, tab, onPick, onSearch, currentThreadId, onThreadPick, onThreadDelete }: DrawerProps) {
   /* Threads read fresh every time the drawer opens — App's cached copy goes
      stale when a title updates mid-chat (the 2026-10-10 stale list). */
-  const [threads, setThreads] = useState<{ id: string; title: string; updatedAt: number }[]>([]);
+  const [threads, setThreads] = useState<{ id: string; title: string; updatedAt: number; from?: string }[]>([]);
   const [openRow, setOpenRow] = useState<string | null>(null);
   /* App's list changes on delete, Undo and rename: follow it, reading fresh. */
   const { threads: appThreads, renameThread } = useNav();

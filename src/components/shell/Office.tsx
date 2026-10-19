@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Icon } from './icons';
 import type { TabId } from './TabBar';
 import { logEv, useLog, type LogFiled } from '../../log';
@@ -7,8 +7,13 @@ import { getRoles } from '../../roles';
 import { getTasks } from '../../tasks';
 import { eventsBetween, ymd } from '../../events';
 import { streamChat } from '../../chat';
-import { buildRequest, toApiBody, type ThreadTurn } from '../../request';
-import { useFocus, setFocus, FOCUS_LABEL } from '../../focus';
+import { buildRequest, toApiBody } from '../../request';
+import { createThread, getThread, saveThread, titleFor, threadsChanged, type Msg, type Thread } from '../../threads';
+import { msgId } from '../../boot';
+import { timeLabels } from '../../stamp';
+import { getTask } from '../../tasks';
+import { getEvent } from '../../events';
+import { useFocus, setFocus, getFocus, FOCUS_LABEL } from '../../focus';
 import { ItemTab } from './ItemTab';
 import { MaeIcon } from './Header';
 
@@ -101,16 +106,31 @@ const ROLE: Partial<Record<TabId, { name: string; intro: string; prompt: string;
   },
 };
 
-/* Mae's office threads, one per page, in memory for this session. */
-const threads: Partial<Record<TabId, ThreadTurn[]>> = {};
+/* Mae's office threads: one per page, saved as real chat threads (marked
+   "<Page> office") so they show in the Chat list. The office keeps going on
+   the same thread until it has been quiet for an hour; then it opens fresh
+   and the old one stays in Chat. */
+const FRESH_AFTER = 60 * 60 * 1000;
+const officeKey = (tab: TabId) => 'eumae:office:' + tab;
+const officeName = (tab: TabId) => tab[0].toUpperCase() + tab.slice(1) + ' office';
+function currentOfficeThread(tab: TabId): Thread | undefined {
+  let id: string | null = null;
+  try {
+    id = localStorage.getItem(officeKey(tab));
+  } catch {
+    /* storage blocked */
+  }
+  const t = id ? getThread(id) : undefined;
+  if (!t || Date.now() - t.updatedAt > FRESH_AFTER) return undefined;
+  return t;
+}
 const tListeners = new Set<() => void>();
 let tVersion = 0;
-function setThread(tab: TabId, list: ThreadTurn[]) {
-  threads[tab] = list;
+function bump() {
   tVersion++;
   tListeners.forEach((f) => f());
 }
-function useThread(tab: TabId): ThreadTurn[] {
+function useOfficeThread(tab: TabId): Thread | undefined {
   useSyncExternalStore(
     (f) => {
       tListeners.add(f);
@@ -121,7 +141,38 @@ function useThread(tab: TabId): ThreadTurn[] {
     () => tVersion,
     () => tVersion,
   );
-  return threads[tab] ?? [];
+  return currentOfficeThread(tab);
+}
+function writeOffice(tab: TabId, t: Thread) {
+  saveThread(t);
+  try {
+    localStorage.setItem(officeKey(tab), t.id);
+  } catch {
+    /* storage blocked */
+  }
+  bump();
+}
+function newOffice(tab: TabId) {
+  try {
+    localStorage.removeItem(officeKey(tab));
+  } catch {
+    /* storage blocked */
+  }
+  bump();
+}
+/** The item open in the office, as a line Mae can read. */
+function focusContext(): string {
+  const f = getFocus();
+  if (!f) return '';
+  if (f.k === 'task') {
+    const t = getTask(f.id);
+    return t ? `\n\nThe person has this task open: ${t.t}${t.due ? ` (due ${t.due}${t.tm ? ' ' + t.tm : ''})` : ''}.` : '';
+  }
+  if (f.k === 'event') {
+    const e = getEvent(f.id);
+    return e ? `\n\nThe person has this event open: ${e.t} on ${e.d}${e.tm ? ' at ' + e.tm : ''}${e.loc ? ' at ' + e.loc : ''}.` : '';
+  }
+  return f.k === 'day' ? `\n\nThe person is looking at ${f.id}.` : '';
 }
 
 function readStored<T>(key: string, fallback: T): T {
@@ -149,48 +200,101 @@ function consoleContext(): string {
 
 function MaeTab({ tab }: { tab: TabId }) {
   const role = ROLE[tab]!;
-  const { turn } = useNav();
-  const list = useThread(tab);
+  const { turn, switchThread, goTab } = useNav();
+  const thread = useOfficeThread(tab);
+  const list: Msg[] = thread?.messages ?? [];
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
-  const end = useRef<HTMLDivElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  const [atBottom, setAtBottom] = useState(true);
+  const atBottomRef = useRef(true);
+  const onScroll = () => {
+    const el = scroller.current;
+    if (!el) return;
+    const v = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+    atBottomRef.current = v;
+    setAtBottom(v);
+  };
+  const toBottom = () => {
+    const el = scroller.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    atBottomRef.current = true;
+    setAtBottom(true);
+  };
+  /* Follow new words only when you're already at the bottom. */
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end' });
+    if (atBottomRef.current) toBottom();
   }, [list]);
+  /* The box grows with what's in it, up to about six lines. */
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+  }, [text]);
+  const stamps = timeLabels(list.map((m) => m.ts));
 
   const send = () => {
     const q = text.trim();
     if (!q || busy) return;
     setText('');
-    const history = list;
+    const base = thread ?? { ...createThread(), title: titleFor(q), from: officeName(tab) };
+    const history = base.messages;
     const body = toApiBody(buildRequest(turn, [], q), history, null);
-    body.data.systemPrompt += `\n\n${role.prompt}${tab === 'console' ? consoleContext() : ''}`;
-    const base = [...history, { role: 'you' as const, text: q }];
-    setThread(tab, [...base, { role: 'eumae', text: '' }]);
+    body.data.systemPrompt += `\n\n${role.prompt}${tab === 'console' ? consoleContext() : ''}${focusContext()}`;
+    const mine: Msg = { id: msgId(), role: 'you', text: q, ts: Date.now() };
+    const replyId = msgId();
+    const put = (reply: string, streaming: boolean) =>
+      writeOffice(tab, { ...base, messages: [...history, mine, { id: replyId, role: 'eumae', text: reply, ts: Date.now(), streaming: streaming || undefined }] });
+    put('', true);
+    threadsChanged();
+    atBottomRef.current = true;
     setBusy(true);
-    void streamChat(body, (full) => setThread(tab, [...base, { role: 'eumae', text: full }])).then((reply) => {
+    void streamChat(body, (full) => put(full, true)).then((reply) => {
       setBusy(false);
-      setThread(tab, [...base, { role: 'eumae', text: reply.ok ? reply.text : `I couldn't answer: ${reply.error}` }]);
+      put(reply.ok ? reply.text : `I couldn't answer: ${reply.error}`, false);
+      threadsChanged();
       if (!reply.ok) logEv({ area: AREA[tab], text: `Mae couldn't answer: ${reply.error}`, status: 'bad' });
     });
   };
 
   return (
     <div className="oMae">
-      <div className="flbl">Mae · {role.name}</div>
-      {list.length === 0 ? <p className="oIntro">{role.intro}</p> : null}
-      <div className="oThread">
-        {list.map((m, i) =>
-          m.role === 'you' ? (
-            <div key={i} className="oMe">{m.text}</div>
-          ) : (
-            <div key={i} className="oMae1">
-              <div className="n">Mae</div>
-              {m.text || <span className="fsub">Thinking…</span>}
-            </div>
-          ),
-        )}
-        <div ref={end} />
+      <div className="oMaeHead">
+        <div className="flbl">Mae · {role.name}</div>
+        {thread ? (
+          <div className="oMaeActs">
+            <button
+              className="fb"
+              onClick={() => {
+                switchThread(thread.id);
+                goTab('chat');
+              }}
+            >
+              Open in Chat
+            </button>
+            <button className="fb" onClick={() => newOffice(tab)} disabled={busy}>
+              New
+            </button>
+          </div>
+        ) : null}
+      </div>
+      <div className="oThread" ref={scroller} onScroll={onScroll}>
+        {list.length === 0 ? <p className="oIntro">{role.intro}</p> : null}
+        {list.map((m, i) => (
+          <Fragment key={m.id}>
+            {stamps[i] ? <div className="imTime xs m">{stamps[i]}</div> : null}
+            {m.role === 'you' ? (
+              <div className="oMe">{m.text}</div>
+            ) : (
+              <div className="oMae1">
+                <div className="n">Mae</div>
+                {m.text || <span className="fsub">Thinking…</span>}
+              </div>
+            )}
+          </Fragment>
+        ))}
       </div>
       <form
         className="oAsk"
@@ -199,10 +303,23 @@ function MaeTab({ tab }: { tab: TabId }) {
           send();
         }}
       >
-        <input
-          className="sinput"
+        {!atBottom ? (
+          <button type="button" className="chatDown" onClick={toBottom} aria-label="Scroll to latest" title="Scroll to latest">
+            <Icon name="dn" />
+          </button>
+        ) : null}
+        <textarea
+          ref={box}
+          className="sinput oBox"
+          rows={1}
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
           placeholder={role.hint}
           aria-label="Ask Mae"
         />
@@ -446,7 +563,7 @@ export default function Office({ tab, open, view, onView, onClose, onToggle }: O
             </button>
           ))}
         </div>
-        <div className="pBody oBody">
+        <div className={'pBody oBody' + (v === 'mae' ? ' oBodyMae' : '')}>
           {v === 'item' && item ? (
             <ItemTab focus={item} onView={onView} />
           ) : v === 'mae' ? (

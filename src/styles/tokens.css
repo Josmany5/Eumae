@@ -1698,13 +1698,20 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   padding:9px 0; border-bottom:1px solid var(--hair); }
 .oPick .oseg{ flex:none; }
 .oPick .selIn{ font-size:14px; padding:6px 10px; }
-.oMae{ display:flex; flex-direction:column; min-height:100%; }
-.oThread{ flex:1; }
+/* Mae tab: the thread scrolls on its own and the box stays pinned under it. */
+.oBody.oBodyMae{ display:flex; flex-direction:column; overflow:hidden; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
+.oMae{ display:flex; flex-direction:column; flex:1; min-height:0; }
+.oMaeHead{ display:flex; align-items:center; gap:8px; flex:none; }
+.oMaeActs{ margin-left:auto; display:flex; gap:6px; }
+.oThread{ flex:1; min-height:0; overflow-y:auto; padding-bottom:10px; scrollbar-width:thin; scrollbar-color:var(--hair) transparent; }
+.oThread .imTime{ margin:14px 0 0; }
+.oAsk .chatDown{ top:-46px; }
+.oBox{ resize:none; font:inherit; line-height:1.4; max-height:150px; overflow-y:auto; display:block; }
 .oMe{ margin:12px 0 0 auto; max-width:85%; width:fit-content; background:var(--ac); color:var(--acink);
   border-radius:16px; padding:8px 13px; font-size:15px; line-height:1.45; }
 .oMae1{ margin:12px 0 0; font-size:15px; line-height:1.5; white-space:pre-wrap; }
 .oMae1 .n{ color:var(--ac); font-size:13px; font-weight:600; margin-bottom:2px; }
-.oAsk{ position:sticky; bottom:0; display:flex; gap:8px; align-items:center; padding:12px 0 0;
+.oAsk{ position:relative; flex:none; display:flex; gap:8px; align-items:flex-end; padding:12px 0 0;
   background:var(--card); }
 .oAsk .sinput{ padding:10px 12px; font-size:15px; }
 .oSend{ width:36px; height:36px; flex:none; border-radius:50%; background:var(--ac); color:var(--acink);
@@ -1956,3 +1963,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   .con:not(.ed8) .pgArr{ display:none; }
   .panelOpen #mn > .dashWide.con{ padding-left:28px; padding-right:28px; }
 }
+
+/* Chat list rows: where it started and when. */
+.thMeta{ flex:none; margin-left:auto; padding-left:8px; font-size:13px; color:var(--mut); white-space:nowrap; }
+#app.railCollapsed .thMeta{ display:none; }

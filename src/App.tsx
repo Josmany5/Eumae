@@ -21,6 +21,7 @@ import {
   setCurrentThreadId,
   snapshotThreads,
   restoreThreads,
+  THREADS_EVENT,
   type Thread,
 } from './threads';
 import { boot, saveNav } from './boot';
@@ -246,6 +247,12 @@ export default function App() {
     setCurrentId(fresh.id);
     setThreads(getThreads());
   }, [currentThreadId]);
+
+  useEffect(() => {
+    const f = () => setThreads(getThreads());
+    window.addEventListener(THREADS_EVENT, f);
+    return () => window.removeEventListener(THREADS_EVENT, f);
+  }, []);
 
   const newChat = useCallback(() => {
     const fresh = createThread();
