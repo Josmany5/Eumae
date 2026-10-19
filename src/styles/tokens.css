@@ -2064,3 +2064,13 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .itWhy{ color:var(--mut); margin:4px 0 0; }
 .itBar{ width:100%; margin-top:12px; }
 @media (max-width:899px){ .gRow .gSide{ max-width:128px; } .gNext{ display:none; } }
+
+/* Today spine: a task's dot IS the checkbox: full size, and it fills gold in
+   place when done (no bigger overlay on tap). */
+.tlSpine .tlRow:has(> .tlDot)::before{ display:none; }
+.tlDot{ left:-26px; top:14px; width:15px; height:15px; border:1.5px solid var(--mut); background:var(--bg);
+  box-sizing:border-box; outline:none; -webkit-tap-highlight-color:transparent; transition:background .15s, border-color .15s; z-index:1; }
+.tlDot:hover{ box-shadow:none; border-color:var(--ac); }
+.tlDot:focus, .tlDot:active{ outline:none; box-shadow:none; transform:none; }
+.tlDot:focus-visible{ box-shadow:0 0 0 2px var(--acsoft); }
+.tlRow.done .tlDot{ background:var(--ac); border-color:var(--ac); }
