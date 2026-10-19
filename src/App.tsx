@@ -32,6 +32,7 @@ const CON_PAGES: { label: string; page: string | null }[] = [
   { label: 'Today', page: null },
   { label: 'Tasks', page: 'tasks' },
   { label: 'Calendar', page: 'cal' },
+  { label: 'Events', page: 'events' },
   { label: 'Goals', page: 'goals' },
   { label: 'Projects', page: 'projects' },
   { label: 'Notes', page: 'notes' },
