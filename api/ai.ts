@@ -81,6 +81,14 @@ const MODEL_IDS: Record<string, string> = {
   best: 'gemini-3.8-flash',
 };
 
+/* Tool turns need a model that can use search and the app's tools in one
+   request; the 2.5 generation can't combine them and is the weakest at picking
+   the right tool. So a tool turn on a 2.5 model moves up to the lite 3.x rung. */
+function toolModel(modelId: string, functionDeclarations: unknown[] | undefined): string {
+  const tools = Array.isArray(functionDeclarations) && functionDeclarations.length > 0;
+  return tools && /^gemini-2\./.test(modelId) ? MODEL_IDS.lite : modelId;
+}
+
 interface ChatMessage {
   role: string;
   content: string;
@@ -118,7 +126,39 @@ async function resolveSourceUri(uri: string): Promise<string> {
   }
 }
 
-function buildContents(message: string, conversationHistory: ChatMessage[] | undefined, attachments: unknown) {
+/* The turn's own tool exchange: Mae's function calls and the app's answers,
+   sent back so the model can keep going (read, then plan). Only the four part
+   shapes Gemini needs travel, and only in the two roles it accepts; anything
+   else is dropped rather than relayed. `thoughtSignature` must ride back on
+   the call it came with or newer models refuse the next turn. */
+function sanitizeTail(tail: unknown): { role: string; parts: unknown[] }[] {
+  if (!Array.isArray(tail)) return [];
+  const out: { role: string; parts: unknown[] }[] = [];
+  for (const c of tail.slice(0, 24)) {
+    if (!c || typeof c !== 'object') continue;
+    const role = (c as { role?: unknown }).role === 'model' ? 'model' : 'user';
+    const raw = (c as { parts?: unknown }).parts;
+    if (!Array.isArray(raw)) continue;
+    const parts: unknown[] = [];
+    for (const p of raw.slice(0, 64)) {
+      if (!p || typeof p !== 'object') continue;
+      const o = p as Record<string, unknown>;
+      const sig = typeof o.thoughtSignature === 'string' ? { thoughtSignature: o.thoughtSignature } : {};
+      if (typeof o.text === 'string') parts.push({ text: o.text, ...sig });
+      else if (o.functionCall && typeof (o.functionCall as { name?: unknown }).name === 'string') {
+        const fc = o.functionCall as { name: string; args?: unknown };
+        parts.push({ functionCall: { name: fc.name, args: fc.args && typeof fc.args === 'object' ? fc.args : {} }, ...sig });
+      } else if (o.functionResponse && typeof (o.functionResponse as { name?: unknown }).name === 'string') {
+        const fr = o.functionResponse as { name: string; response?: unknown };
+        parts.push({ functionResponse: { name: fr.name, response: fr.response && typeof fr.response === 'object' ? fr.response : {} } });
+      }
+    }
+    if (parts.length) out.push({ role, parts });
+  }
+  return out;
+}
+
+function buildContents(message: string, conversationHistory: ChatMessage[] | undefined, attachments: unknown, tail?: unknown) {
   const contents: { role: string; parts: unknown[] }[] = [];
   if (conversationHistory && conversationHistory.length > 0) {
     for (const msg of conversationHistory) {
@@ -132,6 +172,7 @@ function buildContents(message: string, conversationHistory: ChatMessage[] | und
     role: 'user',
     parts: [{ text: message }, ...sanitizeAttachments(attachments)],
   });
+  contents.push(...sanitizeTail(tail));
   return contents;
 }
 
@@ -152,18 +193,21 @@ function buildGeminiBody(
   message: string,
   conversationHistory: ChatMessage[] | undefined,
   attachments: unknown,
-  functionDeclarations: unknown[] | undefined
+  functionDeclarations: unknown[] | undefined,
+  tail?: unknown
 ) {
   const combineTools = Array.isArray(functionDeclarations) && functionDeclarations.length > 0;
   return {
     systemInstruction: { parts: [{ text: systemPrompt }] },
-    contents: buildContents(message, conversationHistory, attachments),
+    contents: buildContents(message, conversationHistory, attachments, tail),
     tools: [
       { google_search: {} },
       ...(combineTools ? [{ function_declarations: functionDeclarations }] : []),
     ],
     ...(combineTools ? { toolConfig: { includeServerSideToolInvocations: true } } : {}),
-    generationConfig: { temperature: 0.7, maxOutputTokens: 16384 },
+    /* With tools on, the model is choosing which form to fill and how: a cooler
+       temperature makes it guess less (task vs event, one object per item). */
+    generationConfig: { temperature: combineTools ? 0.3 : 0.7, maxOutputTokens: 16384 },
   };
 }
 
@@ -251,7 +295,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
          literal here is a second thing to remember to change, and one was
          sitting on this line until checks/models.mjs went looking for it. It is
          also what a request with no model at all gets, which is Auto. */
-      const modelId = MODEL_IDS[(data as { model?: string }).model || ''] || MODEL_IDS.auto;
+      const picked = MODEL_IDS[(data as { model?: string }).model || ''] || MODEL_IDS.auto;
+      const modelId = toolModel(picked, functionDeclarations);
+      const tail = (data as { tail?: unknown }).tail;
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GEMINI_API_KEY}`,
@@ -259,7 +305,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
-            buildGeminiBody(systemPrompt, message, conversationHistory, attachments, functionDeclarations)
+            buildGeminiBody(systemPrompt, message, conversationHistory, attachments, functionDeclarations, tail)
           ),
         }
       );
@@ -306,7 +352,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
          literal here is a second thing to remember to change, and one was
          sitting on this line until checks/models.mjs went looking for it. It is
          also what a request with no model at all gets, which is Auto. */
-      const modelId = MODEL_IDS[(data as { model?: string }).model || ''] || MODEL_IDS.auto;
+      const picked = MODEL_IDS[(data as { model?: string }).model || ''] || MODEL_IDS.auto;
+      const modelId = toolModel(picked, functionDeclarations);
+      const tail = (data as { tail?: unknown }).tail;
 
       const geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`,
@@ -314,7 +362,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
-            buildGeminiBody(systemPrompt, message, conversationHistory, attachments, functionDeclarations)
+            buildGeminiBody(systemPrompt, message, conversationHistory, attachments, functionDeclarations, tail)
           ),
         }
       );
@@ -352,44 +400,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         emittedAnything = true;
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
       };
-      let openCall: { name: string; args: Record<string, unknown> } | null = null;
       let streamGrounding: unknown = null;
-      const mergeArgs = (target: Record<string, unknown>, src: Record<string, unknown>) => {
-        for (const k of Object.keys(src || {})) {
-          const a = target[k];
-          const b = src[k];
-          if (typeof a === 'string' && typeof b === 'string') target[k] = a + b;
-          else if (a && b && typeof a === 'object' && typeof b === 'object' && !Array.isArray(a) && !Array.isArray(b))
-            mergeArgs(a as Record<string, unknown>, b as Record<string, unknown>);
-          else target[k] = b;
-        }
-      };
-      const emitFunctionCall = (call: { name: string; args: Record<string, unknown> }) => {
+      /* Each functionCall part Gemini streams is one whole call. They used to be
+         merged when two in a row shared a name — which turned "create_tasks" twice
+         into one call with the second list written over the first. Now every
+         part is its own call, relayed with its thought signature. */
+      const emitFunctionCall = (call: { name: string; args: Record<string, unknown>; sig?: string }) => {
         emittedAnything = true;
-        res.write(`data: ${JSON.stringify({ functionCall: { name: call.name, args: call.args } })}\n\n`);
+        res.write(`data: ${JSON.stringify({ functionCall: { name: call.name, args: call.args }, ...(call.sig ? { sig: call.sig } : {}) })}\n\n`);
       };
-      const flushOpenCall = () => {
-        if (openCall) {
-          emitFunctionCall(openCall);
-          openCall = null;
-        }
-      };
-      const handleFunctionCallParts = (parts: { text?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }[]) => {
+      const handleFunctionCallParts = (parts: { text?: string; thoughtSignature?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }[]) => {
         for (const p of parts) {
-          if (p?.text) { flushOpenCall(); continue; }
-          if (!p?.functionCall) continue;
-          const fc = p.functionCall;
-          if (!fc.name) { flushOpenCall(); continue; }
-          if (openCall && openCall.name !== fc.name) flushOpenCall();
-          if (!openCall) openCall = { name: fc.name, args: {} };
-          mergeArgs(openCall.args, fc.args || {});
+          const fc = p?.functionCall;
+          if (!fc || !fc.name) continue;
+          emitFunctionCall({ name: fc.name, args: fc.args || {}, sig: typeof p.thoughtSignature === 'string' ? p.thoughtSignature : undefined });
         }
       };
       const handlePayload = (payload: string) => {
         if (!payload || payload === '[DONE]') return;
         let chunk: {
           error?: { message?: string; status?: string };
-          candidates?: { content?: { parts?: { text?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }[] }; groundingMetadata?: unknown }[];
+          candidates?: { content?: { parts?: { text?: string; thoughtSignature?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }[] }; groundingMetadata?: unknown }[];
         };
         try {
           chunk = JSON.parse(payload);
@@ -465,7 +496,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.error('chatStream relay error:', e);
         streamError = UPSTREAM_ERROR;
       }
-      flushOpenCall();
       /* Nothing came back at all and nothing said why. An empty reply is not a
          silent success either. */
       if (!emittedAnything && !streamError) streamError = EMPTY_REPLY;

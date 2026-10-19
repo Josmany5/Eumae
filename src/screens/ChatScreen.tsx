@@ -3,7 +3,6 @@ import Composer from '../components/shell/Composer';
 import { Icon } from '../components/shell/icons';
 import { useNav, type Mode } from '../nav';
 import { logEv } from '../log';
-import { streamChat } from '../chat';
 import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice';
 import { buildRequest, toApiBody } from '../request';
 import { findRole } from '../roles';
@@ -14,6 +13,16 @@ import { uploadData, listUploads } from '../uploads';
 import { getNotes } from '../notes';
 import { renderMd } from '../md';
 import { timeLabels } from '../stamp';
+import { runMaeTurn } from '../mae/loop';
+import { planNote, type Plan } from '../mae/dispatcher';
+import { PlanCard, MaeSteps } from '../components/PlanCard';
+import { setFocus } from '../focus';
+
+/** History as Mae should read it: each reply that carried a plan says what
+ *  became of it, so she never guesses whether something was made. */
+function withPlanNotes(msgs: Msg[]): Msg[] {
+  return msgs.map((m) => (m.plan ? { ...m, text: `${m.text}\n\n${planNote(m.plan)}` } : m));
+}
 
 /* A photo inside a saved message. The message carries the upload id (§4.15);
  * the bytes are looked up here, at render time. A message saved before the
@@ -393,6 +402,15 @@ export default function ChatScreen() {
      would otherwise fill the ~5MB localStorage box and silently stop sticking.
      What survives is the upload id; bytes are re-looked-up with uploadData()
      when the thread renders. Old threads that already carry `url` still render. */
+  /** A plan card changed (approved, cancelled, undone): keep it on its message. */
+  const setPlan = (id: number, plan: Plan) => {
+    setMsgs((m) => {
+      const next = m.map((x) => (x.id === id ? { ...x, plan } : x));
+      saveNow(next);
+      return next;
+    });
+  };
+
   const saveNow = (messages: Msg[]) => {
     if (!threadId) return;
     const thread = getThread(threadId);
@@ -474,7 +492,7 @@ export default function ChatScreen() {
     const custom = findRole(turn.role) ?? null;
     const body = toApiBody(
       buildRequest({ ...turn, mode: moved ?? turn.mode }, refs, text),
-      history ?? msgs,
+      withPlanNotes(history ?? msgs),
       custom,
     );
 
@@ -527,7 +545,7 @@ export default function ChatScreen() {
     const streamDone = () => {
       inFlight.current = Math.max(0, inFlight.current - 1);
     };
-    void streamChat(body, (full) => {
+    void runMaeTurn(body, 'Chat', (full) => {
       /* The whole text so far, not the new piece: replacing what the bubble shows
          is the only way two pieces arriving out of order could not show up as a
          sentence in the wrong order. The dots go away with the first piece, which
@@ -539,8 +557,19 @@ export default function ChatScreen() {
       setMsgs((m) => {
         const next = m.map((x) =>
           x.id === replyId
-            ? { ...x, streaming: false, text: reply.text, note: reply.error ?? undefined, sources: reply.sources }
-            : x,
+            ? {
+                ...x,
+                streaming: false,
+                text: reply.text,
+                note: reply.error ?? undefined,
+                sources: reply.sources,
+                ...(reply.plan ? { plan: reply.plan } : {}),
+                ...(reply.steps.length ? { steps: reply.steps } : {}),
+              }
+            : /* A new plan replaces any older one still waiting. */
+              reply.plan && x.plan?.status === 'pending'
+              ? { ...x, plan: { ...x.plan, status: 'cancelled' as const } }
+              : x,
         );
         saveNow(next);
         return next;
@@ -553,6 +582,7 @@ export default function ChatScreen() {
       if (!reply.ok) {
         logEv({ area: 'Chat', text: `No reply: ${reply.error}`, status: 'bad' });
       }
+      if (reply.open) setFocus({ k: reply.open.k, id: reply.open.id });
       /* Search grounded this reply — an action worth a row. The query is the
          useful part, not the answer text. */
       if (reply.ok && reply.sources && reply.sources.length > 0) {
@@ -779,6 +809,8 @@ export default function ChatScreen() {
                           ) : null}
                         </div>
                       ) : null}
+                      {m.role === 'eumae' && !m.streaming ? <MaeSteps steps={m.steps} /> : null}
+                      {m.plan ? <PlanCard plan={m.plan} notify={notify} onChange={(p) => setPlan(m.id, p)} /> : null}
                     </>
                   )}
                   {/* The two buttons under a message, from wove's two rows: `rowA`

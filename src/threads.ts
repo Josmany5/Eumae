@@ -1,4 +1,6 @@
 import type { ApiChatBody, ThreadTurn } from './request';
+import type { Plan } from './mae/dispatcher';
+import type { MaeStep } from './mae/loop';
 
 /** One message in a thread. Attachments are pointers (§4.15): `uploadId`
  *  survives in storage, `url` is memory-only (live send + live preview). */
@@ -10,6 +12,10 @@ export interface Msg extends ThreadTurn {
   sources?: { uri: string; title: string }[];
   attachments?: { label: string; icon: string; uploadId?: string; url?: string }[];
   ts: number;
+  /** Mae's staged changes for this reply, shown as a plan card. */
+  plan?: Plan;
+  /** Mae's tool steps for this reply ("Read the overview"). */
+  steps?: MaeStep[];
 }
 
 /** A conversation thread — the unit of chat persistence. */
@@ -252,7 +258,30 @@ function isMsg(m: unknown): m is Msg {
 
 function cleanMessages(messages: unknown): Msg[] {
   if (!Array.isArray(messages)) return [];
-  return messages.filter(isMsg);
+  return messages.filter(isMsg).map(cleanMae);
+}
+
+/* A plan or steps that don't parse are dropped from the message rather than
+   dropping the message. A plan left "running" by a reload mid-run can't be
+   trusted either way, so it reads as failed. */
+function cleanMae(m: Msg): Msg {
+  const o = m as Msg & { plan?: unknown; steps?: unknown };
+  let out: Msg = m;
+  if (o.plan !== undefined) {
+    const p = o.plan as Partial<Plan> | null;
+    const ok = !!p && typeof p === 'object' && typeof p.id === 'string' && Array.isArray(p.steps) && typeof p.status === 'string';
+    if (!ok) {
+      const { plan: _p, ...rest } = out;
+      void _p;
+      out = rest;
+    } else if (p!.status === 'running') out = { ...out, plan: { ...(p as Plan), status: 'failed', error: 'Interrupted. Check your items before trying again.' } };
+  }
+  if (o.steps !== undefined && !(Array.isArray(o.steps) && o.steps.every((x) => x && typeof (x as MaeStep).label === 'string'))) {
+    const { steps: _s, ...rest } = out;
+    void _s;
+    out = rest;
+  }
+  return out;
 }
 
 /* Undo: a deep copy of the store taken before a delete; the toast's Undo

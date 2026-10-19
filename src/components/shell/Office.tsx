@@ -6,7 +6,9 @@ import { useNav, type Mode, type Model, type PanelView, type Thinking } from '..
 import { getRoles } from '../../roles';
 import { getTasks } from '../../tasks';
 import { eventsBetween, ymd } from '../../events';
-import { streamChat } from '../../chat';
+import { runMaeTurn } from '../../mae/loop';
+import { planNote, type Plan } from '../../mae/dispatcher';
+import { PlanCard, MaeSteps } from '../PlanCard';
 import { buildRequest, toApiBody } from '../../request';
 import { createThread, getThread, saveThread, threadsChanged, type Msg, type Thread } from '../../threads';
 import { msgId } from '../../boot';
@@ -211,7 +213,7 @@ function consoleContext(): string {
 
 function MaeTab({ tab }: { tab: TabId }) {
   const role = ROLE[tab]!;
-  const { turn, switchThread, goTab } = useNav();
+  const { turn, switchThread, goTab, notify } = useNav();
   const thread = useOfficeThread(tab);
   const list: Msg[] = thread?.messages ?? [];
   const [text, setText] = useState('');
@@ -252,22 +254,43 @@ function MaeTab({ tab }: { tab: TabId }) {
     setText('');
     const base = thread ?? { ...createThread(), title: officeName(tab), from: officeName(tab) };
     const history = base.messages;
-    const body = toApiBody(buildRequest(turn, [], q), history, null);
+    const body = toApiBody(
+      buildRequest(turn, [], q),
+      history.map((m) => (m.plan ? { ...m, text: `${m.text}\n\n${planNote(m.plan)}` } : m)),
+      null,
+    );
     body.data.systemPrompt += `\n\n${role.prompt}${tab === 'console' ? consoleContext() : ''}${focusContext()}`;
     const mine: Msg = { id: msgId(), role: 'you', text: q, ts: Date.now() };
     const replyId = msgId();
-    const put = (reply: string, streaming: boolean) =>
-      writeOffice(tab, { ...base, messages: [...history, mine, { id: replyId, role: 'eumae', text: reply, ts: Date.now(), streaming: streaming || undefined }] });
+    const put = (reply: string, streaming: boolean, extra: Partial<Msg> = {}, prior: Msg[] = history) =>
+      writeOffice(tab, { ...base, messages: [...prior, mine, { id: replyId, role: 'eumae', text: reply, ts: Date.now(), streaming: streaming || undefined, ...extra }] });
     put('', true);
     threadsChanged();
     atBottomRef.current = true;
     setBusy(true);
-    void streamChat(body, (full) => put(full, true)).then((reply) => {
+    void runMaeTurn(body, `${officeName(tab)} office`, (full) => put(full, true)).then((reply) => {
       setBusy(false);
-      put(reply.ok ? reply.text : `I couldn't answer: ${reply.error}`, false);
+      /* A new plan replaces any older one still waiting. */
+      const prior = reply.plan
+        ? history.map((m) => (m.plan?.status === 'pending' ? { ...m, plan: { ...m.plan, status: 'cancelled' as const } } : m))
+        : history;
+      put(
+        reply.ok ? reply.text : `I couldn't answer: ${reply.error}`,
+        false,
+        { ...(reply.plan ? { plan: reply.plan } : {}), ...(reply.steps.length ? { steps: reply.steps } : {}) },
+        prior,
+      );
       threadsChanged();
+      if (reply.open) setFocus({ k: reply.open.k, id: reply.open.id });
       if (!reply.ok) logEv({ area: AREA[tab], text: `Mae couldn't answer: ${reply.error}`, status: 'bad' });
     });
+  };
+
+  /** A plan card changed (approved, cancelled, undone): keep it on its message. */
+  const setPlan = (id: number, plan: Plan) => {
+    if (!thread) return;
+    writeOffice(tab, { ...thread, messages: thread.messages.map((m) => (m.id === id ? { ...m, plan } : m)) });
+    threadsChanged();
   };
 
   return (
@@ -302,6 +325,8 @@ function MaeTab({ tab }: { tab: TabId }) {
               <div className="oMae1">
                 <div className="n">Mae</div>
                 {m.text || <span className="fsub">Thinking…</span>}
+                {!m.streaming ? <MaeSteps steps={m.steps} /> : null}
+                {m.plan ? <PlanCard plan={m.plan} notify={notify} area={AREA[tab]} onChange={(p) => setPlan(m.id, p)} /> : null}
               </div>
             )}
           </Fragment>

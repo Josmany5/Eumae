@@ -278,7 +278,7 @@ export function verdicts(source) {
      the lines that write them (api/ai.ts:290, 306, 409, 410, 411). */
   const shapes = [
     /data: \$\{JSON\.stringify\(\{ text \}\)\}/,
-    /data: \$\{JSON\.stringify\(\{ functionCall: \{ name: call\.name, args: call\.args \} \}\)\}/,
+    /data: \$\{JSON\.stringify\(\{ functionCall: \{ name: call\.name, args: call\.args \}, \.\.\.\(call\.sig \? \{ sig: call\.sig \} : \{\}\) \}\)\}/,
     /data: \$\{JSON\.stringify\(\{ error: \{ message: streamError \} \}\)\}/,
     /data: \$\{JSON\.stringify\(\{ grounding: cleanGrounding\(streamGrounding\) \}\)\}/,
     /data: \$\{JSON\.stringify\(\{ done: true \}\)\}/,

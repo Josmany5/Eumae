@@ -39,7 +39,7 @@ import { accessToken } from './auth';
  *  harness to run one yet — whoever builds it needs to see these arrive. */
 export type StreamEvent =
   | { kind: 'text'; text: string }
-  | { kind: 'call'; name: string; args: Record<string, unknown> }
+  | { kind: 'call'; name: string; args: Record<string, unknown>; sig?: string }
   | { kind: 'grounding'; grounding: unknown }
   | { kind: 'error'; message: string }
   | { kind: 'done' };
@@ -89,6 +89,7 @@ export function parseEvent(frame: string): StreamEvent | null {
   let body: {
     text?: unknown;
     functionCall?: { name?: unknown; args?: unknown };
+    sig?: unknown;
     grounding?: unknown;
     error?: unknown;
     done?: unknown;
@@ -107,6 +108,7 @@ export function parseEvent(frame: string): StreamEvent | null {
       kind: 'call',
       name: body.functionCall.name,
       args: args && typeof args === 'object' ? (args as Record<string, unknown>) : {},
+      ...(typeof body.sig === 'string' ? { sig: body.sig } : {}),
     };
   }
   if (body.error) {
@@ -134,6 +136,8 @@ export interface Reply {
   error: string | null;
   /** A tool the model asked for before finishing, if it asked for one. */
   call: { name: string; args: Record<string, unknown> } | null;
+  /** Every tool call in the reply, in order, each with its thought signature. */
+  calls?: { name: string; args: Record<string, unknown>; sig?: string }[];
   /** Where the answer came from, when Google Search grounded it. */
   sources: { uri: string; title: string }[];
 }
@@ -242,6 +246,7 @@ export async function streamChat(body: ApiChatBody, onText: (full: string) => vo
   let text = '';
   let failure: string | null = null;
   let call: Reply['call'] = null;
+  const calls: NonNullable<Reply['calls']> = [];
   let sources: Reply['sources'] = [];
 
   /** One frame into the running state on the left. */
@@ -252,7 +257,8 @@ export async function streamChat(body: ApiChatBody, onText: (full: string) => vo
       text += event.text;
       onText(text);
     } else if (event.kind === 'call') {
-      call = { name: event.name, args: event.args };
+      call = call ?? { name: event.name, args: event.args };
+      calls.push({ name: event.name, args: event.args, ...(event.sig ? { sig: event.sig } : {}) });
     } else if (event.kind === 'error') {
       failure = event.message;
     } else if (event.kind === 'grounding') {
@@ -272,11 +278,12 @@ export async function streamChat(body: ApiChatBody, onText: (full: string) => vo
     /* The stream threw — a dropped connection, or a body that stopped early.
        What arrived is kept: a partial reply read aloud would be worse than none,
        but a partial reply *shown* with a sentence about it is not. */
-    return { ok: false, text, error: CUT_SHORT, call, sources: [] };
+    return { ok: false, text, error: CUT_SHORT, call, calls, sources: [] };
   }
   /* The last frame, if the response ended without its trailing blank line. */
   if (buffer.trim()) apply(buffer);
 
-  if (!failure && !text) failure = EMPTY;
-  return { ok: !failure, text, error: failure, call, sources };
+  /* A reply that is only tool calls is not empty: the loop answers them. */
+  if (!failure && !text && !calls.length) failure = EMPTY;
+  return { ok: !failure, text, error: failure, call, calls, sources };
 }

@@ -1474,3 +1474,12 @@ commit — this file is the handoff, and a stale handoff is worse than none.*
 *One history rewrite so far: the owner's real email was stripped from 20 commits and
 the real name and address from the file contents of 2 commits, so every hash in older
 notes and links is dead. The pre-rewrite tip survives locally as `backup/pre-rewrite`.*
+
+## Mae's tools (src/mae/)
+- `schema.ts`: the tool form language. It's sent to Gemini and checked deep on every call (every item in a list, real dates, HH:MM, enums, unknown fields refused).
+- `registry.ts`: every action Mae can take. Each has a name, risk (read/write/danger), form, `verify` (ids exist, events have times…), `preview` (plan-card lines) and `run` (calls the store functions). Every create takes a LIST, with no singular creates. Tasks are things you finish; events happen at a time.
+- `dispatcher.ts`: the single door. Reads run at once. Writes are staged on a plan and never run when the model calls them. `executePlan` runs the approved plan as one unit (snapshot, run, roll back everything on any failure), and `undoPlan` restores it.
+- `prompt.ts`: Mae's stable prompt plus a small per-turn state block. Data is read through tools, not pasted in.
+- `loop.ts`: one turn. Stream, dispatch, send functionResponses back as `tail` (with thought signatures), up to 6 rounds.
+- UI: `components/PlanCard.tsx` (Approve / Cancel, receipt, Undo, open chips), used in ChatScreen and the office Mae chat.
+- Adding a manual feature means adding its action here, so Mae can do it too (parity rule). Then add a case to `checks/mae.mjs`.

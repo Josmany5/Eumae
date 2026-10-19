@@ -2074,3 +2074,19 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .tlDot:focus, .tlDot:active{ outline:none; box-shadow:none; transform:none; }
 .tlDot:focus-visible{ box-shadow:0 0 0 2px var(--acsoft); }
 .tlRow.done .tlDot{ background:var(--ac); border-color:var(--ac); }
+
+/* Mae's tool steps and plan card (flat rows, existing tokens only). */
+.maeSteps{ margin:4px 0 6px; display:flex; flex-direction:column; gap:2px; }
+.maeStep{ color:var(--mut); font-size:13px; }
+.maeStep::before{ content:"· "; }
+.maeStep.bad{ color:var(--rd); }
+.maePlan{ margin:8px 0; }
+.maePlan .flbl{ margin-bottom:4px; }
+.maeLine{ display:flex; gap:12px; align-items:baseline; padding:7px 0; }
+.maeKind{ flex:none; min-width:96px; color:var(--ac); font-size:13px; font-weight:600; }
+.maeKind.danger{ color:var(--rd); }
+.maeTxt{ flex:1; min-width:0; font-size:15px; color:var(--tx); overflow-wrap:anywhere; }
+.maeTxt .fp{ display:block; }
+.maeDone{ padding:3px 0; color:var(--tx); }
+.maeOpen{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.maeUndo{ margin-top:6px; padding:6px 0; font-weight:600; }
