@@ -1714,14 +1714,14 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .oThread .imTime{ margin:14px 0 0; }
 .oAsk .chatDown{ top:-46px; }
 .oBox{ resize:none; font:inherit; box-sizing:border-box; line-height:20px; min-height:40px; padding:9px 12px !important; max-height:150px; overflow-y:auto; display:block; }
-.oAsk .oSend{ width:40px; height:40px; }
+.oAsk .oSend{ width:40px; height:40px; margin:0; }
 .oMe{ margin:12px 0 0 auto; max-width:85%; width:fit-content; background:var(--ac); color:var(--acink);
   border-radius:16px; padding:8px 13px; font-size:15px; line-height:1.45; }
 .oMae1{ margin:12px 0 0; font-size:15px; line-height:1.5; white-space:pre-wrap; }
 .oMae1 .n{ color:var(--ac); font-size:13px; font-weight:600; margin-bottom:2px; }
 .oAsk{ position:relative; flex:none; display:flex; gap:8px; align-items:flex-end; padding:12px 0 0;
   background:var(--card); }
-.oAsk .sinput{ padding:10px 12px; font-size:15px; }
+.oAsk .sinput{ padding:10px 12px; font-size:15px; margin:0; flex:1; min-width:0; }
 .oSend{ width:36px; height:36px; flex:none; border-radius:50%; background:var(--ac); color:var(--acink);
   display:inline-flex; align-items:center; justify-content:center; }
 .oSend:disabled{ opacity:.4; }
