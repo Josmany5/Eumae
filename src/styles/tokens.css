@@ -1704,6 +1704,9 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .oPick .selIn{ font-size:14px; padding:6px 10px; }
 /* Mae tab: the thread scrolls on its own and the box stays pinned under it. */
 .oBody.oBodyMae{ display:flex; flex-direction:column; overflow:hidden; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
+/* Side padding moves inside so the thread's scrollbar sits on the panel's right edge. */
+.oBody.oBodyMae{ padding-left:0; padding-right:0; }
+.oBodyMae .oMaeHead, .oBodyMae .oThread, .oBodyMae .oAsk{ padding-left:16px; padding-right:16px; }
 .oMae{ display:flex; flex-direction:column; flex:1; min-height:0; }
 .oMaeHead{ display:flex; align-items:center; gap:8px; flex:none; }
 .oMaeActs{ margin-left:auto; display:flex; gap:6px; }
