@@ -924,6 +924,10 @@ input[type=checkbox]{ accent-color:var(--ac); }
   .panel{ position:static; z-index:auto; width:auto; transform:none; transition:none;
     display:none; border-left:1px solid var(--hair); }
   .panel.open{ display:flex; }
+  /* A grid item grows with its content unless told not to, which let the
+     office stretch past the screen on desktop so nothing inside scrolled. */
+  #app{ grid-template-rows:minmax(0,1fr); }
+  .panel{ min-height:0; overflow:hidden; }
   #app.panelOpen{ grid-template-columns:264px 1fr minmax(320px,380px); }
   /* Higher specificity than #app.railCollapsed, so the collapsed rail keeps its
      64px column while the panel is open. */

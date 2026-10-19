@@ -33,7 +33,7 @@ function SwipeRow({
   onExport,
   onRename,
 }: {
-  thread: { id: string; title: string; updatedAt: number; from?: string };
+  thread: { id: string; title: string; updatedAt: number; from?: string; messages?: unknown[] };
   current: boolean;
   open: boolean;
   onOpen: () => void;
@@ -93,7 +93,7 @@ function SwipeRow({
       >
         <span className="g">{t.title}</span>
         <span className="drDate">
-          {t.from ? t.from + ' · ' : ''}
+          {t.from ? `${t.messages?.length ?? 0} messages · ` : ''}
           {fmtListTime(t.updatedAt)}
         </span>
         <ItemMenu
@@ -111,7 +111,7 @@ function SwipeRow({
 export default function Drawer({ open, onClose, tab, onPick, onSearch, currentThreadId, onThreadPick, onThreadDelete }: DrawerProps) {
   /* Threads read fresh every time the drawer opens — App's cached copy goes
      stale when a title updates mid-chat (the 2026-10-10 stale list). */
-  const [threads, setThreads] = useState<{ id: string; title: string; updatedAt: number; from?: string }[]>([]);
+  const [threads, setThreads] = useState<{ id: string; title: string; updatedAt: number; from?: string; messages?: unknown[] }[]>([]);
   const [openRow, setOpenRow] = useState<string | null>(null);
   /* App's list changes on delete, Undo and rename: follow it, reading fresh. */
   const { threads: appThreads, renameThread } = useNav();
