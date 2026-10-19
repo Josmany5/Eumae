@@ -67,3 +67,39 @@ export function requestEditEvent(id: string): boolean {
   evEditors.forEach((f) => f(id));
   return true;
 }
+
+/* ── Edit pop-up: "Edit" in the office on a page that isn't the item's own
+   opens the form over the current page instead of navigating away. A
+   second tap on Edit closes it. ── */
+export type EditTarget = { k: 'task' | 'event'; id: string } | null;
+let editCur: EditTarget = null;
+const editSubs = new Set<() => void>();
+export function toggleEditModal(t: EditTarget): void {
+  editCur = t && editCur && editCur.k === t.k && editCur.id === t.id ? null : t;
+  editSubs.forEach((f) => f());
+}
+export function useEditModal(): EditTarget {
+  return useSyncExternalStore(
+    (f) => {
+      editSubs.add(f);
+      return () => {
+        editSubs.delete(f);
+      };
+    },
+    () => editCur,
+    () => editCur,
+  );
+}
+
+/* ── Data changed somewhere (pop-up save, undo): views that read the
+   stores re-render. ── */
+const dataSubs = new Set<() => void>();
+export function dataChanged(): void {
+  dataSubs.forEach((f) => f());
+}
+export function onDataChange(f: () => void): () => void {
+  dataSubs.add(f);
+  return () => {
+    dataSubs.delete(f);
+  };
+}

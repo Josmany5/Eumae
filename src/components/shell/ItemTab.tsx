@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNav, type PanelView } from '../../nav';
 import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists } from '../../tasks';
 import { projectOf, linkedIds } from '../../projects';
 import { getGoals } from '../../goals';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
-import { setFocus, requestEditTask, requestEditEvent, type Focus } from '../../focus';
+import { setFocus, requestEditTask, requestEditEvent, toggleEditModal, onDataChange, type Focus } from '../../focus';
 import { getEvent, ymd } from '../../events';
 import { removeEvent, TYPE_LABEL } from '../QuickAdd';
 import { ItemMenu } from '../ItemMenu';
@@ -23,6 +23,7 @@ export function ItemTab({ focus, onView }: { focus: Focus; onView: (v: PanelView
 function DayTab({ day }: { day: string }) {
   const { go, openPanel } = useNav();
   const [, setTick] = useState(0);
+  useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const items = itemsOn(day, getTasks());
   const dt = new Date(day + 'T12:00');
   return (
@@ -69,8 +70,9 @@ function DayTab({ day }: { day: string }) {
 }
 
 function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
-  const { go, notify } = useNav();
+  const { notify } = useNav();
   const [, setTick] = useState(0);
+  useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const ev = getEvent(focus.id);
   if (!ev) {
     return (
@@ -94,7 +96,7 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
   kv.push(['Kind', TYPE_LABEL[ev.type ?? 'other']]);
   if (project) kv.push(['Project', project.n]);
   const edit = () => {
-    if (!requestEditEvent(ev.id!)) go('cal', ev.id);
+    if (!requestEditEvent(ev.id!)) toggleEditModal({ k: 'event', id: ev.id! });
   };
   const del = (scope: 'one' | 'all') => {
     setFocus(null);
@@ -138,8 +140,9 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
 }
 
 function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
-  const { go, notify } = useNav();
+  const { notify } = useNav();
   const [, setTick] = useState(0);
+  useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const refresh = () => setTick((n) => n + 1);
   const t = getTask(focus.id);
   if (!t) {
@@ -178,7 +181,7 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
   if (t.rep && t.rep !== 'none') kv.push(['Repeats', t.rep[0].toUpperCase() + t.rep.slice(1)]);
 
   const edit = () => {
-    if (!requestEditTask(t.id)) go('tasks', t.id);
+    if (!requestEditTask(t.id)) toggleEditModal({ k: 'task', id: t.id });
   };
 
   return (

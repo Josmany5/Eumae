@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNav } from '../../nav';
 import { getTasks, toggleTask, createTask, saveTask, type Task } from '../../tasks';
 import { dayEvents, ymd, mins, type CalEvent } from '../../events';
 import { parseQuick, fmtTime } from '../../quickadd';
 import { logEv } from '../../log';
-import { setFocus } from '../../focus';
+import { setFocus, onDataChange } from '../../focus';
 import { TYPE_LABEL } from '../QuickAdd';
 
 /* Console › Timeline widget (Oct 18, his call: Today = Option A as a widget,
@@ -54,6 +54,7 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
     setTick((n) => n + 1);
     onChange();
   };
+  useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
 
   const now = new Date();
   const today = ymd(now);

@@ -7,6 +7,7 @@ import Toast from './components/shell/Toast';
 import Settings from './components/settings/Settings';
 import Sidebar from './components/shell/Sidebar';
 import Office from './components/shell/Office';
+import EditModal from './components/EditModal';
 import { Icon } from './components/shell/icons';
 import { SCREENS, LABELS } from './screens';
 import { PAGES, pageTitle } from './pages';
@@ -540,6 +541,7 @@ export default function App() {
           <TabBar active={tab} onChange={goTab} />
         </div>
 
+        <EditModal />
         <Office
           tab={tab}
           open={panelOpen}

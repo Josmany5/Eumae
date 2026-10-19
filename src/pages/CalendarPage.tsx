@@ -14,10 +14,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useNav } from '../nav';
-import { dayEvents, getEvent, saveEvent, ymd, mins, type CalEvent } from '../events';
+import { dayEvents, getEvent, saveEvent, deleteEvent, ymd, mins, type CalEvent } from '../events';
 import { getTasks, toggleTask, type Task } from '../tasks';
 import { QuickAdd, EventForm, quickToEvent, removeEvent } from '../components/QuickAdd';
-import { setFocus, onEditEvent } from '../focus';
+import { setFocus, onEditEvent, onDataChange } from '../focus';
 import { evKind } from '../components/shell/Timeline';
 import { fmtTime } from '../quickadd';
 import { useMedia } from '../useMedia';
@@ -118,6 +118,7 @@ export default function CalendarPage({ arg }: PageProps) {
     return e ? { ev: e, editing: true } : null;
   });
   const refresh = () => setTick((t) => t + 1);
+  useEffect(() => onDataChange(refresh), []);
   useEffect(
     () =>
       onEditEvent((id) => {
@@ -212,11 +213,18 @@ export default function CalendarPage({ arg }: PageProps) {
           initial={form.ev}
           onCancel={() => setForm(null)}
           onSave={(e) => {
+            const before = e.id ? getEvent(e.id) : undefined;
             const saved = saveEvent(e);
             setForm(null);
             setDay(saved.d);
             refresh();
-            notify(form.editing ? 'Event updated.' : 'Event added.');
+            notify(before ? 'Event updated.' : 'Event added.', {
+              undo: () => {
+                if (before) saveEvent(before);
+                else deleteEvent(saved);
+                refresh();
+              },
+            });
           }}
           onDelete={
             form.editing
@@ -286,6 +294,7 @@ export default function CalendarPage({ arg }: PageProps) {
         </div>
       ) : (
         <div className="agList">
+          <WeekRow days={Array.from({ length: 7 }, (_, i) => shift(day, i))} today={today} tasks={tasks} />
           {Array.from({ length: 7 }, (_, i) => shift(day, i)).map((d) => (
             <DaySection key={d} day={d} today={today} items={itemsOn(d, tasks)} onItem={openItem} onCheck={checkTask} onAdd={() => openNew(d)} />
           ))}
@@ -374,6 +383,32 @@ export function minsToTm(n: number): string {
 
 /* One day of the agenda: a header (Today · Mon, Oct 19), then flat rows
    with the time on the left. An empty day says so in one quiet line. */
+/* The week at a glance (from the screenshots): seven columns, the day and
+   what's on it. Tap one to jump to that day in the list. */
+function WeekRow({ days, today, tasks }: { days: string[]; today: string; tasks: Task[] }) {
+  return (
+    <div className="calWeek" role="list">
+      {days.map((d) => {
+        const items = itemsOn(d, tasks).filter((i) => !i.done);
+        const dt = new Date(d + 'T12:00');
+        return (
+          <button
+            key={d}
+            role="listitem"
+            className={d === today ? 'on' : ''}
+            onClick={() => document.getElementById('ag-' + d)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          >
+            <b>
+              {dt.toLocaleDateString(undefined, { weekday: 'short' })} {dt.getDate()}
+            </b>
+            <i>{items.length === 0 ? '—' : items.length === 1 ? items[0].title : `${items.length} things`}</i>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function DaySection({ day, today, items, onItem, onCheck, onAdd }: {
   day: string; today: string; items: Item[]; onItem: (i: Item) => void; onCheck: (t: Task) => void; onAdd: () => void;
 }) {
@@ -381,7 +416,7 @@ function DaySection({ day, today, items, onItem, onCheck, onAdd }: {
   const word = day === today ? 'Today' : day === shift(today, 1) ? 'Tomorrow' : day < today ? 'Past' : '';
   const nowM = new Date().getHours() * 60 + new Date().getMinutes();
   return (
-    <section className={'agDay' + (day === today ? ' today' : '')}>
+    <section id={'ag-' + day} className={'agDay' + (day === today ? ' today' : '')}>
       <div className="sdiv agH">
         <span>
           {word ? <b>{word} · </b> : null}

@@ -35,7 +35,8 @@ import { fmtShort, fmtTime, type Quick } from '../quickadd';
 import { ItemMenu, ProjectChip } from '../components/ItemMenu';
 import { projectOf, linkedIds } from '../projects';
 import { getGoals } from '../goals';
-import { setFocus, onEditTask } from '../focus';
+import { setFocus, onEditTask, onDataChange } from '../focus';
+import { TaskForm } from '../components/TaskForm';
 
 type Mode = 'day' | 'project' | 'goal' | 'matrix' | 'done';
 const MODES: { id: Mode; label: string }[] = [
@@ -45,6 +46,8 @@ const MODES: { id: Mode; label: string }[] = [
   { id: 'matrix', label: 'Matrix' },
   { id: 'done', label: 'Done' },
 ];
+
+const PR_WORD: Record<TaskPriority, string> = { none: 'none', important: 'Important', urgent: 'Urgent', critical: 'Critical' };
 
 const PR_COLOR: Record<TaskPriority, string> = {
   none: 'var(--mut)',
@@ -68,6 +71,7 @@ export default function TasksPage({ arg }: PageProps) {
   const [newSub, setNewSub] = useState('');
   const [editLists, setEditLists] = useState(false);
   const refresh = () => setTick((t) => t + 1);
+  useEffect(() => onDataChange(refresh), []);
   void tick;
   /* Edit from Mae's office opens the form right here. */
   useEffect(
@@ -188,10 +192,17 @@ export default function TasksPage({ arg }: PageProps) {
               : undefined
           }
           onSave={(t) => {
+            const before = getTask(t.id);
             saveTask(t);
             setDraft(null);
             refresh();
-            notify('Task saved.');
+            notify(before ? 'Task saved.' : 'Task added.', {
+              undo: () => {
+                if (before) saveTask(before);
+                else deleteTask(t.id);
+                refresh();
+              },
+            });
           }}
         />
       ) : null}
@@ -385,6 +396,7 @@ function TaskRow({
   onDeleteSub: (index: number) => void;
   refresh: () => void;
 }) {
+  const { notify } = useNav();
   const [leaving, setLeaving] = useState(false);
   const [editSub, setEditSub] = useState<number | null>(null);
   const [subText, setSubText] = useState('');
@@ -424,7 +436,12 @@ function TaskRow({
           </button>
           <TaskMeta task={task} subs={subs.length ? `${subs.filter((s) => s.d).length}/${subs.length} steps` : ''} hideDate />
         </div>
-        {pr !== 'none' ? <span className="tkPr" style={{ background: PR_COLOR[pr] }} title={`Priority: ${pr}`} /> : null}
+        {pr !== 'none' ? (
+          <span className="tkPrL" style={{ color: PR_COLOR[pr] }} title={`Priority: ${PR_WORD[pr]}`}>
+            <i style={{ background: PR_COLOR[pr] }} />
+            {PR_WORD[pr]}
+          </span>
+        ) : null}
         {pill ? <span className="tkPill">{pill}</span> : null}
         <span className={'fmeta' + (side.red ? ' over' : '')}>{side.text}</span>
         {!selecting ? (
@@ -437,8 +454,15 @@ function TaskRow({
               {
                 label: `Priority: ${pr === 'none' ? 'none' : pr} → next`,
                 onClick: () => {
-                  cyclePriority(task.id);
+                  const was = task.pr ?? 'none';
+                  const now = cyclePriority(task.id) ?? 'none';
                   refresh();
+                  notify(`Priority: ${PR_WORD[now]}.`, {
+                    undo: () => {
+                      saveTask({ ...getTask(task.id)!, pr: was });
+                      refresh();
+                    },
+                  });
                 },
               },
             ]}
@@ -576,13 +600,10 @@ function sideLabel(t: Task, mode: Mode): { text: string; red?: boolean } {
   if (!t.due) return { text: '' };
   const today = ymdOf(new Date());
   const time = t.tm ? fmtTime(t.tm) : '';
-  const day = new Date(t.due + 'T12:00');
-  if (!t.d && t.due < today) return { text: `${DOW3[day.getDay()]} ${time}`.trim(), red: true };
-  if (mode === 'day') {
-    if (t.due === today || t.due === addDaysYmd(1)) return { text: time || 'Anytime' };
-    if (t.due <= addDaysYmd(7)) return { text: DOW3[day.getDay()] };
-  }
-  return { text: fmtShort(t.due) + (time && mode !== 'done' ? ' ' + time : '') };
+  if (!t.d && t.due < today) return { text: fmtShort(t.due) + (time ? ' · ' + time : ''), red: true };
+  /* Always the full day (his call): "Wed, Oct 21 · 3:00 PM". */
+  const full = fmtShort(t.due);
+  return { text: full + (time && mode !== 'done' ? ' · ' + time : '') };
 }
 
 function todayYmd(): string {
@@ -613,91 +634,6 @@ function TaskMeta({ task, subs, hideDate }: { task: Task; subs: string; hideDate
 }
 
 /* Full task fields (wove's add modal, distilled). */
-function TaskForm({ task, lists, onSave, onCancel, onDelete }: {
-  task: Task; lists: { id: string; n: string }[]; onSave: (t: Task) => void; onCancel: () => void; onDelete?: () => void;
-}) {
-  const [t, setT] = useState<Task>(task);
-  const set = (p: Partial<Task>) => setT((x) => ({ ...x, ...p }));
-  const days = t.repDays && t.repDays.length ? t.repDays : t.due ? [new Date(t.due + 'T12:00').getDay()] : [];
-  return (
-    <div className="card evForm">
-      <b>{task.t === 'New task' && !task.due ? 'New task' : 'Task'}</b>
-      <input className="sinput" value={t.t} onChange={(e) => set({ t: e.target.value })} aria-label="Task" autoFocus />
-      <div className="evRow">
-        <label>
-          <span className="xs m">Due</span>
-          <input className="sinput" type="date" value={t.due ?? ''} onChange={(e) => set({ due: e.target.value || undefined })} />
-        </label>
-        <label>
-          <span className="xs m">Time</span>
-          <input className="sinput" type="time" value={t.tm ?? ''} onChange={(e) => set({ tm: e.target.value || undefined })} />
-        </label>
-        <label>
-          <span className="xs m">Estimate (min)</span>
-          <input className="sinput" type="number" min={5} step={5} value={t.est ?? ''} onChange={(e) => set({ est: e.target.value ? +e.target.value : undefined })} />
-        </label>
-      </div>
-      <div className="evRow">
-        <label>
-          <span className="xs m">Priority</span>
-          <select className="sinput" value={t.pr ?? 'none'} onChange={(e) => set({ pr: e.target.value as TaskPriority })}>
-            <option value="none">None</option>
-            <option value="important">Important</option>
-            <option value="urgent">Urgent</option>
-            <option value="critical">Critical (urgent + important)</option>
-          </select>
-        </label>
-        <label>
-          <span className="xs m">List</span>
-          <select className="sinput" value={t.list ?? 'inbox'} onChange={(e) => set({ list: e.target.value })}>
-            {lists.map((l) => (
-              <option key={l.id} value={l.id}>{l.n}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="xs m">Repeat</span>
-          <select className="sinput" value={t.rep ?? 'none'} onChange={(e) => set({ rep: e.target.value as Task['rep'] })}>
-            <option value="none">Does not repeat</option>
-            <option value="daily">Every day</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-        </label>
-      </div>
-      {t.rep === 'weekly' ? (
-        <div className="evDays" aria-label="Repeat on">
-          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((l, i) => {
-            const on = days.includes(i);
-            return (
-              <button key={i} className={on ? 'on' : ''} aria-pressed={on}
-                onClick={() => {
-                  const next = on ? days.filter((d) => d !== i) : [...days, i].sort();
-                  set({ repDays: next.length ? next : undefined });
-                }}>
-                {l}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-      {t.rep && t.rep !== 'none' ? (
-        <div className="evRow">
-          <label>
-            <span className="xs m">Repeat until</span>
-            <input className="sinput" type="date" value={t.repUntil ?? ''} onChange={(e) => set({ repUntil: e.target.value || undefined })} />
-          </label>
-        </div>
-      ) : null}
-      <div className="btns">
-        <button className="pri" onClick={() => t.t.trim() && onSave({ ...t, t: t.t.trim() })}>Save task</button>
-        <button className="gho" onClick={onCancel}>Cancel</button>
-        {onDelete ? <button className="gho danger" onClick={onDelete}>Delete</button> : null}
-      </div>
-    </div>
-  );
-}
-
 /* Eisenhower matrix on the existing priority field:
    critical = Do first, important = Schedule, urgent = Delegate, none = Later.
    Drag a task to another box to change its priority. */
@@ -711,6 +647,7 @@ const QUADS: { pr: TaskPriority; title: string; sub: string }[] = [
 function Matrix({ tasks, refresh, onEdit, onDelete }: { tasks: Task[]; refresh: () => void; onEdit: (t: Task) => void; onDelete: (t: Task) => void }) {
   const [drag, setDrag] = useState<string | null>(null);
   const [over, setOver] = useState<TaskPriority | null>(null);
+  const { notify } = useNav();
   return (
     <div className="mtx">
       {QUADS.map((q) => {
@@ -731,6 +668,7 @@ function Matrix({ tasks, refresh, onEdit, onDelete }: { tasks: Task[]; refresh: 
               if (t && (t.pr ?? 'none') !== q.pr) {
                 saveTask({ ...t, pr: q.pr });
                 refresh();
+                notify(`Moved to ${q.title}.`, { undo: () => { saveTask(t); refresh(); } });
               }
               setDrag(null);
               setOver(null);
