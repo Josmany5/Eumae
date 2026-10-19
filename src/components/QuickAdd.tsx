@@ -43,10 +43,13 @@ export function QuickAdd({
 }) {
   const [text, setText] = useState('');
   const [off, setOff] = useState<Field[]>([]);
+  // Closed by default: just a round + button. Tap it to type.
+  const [open, setOpen] = useState(!!autoFocus);
   const ref = useRef<HTMLInputElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (autoFocus) ref.current?.focus();
-  }, [autoFocus]);
+    if (open) ref.current?.focus();
+  }, [open]);
 
   const parsed = useMemo(() => {
     if (!parse) return { title: text.trim() } as Quick;
@@ -75,6 +78,10 @@ export function QuickAdd({
     setText('');
     setOff([]);
   };
+  const close = () => {
+    reset();
+    setOpen(false);
+  };
   const ready = !!parsed.title.trim();
   const submit = () => {
     if (!ready) return;
@@ -82,8 +89,24 @@ export function QuickAdd({
     reset();
   };
 
+  if (!open)
+    return (
+      <div className="qa qaClosed">
+        <button className="qaFab" onClick={() => setOpen(true)} aria-label={placeholder}>
+          <Icon name="pls" />
+        </button>
+      </div>
+    );
+
   return (
-    <div className="qa">
+    <div
+      className="qa"
+      ref={box}
+      onBlur={(e) => {
+        // Tapping away with nothing typed folds it back into the + button.
+        if (!text.trim() && !box.current?.contains(e.relatedTarget as Node)) setOpen(false);
+      }}
+    >
       {chips.length ? (
         <div className="qaChips" aria-label="Understood">
           {chips.map((c) => (
@@ -111,7 +134,7 @@ export function QuickAdd({
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') submit();
-            if (e.key === 'Escape') reset();
+            if (e.key === 'Escape') close();
           }}
           aria-label={placeholder}
         />
@@ -122,6 +145,9 @@ export function QuickAdd({
         ) : null}
         <button className="qaSend" onClick={submit} disabled={!ready} aria-label="Add">
           <Icon name="up" />
+        </button>
+        <button className="qaX" onClick={close} aria-label="Close">
+          <Icon name="x" />
         </button>
       </div>
     </div>

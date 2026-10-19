@@ -1267,6 +1267,14 @@ input[type=checkbox]{ accent-color:var(--ac); }
   background:var(--card3); color:var(--mut); transition:background .15s, color .15s; }
 .qaBar.ready .qaSend{ background:var(--ac); color:var(--acink); }
 .qaSend svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+/* Closed quick add: one round + at the bottom right. */
+.qaPage > .qa.qaClosed{ background:none; align-items:flex-end; pointer-events:none; }
+.qaFab{ pointer-events:auto; width:52px; height:52px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center;
+  background:var(--ac); color:var(--acink); box-shadow:0 6px 18px rgba(0,0,0,.35); }
+.qaFab svg{ width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:2.4; stroke-linecap:round; }
+.qaX{ flex:none; width:32px; height:32px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center; background:none; color:var(--mut); }
+.qaX:hover{ color:var(--tx); background:var(--card2); }
+.qaX svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; }
 .qaChips{ display:flex; flex-wrap:wrap; gap:6px; }
 .qaChip{ display:inline-flex; align-items:center; gap:4px; background:var(--card2); color:var(--tx);
   border-radius:99px; padding:4px 6px 4px 11px; font-size:13px; font-weight:600; }
