@@ -3,6 +3,9 @@ import { toggleEditModal, useEditModal, dataChanged } from '../focus';
 import { getTask, getLists, saveTask, deleteTask } from '../tasks';
 import { getEvent, saveEvent } from '../events';
 import { TaskForm } from './TaskForm';
+import { GoalForm } from './GoalForm';
+import { getGoals, saveGoal, deleteGoal, snapshotGoals, restoreGoals } from '../goals';
+import { setFocus } from '../focus';
 import { EventForm, removeEvent } from './QuickAdd';
 
 /* The edit pop-up: the task or event form over whatever page you're on, so
@@ -37,6 +40,38 @@ export default function EditModal() {
               close();
               dataChanged();
               notify('Task saved.', { undo: () => { saveTask(before); dataChanged(); } });
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (target.k === 'goal') {
+    const g = getGoals().find((x) => x.id === target.id);
+    if (!g) return null;
+    return (
+      <div className="emBack" onClick={close}>
+        <div className="emBox" role="dialog" aria-label="Edit goal" onClick={(e) => e.stopPropagation()}>
+          <GoalForm
+            key={g.id}
+            goal={g}
+            isNew={false}
+            onCancel={close}
+            onDelete={() => {
+              close();
+              const snap = snapshotGoals();
+              deleteGoal(g.id);
+              setFocus(null);
+              dataChanged();
+              notify('Goal deleted.', { undo: () => { restoreGoals(snap); dataChanged(); } });
+            }}
+            onSave={(next) => {
+              const before = g;
+              saveGoal(next);
+              close();
+              dataChanged();
+              notify('Goal saved.', { undo: () => { saveGoal(before); dataChanged(); } });
             }}
           />
         </div>

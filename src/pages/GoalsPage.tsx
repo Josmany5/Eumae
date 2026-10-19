@@ -1,50 +1,124 @@
-/* Goals full page — same shape as Tasks and Events.
+/* Goals full page: flat grouped rows, the Tasks look (10-console-goals).
  *
- * One-line add ("Run a half marathon by Mar 1" -> goal + target date),
- * a status segment, one card of rows. The status dot cycles
- * not started -> in progress -> done; tap a goal to edit everything.
+ * Each row: done circle, the aim with its percent and a thin meter, the
+ * count and pace underneath, the project chip, and on the right the date
+ * and the next milestone. Tap a goal and it opens read-only in Mae's office
+ * (the Goal tab); Edit there opens the form.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNav } from '../nav';
-import { getGoals, createGoal, saveGoal, deleteGoal, snapshotGoals, restoreGoals, type Goal, type GoalStatus } from '../goals';
-import { ItemMenu, ProjectChip } from '../components/ItemMenu';
+import {
+  getGoals,
+  createGoal,
+  saveGoal,
+  deleteGoal,
+  snapshotGoals,
+  restoreGoals,
+  isActiveGoal,
+  goalPct,
+  goalCount,
+  goalPace,
+  type Goal,
+} from '../goals';
+import { ItemMenu } from '../components/ItemMenu';
 import { undoable } from '../undo';
 import { QuickAdd } from '../components/QuickAdd';
-import { MilestonesEditor } from '../components/Milestones';
+import { GoalForm } from '../components/GoalForm';
 import { nextMilestone } from '../milestones';
 import { fmtShort } from '../quickadd';
+import { projectOf } from '../projects';
+import { setFocus, onDataChange, dataChanged } from '../focus';
 import type { PageProps } from './index';
 
-type Filter = 'all' | GoalStatus;
-const FILTERS: Filter[] = ['all', 'in-progress', 'not-started', 'completed'];
-const LABEL: Record<Filter, string> = {
-  all: 'All',
-  'not-started': 'Not started',
-  'in-progress': 'In progress',
-  completed: 'Done',
-};
-const ORDER: GoalStatus[] = ['not-started', 'in-progress', 'completed'];
+type Mode = 'active' | 'project' | 'done' | 'letgo';
+const MODES: { id: Mode; label: string }[] = [
+  { id: 'active', label: 'Active' },
+  { id: 'project', label: 'By project' },
+  { id: 'done', label: 'Done' },
+  { id: 'letgo', label: 'Let go' },
+];
 
-function daysLeft(td: string): number {
+export function daysLeft(td: string): number {
   const now = new Date();
   const a = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   const [y, m, d] = td.split('-').map(Number);
   return Math.round((Date.UTC(y, m - 1, d) - a) / 86400000);
 }
 
+/** "Nov 2 · 14 days", "Oct 12 · 3d late", "Today". */
+export function dueLabel(g: Goal): { text: string; red: boolean } {
+  if (!g.td) return { text: g.pace ? `${g.pace.n} a ${g.pace.per}` : 'No date', red: false };
+  const short = new Date(g.td + 'T12:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  if (!isActiveGoal(g)) return { text: short, red: false };
+  const left = daysLeft(g.td);
+  if (left < 0) return { text: `${short} · ${-left}d late`, red: true };
+  if (left === 0) return { text: 'Today', red: true };
+  return { text: `${short} · ${left} day${left === 1 ? '' : 's'}`, red: false };
+}
+
+interface Group {
+  label: string;
+  goals: Goal[];
+  red?: boolean;
+}
+
+function groupGoals(all: Goal[], mode: Mode): Group[] {
+  if (mode === 'done' || mode === 'letgo') {
+    const st = mode === 'done' ? 'completed' : 'let-go';
+    const gs = all.filter((g) => g.st === st).sort((a, b) => (b.upd ?? b.createdAt) - (a.upd ?? a.createdAt));
+    return gs.length ? [{ label: mode === 'done' ? 'Done' : 'Let go', goals: gs }] : [];
+  }
+  const act = all.filter(isActiveGoal).sort((a, b) => (a.td || '9999').localeCompare(b.td || '9999'));
+  const out: Group[] = [];
+  if (mode === 'project') {
+    const by = new Map<string, Goal[]>();
+    const none: Goal[] = [];
+    for (const g of act) {
+      const p = projectOf('goal', g.id);
+      if (!p) none.push(g);
+      else by.set(p.n, [...(by.get(p.n) ?? []), g]);
+    }
+    by.forEach((goals, label) => out.push({ label, goals }));
+    if (none.length) out.push({ label: 'No project', goals: none });
+    return out;
+  }
+  const buckets: [string, (g: Goal) => boolean, boolean?][] = [
+    ['Overdue', (g) => !!g.td && daysLeft(g.td) < 0, true],
+    ['This month', (g) => !!g.td && daysLeft(g.td) >= 0 && daysLeft(g.td) <= 31],
+    ['This quarter', (g) => !!g.td && daysLeft(g.td) > 31 && daysLeft(g.td) <= 92],
+    ['Later', (g) => !!g.td && daysLeft(g.td) > 92],
+    ['No date', (g) => !g.td],
+  ];
+  for (const [label, test, red] of buckets) {
+    const goals = act.filter(test);
+    if (goals.length) out.push({ label, goals, red });
+  }
+  return out;
+}
+
 export default function GoalsPage({ arg }: PageProps) {
-  const { notify } = useNav();
-  const [filter, setFilter] = useState<Filter>('all');
+  const { notify, openPanel } = useNav();
+  const [mode, setMode] = useState<Mode>('active');
   const [tick, setTick] = useState(0);
   const [edit, setEdit] = useState<Goal | null>(() => (typeof arg === 'string' ? getGoals().find((g) => g.id === arg) ?? null : null));
   const refresh = () => setTick((t) => t + 1);
+  useEffect(() => onDataChange(refresh), []);
   void tick;
 
   const all = getGoals();
-  const goals = all.filter((g) => filter === 'all' || g.st === filter);
-  const active = all.filter((g) => g.st === 'in-progress').length;
-  const remove = (id: string) => undoable(notify, 'Goal deleted.', snapshotGoals, restoreGoals, () => deleteGoal(id), refresh);
+  const groups = groupGoals(all, mode);
+  const active = all.filter(isActiveGoal).length;
+  const done = all.filter((g) => g.st === 'completed').length;
+  const remove = (id: string) =>
+    undoable(notify, 'Goal deleted.', snapshotGoals, restoreGoals, () => deleteGoal(id), () => {
+      refresh();
+      dataChanged();
+    });
+  const open = (g: Goal) => {
+    setFocus({ k: 'goal', id: g.id });
+    openPanel('item');
+  };
 
   return (
     <div className="qaPage">
@@ -56,7 +130,12 @@ export default function GoalsPage({ arg }: PageProps) {
           const g = createGoal(q.title);
           saveGoal({ ...g, td: q.date ?? '' });
           refresh();
-          notify(`Goal set${q.date ? ' · by ' + fmtShort(q.date) : ''}.`);
+          notify(`Goal set${q.date ? ' · by ' + fmtShort(q.date) : ''}.`, {
+            undo: () => {
+              deleteGoal(g.id);
+              refresh();
+            },
+          });
         }}
         onMore={(q) => {
           const g = createGoal(q.title || 'New goal');
@@ -70,135 +149,138 @@ export default function GoalsPage({ arg }: PageProps) {
           isNew={!all.some((g) => g.id === edit.id)}
           onCancel={() => setEdit(null)}
           onSave={(g) => {
+            const before = all.find((x) => x.id === g.id);
             saveGoal(g);
             setEdit(null);
             refresh();
-            notify('Goal saved.');
+            dataChanged();
+            notify(before ? 'Goal saved.' : 'Goal set.', {
+              undo: () => {
+                if (before) saveGoal(before);
+                else deleteGoal(g.id);
+                refresh();
+                dataChanged();
+              },
+            });
           }}
-          onDelete={() => {
-            setEdit(null);
-            remove(edit.id);
-          }}
+          onDelete={
+            all.some((g) => g.id === edit.id)
+              ? () => {
+                  setEdit(null);
+                  remove(edit.id);
+                }
+              : undefined
+          }
         />
       ) : null}
       <div className="tkBar">
-        <div className="calSeg" role="tablist" aria-label="Status">
-          {FILTERS.map((f) => (
-            <button key={f} role="tab" aria-selected={filter === f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
-              {LABEL[f]}
+        <div className="calSeg" role="tablist" aria-label="View">
+          {MODES.map((m) => (
+            <button key={m.id} role="tab" aria-selected={mode === m.id} className={mode === m.id ? 'on' : ''} onClick={() => setMode(m.id)}>
+              {m.label}
             </button>
           ))}
         </div>
         <span className="xs m" style={{ alignSelf: 'center' }}>
-          {all.length} goal{all.length === 1 ? '' : 's'} · {active} in progress
+          {active} active · {done} done
         </span>
       </div>
-      <div className="card cardPad">
-        {goals.map((g) => {
-          const left = g.td ? daysLeft(g.td) : null;
-          const late = left !== null && left < 0 && g.st !== 'completed';
-          return (
-            <div key={g.id} className="task">
-              <button
-                className={'gSt st-' + g.st}
-                aria-label={`${LABEL[g.st]}, tap to change`}
-                title={LABEL[g.st]}
-                onClick={() => {
-                  saveGoal({ ...g, st: ORDER[(ORDER.indexOf(g.st) + 1) % ORDER.length] });
-                  refresh();
-                }}
-              />
-              <div className="g">
-                <button className="tkTitle" onClick={() => setEdit(g)}>
-                  {g.st === 'completed' ? <s className="m">{g.t}</s> : g.t}
-                </button>
-                {g.d ? <div className="xs m">{g.d}</div> : null}
-                {nextMilestone(g.ms) ? (
-                  <div className="xs msNext">
-                    ◆ {nextMilestone(g.ms)!.t} · {fmtShort(nextMilestone(g.ms)!.d)}
-                    <span className="m"> · {(g.ms ?? []).filter((m) => m.done).length}/{(g.ms ?? []).length} milestones</span>
-                  </div>
-                ) : null}
-                <ProjectChip k="goal" id={g.id} />
-              </div>
-              {g.td ? (
-                <span className="xs" style={{ color: late ? 'var(--rd)' : 'var(--mut)', textAlign: 'right', flex: 'none' }}>
-                  {fmtShort(g.td)}
-                  <br />
-                  {g.st === 'completed' ? 'done' : late ? `${-left!}d late` : left === 0 ? 'today' : `${left}d left`}
-                </span>
-              ) : null}
-              <ItemMenu
-                name={g.t}
-                edit={() => setEdit(g)}
-                rename={{ value: g.t, save: (v) => saveGoal({ ...g, t: v.slice(0, 120) }) }}
-                link={{ k: 'goal', id: g.id }}
-                onChange={refresh}
-                onDelete={() => remove(g.id)}
-              />
+      <div className="tkList">
+        {groups.map((gr) => (
+          <section key={gr.label} className="tkGroup">
+            <div className={'sdiv tkH' + (gr.red ? ' att' : '')}>
+              <span>{gr.label}</span>
+              <span className="fmeta">{gr.goals.length}</span>
             </div>
-          );
-        })}
-        {goals.length === 0 ? (
-          <div className="s m">
-            {filter === 'all' ? 'No goals yet. A goal is the long game: set one and Eumae breaks it into steps with you.' : `Nothing ${LABEL[filter].toLowerCase()}.`}
-          </div>
+            {gr.goals.map((g) => (
+              <GoalRow key={g.id} g={g} onOpen={() => open(g)} onEdit={() => setEdit(g)} onDelete={() => remove(g.id)} refresh={refresh} />
+            ))}
+          </section>
+        ))}
+        {groups.length === 0 ? (
+          <p className="oIntro">
+            {mode === 'done'
+              ? 'No finished goals yet.'
+              : mode === 'letgo'
+                ? 'Nothing let go. When a goal stops fitting your life, set it to Let go and it waits here, no shame.'
+                : 'No goals yet. A goal is the long game: say it in your words, add why, and how you\'ll know you got there.'}
+          </p>
         ) : null}
       </div>
-      <div className="xs m calFoot">Tap the circle to move a goal along: not started, in progress, done.</div>
     </div>
   );
 }
 
-function GoalForm({
-  goal,
-  isNew,
-  onSave,
-  onDelete,
-  onCancel,
-}: {
-  goal: Goal;
-  isNew: boolean;
-  onSave: (g: Goal) => void;
-  onDelete: () => void;
-  onCancel: () => void;
-}) {
-  const [g, setG] = useState<Goal>(goal);
-  const set = (p: Partial<Goal>) => setG((x) => ({ ...x, ...p }));
+function GoalRow({ g, onOpen, onEdit, onDelete, refresh }: { g: Goal; onOpen: () => void; onEdit: () => void; onDelete: () => void; refresh: () => void }) {
+  const { notify } = useNav();
+  const pct = goalPct(g);
+  const count = goalCount(g);
+  const pace = goalPace(g);
+  const next = nextMilestone(g.ms);
+  const project = projectOf('goal', g.id);
+  const due = dueLabel(g);
+  const closed = !isActiveGoal(g);
+  const setSt = (st: Goal['st'], msg: string) => {
+    const before = g;
+    saveGoal({ ...g, st });
+    refresh();
+    dataChanged();
+    notify(msg, {
+      undo: () => {
+        saveGoal(before);
+        refresh();
+        dataChanged();
+      },
+    });
+  };
+  const sub = [count, pace === 'behind' ? 'Behind pace' : pace === 'on' ? 'On track' : ''].filter(Boolean);
   return (
-    <div className="card evForm">
-      <b>{isNew ? 'New goal' : 'Edit goal'}</b>
-      <input className="sinput" value={g.t} onChange={(e) => set({ t: e.target.value })} aria-label="Goal" autoFocus />
-      <input className="sinput" placeholder="Why it matters" value={g.d} onChange={(e) => set({ d: e.target.value })} aria-label="Why it matters" />
-      <div className="evRow">
-        <label>
-          <span className="xs m">Target date</span>
-          <input className="sinput" type="date" value={g.td} onChange={(e) => set({ td: e.target.value })} />
-        </label>
-        <label>
-          <span className="xs m">Status</span>
-          <select className="sinput" value={g.st} onChange={(e) => set({ st: e.target.value as GoalStatus })}>
-            <option value="not-started">Not started</option>
-            <option value="in-progress">In progress</option>
-            <option value="completed">Done</option>
-          </select>
-        </label>
-      </div>
-      <span className="xs m">Milestones</span>
-      <MilestonesEditor value={g.ms ?? []} onChange={(ms) => set({ ms })} />
-      <div className="btns">
-        <button className="pri" onClick={() => g.t.trim() && onSave({ ...g, t: g.t.trim(), d: g.d.trim() })}>
-          {isNew ? 'Set goal' : 'Save'}
+    <div className={'frow top tkRow gRow' + (closed ? ' past' : '')}>
+      <button
+        className={'fchk' + (g.st === 'completed' ? ' on' : '')}
+        aria-label={g.st === 'completed' ? `Reopen ${g.t}` : `Done: ${g.t}`}
+        onClick={() => (g.st === 'completed' ? setSt('in-progress', 'Goal reopened.') : setSt('completed', 'Goal done. Nice work.'))}
+      />
+      <div className="ft">
+        <button className="tlT" onClick={onOpen}>
+          <span className={closed ? 'tlDone' : ''}>{g.t}</span>
+          <span className="gPct">{pct}%</span>
         </button>
-        <button className="gho" onClick={onCancel}>
-          Cancel
-        </button>
-        {!isNew ? (
-          <button className="gho" style={{ color: 'var(--rd)' }} onClick={onDelete}>
-            Delete
-          </button>
+        {sub.length ? (
+          <div className="fsub">
+            {sub.map((s, i) => (
+              <span key={s} className={s === 'Behind pace' ? 'over' : ''}>
+                {i ? ' · ' : ''}
+                {s}
+              </span>
+            ))}
+          </div>
         ) : null}
+        <span className="gBar">
+          <i style={{ width: `${pct}%` }} />
+        </span>
       </div>
+      {project ? <span className="tkPill">{project.n}</span> : null}
+      <span className="fmeta gSide">
+        <span className={due.red ? 'over' : ''}>{due.text}</span>
+        {next && !closed ? <span className="gNext">Next: {next.t}</span> : null}
+      </span>
+      <ItemMenu
+        name={g.t}
+        open={onOpen}
+        edit={onEdit}
+        rename={{ value: g.t, save: (v) => saveGoal({ ...g, t: v.slice(0, 120) }) }}
+        extra={
+          g.st === 'let-go'
+            ? [{ label: 'Bring back', onClick: () => setSt('in-progress', 'Goal is active again.') }]
+            : closed
+              ? undefined
+              : [{ label: 'Let go', onClick: () => setSt('let-go', 'Goal let go. It stays in your record.') }]
+        }
+        link={{ k: 'goal', id: g.id }}
+        onChange={refresh}
+        onDelete={onDelete}
+      />
     </div>
   );
 }

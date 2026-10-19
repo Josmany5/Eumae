@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNav, type PanelView } from '../../nav';
 import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists } from '../../tasks';
 import { projectOf, linkedIds } from '../../projects';
-import { getGoals } from '../../goals';
+import { getGoals, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct, goalCount, goalPace, isActiveGoal, GOAL_STATUS_LABEL, type Goal } from '../../goals';
+import { sortMilestones } from '../../milestones';
+import { dueLabel } from '../../pages/GoalsPage';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
-import { setFocus, toggleEditModal, onDataChange, type Focus } from '../../focus';
+import { setFocus, toggleEditModal, onDataChange, dataChanged, type Focus } from '../../focus';
 import { getEvent, ymd } from '../../events';
 import { removeEvent, TYPE_LABEL } from '../QuickAdd';
 import { ItemMenu } from '../ItemMenu';
@@ -15,6 +17,7 @@ import { evKind } from './Timeline';
  *  steps, and the moves you'd make on it. Read-only; Edit opens the form. */
 export function ItemTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   if (focus.k === 'day') return <DayTab day={focus.id} />;
+  if (focus.k === 'goal') return <GoalTab focus={focus} onView={onView} />;
   return focus.k === 'event' ? <EventTab focus={focus} onView={onView} /> : <TaskTab focus={focus} onView={onView} />;
 }
 
@@ -234,6 +237,189 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
             deleteTask(t.id);
             setFocus(null);
             notify('Task deleted.', { undo: () => { restoreTasks(snap); setFocus({ k: 'task', id: t.id }); } });
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* A goal, read-only: the aim and why, where it stands (counted), what's
+   next, the pieces that serve it, and the record of what moved it. */
+function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
+  const { notify } = useNav();
+  const [, setTick] = useState(0);
+  useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
+  const refresh = () => setTick((n) => n + 1);
+  const g = getGoals().find((x) => x.id === focus.id);
+  if (!g) {
+    return (
+      <div className="oEmpty">
+        <span className="ft">That goal is gone</span>
+        <p className="oIntro">It was deleted. Pick another one.</p>
+      </div>
+    );
+  }
+  const put = (next: Goal, msg: string) => {
+    const before = g;
+    saveGoal(next);
+    refresh();
+    dataChanged();
+    notify(msg, {
+      undo: () => {
+        saveGoal(before);
+        refresh();
+        dataChanged();
+      },
+    });
+  };
+  const pct = goalPct(g);
+  const count = goalCount(g);
+  const pace = goalPace(g);
+  const due = dueLabel(g);
+  const project = projectOf('goal', g.id);
+  const taskIds = project ? linkedIds(project.id, 'task') : [];
+  const tasks = taskIds.map((id) => getTask(id)).filter((t): t is NonNullable<typeof t> => !!t);
+  const open = tasks.filter((t) => !t.d);
+  const doneTasks = tasks.filter((t) => t.d);
+  const ms = sortMilestones(g.ms ?? []);
+  const firstOpen = ms.findIndex((m) => !m.done);
+  const last = new Date(g.upd ?? g.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+  const kv: [string, string, string?][] = [];
+  kv.push(['Status', GOAL_STATUS_LABEL[g.st === 'not-started' ? 'in-progress' : g.st]]);
+  if (g.td) kv.push(['Target date', fmtShort(g.td) + (isActiveGoal(g) ? ' · ' + due.text.split(' · ').pop() : ''), due.red ? 'over' : undefined]);
+  if (g.pace) kv.push(['Pace', `${g.pace.n} a ${g.pace.per}`]);
+  if (project) kv.push(['Project', project.n]);
+  kv.push(['Last change', last]);
+
+  const edit = () => toggleEditModal({ k: 'goal', id: g.id });
+  const step = (d: number) => {
+    const cur = Math.max(0, (g.cur ?? 0) + d);
+    put({ ...g, cur }, `${cur} of ${g.tgt}${g.unit ? ' ' + g.unit : ''}.`);
+  };
+
+  return (
+    <div className="itab">
+      <h2 className={'itT' + (g.st === 'completed' ? ' tlDone' : '')}>{g.t}</h2>
+      {g.d ? <p className="itNote itWhy">{g.d}</p> : <div style={{ height: 8 }} />}
+      <span className="gBar itBar">
+        <i style={{ width: `${pct}%` }} />
+      </span>
+      <p className="fmeta itSub">
+        {pct}%{count ? ' · ' + count : ''}
+        {pace === 'behind' ? <span className="over"> · Behind pace</span> : pace === 'on' ? ' · On track' : ''}
+      </p>
+      {g.tgt && isActiveGoal(g) ? (
+        <div className="frow itKV">
+          <span className="fmeta">So far</span>
+          <span className="gStep">
+            <button className="fb gho" aria-label="One less" onClick={() => step(-1)}>
+              −
+            </button>
+            <span className="ft">
+              {g.cur ?? 0}
+              {g.unit ? ' ' + g.unit : ''}
+            </span>
+            <button className="fb gho" aria-label="One more" onClick={() => step(1)}>
+              +
+            </button>
+          </span>
+        </div>
+      ) : null}
+      {kv.map(([k, v, cls]) => (
+        <div key={k} className="frow itKV">
+          <span className="fmeta">{k}</span>
+          <span className={'ft' + (cls ? ' ' + cls : '')}>{v}</span>
+        </div>
+      ))}
+      {ms.length ? (
+        <>
+          <div className="flbl">Milestones</div>
+          {ms.map((m, i) => (
+            <div key={m.id} className={'frow itStep' + (i === firstOpen ? ' cur' : '')}>
+              <button
+                className={'itNum' + (m.done ? ' on' : '')}
+                aria-label={m.done ? `Reopen ${m.t}` : `Done: ${m.t}`}
+                onClick={() =>
+                  put({ ...g, ms: (g.ms ?? []).map((x) => (x.id === m.id ? { ...x, done: !x.done } : x)) }, m.done ? 'Milestone reopened.' : 'Milestone done.')
+                }
+              >
+                {m.done ? '✓' : i + 1}
+              </button>
+              <span className="ft">{m.t}</span>
+              {m.d ? <span className="fmeta">{fmtShort(m.d)}</span> : null}
+            </div>
+          ))}
+        </>
+      ) : null}
+      {open.length ? (
+        <>
+          <div className="flbl">
+            Open tasks <span className="fmeta">{open.length}</span>
+          </div>
+          {open.slice(0, 6).map((t) => (
+            <div key={t.id} className="frow itKV">
+              <button
+                className="ft tlT"
+                onClick={() => {
+                  setFocus({ k: 'task', id: t.id });
+                }}
+              >
+                {t.t}
+              </button>
+              <span className="fmeta">{t.due ? fmtShort(t.due) : 'Someday'}</span>
+            </div>
+          ))}
+        </>
+      ) : null}
+      {doneTasks.length || ms.some((m) => m.done) ? (
+        <>
+          <div className="flbl">What moved it</div>
+          {[...ms.filter((m) => m.done).map((m) => ({ k: m.id, t: m.t, w: 'Milestone' })), ...doneTasks.map((t) => ({ k: t.id, t: t.t, w: 'Task' }))]
+            .slice(0, 8)
+            .map((r) => (
+              <div key={r.k} className="frow itKV">
+                <span className="ft tlDone">✓ {r.t}</span>
+                <span className="fmeta">{r.w}</span>
+              </div>
+            ))}
+        </>
+      ) : null}
+      <div className="itMae">
+        <span className="n">Mae</span>
+        <span>{!project && !ms.length ? 'Nothing serves this goal yet. Ask me for a first small step.' : 'Stuck or behind? Ask me for the next small step.'}</span>
+        <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
+      </div>
+      <div className="itActs">
+        <button className="pri" onClick={edit}>Edit</button>
+        <ItemMenu
+          name={g.t}
+          edit={edit}
+          extra={
+            g.st === 'let-go'
+              ? [{ label: 'Bring back', onClick: () => put({ ...g, st: 'in-progress' }, 'Goal is active again.') }]
+              : g.st === 'completed'
+                ? [{ label: 'Reopen', onClick: () => put({ ...g, st: 'in-progress' }, 'Goal reopened.') }]
+                : [
+                    { label: 'Mark done', onClick: () => put({ ...g, st: 'completed' }, 'Goal done. Nice work.') },
+                    { label: 'Let go', onClick: () => put({ ...g, st: 'let-go' }, 'Goal let go. It stays in your record.') },
+                  ]
+          }
+          link={{ k: 'goal', id: g.id }}
+          onChange={refresh}
+          onDelete={() => {
+            const snap = snapshotGoals();
+            deleteGoal(g.id);
+            setFocus(null);
+            dataChanged();
+            notify('Goal deleted.', {
+              undo: () => {
+                restoreGoals(snap);
+                dataChanged();
+                setFocus({ k: 'goal', id: g.id });
+              },
+            });
           }}
         />
       </div>

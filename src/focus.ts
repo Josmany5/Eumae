@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 /** The item you tapped, shown in Mae's office as its own tab (Task, Event,
  *  Goal…). One at a time, in memory only: a reload lands back on the page's
  *  normal tabs. */
-export type FocusKind = 'task' | 'event' | 'day';
+export type FocusKind = 'task' | 'event' | 'day' | 'goal';
 export interface Focus {
   k: FocusKind;
   id: string;
@@ -36,7 +36,7 @@ export function useFocus(): Focus | null {
   );
 }
 
-export const FOCUS_LABEL: Record<FocusKind, string> = { task: 'Task', event: 'Event', day: 'Day' };
+export const FOCUS_LABEL: Record<FocusKind, string> = { task: 'Task', event: 'Event', day: 'Day', goal: 'Goal' };
 
 /* "Edit" from the office: the Tasks page, when it's on screen, opens its form
    in place; otherwise the caller navigates there. */
@@ -71,7 +71,7 @@ export function requestEditEvent(id: string): boolean {
 /* ── Edit pop-up: "Edit" in the office on a page that isn't the item's own
    opens the form over the current page instead of navigating away. A
    second tap on Edit closes it. ── */
-export type EditTarget = { k: 'task' | 'event'; id: string } | null;
+export type EditTarget = { k: 'task' | 'event' | 'goal'; id: string } | null;
 let editCur: EditTarget = null;
 const editSubs = new Set<() => void>();
 export function toggleEditModal(t: EditTarget): void {

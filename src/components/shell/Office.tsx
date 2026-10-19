@@ -20,6 +20,7 @@ import type { Ref } from '../../nav';
 import { useFocus, setFocus, getFocus, FOCUS_LABEL } from '../../focus';
 import { ItemTab } from './ItemTab';
 import { MaeIcon } from './Header';
+import { getGoals, goalPct, goalCount } from '../../goals';
 
 /** Mae's office: the right panel on desktop, a peek bar and a sheet on a phone.
  *
@@ -175,6 +176,12 @@ function focusContext(): string {
   if (f.k === 'event') {
     const e = getEvent(f.id);
     return e ? `\n\nThe person has this event open: ${e.t} on ${e.d}${e.tm ? ' at ' + e.tm : ''}${e.loc ? ' at ' + e.loc : ''}.` : '';
+  }
+  if (f.k === 'goal') {
+    const g = getGoals().find((x) => x.id === f.id);
+    return g
+      ? `\n\nThe person has this goal open: ${g.t}${g.d ? ' (why: ' + g.d + ')' : ''}, ${goalPct(g)}% done${goalCount(g) ? ' (' + goalCount(g) + ')' : ''}${g.td ? ', target ' + g.td : ''}.`
+      : '';
   }
   return f.k === 'day' ? `\n\nThe person is looking at ${f.id}.` : '';
 }

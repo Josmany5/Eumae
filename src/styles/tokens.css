@@ -2050,3 +2050,17 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .ctxRow{ width:100%; background:none; text-align:left; color:var(--tx); cursor:pointer; }
 .ctxRow:hover{ background:var(--card); }
 .ctxRow:disabled{ cursor:default; opacity:.55; }
+
+/* ── Goals (step 6): flat rows like Tasks, percent + thin meter ───────── */
+.gRow .tlT{ display:inline; }
+.gPct{ margin-left:8px; font-size:13px; color:var(--mut); font-weight:400; }
+.gBar{ display:block; height:3px; width:min(220px, 100%); margin-top:8px; border-radius:2px; background:var(--card2); overflow:hidden; }
+.gBar i{ display:block; height:3px; border-radius:2px; background:var(--ac); }
+.gRow.past .gBar i{ background:var(--mut); }
+.gSide{ display:flex; flex-direction:column; align-items:flex-end; gap:2px; text-align:right; }
+.gNext{ color:var(--tx2, var(--tx)); }
+.gStep{ display:inline-flex; align-items:center; gap:10px; }
+.gStep .fb{ min-width:30px; padding:2px 8px; margin:0; }
+.itWhy{ color:var(--mut); margin:4px 0 0; }
+.itBar{ width:100%; margin-top:12px; }
+@media (max-width:899px){ .gRow .gSide{ max-width:128px; } .gNext{ display:none; } }

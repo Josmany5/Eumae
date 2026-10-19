@@ -9,7 +9,7 @@
 
 import { getTasks, toggleTask } from '../../tasks';
 import { dayEvents } from '../../events';
-import { getGoals } from '../../goals';
+import { getGoals, goalPct, goalCount, isActiveGoal } from '../../goals';
 import { getPinnedProject } from '../../projects';
 import { listUploads } from '../../uploads';
 import { getGuild } from '../../guild';
@@ -231,25 +231,18 @@ function FullToday({ refresh }: { refresh: () => void }) {
   );
 }
 
-function goalPct(g: ReturnType<typeof getGoals>[number]): number {
-  if (g.st === 'completed') return 100;
-  const ms = g.ms ?? [];
-  return ms.length ? Math.round((ms.filter((m) => m.done).length / ms.length) * 100) : 0;
-}
-
 function FullGoals({ onOpen }: { onOpen: () => void }) {
-  const goals = getGoals().filter((g) => g.st !== 'completed');
+  const goals = getGoals().filter(isActiveGoal);
   return (
     <>
       {goals.map((g) => {
         const pct = goalPct(g);
-        const ms = g.ms ?? [];
         return (
           <div key={g.id} className="wGoal">
             <div className="r">
               <span className="ft">{g.t}</span>
               <span className="fmeta">
-                {pct}%{ms.length ? ` · ${ms.filter((m) => m.done).length} of ${ms.length} steps` : ''}
+                {pct}%{goalCount(g) ? ` · ${goalCount(g)}` : ''}
               </span>
             </div>
             <span className="bar">
