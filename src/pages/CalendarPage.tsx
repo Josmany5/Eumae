@@ -301,7 +301,9 @@ export default function CalendarPage({ arg }: PageProps) {
           <DaySection day={day} today={today} items={itemsOn(day, tasks)} onItem={openItem} onCheck={checkTask} onAdd={() => openNew(day)} />
         </>
       ) : view === 'today' ? (
-        <HourDay day={day} today={today} items={itemsOn(day, tasks)} onItem={openItem} onCheck={checkTask} onAdd={(m) => openNew(day, m)} />
+        <div className="agList">
+          <DaySection day={day} today={today} items={itemsOn(day, tasks)} onItem={openItem} onCheck={checkTask} onAdd={() => openNew(day)} />
+        </div>
       ) : (
         <>
           <WeekRow
@@ -427,7 +429,7 @@ function WeekRow({ days, day, today, tasks, onPick }: { days: string[]; day: str
 /* One day by the hour (his screenshot): Anytime first, then hour lines
    8 AM to 10 PM (wider when something sits outside), a Now line today.
    Tap an empty hour to add an event there. */
-function HourDay({ day, today, items, onItem, onCheck, onAdd }: {
+export function HourDay({ day, today, items, onItem, onCheck, onAdd }: {
   day: string; today: string; items: Item[]; onItem: (i: Item) => void; onCheck: (t: Task) => void; onAdd: (minute?: number) => void;
 }) {
   const dt = new Date(day + 'T12:00');
