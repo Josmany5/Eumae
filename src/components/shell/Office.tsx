@@ -8,7 +8,7 @@ import { getTasks } from '../../tasks';
 import { eventsBetween, ymd } from '../../events';
 import { streamChat } from '../../chat';
 import { buildRequest, toApiBody } from '../../request';
-import { createThread, getThread, saveThread, threadsChanged, type Msg, type Thread } from '../../threads';
+import { createThread, getThread, saveThread, threadsChanged, titleFor, type Msg, type Thread } from '../../threads';
 import { msgId } from '../../boot';
 import { timeLabels } from '../../stamp';
 import { getTask } from '../../tasks';
@@ -239,7 +239,7 @@ function MaeTab({ tab }: { tab: TabId }) {
     const q = text.trim();
     if (!q || busy) return;
     setText('');
-    const base = thread ?? { ...createThread(), title: officeName(tab), from: officeName(tab) };
+    const base = thread ?? { ...createThread(), title: titleFor(q), from: officeName(tab) };
     const history = base.messages;
     const body = toApiBody(buildRequest(turn, [], q), history, null);
     body.data.systemPrompt += `\n\n${role.prompt}${tab === 'console' ? consoleContext() : ''}${focusContext()}`;
