@@ -53,6 +53,11 @@ function load(): Thread[] {
         continue;
       }
       const msgs = cleanMessages(t.messages);
+      /* Blank chats saved before drafts existed: drop them. */
+      if (!msgs.length) {
+        dropped++;
+        continue;
+      }
       dropped += t.messages.length - msgs.length;
       /* Office threads are labelled by page alone ("Console"), not "Console office". */
       const from = t.from;
@@ -101,11 +106,23 @@ export function getThreads(): Thread[] {
   return [...load()].sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+/* A new chat is a draft held in memory until its first message (his call,
+   Oct 19): opening the app or tapping New chat no longer saves a blank
+   "New chat" into history. */
+const drafts = new Map<string, Thread>();
+
 export function getThread(id: string): Thread | undefined {
-  return load().find((t) => t.id === id);
+  return load().find((t) => t.id === id) ?? drafts.get(id);
 }
 
 export function saveThread(thread: Thread): void {
+  if (drafts.has(thread.id)) {
+    if (!thread.messages.length) {
+      drafts.set(thread.id, { ...thread, updatedAt: Date.now() });
+      return;
+    }
+    drafts.delete(thread.id);
+  }
   const threads = load();
   const i = threads.findIndex((t) => t.id === thread.id);
   const updated = { ...thread, updatedAt: Date.now() };
@@ -126,7 +143,7 @@ export function createThread(): Thread {
     updatedAt: now,
     messages: [],
   };
-  saveThread(thread);
+  drafts.set(thread.id, thread);
   return thread;
 }
 
