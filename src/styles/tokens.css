@@ -2010,13 +2010,10 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .tlChip{ padding:2px 10px; border:1px solid var(--hair); border-radius:99px; font-size:13px; color:var(--mut); white-space:nowrap; }
 .tlSpine .sdiv{ padding-top:16px; }
 .tlSpine .snow{ margin:8px 0 2px; }
-/* This week stands on its own as a card on Console (his call, Oct 19),
-   so it never reads as part of the Timeline above it. */
-.con .wc.w-week8{ background:var(--card); border:1px solid var(--hair); border-radius:14px; padding:14px 16px 6px; margin:16px 0 4px; }
-.con .pdCell .wc.w-week8 + *, .con .pdCell:has(.w-week8) + .pdCell .wc{ border-top:0; }
-.con .wc.w-week8 .wt{ font-size:15px; font-weight:600; color:var(--tx); margin-bottom:6px; }
-.con .wc.w-week8 .wkCard{ border:0; border-radius:0; background:none; }
-.con .wc.w-week8 .wkRow{ padding-left:0; padding-right:0; }
+/* This week stands on its own as a card on Console (his call, Oct 19):
+   the title sits above the box, only the rows are boxed. */
+.con .wc.w-week8{ margin-top:6px; }
+.con .wc.w-week8 .wt{ margin-bottom:8px; }
 
 /* Tasks rows (his screenshot, Oct 19): everything centred on the row, one
    hairline under each task, chip and time on the right, the chip shown on
