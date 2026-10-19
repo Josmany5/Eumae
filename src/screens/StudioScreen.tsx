@@ -159,7 +159,7 @@ function StudioRoot({ published, made, showDrafts, onToggleDrafts, onPickCat, on
 }) {
   return (
     <div>
-      <div className="screenT">Your studio</div>
+      <div className="screenT dupT">Your studio</div>
       <div className="s m">Everything you have made - drafts, published, every version.</div>
       <div className="btns">
         <button className="pri" onClick={() => onPickCat("__gallery__")}>Make something new</button>

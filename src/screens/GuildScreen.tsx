@@ -79,7 +79,7 @@ export default function GuildScreen() {
     <div className={editing ? 'ed8 dashWide' : 'dashWide'} onPointerDown={holdStart} onPointerUp={holdEnd} onPointerLeave={holdEnd}>
       <div className="row dashHead">
         <div className="g">
-          <div className="screenT">Guild</div>
+          <div className="screenT dupT">Guild</div>
           <div className="screenS">{editing ? 'Editing this dashboard.' : 'People, requests, shared work. ' + unread + ' unread'}</div>
         </div>
         <button className={'dashEdit' + (editing ? ' pri' : '')} onClick={() => setEditing((v) => !v)}>

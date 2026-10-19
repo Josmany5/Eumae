@@ -88,7 +88,7 @@ function ClassroomRoot({ assigned, onCourse, onTutorial, onSection, toChat }: {
   const toYou = assigned.filter((a) => a.mine);
   return (
     <div>
-      <div className="screenT">Classroom</div>
+      <div className="screenT dupT">Classroom</div>
       <div className="s m">Learn it here - or ask in Chat and keep going.</div>
       {/* Hero: continue where you left off. */}
       <div className="card">
