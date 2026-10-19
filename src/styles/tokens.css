@@ -1713,7 +1713,8 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .oThread{ flex:1; min-height:0; overflow-y:auto; padding-bottom:10px; scrollbar-width:thin; scrollbar-color:var(--hair) transparent; }
 .oThread .imTime{ margin:14px 0 0; }
 .oAsk .chatDown{ top:-46px; }
-.oBox{ resize:none; font:inherit; line-height:1.4; max-height:150px; overflow-y:auto; display:block; }
+.oBox{ resize:none; font:inherit; box-sizing:border-box; line-height:20px; min-height:40px; padding:9px 12px !important; max-height:150px; overflow-y:auto; display:block; }
+.oAsk .oSend{ width:40px; height:40px; }
 .oMe{ margin:12px 0 0 auto; max-width:85%; width:fit-content; background:var(--ac); color:var(--acink);
   border-radius:16px; padding:8px 13px; font-size:15px; line-height:1.45; }
 .oMae1{ margin:12px 0 0; font-size:15px; line-height:1.5; white-space:pre-wrap; }

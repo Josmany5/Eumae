@@ -231,7 +231,7 @@ function MaeTab({ tab }: { tab: TabId }) {
     const el = box.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+    el.style.height = Math.min(el.scrollHeight + 2, 150) + 'px';
   }, [text]);
   const stamps = timeLabels(list.map((m) => m.ts));
 
