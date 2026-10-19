@@ -93,7 +93,6 @@ function SwipeRow({
       >
         <span className="g">{t.title}</span>
         <span className="drDate">
-          {t.from ? `${t.messages?.length ?? 0} messages · ` : ''}
           {fmtListTime(t.updatedAt)}
         </span>
         <ItemMenu
