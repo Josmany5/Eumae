@@ -111,6 +111,8 @@ export default function CalendarPage({ arg }: PageProps) {
   const desktop = useMedia('(min-width:900px)');
   const [view, setView] = useState<CalView>('week');
   const [day, setDay] = useState(() => todayStr());
+  /* Week view: the strip's first day; `day` is the one picked in it. */
+  const [wk, setWk] = useState(() => todayStr());
   const [tick, setTick] = useState(0);
   /* Opened with an event id (Edit from Mae's office): land on its form. */
   const [form, setForm] = useState<{ ev: CalEvent; editing: boolean } | null>(() => {
@@ -135,7 +137,10 @@ export default function CalendarPage({ arg }: PageProps) {
 
   const step = (n: number) => {
     if (view === 'today') setDay(shift(day, n));
-    else if (view === 'week') setDay(shift(day, 7 * n));
+    else if (view === 'week') {
+      setWk(shift(wk, 7 * n));
+      setDay(shift(day, 7 * n));
+    }
     else setDay(monthShift(day, n));
   };
 
@@ -145,8 +150,8 @@ export default function CalendarPage({ arg }: PageProps) {
       : view === 'today'
         ? new Date(day + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
         : (() => {
-          const a = new Date(day + 'T12:00');
-          const b = new Date(shift(day, 6) + 'T12:00');
+          const a = new Date(wk + 'T12:00');
+          const b = new Date(shift(wk, 6) + 'T12:00');
           const sameMonth = a.getMonth() === b.getMonth();
           return (
             a.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
@@ -245,7 +250,14 @@ export default function CalendarPage({ arg }: PageProps) {
           <button className="hb" aria-label="Next" onClick={() => step(1)}>
             ›
           </button>
-          <button className="fb" onClick={() => setDay(today)} disabled={day === today}>
+          <button
+            className="fb"
+            onClick={() => {
+              setDay(today);
+              setWk(today);
+            }}
+            disabled={day === today && wk === today}
+          >
             Today
           </button>
           <b className="calLabel">{label}</b>
@@ -289,16 +301,12 @@ export default function CalendarPage({ arg }: PageProps) {
           <DaySection day={day} today={today} items={itemsOn(day, tasks)} onItem={openItem} onCheck={checkTask} onAdd={() => openNew(day)} />
         </>
       ) : view === 'today' ? (
-        <div className="agList">
-          <DaySection day={day} today={today} items={itemsOn(day, tasks)} onItem={openItem} onCheck={checkTask} onAdd={() => openNew(day)} />
-        </div>
+        <HourDay day={day} today={today} items={itemsOn(day, tasks)} onItem={openItem} onCheck={checkTask} onAdd={(m) => openNew(day, m)} />
       ) : (
-        <div className="agList">
-          <WeekRow days={Array.from({ length: 7 }, (_, i) => shift(day, i))} today={today} tasks={tasks} />
-          {Array.from({ length: 7 }, (_, i) => shift(day, i)).map((d) => (
-            <DaySection key={d} day={d} today={today} items={itemsOn(d, tasks)} onItem={openItem} onCheck={checkTask} onAdd={() => openNew(d)} />
-          ))}
-        </div>
+        <>
+          <WeekRow days={Array.from({ length: 7 }, (_, i) => shift(wk, i))} day={day} today={today} tasks={tasks} onPick={setDay} />
+          <HourDay day={day} today={today} items={itemsOn(day, tasks)} onItem={openItem} onCheck={checkTask} onAdd={(m) => openNew(day, m)} />
+        </>
       )}
       <div className="xs m calFoot">
         All events in one list:{' '}
@@ -383,29 +391,112 @@ export function minsToTm(n: number): string {
 
 /* One day of the agenda: a header (Today · Mon, Oct 19), then flat rows
    with the time on the left. An empty day says so in one quiet line. */
-/* The week at a glance (from the screenshots): seven columns, the day and
-   what's on it. Tap one to jump to that day in the list. */
-function WeekRow({ days, today, tasks }: { days: string[]; today: string; tasks: Task[] }) {
+/* The week strip (his screenshot): day, date and how many things, the
+   picked day lit. Tap a day to show it below. */
+function WeekRow({ days, day, today, tasks, onPick }: { days: string[]; day: string; today: string; tasks: Task[]; onPick: (d: string) => void }) {
   return (
-    <div className="calWeek" role="list">
+    <div className="calWeek" role="tablist">
       {days.map((d) => {
-        const items = itemsOn(d, tasks).filter((i) => !i.done);
+        const n = itemsOn(d, tasks).filter((i) => !i.done).length;
         const dt = new Date(d + 'T12:00');
         return (
-          <button
-            key={d}
-            role="listitem"
-            className={d === today ? 'on' : ''}
-            onClick={() => document.getElementById('ag-' + d)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          >
-            <b>
-              {dt.toLocaleDateString(undefined, { weekday: 'short' })} {dt.getDate()}
-            </b>
-            <i>{items.length === 0 ? '—' : items.length === 1 ? items[0].title : `${items.length} things`}</i>
+          <button key={d} role="tab" aria-selected={d === day} className={(d === day ? 'on' : '') + (d === today ? ' today' : '')} onClick={() => onPick(d)}>
+            <span>{DOW[dt.getDay()]}</span>
+            <b>{dt.getDate()}</b>
+            <i>{n}</i>
           </button>
         );
       })}
     </div>
+  );
+}
+
+/* One day by the hour (his screenshot): Anytime first, then hour lines
+   8 AM to 10 PM (wider when something sits outside), a Now line today.
+   Tap an empty hour to add an event there. */
+function HourDay({ day, today, items, onItem, onCheck, onAdd }: {
+  day: string; today: string; items: Item[]; onItem: (i: Item) => void; onCheck: (t: Task) => void; onAdd: (minute?: number) => void;
+}) {
+  const dt = new Date(day + 'T12:00');
+  const word = day === today ? 'Today' : day === shift(today, 1) ? 'Tomorrow' : '';
+  const now = new Date();
+  const nowM = now.getHours() * 60 + now.getMinutes();
+  const anytime = items.filter((i) => i.start === undefined);
+  const timed = items.filter((i) => i.start !== undefined);
+  let first = 8;
+  let last = 22;
+  timed.forEach((i) => {
+    first = Math.min(first, Math.floor(i.start! / 60));
+    last = Math.max(last, Math.floor(i.start! / 60));
+  });
+  if (day === today) {
+    first = Math.min(first, now.getHours());
+    last = Math.max(last, now.getHours());
+  }
+  const kindOf = (it: Item) =>
+    it.kind === 'event' && it.ev ? evKind(it.ev) : it.kind === 'task' ? 'Task' : it.kind[0].toUpperCase() + it.kind.slice(1);
+  const row = (it: Item) => {
+    const past = day < today || (day === today && (it.end ?? it.start ?? 1440) < nowM);
+    return (
+      <div key={it.key} className={'frow agRow2 hdItem c-' + it.color + (it.done || past ? ' past' : '')}>
+        {it.kind === 'task' && it.task ? (
+          <button className={'fchk' + (it.done ? ' on' : '')} aria-label={it.done ? `Reopen ${it.title}` : `Done: ${it.title}`} onClick={() => onCheck(it.task!)} />
+        ) : (
+          <i className="agBar" />
+        )}
+        <div className="ft">
+          <button className="tlT" onClick={() => onItem(it)}>
+            <span className={it.done ? 'tlDone' : ''}>{it.title}</span>
+          </button>
+          {it.ev?.loc || it.ev?.rep ? <div className="fsub">{[it.ev?.loc, it.ev?.rep ? '↻ repeats' : ''].filter(Boolean).join(' · ')}</div> : null}
+        </div>
+        <span className="fmeta">
+          {it.start !== undefined ? fmtTime(minsToTm(it.start)) + (it.end !== undefined && it.kind === 'event' ? ' – ' + fmtTime(minsToTm(it.end)) : '') + ' · ' : ''}
+          {kindOf(it)}
+        </span>
+      </div>
+    );
+  };
+  const hours = Array.from({ length: last - first + 1 }, (_, i) => first + i);
+  const hourLabel = (h: number) => `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}`;
+  return (
+    <section className="hdDay">
+      <div className="sdiv agH">
+        <span>
+          {dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+          {word ? <b> · {word}</b> : null}
+        </span>
+        <button className="fact agAdd" onClick={() => onAdd()} aria-label={`Add an event on ${dt.toDateString()}`}>
+          +
+        </button>
+      </div>
+      {anytime.length ? (
+        <>
+          <div className="flbl hdLbl">Anytime</div>
+          <div className="hdAny">{anytime.map(row)}</div>
+        </>
+      ) : null}
+      <div className="hdHours">
+        {hours.map((h) => {
+          const here = timed.filter((i) => Math.floor(i.start! / 60) === h);
+          const showNow = day === today && now.getHours() === h;
+          return (
+            <div key={h} className="hdHour">
+              <button className="hdH" onClick={() => onAdd(h * 60)} aria-label={`Add at ${hourLabel(h)}`}>
+                {hourLabel(h)}
+              </button>
+              <div className="hdBody">
+                {showNow ? (
+                  <div className="hdNow">Now {now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+                ) : null}
+                {here.map(row)}
+                {!here.length && !showNow ? <button className="hdEmpty" onClick={() => onAdd(h * 60)} aria-label={`Add at ${hourLabel(h)}`} /> : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
