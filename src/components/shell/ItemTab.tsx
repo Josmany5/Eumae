@@ -4,7 +4,7 @@ import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks
 import { projectOf, linkedIds } from '../../projects';
 import { getGoals } from '../../goals';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
-import { setFocus, requestEditTask, requestEditEvent, toggleEditModal, onDataChange, type Focus } from '../../focus';
+import { setFocus, toggleEditModal, onDataChange, type Focus } from '../../focus';
 import { getEvent, ymd } from '../../events';
 import { removeEvent, TYPE_LABEL } from '../QuickAdd';
 import { ItemMenu } from '../ItemMenu';
@@ -96,7 +96,7 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
   kv.push(['Kind', TYPE_LABEL[ev.type ?? 'other']]);
   if (project) kv.push(['Project', project.n]);
   const edit = () => {
-    if (!requestEditEvent(ev.id!)) toggleEditModal({ k: 'event', id: ev.id! });
+    toggleEditModal({ k: 'event', id: ev.id! });
   };
   const del = (scope: 'one' | 'all') => {
     setFocus(null);
@@ -181,7 +181,7 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
   if (t.rep && t.rep !== 'none') kv.push(['Repeats', t.rep[0].toUpperCase() + t.rep.slice(1)]);
 
   const edit = () => {
-    if (!requestEditTask(t.id)) toggleEditModal({ k: 'task', id: t.id });
+    toggleEditModal({ k: 'task', id: t.id });
   };
 
   return (
