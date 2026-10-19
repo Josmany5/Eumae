@@ -1839,7 +1839,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   font-size:14px; font-weight:600; }
 .tkBulk button.pri{ background:var(--ac); border-color:var(--ac); color:var(--acink); }
 .tkBulk button.danger{ color:var(--rd); }
-@media (max-width:899px){ .tkPill{ display:none; } }
+@media (max-width:899px){ .tkPill{ max-width:96px; } }
 
 /* ── Office item tab (Task) ──────────────────────────────────────────── */
 .otabs .otX{ margin-left:6px; color:var(--mut); font-size:15px; padding:0 2px; }
@@ -2017,3 +2017,14 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .con .wc.w-week8 .wt{ font-size:15px; font-weight:600; color:var(--tx); margin-bottom:6px; }
 .con .wc.w-week8 .wkCard{ border:0; border-radius:0; background:none; }
 .con .wc.w-week8 .wkRow{ padding-left:0; padding-right:0; }
+
+/* Tasks rows (his screenshot, Oct 19): everything centred on the row, one
+   hairline under each task, chip and time on the right, the chip shown on
+   phone too. */
+.tkRow{ align-items:center; padding:12px 0; }
+.tkRow .fchk, .tkRow .tkBox, .tkRow .tkPrL, .tkRow .tkPill, .tkRow .fmeta{ margin-top:0; padding-top:0; }
+.tkRow .fmeta{ text-align:right; }
+.tkRow .fchk{ width:20px; height:20px; }
+.tkGroup .tkRow:last-child{ border-bottom:1px solid var(--hair); }
+.tkH{ padding:18px 0 6px; border-bottom:0; }
+@media (max-width:899px){ .tkRow{ gap:10px; } .tkRow .fmeta{ max-width:112px; white-space:normal; line-height:1.3; } }

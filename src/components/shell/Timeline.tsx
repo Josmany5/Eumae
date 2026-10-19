@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNav } from '../../nav';
-import { getTasks, getLists, toggleTask, createTask, saveTask, deleteTask, type Task } from '../../tasks';
-import { dayEvents, ymd, mins, saveEvent, deleteEvent, type CalEvent } from '../../events';
-import { parseQuick, fmtTime, guessType, type Quick } from '../../quickadd';
-import { createNote, saveNote, deleteNote, getNotes, titleOf } from '../../notes';
-import { quickToEvent } from '../QuickAdd';
-import { Icon } from './icons';
-import { logEv } from '../../log';
+import { getTasks, getLists, toggleTask, saveTask, type Task } from '../../tasks';
+import { dayEvents, ymd, mins, type CalEvent } from '../../events';
+import { fmtTime } from '../../quickadd';
 import { setFocus, onDataChange } from '../../focus';
 import { TYPE_LABEL } from '../QuickAdd';
 
@@ -21,19 +17,6 @@ type Item =
   | { kind: 'event'; key: string; t: string; tm?: string; ev: CalEvent };
 
 const URGENT = new Set(['urgent', 'critical']);
-
-/* Quick capture: one line, three kinds. The guess reads the words; the chip
-   beside the box shows it and a tap changes it. Mae takes over the guessing
-   once the backend lands. */
-type Kind = 'task' | 'event' | 'note';
-const KINDS: Kind[] = ['task', 'event', 'note'];
-const KIND_LABEL: Record<Kind, string> = { task: 'Task', event: 'Event', note: 'Note' };
-export function guessKind(raw: string, q: Quick): Kind {
-  if (/^\s*(note|n)\s*:/i.test(raw)) return 'note';
-  if (q.time && (guessType(q.title || raw) || q.end || q.loc)) return 'event';
-  if (!q.time && raw.length > 80) return 'note';
-  return 'task';
-}
 
 function addDays(d: Date, n: number): Date {
   const x = new Date(d);
@@ -64,9 +47,6 @@ function fmtDue(d: string): string {
 export function Timeline({ editing, onChange }: { editing: boolean; onChange: () => void }) {
   const { go, notify, openPanel } = useNav();
   const [, setTick] = useState(0);
-  const [text, setText] = useState('');
-  const [pick, setPick] = useState<Kind | null>(null);
-  const kind: Kind = pick ?? (text.trim() ? guessKind(text, parseQuick(text.trim())) : 'task');
   const [showEarlier, setShowEarlier] = useState(false);
   const refresh = () => {
     setTick((n) => n + 1);
@@ -89,39 +69,10 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
   const later = timed.filter((i) => mins(i.tm) >= nowMin);
   const anytime = todayItems.filter((i) => !i.tm && !attention.includes(i));
   const tmrw = itemsFor(tomorrow, open).sort(byTime);
-  const notesToday = getNotes().filter((n) => ymd(new Date(n.createdAt)) === today);
   const earlierDone = earlier.filter((i) => i.kind === 'event' || i.task.d).length;
 
   const next = later.find((i) => i.kind === 'event' || !i.task.d);
   const first = overdue[0];
-
-  const add = () => {
-    const s = text.trim();
-    if (!s) return;
-    const k = kind;
-    setText('');
-    setPick(null);
-    if (k === 'note') {
-      const body = s.replace(/^\s*(note|n)\s*:\s*/i, '');
-      const n = createNote(body.slice(0, 80));
-      const safe = body.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!);
-      saveNote({ ...n, body: `<div>${safe}</div>` });
-      logEv({ area: 'Console', text: `Added note: ${body.slice(0, 60)}` });
-      notify('Note saved.', { undo: () => { deleteNote(n.id); refresh(); } });
-    } else if (k === 'event') {
-      const q = parseQuick(s);
-      const e = saveEvent(quickToEvent({ ...q, title: q.title || s, type: q.type ?? guessType(q.title || s) }, today));
-      logEv({ area: 'Console', text: `Added event: ${e.t}` });
-      notify('Event added.', { undo: () => { deleteEvent(e); refresh(); } });
-    } else {
-      const q = parseQuick(s);
-      const t = createTask(q.title || s);
-      saveTask({ ...t, due: q.date ?? today, tm: q.time, est: q.mins, pr: q.pr, list: q.list ?? t.list });
-      logEv({ area: 'Console', text: `Added task: ${q.title || s}` });
-      notify('Task added.', { undo: () => { deleteTask(t.id); refresh(); } });
-    }
-    refresh();
-  };
 
   const done = (t: Task) => {
     toggleTask(t.id);
@@ -217,37 +168,6 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
           'Nothing else on the clock today.'
         )}
       </p>
-      <form
-        className="tlAdd"
-        onSubmit={(e) => {
-          e.preventDefault();
-          add();
-        }}
-      >
-        <Icon name="pls" />
-        <input
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            if (!e.target.value.trim()) setPick(null);
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          placeholder="Add a task, event or note…"
-          aria-label="Add a task, event or note"
-          enterKeyHint="done"
-        />
-        {text.trim() ? (
-          <button
-            type="button"
-            className="tlKind"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => setPick(KINDS[(KINDS.indexOf(kind) + 1) % KINDS.length])}
-            title="Tap to change what this becomes"
-          >
-            {KIND_LABEL[kind]}
-          </button>
-        ) : null}
-      </form>
       <div className="spine tlSpine">
         {earlier.length ? (
           <button className="sdiv tlFold" onClick={() => setShowEarlier((v) => !v)} aria-expanded={showEarlier}>
@@ -263,19 +183,6 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
         {anytime.length ? <div className="sdiv">Anytime</div> : null}
         {anytime.map((i) => row(i))}
         {!later.length && !anytime.length ? <p className="oIntro tlNone">Nothing else today.</p> : null}
-        {notesToday.length ? <div className="sdiv">Notes today</div> : null}
-        {notesToday.map((n) => (
-          <div key={n.id} className="frow top tlRow">
-            <div className="ft">
-              <button className="tlT" onClick={() => go('note', n.id)}>
-                <span>{titleOf(n)}</span>
-              </button>
-            </div>
-            <span className="tlR">
-              <span className="fmeta">{new Date(n.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-            </span>
-          </div>
-        ))}
         <div className="sdiv">Tomorrow</div>
         {tmrw.length ? tmrw.map((i) => row(i)) : <p className="oIntro tlNone">Nothing yet.</p>}
       </div>
