@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNav } from '../../nav';
-import { getTasks, toggleTask, createTask, saveTask, deleteTask, type Task } from '../../tasks';
+import { getTasks, getLists, toggleTask, createTask, saveTask, deleteTask, type Task } from '../../tasks';
 import { dayEvents, ymd, mins, saveEvent, deleteEvent, type CalEvent } from '../../events';
 import { parseQuick, fmtTime, guessType, type Quick } from '../../quickadd';
 import { createNote, saveNote, deleteNote, getNotes, titleOf } from '../../notes';
@@ -147,25 +147,30 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
     } else go('cal');
   };
 
-  /* Agenda-style row (same as the Calendar): time on the left, the check
-     or the event bar, the title, and what it is on the right. */
+  /* Spine row (his screenshot, Oct 19): a dot on the line (tap a task's dot
+     to mark it done), the title, and on the right the list chip and the time. */
+  const listName = (id?: string) => (id && id !== 'inbox' ? getLists().find((l) => l.id === id)?.n : undefined);
   const row = (i: Item, opts: { over?: boolean; past?: boolean; actions?: boolean } = {}) => {
     const isDone = i.kind === 'task' && !!i.task.d;
-    const kind = i.kind === 'task' ? 'Task' : evKind(i.ev);
+    const chip = i.kind === 'task' ? listName(i.task.list) : undefined;
+    const right = opts.over && i.kind === 'task'
+      ? `Overdue · ${i.tm ? fmtTime(i.tm) : fmtDue(i.task.due!)}`
+      : i.tm
+        ? fmtTime(i.tm)
+        : i.kind === 'event'
+          ? 'All day'
+          : i.task.est
+            ? `${i.task.est} min`
+            : '';
     return (
-      <div key={i.key} className={`frow top tlRow agRow2${isDone || opts.past ? ' past' : ''}${i.kind === 'event' ? ' ev c-' + (i.ev.type ?? 'other') : ''}`}>
-        <span className={`agT fmeta${opts.over ? ' over' : ''}`}>
-          {opts.over && i.kind === 'task' ? fmtDue(i.task.due!) : i.tm ? fmtTime(i.tm) : i.kind === 'event' ? 'All day' : 'Anytime'}
-        </span>
+      <div key={i.key} className={`frow top tlRow${isDone || opts.past ? ' past' : ''}${isDone ? ' done' : ''}${i.kind === 'event' ? ' ev' : ''}`}>
         {i.kind === 'task' ? (
           <button
-            className={`fchk${isDone ? ' on' : ''}`}
+            className="tlDot"
             aria-label={isDone ? `Mark ${i.t} not done` : `Mark ${i.t} done`}
             onClick={() => done(i.task)}
           />
-        ) : (
-          <i className="agBar" />
-        )}
+        ) : null}
         <div className="ft">
           <button className="tlT" onClick={() => tap(i)}>
             <span className={isDone ? 'tlDone' : ''}>{i.t}</span>
@@ -173,15 +178,25 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
           {i.kind === 'event' && (i.ev.loc || i.ev.rep) ? (
             <div className="fsub">{[i.ev.loc, i.ev.rep ? '↻ repeats' : ''].filter(Boolean).join(' · ')}</div>
           ) : null}
-          {opts.over ? <div className="fsub over">Overdue</div> : null}
           {opts.actions && i.kind === 'task' ? (
             <div className="tlActs">
               <button className="pri" onClick={() => done(i.task)}>Done</button>
               <button onClick={() => move(i.task)}>Move</button>
+              <button
+                onClick={() => {
+                  setFocus({ k: 'task', id: i.task.id });
+                  openPanel('mae');
+                }}
+              >
+                Ask Mae
+              </button>
             </div>
           ) : null}
         </div>
-        <span className="fmeta">{kind}</span>
+        <span className="tlR">
+          {chip ? <span className="tlChip">{chip}</span> : null}
+          {right ? <span className={`fmeta${opts.over ? ' over' : ''}`}>{right}</span> : null}
+        </span>
       </div>
     );
   };
@@ -233,7 +248,7 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
           </button>
         ) : null}
       </form>
-      <div className="tlDay">
+      <div className="spine tlSpine">
         {earlier.length ? (
           <button className="sdiv tlFold" onClick={() => setShowEarlier((v) => !v)} aria-expanded={showEarlier}>
             Earlier · {earlierDone ? `${earlierDone} done` : `${earlier.length} item${earlier.length === 1 ? '' : 's'}`}
@@ -250,15 +265,15 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
         {!later.length && !anytime.length ? <p className="oIntro tlNone">Nothing else today.</p> : null}
         {notesToday.length ? <div className="sdiv">Notes today</div> : null}
         {notesToday.map((n) => (
-          <div key={n.id} className="frow top tlRow agRow2">
-            <span className="agT fmeta">{new Date(n.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-            <i className="agBar" />
+          <div key={n.id} className="frow top tlRow">
             <div className="ft">
               <button className="tlT" onClick={() => go('note', n.id)}>
                 <span>{titleOf(n)}</span>
               </button>
             </div>
-            <span className="fmeta">Note</span>
+            <span className="tlR">
+              <span className="fmeta">{new Date(n.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+            </span>
           </div>
         ))}
         <div className="sdiv">Tomorrow</div>
