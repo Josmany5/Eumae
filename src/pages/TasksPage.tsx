@@ -597,13 +597,25 @@ function groupTasks(tasks: Task[], mode: Mode): Group[] {
 /* The right-hand word on a row: the time today, the weekday this week, the
    date further out; red when overdue. */
 function sideLabel(t: Task, mode: Mode): { text: string; red?: boolean } {
-  if (!t.due) return { text: '' };
-  const today = ymdOf(new Date());
   const time = t.tm ? fmtTime(t.tm) : '';
-  if (!t.d && t.due < today) return { text: fmtShort(t.due) + (time ? ' · ' + time : ''), red: true };
-  /* Always the full day (his call): "Wed, Oct 21 · 3:00 PM". */
-  const full = fmtShort(t.due);
-  return { text: full + (time && mode !== 'done' ? ' · ' + time : '') };
+  if (!t.due) return { text: mode === 'day' ? 'Anytime' : '' };
+  const today = ymdOf(new Date());
+  const day = new Date(t.due + 'T12:00');
+  const dow = day.toLocaleDateString(undefined, { weekday: 'short' });
+  if (!t.d && t.due < today) return { text: dow + (time ? ' ' + time : ''), red: true };
+  if (mode === 'day') {
+    /* His screenshot (Oct 19): the group header says the day, so the row
+       shows the time today and tomorrow, the weekday this week, the date later. */
+    const tmw = new Date();
+    tmw.setDate(tmw.getDate() + 1);
+    const wk = new Date();
+    wk.setDate(wk.getDate() + 7);
+    if (t.due === today || t.due === ymdOf(tmw)) return { text: time || 'Anytime' };
+    if (t.due <= ymdOf(wk)) return { text: dow + (time ? ' ' + time : '') };
+    return { text: day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) };
+  }
+  /* Other views have no day header, so keep the full day. */
+  return { text: fmtShort(t.due) + (time && mode !== 'done' ? ' · ' + time : '') };
 }
 
 function todayYmd(): string {
