@@ -54,17 +54,7 @@ function load(): Thread[] {
       }
       const msgs = cleanMessages(t.messages);
       dropped += t.messages.length - msgs.length;
-      /* Old office threads were all titled "<Page> office": retitle them from
-         their first message so the Chat list tells them apart. */
-      let title = t.title;
-      if (t.from && title === t.from) {
-        const first = msgs.find((m) => m.role === 'you');
-        if (first) {
-          title = titleFor(first.text);
-          dropped++;
-        }
-      }
-      cleaned.push({ ...t, title, messages: msgs });
+      cleaned.push({ ...t, messages: msgs });
     }
     cache = cleaned;
     /* A bad row dies once: write the cleaned list back so the next boot
