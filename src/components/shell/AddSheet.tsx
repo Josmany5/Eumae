@@ -52,7 +52,7 @@ const MODELS: { id: Model; desc: string }[] = [
  *  list on a phone), but written once so the two can't say different things. */
 const TIP = (
   <p className="shTip">
-    Tip: type / in the composer to open this. Mode switches on its own when you ask — the chips
+    Tip: type / in the composer to open this. Mode only changes when you pick it — the chips
     above the input always show what&rsquo;s live.
   </p>
 );

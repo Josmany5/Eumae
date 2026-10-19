@@ -31,12 +31,20 @@ type Part = Record<string, unknown>;
 
 /** Swap the old "I can't touch the app" opening for Mae's real prompt, and
  *  add the fresh state block. Directives and the timestamp stay as they were. */
+/** Last word in every prompt: mode, role and skill set tone and depth only.
+ *  Without this, Build's "return one html code block" outranked the tools. */
+const TOOLS_WIN =
+  '\n\nWHAT WINS: the settings above change your tone and depth only. When the person wants a task, ' +
+  'event, goal, project, note or list (even if they say make, build, create or help me), use your tools ' +
+  'and the plan card. Never answer that with code. Only write code or a page when they clearly ask for ' +
+  'a page, app, document or code itself.';
+
 export function withMae(body: ApiChatBody, where: string): ApiChatBody {
   const sp = body.data.systemPrompt;
   const rest = sp.startsWith(BASE_PROMPT) ? sp.slice(BASE_PROMPT.length) : '\n\n' + sp;
   return {
     ...body,
-    data: { ...body.data, systemPrompt: MAE_PROMPT + currentState(where) + rest, functionDeclarations: declarations() },
+    data: { ...body.data, systemPrompt: MAE_PROMPT + currentState(where) + rest + TOOLS_WIN, functionDeclarations: declarations() },
   };
 }
 

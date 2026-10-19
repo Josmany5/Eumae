@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Composer from '../components/shell/Composer';
 import { Icon } from '../components/shell/icons';
-import { useNav, type Mode } from '../nav';
+import { useNav } from '../nav';
 import { logEv } from '../log';
 import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice';
 import { buildRequest, toApiBody } from '../request';
@@ -282,7 +282,7 @@ function ImageViewer({ url, alt, onClose }: { url: string; alt: string; onClose:
 }
 
 export default function ChatScreen() {
-  const { turn, setTurn, refs, clearRefs, notify, currentThreadId: threadId, threads } = useNav();
+  const { turn, refs, clearRefs, notify, currentThreadId: threadId, threads } = useNav();
   /* The welcome reads the person's own stuff once per mount — threads from
      nav (already in memory), uploads + notes counted lazily (storage reads,
      memoized so one mount is one read each). */
@@ -480,25 +480,13 @@ export default function ChatScreen() {
      on that render `msgs` is still the list with the old message and its reply
      in it. Everything else leaves it out and sends the thread as it stands. */
   const send = (text: string, byVoice = false, history?: Msg[]) => {
-    // The mockup reads the mode off what you asked for (line 878), and the add
-    // menu's own tip promises it — so the chip has to keep up. It only ever
-    // moves to Build or Learn: an ordinary ask leaves the mode where it is.
-    const moved: Mode | null = /(make|build|create|draft|write me|design)/i.test(text)
-      ? 'Build'
-      : /(learn|teach me|explain|how does|what is a)/i.test(text)
-        ? 'Learn'
-        : null;
-    if (moved) setTurn({ mode: moved });
+    /* Mode changes only when the person taps it (his call, Oct 19). The old
+       word trigger flipped "make me a task" into Build, whose html-block order
+       beat Mae's tools, and the switch stuck for the rest of the chat. */
 
-    /* The request this message *is*, composed from the turn as it is *after* the
-       mode moved — the mockup composes its prompt at send time for the same
-       reason (1872). `setTurn` is state and lands next paint, so the new mode is
-       applied here by hand instead of being read back a render too late, and the
-       history is the thread as it stands *before* this message, which is what the
-       mockup's own `slice(0,-1)` is doing (1871). */
     const custom = findRole(turn.role) ?? null;
     const body = toApiBody(
-      buildRequest({ ...turn, mode: moved ?? turn.mode }, refs, text),
+      buildRequest(turn, refs, text),
       withPlanNotes(history ?? msgs),
       custom,
     );
