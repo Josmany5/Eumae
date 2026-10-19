@@ -304,8 +304,21 @@ export default function CalendarPage({ arg }: PageProps) {
         <HourDay day={day} today={today} items={itemsOn(day, tasks)} onItem={openItem} onCheck={checkTask} onAdd={(m) => openNew(day, m)} />
       ) : (
         <>
-          <WeekRow days={Array.from({ length: 7 }, (_, i) => shift(wk, i))} day={day} today={today} tasks={tasks} onPick={setDay} />
-          <HourDay day={day} today={today} items={itemsOn(day, tasks)} onItem={openItem} onCheck={checkTask} onAdd={(m) => openNew(day, m)} />
+          <WeekRow
+            days={Array.from({ length: 7 }, (_, i) => shift(wk, i))}
+            day={day}
+            today={today}
+            tasks={tasks}
+            onPick={(d) => {
+              setDay(d);
+              document.getElementById('ag-' + d)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          />
+          <div className="agList">
+            {Array.from({ length: 7 }, (_, i) => shift(wk, i)).map((d) => (
+              <DaySection key={d} day={d} today={today} items={itemsOn(d, tasks)} onItem={openItem} onCheck={checkTask} onAdd={() => openNew(d)} />
+            ))}
+          </div>
         </>
       )}
       <div className="xs m calFoot">
@@ -392,7 +405,7 @@ export function minsToTm(n: number): string {
 /* One day of the agenda: a header (Today · Mon, Oct 19), then flat rows
    with the time on the left. An empty day says so in one quiet line. */
 /* The week strip (his screenshot): day, date and how many things, the
-   picked day lit. Tap a day to show it below. */
+   picked day lit. Tap a day to jump to it in the list. */
 function WeekRow({ days, day, today, tasks, onPick }: { days: string[]; day: string; today: string; tasks: Task[]; onPick: (d: string) => void }) {
   return (
     <div className="calWeek" role="tablist">
