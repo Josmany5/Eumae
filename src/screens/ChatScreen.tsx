@@ -134,10 +134,17 @@ function ReplyText({ text, streaming }: { text: string; streaming?: boolean }) {
    millisecond used to collide — Date.now() is not an ID. The counter lives
    in boot.ts next to the snapshot; reloads seed it above the highest saved
    ID so they never collide. */
+/* The boot snapshot is only good for the first mount after a page load. Chat
+   unmounts on every tab switch, and a later mount reading it got the thread as
+   it was at boot (often empty), so the next send counted as the first one:
+   it retitled the chat and overwrote the stored messages (bug, Oct 19). */
+let bootMountUsed = false;
 function bootMountMessages(threadId: string | null): Msg[] {
   if (!threadId) return [];
   const snap = bootSnapshot();
-  if (snap && snap.threadId === threadId) return snap.messages;
+  const first = !bootMountUsed;
+  bootMountUsed = true;
+  if (first && snap && snap.threadId === threadId) return snap.messages;
   return messagesFor(threadId);
 }
 
