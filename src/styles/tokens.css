@@ -1975,3 +1975,10 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 /* Chat list rows: where it started and when. */
 .thMeta{ flex:none; margin-left:auto; padding-left:8px; font-size:13px; color:var(--mut); white-space:nowrap; }
 #app.railCollapsed .thMeta{ display:none; }
+
+/* iPhone Safari zooms the page when you tap a text field whose text is under
+   16px, and stays zoomed. Every field on phone is 16px so typing never zooms;
+   pinch-zoom still works. */
+@media (max-width:899px){
+  input, textarea, select{ font-size:16px !important; }
+}
