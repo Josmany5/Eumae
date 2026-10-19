@@ -1988,3 +1988,12 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 @media (max-width:899px){
   input, textarea, select{ font-size:16px !important; }
 }
+
+/* Phone: the header already names the page, so the page's own big title is
+   dropped (Console, Notes) and the header title is larger. Desktop has no
+   header, so it keeps the inner title. */
+@media (max-width:899px){
+  .hd .t{ font-size:20px; font-weight:700; }
+  .dupT{ display:none; }
+  .pageHead .hb{ margin-left:auto; }
+}

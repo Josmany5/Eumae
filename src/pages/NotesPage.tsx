@@ -162,7 +162,7 @@ export default function NotesPage(_: PageProps) {
   return (
     <div className="page">
       <div className="pageHead">
-        <h2>Notes</h2>
+        <h2 className="dupT">Notes</h2>
         <button className="hb" onClick={newNote} aria-label="New note">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M12 5v14M5 12h14" />
