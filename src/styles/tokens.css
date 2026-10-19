@@ -1771,10 +1771,16 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .tlNext{ margin:0; font-size:15px; line-height:1.5; color:var(--mut); }
 .tlNext b{ color:var(--tx); font-weight:600; }
 .tlNext .over{ color:var(--rd); }
-.tlAdd input{ width:100%; margin:12px 0 6px; padding:10px 0; background:none; border:0;
-  border-bottom:1px solid var(--hair); color:var(--tx); font:inherit; font-size:15px; outline:none; }
+/* Quick capture: a boxed bar with + on the left and the kind chip on the right. */
+.tlAdd{ display:flex; align-items:center; gap:10px; margin:12px 0 6px; padding:0 8px 0 14px;
+  background:var(--card2); border:1px solid var(--hair); border-radius:10px; }
+.tlAdd:focus-within{ border-color:var(--ac); }
+.tlAdd > svg{ width:16px; height:16px; flex:none; stroke:var(--mut); fill:none; stroke-width:2; stroke-linecap:round; }
+.tlAdd input{ flex:1; min-width:0; padding:11px 0; background:none; border:0; color:var(--tx);
+  font:inherit; font-size:15px; outline:none; }
 .tlAdd input::placeholder{ color:var(--mut); }
-.tlAdd input:focus{ border-bottom-color:var(--ac); }
+.tlKind{ flex:none; padding:5px 10px; border-radius:14px; background:var(--acsoft); color:var(--ac);
+  font-size:13px; font-weight:600; }
 .sdiv{ display:block; padding:14px 0 2px; font-size:13px; font-weight:600; color:var(--mut); }
 .sdiv.att{ color:var(--rd); }
 .tlFold{ background:none; text-align:left; cursor:pointer; }
