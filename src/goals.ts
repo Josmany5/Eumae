@@ -26,10 +26,20 @@ export interface Goal {
   pace?: { n: number; per: 'week' | 'month' };
   /** Last change, ms since epoch. */
   upd?: number;
+  /** What this goal owns: its own tasks, events and notes (his call, Oct 19).
+   *  Separate from projects: an item can sit in a project and a goal at once,
+   *  but in only one goal. */
+  links?: GoalLink[];
   /** True for a labeled example seed. Never synced anywhere. */
   example?: boolean;
   /** ms since epoch. */
   createdAt: number;
+}
+
+export type GoalLinkKind = 'task' | 'event' | 'note';
+export interface GoalLink {
+  k: GoalLinkKind;
+  id: string;
 }
 
 const KEY = 'eumae:goals';
@@ -175,3 +185,37 @@ export const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
   completed: 'Done',
   'let-go': 'Let go',
 };
+
+/* ───────────── What a goal owns ───────────── */
+
+function cleanGoalLinks(l: unknown): GoalLink[] {
+  return Array.isArray(l)
+    ? l.filter((x): x is GoalLink => !!x && typeof x === 'object' && (x.k === 'task' || x.k === 'event' || x.k === 'note') && typeof x.id === 'string')
+    : [];
+}
+
+/** The goal an item belongs to, if any. */
+export function goalOf(k: GoalLinkKind, id: string): Goal | undefined {
+  return load().find((g) => cleanGoalLinks(g.links).some((l) => l.k === k && l.id === id));
+}
+
+export function goalLinkedIds(goalId: string, k: GoalLinkKind): string[] {
+  const g = load().find((x) => x.id === goalId);
+  return g ? cleanGoalLinks(g.links).filter((l) => l.k === k).map((l) => l.id) : [];
+}
+
+/** Put an item under a goal. One goal per item: it leaves any other goal. */
+export function linkToGoal(goalId: string, k: GoalLinkKind, id: string): void {
+  save(
+    load().map((g) => {
+      const all = cleanGoalLinks(g.links);
+      const rest = all.filter((l) => !(l.k === k && l.id === id));
+      if (g.id === goalId) return { ...g, links: [...rest, { k, id }], upd: Date.now() };
+      return rest.length !== all.length ? { ...g, links: rest } : g;
+    }),
+  );
+}
+
+export function unlinkFromGoal(k: GoalLinkKind, id: string): void {
+  save(load().map((g) => (cleanGoalLinks(g.links).some((l) => l.k === k && l.id === id) ? { ...g, links: cleanGoalLinks(g.links).filter((l) => !(l.k === k && l.id === id)) } : g)));
+}

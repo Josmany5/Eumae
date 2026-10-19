@@ -19,7 +19,7 @@
 import type { ObjectParam, Param } from './schema';
 import { getTasks, getTask, saveTask, createTask, deleteTask, getLists, addList, type Task, type TaskPriority } from '../tasks';
 import { getEvents, getEvent, saveEvent, deleteEvent, skipOccurrence, dayEvents, ymd, type CalEvent, type EventType } from '../events';
-import { getGoals, saveGoal, createGoal, deleteGoal, goalPct, goalCount, isActiveGoal, type Goal, type GoalStatus } from '../goals';
+import { getGoals, saveGoal, createGoal, deleteGoal, goalPct, goalCount, isActiveGoal, goalOf, goalLinkedIds, linkToGoal, unlinkFromGoal, type Goal, type GoalStatus, type GoalLinkKind } from '../goals';
 import { getProjects, getProject, saveProject, createProject, deleteProject, linkItem, unlinkItem, projectOf, linkedIds, type LinkKind } from '../projects';
 import { getNotes, getNote, saveNote, createNote, deleteNote, titleOf, noteText } from '../notes';
 import { newMilestone, type Milestone } from '../milestones';
@@ -100,6 +100,8 @@ const REPEATS = ['none', 'daily', 'weekly', 'monthly'] as const;
 const KIND_LABEL: Record<ItemKind, PlanLine['kind']> = { task: 'Task', event: 'Event', goal: 'Goal', project: 'Project', note: 'Note' };
 
 const projectField = s('Project to put it in: an existing project id, or the ref of a project created earlier in this same plan (e.g. "p1").');
+const goalField = s('Goal it serves: an existing goal id, or the ref of a goal created earlier in this same plan (e.g. "g1"). A goal owns its own tasks, events and notes, separate from projects.');
+const GOAL_KINDS: readonly GoalLinkKind[] = ['task', 'event', 'note'];
 const milestoneItem = obj({ title: s('Milestone name.', { max: 120 }), date: date('Milestone date, or leave out.') }, ['title']);
 
 const today = () => ymd(new Date());
@@ -171,6 +173,19 @@ function checkProject(p: unknown, ctx: StageCtx, at: string): string | null {
   const id = String(p);
   if (ctx.refs.has(id) || getProject(id)) return null;
   return `${at}: no project "${id}". Use an existing project id, or create_projects with that ref earlier in this plan.`;
+}
+
+function checkGoal(g: unknown, ctx: StageCtx, at: string): string | null {
+  if (g === undefined || g === null || g === '') return null;
+  const id = String(g);
+  if (ctx.refs.has(id) || getGoals().some((x) => x.id === id)) return null;
+  return `${at}: no goal "${id}". Use an existing goal id, or create_goals with that ref earlier in this plan.`;
+}
+
+function resolveGoal(g: unknown, ctx: RunCtx): string | undefined {
+  if (g === undefined || g === null || g === '') return undefined;
+  const id = String(g);
+  return ctx.refs.get(id) ?? (getGoals().some((x) => x.id === id) ? id : undefined);
 }
 
 function resolveProject(p: unknown, ctx: RunCtx): string | undefined {
@@ -317,7 +332,7 @@ const reads: Action[] = [
   {
     name: 'read_item',
     risk: 'read',
-    description: 'Read one item in full by kind and id: every field, subtasks, milestones, project, and for notes the text.',
+    description: 'Read one item in full by kind and id: every field, subtasks, milestones, its project and goal, what a project or goal holds, and for notes the text.',
     params: obj({ kind: s('Item kind.', { enum: ITEM_KINDS }), id: s('The item id.') }, ['kind', 'id']),
     verify: (a) => (exists(a.kind, a.id) ? null : missing(a.kind, a.id)),
     run: (a) => {
@@ -325,13 +340,13 @@ const reads: Action[] = [
       let data: unknown;
       if (a.kind === 'task') {
         const t = getTask(id)!;
-        data = { ...taskRow(t), estimate_min: t.est, repeat: t.rep, repeat_days: t.repDays, repeat_until: t.repUntil, subtasks: (t.sub ?? []).map((x, i) => ({ index: i, title: x.t, done: !!x.d })) };
+        data = { ...taskRow(t), goal: goalOf('task', id)?.t, estimate_min: t.est, repeat: t.rep, repeat_days: t.repDays, repeat_until: t.repUntil, subtasks: (t.sub ?? []).map((x, i) => ({ index: i, title: x.t, done: !!x.d })) };
       } else if (a.kind === 'event') {
         const e = getEvent(id)!;
-        data = { ...eventRow(e), type: e.type, notes: e.note, repeat: e.rep, skipped_dates: e.skip, project: projectOf('event', id)?.n };
+        data = { ...eventRow(e), type: e.type, notes: e.note, repeat: e.rep, skipped_dates: e.skip, project: projectOf('event', id)?.n, goal: goalOf('event', id)?.t };
       } else if (a.kind === 'goal') {
         const g = getGoals().find((x) => x.id === id)!;
-        data = { ...goalRow(g), why: g.d, target: g.tgt, unit: g.unit, current: g.cur, pace: g.pace, milestones: g.ms, project: projectOf('goal', id)?.n };
+        data = { ...goalRow(g), why: g.d, target: g.tgt, unit: g.unit, current: g.cur, pace: g.pace, milestones: g.ms, project: projectOf('goal', id)?.n, items: GOAL_KINDS.flatMap((k) => goalLinkedIds(id, k).map((iid) => ({ kind: k, id: iid, title: titleOfKind(k, iid) })).filter((x) => x.title !== undefined)) };
       } else if (a.kind === 'project') {
         const p = getProject(id)!;
         const items = (p.links ?? []).map((l) => ({ kind: l.k, id: l.id, title: LINKABLE.includes(l.k) ? titleOfKind(l.k as ItemKind, l.id) : undefined })).filter((x) => x.title !== undefined);
@@ -339,7 +354,7 @@ const reads: Action[] = [
       } else {
         const n = getNote(id)!;
         const text = noteText(n);
-        data = { id: n.id, title: titleOf(n), text: text.length > 8000 ? text.slice(0, 8000) + '…' : text, project: projectOf('note', id)?.n };
+        data = { id: n.id, title: titleOf(n), text: text.length > 8000 ? text.slice(0, 8000) + '…' : text, project: projectOf('note', id)?.n, goal: goalOf('note', id)?.t };
       }
       return { ok: true, summary: `Read ${a.kind} "${titleOfKind(a.kind, id)}"`, data };
     },
@@ -409,6 +424,7 @@ const taskFields: Record<string, Param> = {
   repeat_until: date('Last date it repeats.'),
   subtasks: list('Subtask titles, one per step.', s('Subtask.', { max: 200 }), { maxItems: 30 }),
   project: projectField,
+  goal: goalField,
 };
 
 function verifyTask(t: Args, at: string, ctx: StageCtx): string | null {
@@ -417,7 +433,7 @@ function verifyTask(t: Args, at: string, ctx: StageCtx): string | null {
   if (t.repeat_days?.length && t.repeat !== 'weekly') return `${at}.repeat_days only works with repeat "weekly".`;
   if (t.repeat_until && t.due && t.repeat_until < t.due) return `${at}.repeat_until is before the due date.`;
   if (/\n/.test(t.title)) return `${at}.title has several lines. Make each line its own task.`;
-  return listError(t.list, `${at}.list`) ?? checkProject(t.project, ctx, `${at}.project`);
+  return listError(t.list, `${at}.list`) ?? checkProject(t.project, ctx, `${at}.project`) ?? checkGoal(t.goal, ctx, `${at}.goal`);
 }
 
 function taskDetail(t: Args): string {
@@ -437,6 +453,7 @@ const eventFields: Record<string, Param> = {
   repeat_until: date('Last date it repeats.'),
   notes: s('Notes.', { max: 2000 }),
   project: projectField,
+  goal: goalField,
 };
 
 function verifyEvent(e: Args, at: string, ctx: StageCtx | null): string | null {
@@ -445,7 +462,7 @@ function verifyEvent(e: Args, at: string, ctx: StageCtx | null): string | null {
   if (e.end && !e.start && !e.all_day) return `${at}.end needs a start time.`;
   if (e.repeat_days?.length && e.repeat !== 'weekly') return `${at}.repeat_days only works with repeat "weekly".`;
   if (e.repeat_until && e.date && e.repeat_until < e.date) return `${at}.repeat_until is before the date.`;
-  return ctx ? checkProject(e.project, ctx, `${at}.project`) : null;
+  return ctx ? checkProject(e.project, ctx, `${at}.project`) ?? checkGoal(e.goal, ctx, `${at}.goal`) : null;
 }
 
 function eventDetail(e: Args): string {
@@ -468,6 +485,7 @@ const goalFields: Record<string, Param> = {
   pace_per: s('Pace period.', { enum: ['week', 'month'] }),
   milestones: list('Dated checkpoints on the way.', milestoneItem, { maxItems: 30 }),
   project: projectField,
+  ref: s('Short ref for this plan, e.g. "g1", so other steps can put tasks, events or notes under this new goal with goal: "g1".', { max: 20 }),
 };
 
 function verifyGoal(g: Args, at: string, ctx: StageCtx | null): string | null {
@@ -510,6 +528,8 @@ const creates: Action[] = [
         saveTask(task);
         const pid = resolveProject(t.project, ctx);
         if (pid) linkItem(pid, 'task', task.id);
+        const gid = resolveGoal(t.goal, ctx);
+        if (gid) linkToGoal(gid, 'task', task.id);
         touched.push({ kind: 'task', id: task.id, title: task.t });
       }
       return { ok: true, summary: `Created ${plural(touched.length, 'task')}`, touched, data: { created: touched } };
@@ -547,6 +567,8 @@ const creates: Action[] = [
         });
         const pid = resolveProject(e.project, ctx);
         if (pid) linkItem(pid, 'event', saved.id!);
+        const gid = resolveGoal(e.goal, ctx);
+        if (gid) linkToGoal(gid, 'event', saved.id!);
         touched.push({ kind: 'event', id: saved.id!, title: saved.t });
       }
       return { ok: true, summary: `Created ${plural(touched.length, 'event')}`, touched, data: { created: touched } };
@@ -558,7 +580,10 @@ const creates: Action[] = [
     description:
       'Make goals: long efforts measured over weeks or months (land 3 clients, run a half marathon). Something doable in one sitting is a task. Give target + unit when the aim is a number. One object per goal.',
     params: obj({ goals: list('One object per goal.', obj(goalFields, ['title']), { minItems: 1, maxItems: 20 }) }, ['goals']),
+    declares: (a) => a.goals.map((g: Args) => g.ref).filter(Boolean),
     verify: (a, ctx) => {
+      const refs = a.goals.map((g: Args) => g.ref).filter(Boolean);
+      if (new Set(refs).size !== refs.length) return 'Two goals share a ref. Give each its own.';
       for (let i = 0; i < a.goals.length; i++) {
         const e = verifyGoal(a.goals[i], `goals[${i}]`, ctx);
         if (e) return e;
@@ -588,9 +613,10 @@ const creates: Action[] = [
         saveGoal(goal);
         const pid = resolveProject(g.project, ctx);
         if (pid) linkItem(pid, 'goal', goal.id);
+        if (g.ref) ctx.refs.set(g.ref, goal.id);
         touched.push({ kind: 'goal', id: goal.id, title: goal.t });
       }
-      return { ok: true, summary: `Created ${plural(touched.length, 'goal')}`, touched, data: { created: touched } };
+      return { ok: true, summary: `Created ${plural(touched.length, 'goal')}`, touched, data: { created: touched.map((t, i) => ({ ...t, ref: a.goals[i].ref })) } };
     },
   },
   {
@@ -630,10 +656,10 @@ const creates: Action[] = [
     name: 'create_notes',
     risk: 'write',
     description: 'Make notes: information to keep, with no done-state. Body is plain text; blank lines start new paragraphs. One object per note.',
-    params: obj({ notes: list('One object per note.', obj({ title: s('Title.', { max: 120 }), body: s('Text.', { max: 20000 }), project: projectField }, ['title']), { minItems: 1, maxItems: 20 }) }, ['notes']),
+    params: obj({ notes: list('One object per note.', obj({ title: s('Title.', { max: 120 }), body: s('Text.', { max: 20000 }), project: projectField, goal: goalField }, ['title']), { minItems: 1, maxItems: 20 }) }, ['notes']),
     verify: (a, ctx) => {
       for (let i = 0; i < a.notes.length; i++) {
-        const e = checkProject(a.notes[i].project, ctx, `notes[${i}].project`);
+        const e = checkProject(a.notes[i].project, ctx, `notes[${i}].project`) ?? checkGoal(a.notes[i].goal, ctx, `notes[${i}].goal`);
         if (e) return e;
       }
       return null;
@@ -646,6 +672,8 @@ const creates: Action[] = [
         saveNote({ ...base, body: noteHtml(n.title.trim(), n.body) });
         const pid = resolveProject(n.project, ctx);
         if (pid) linkItem(pid, 'note', base.id);
+        const gid = resolveGoal(n.goal, ctx);
+        if (gid) linkToGoal(gid, 'note', base.id);
         touched.push({ kind: 'note', id: base.id, title: n.title.trim() });
       }
       return { ok: true, summary: `Created ${plural(touched.length, 'note')}`, touched, data: { created: touched } };
@@ -1047,6 +1075,54 @@ const changes: Action[] = [
   },
 ];
 
+
+const goalLinks: Action[] = [
+  {
+    name: 'link_to_goal',
+    risk: 'write',
+    description: 'Put existing tasks, events or notes under a goal (the steps that serve it). An item serves one goal, so this moves it if it was under another. Separate from projects: it can stay in its project too.',
+    params: obj(
+      {
+        goal: goalField,
+        items: list('Items to put under it.', obj({ kind: s('Item kind.', { enum: GOAL_KINDS }), id: s('Item id.') }, ['kind', 'id']), { minItems: 1, maxItems: 100 }),
+      },
+      ['goal', 'items'],
+    ),
+    verify: (a, ctx) => {
+      const e = checkGoal(a.goal, ctx, 'goal');
+      if (e) return e;
+      for (const it of a.items) if (!exists(it.kind, it.id)) return missing(it.kind, it.id);
+      return null;
+    },
+    preview: (a) => a.items.map((it: Args) => ({ kind: 'Link', verb: 'Link', text: titleOfKind(it.kind, it.id) ?? it.id, detail: `${it.kind} → goal ${getGoals().find((g) => g.id === a.goal)?.t ?? `new goal ${a.goal}`}` })),
+    run: (a, ctx) => {
+      const gid = resolveGoal(a.goal, ctx);
+      if (!gid) return { ok: false, summary: 'Goal not found', error: `No goal "${a.goal}".` };
+      for (const it of a.items as Args[]) linkToGoal(gid, it.kind, it.id);
+      const title = getGoals().find((g) => g.id === gid)?.t ?? '';
+      return { ok: true, summary: `Put ${plural(a.items.length, 'item')} under "${title}"`, touched: [{ kind: 'goal', id: gid, title }] };
+    },
+  },
+  {
+    name: 'unlink_from_goal',
+    risk: 'write',
+    description: 'Take tasks, events or notes out from under their goal. The items themselves stay.',
+    params: obj({ items: list('Items to take out.', obj({ kind: s('Item kind.', { enum: GOAL_KINDS }), id: s('Item id.') }, ['kind', 'id']), { minItems: 1, maxItems: 100 }) }, ['items']),
+    verify: (a) => {
+      for (const it of a.items) {
+        if (!exists(it.kind, it.id)) return missing(it.kind, it.id);
+        if (!goalOf(it.kind, it.id)) return `${it.kind} "${titleOfKind(it.kind, it.id)}" is not under a goal.`;
+      }
+      return null;
+    },
+    preview: (a) => a.items.map((it: Args) => ({ kind: 'Link', verb: 'Unlink', text: titleOfKind(it.kind, it.id) ?? it.id, detail: `out of ${goalOf(it.kind, it.id)?.t ?? 'its goal'}` })),
+    run: (a) => {
+      for (const it of a.items as Args[]) unlinkFromGoal(it.kind, it.id);
+      return { ok: true, summary: `Took ${plural(a.items.length, 'item')} out from under their goal` };
+    },
+  },
+];
+
 /* ───────────────────────── removes ───────────────────────── */
 
 const removes: Action[] = [
@@ -1097,7 +1173,7 @@ const removes: Action[] = [
   },
 ];
 
-export const REGISTRY: readonly Action[] = [...reads, ...creates, ...changes, ...removes];
+export const REGISTRY: readonly Action[] = [...reads, ...creates, ...changes, ...goalLinks, ...removes];
 
 const BY_NAME = new Map(REGISTRY.map((a) => [a.name, a]));
 export function getAction(name: string): Action | undefined {

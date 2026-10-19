@@ -27,7 +27,7 @@ globalThis.localStorage = {
 const out = buildSync({
   stdin: {
     contents: `export * from './src/mae/dispatcher'; export { REGISTRY } from './src/mae/registry'; export { check, toGemini } from './src/mae/schema';
-      export { getTasks, getTask } from './src/tasks'; export { getEvents, saveEvent, ymd } from './src/events'; export { getGoals } from './src/goals';
+      export { getTasks, getTask } from './src/tasks'; export { getEvents, saveEvent, ymd } from './src/events'; export { getGoals, goalOf, goalLinkedIds } from './src/goals';
       export { getProjects, linkedIds } from './src/projects'; export { getNotes, titleOf } from './src/notes'; export { parseEvent } from './src/chat';`,
     resolveDir: new URL('..', import.meta.url).pathname,
     loader: 'ts',
@@ -68,7 +68,7 @@ const stage = (calls) => {
   const names = M.REGISTRY.map((a) => a.name);
   check('registry-unique-names', new Set(names).size === names.length);
   const decls = M.declarations();
-  check('registry-declarations', decls.length === M.REGISTRY.length && decls.every((x) => x.name && x.description && x.parameters?.type === 'OBJECT'));
+  check('registry-declarations', decls.length === M.REGISTRY.length + 1 && decls.some((x) => x.name === 'drop_plan_lines') && decls.every((x) => x.name && x.description && x.parameters?.type === 'OBJECT'));
   check('registry-no-singular-creates', !names.some((n) => /^create_(task|event|goal|project|note)$/.test(n)), names.filter((n) => n.startsWith('create_')).join(','));
   const creates = M.REGISTRY.filter((a) => a.name.startsWith('create_') && a.name !== 'create_list');
   check('creates-take-lists', creates.every((a) => Object.values(a.params.properties).some((p) => p.type === 'array')));
@@ -181,6 +181,47 @@ const stage = (calls) => {
 {
   const e = M.parseEvent('data: {"functionCall":{"name":"get_overview","args":{}},"sig":"abc"}');
   check('stream-sig', e && e.kind === 'call' && e.sig === 'abc');
+}
+
+// 10. One open card per chat: a second ask adds to the waiting card.
+{
+  const first = stage([{ name: 'create_tasks', args: { tasks: [{ title: 'Outline chapter 1' }, { title: 'Outline chapter 2' }] } }]).plan;
+  const next = M.continuePlan(first);
+  M.dispatch([{ name: 'create_tasks', args: { tasks: [{ title: 'Pick a title' }] } }], next);
+  const lines = next.steps.flatMap((st) => st.lines.map((l) => l.text));
+  check('card-adds', next.id === first.id && lines.length === 3 && lines[2] === 'Pick a title', JSON.stringify(lines));
+  check('card-fresh', next.steps[0].fresh === false && next.steps[1].fresh === true);
+  check('card-note-lists', /STILL WAITING/.test(M.planNote(next)) && /3\. Create task: Pick a title/.test(M.planNote(next)), M.planNote(next));
+  const r = M.dispatch([{ name: 'drop_plan_lines', args: { lines: [2] } }], next);
+  const left = next.steps.flatMap((st) => st.lines.map((l) => l.text));
+  check('card-drop-one', r[0].ok && left.join('|') === 'Outline chapter 1|Pick a title' && next.steps[0].args.tasks.length === 1, JSON.stringify(left));
+  const bad = M.dispatch([{ name: 'drop_plan_lines', args: { lines: [9] } }], next);
+  check('card-drop-bad', !bad[0].ok);
+  const det = M.detachFresh(next);
+  check('card-detach', det && det.id !== next.id && det.steps.length === 1 && det.steps[0].lines[0].text === 'Pick a title');
+  const before = M.getTasks().length;
+  M.executePlan(next);
+  check('card-runs-all', M.getTasks().length === before + 2);
+}
+
+// 11. Goals own their own tasks, events and notes.
+{
+  const { plan, res } = stage([
+    { name: 'create_goals', args: { goals: [{ title: 'Write my book', ref: 'g1' }] } },
+    { name: 'create_tasks', args: { tasks: [{ title: 'Write 500 words', goal: 'g1' }] } },
+    { name: 'create_events', args: { events: [{ title: 'Writing block', date: d(1), start: '07:00', goal: 'g1' }] } },
+    { name: 'create_notes', args: { notes: [{ title: 'Book idea', body: 'A story about…', goal: 'g1' }] } },
+  ]);
+  check('goal-ref-stages', res.every((x) => x.ok), JSON.stringify(res.map((x) => x.response.error).filter(Boolean)));
+  const ran = M.executePlan(plan);
+  const g = M.getGoals().find((x) => x.t === 'Write my book');
+  check('goal-owns', ran.status === 'done' && g && M.goalLinkedIds(g.id, 'task').length === 1 && M.goalLinkedIds(g.id, 'event').length === 1 && M.goalLinkedIds(g.id, 'note').length === 1, ran.error);
+  const t = M.getTasks().find((x) => x.t === 'Write 500 words');
+  const bad = stage([{ name: 'link_to_goal', args: { goal: 'nope', items: [{ kind: 'task', id: t.id }] } }]).res;
+  check('goal-link-missing', !bad[0].ok);
+  const un = stage([{ name: 'unlink_from_goal', args: { items: [{ kind: 'task', id: t.id }] } }]).plan;
+  M.executePlan(un);
+  check('goal-unlink', !M.goalOf('task', t.id));
 }
 
 if (failures.length) {

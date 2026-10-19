@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNav, type PanelView } from '../../nav';
 import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists } from '../../tasks';
 import { projectOf, linkedIds } from '../../projects';
-import { getGoals, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct, goalCount, goalPace, isActiveGoal, GOAL_STATUS_LABEL, type Goal } from '../../goals';
+import { getGoals, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct, goalCount, goalPace, isActiveGoal, GOAL_STATUS_LABEL, goalLinkedIds, goalOf, linkToGoal, unlinkFromGoal, type Goal, type GoalLinkKind } from '../../goals';
+import { getNote, titleOf } from '../../notes';
+import { rowsOf, AddDialog, createOfKind, KIND_LABEL } from '../../pages/ProjectPage';
+import { PickDialog } from '../ItemMenu';
 import { sortMilestones } from '../../milestones';
 import { dueLabel } from '../../pages/GoalsPage';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
@@ -98,6 +101,8 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
   if (ev.rep) kv.push(['Repeats', repLabel(ev.rep, ev.d)]);
   kv.push(['Kind', TYPE_LABEL[ev.type ?? 'other']]);
   if (project) kv.push(['Project', project.n]);
+  const evGoal = goalOf('event', ev.id!);
+  if (evGoal) kv.push(['Goal', evGoal.t]);
   const edit = () => {
     toggleEditModal({ k: 'event', id: ev.id! });
   };
@@ -166,7 +171,8 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
     : 'Someday';
   const late = !t.d && !!t.due && t.due < tY;
   const project = projectOf('task', t.id);
-  const goalId = project ? linkedIds(project.id, 'goal')[0] : undefined;
+  /* Its own goal first; else the goal of its project, as before. */
+  const goalId = goalOf('task', t.id)?.id ?? (project ? linkedIds(project.id, 'goal')[0] : undefined);
   const goal = goalId ? getGoals().find((g) => g.id === goalId) : undefined;
   const list = getLists().find((l) => l.id === (t.list ?? 'inbox'));
   const subs = t.sub ?? [];
@@ -249,6 +255,8 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
 function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   const { notify } = useNav();
   const [, setTick] = useState(0);
+  const [adding, setAdding] = useState<GoalLinkKind | null>(null);
+  const [linking, setLinking] = useState<GoalLinkKind | null>(null);
   useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const refresh = () => setTick((n) => n + 1);
   const g = getGoals().find((x) => x.id === focus.id);
@@ -278,8 +286,10 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
   const pace = goalPace(g);
   const due = dueLabel(g);
   const project = projectOf('goal', g.id);
-  const taskIds = project ? linkedIds(project.id, 'task') : [];
-  const tasks = taskIds.map((id) => getTask(id)).filter((t): t is NonNullable<typeof t> => !!t);
+  /* The goal's own tasks, events and notes (his call, Oct 19), not its project's. */
+  const tasks = goalLinkedIds(g.id, 'task').map((id) => getTask(id)).filter((t): t is NonNullable<typeof t> => !!t);
+  const evs = goalLinkedIds(g.id, 'event').map((id) => getEvent(id)).filter((e): e is NonNullable<typeof e> => !!e);
+  const notes = goalLinkedIds(g.id, 'note').map((id) => getNote(id)).filter((n): n is NonNullable<typeof n> => !!n);
   const open = tasks.filter((t) => !t.d);
   const doneTasks = tasks.filter((t) => t.d);
   const ms = sortMilestones(g.ms ?? []);
@@ -353,25 +363,97 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
           ))}
         </>
       ) : null}
-      {open.length ? (
-        <>
-          <div className="flbl">
-            Open tasks <span className="fmeta">{open.length}</span>
-          </div>
-          {open.slice(0, 6).map((t) => (
-            <div key={t.id} className="frow itKV">
-              <button
-                className="ft tlT"
-                onClick={() => {
-                  setFocus({ k: 'task', id: t.id });
-                }}
-              >
-                {t.t}
-              </button>
-              <span className="fmeta">{t.due ? fmtShort(t.due) : 'Someday'}</span>
-            </div>
-          ))}
-        </>
+      <div className="flbl gOwnHd">
+        <span>
+          Steps <span className="fmeta">{open.length + evs.length + notes.length}</span>
+        </span>
+        <ItemMenu
+          name="this goal"
+          className="pjAddBtn"
+          buttonLabel="+ Add"
+          extra={(['task', 'event', 'note'] as GoalLinkKind[]).map((k) => ({ label: KIND_LABEL[k], onClick: () => setAdding(k) }))}
+        />
+      </div>
+      {!open.length && !evs.length && !notes.length ? <p className="fmeta itSub">No tasks, events or notes under this goal yet.</p> : null}
+      {[
+        ...open.map((t) => ({ k: 'task' as const, id: t.id, t: t.t, sub: t.due ? fmtShort(t.due) : 'Someday' })),
+        ...evs.map((e) => ({ k: 'event' as const, id: e.id!, t: e.t, sub: fmtShort(e.d) + (e.allDay || !e.tm ? '' : ' ' + fmtTime(e.tm)) })),
+        ...notes.map((n) => ({ k: 'note' as const, id: n.id, t: titleOf(n) || 'Untitled', sub: 'Note' })),
+      ].map((r) => (
+        <div key={r.k + r.id} className="frow itKV">
+          <button className="ft tlT" onClick={() => (r.k === 'note' ? onView('mae') : setFocus({ k: r.k, id: r.id }))}>
+            {r.t}
+          </button>
+          <span className="fmeta">{r.sub}</span>
+          <ItemMenu
+            name={r.t}
+            extra={[
+              {
+                label: 'Unlink from this goal',
+                onClick: () => {
+                  unlinkFromGoal(r.k, r.id);
+                  refresh();
+                  dataChanged();
+                  notify(`Unlinked from ${g.t}.`, {
+                    undo: () => {
+                      linkToGoal(g.id, r.k, r.id);
+                      refresh();
+                      dataChanged();
+                    },
+                  });
+                },
+              },
+            ]}
+          />
+        </div>
+      ))}
+      {adding ? (
+        <AddDialog
+          kind={adding}
+          projectName={g.t}
+          onCancel={() => setAdding(null)}
+          onCreate={(text) => {
+            const k = adding;
+            setAdding(null);
+            const id = createOfKind(k, text);
+            if (!id) return;
+            linkToGoal(g.id, k, id);
+            refresh();
+            dataChanged();
+            notify(`${KIND_LABEL[k]} added to ${g.t}.`);
+          }}
+          onLink={() => {
+            setLinking(adding);
+            setAdding(null);
+          }}
+        />
+      ) : null}
+      {linking ? (
+        <PickDialog
+          title={`Link a ${KIND_LABEL[linking].toLowerCase()}`}
+          empty="Nothing to link yet."
+          rows={rowsOf(linking)
+            .filter((r) => goalOf(linking, r.id)?.id !== g.id)
+            .map((r) => {
+              const other = goalOf(linking, r.id);
+              return { id: r.id, label: r.label, sub: [r.sub, other ? 'Now under ' + other.t : ''].filter(Boolean).join(' · ') };
+            })}
+          onCancel={() => setLinking(null)}
+          onPick={(rid) => {
+            const k = linking;
+            setLinking(null);
+            linkToGoal(g.id, k, rid);
+            refresh();
+            dataChanged();
+            notify(`Linked to ${g.t}.`, {
+              undo: () => {
+                unlinkFromGoal(k, rid);
+                refresh();
+                dataChanged();
+              },
+            });
+          }}
+        />
       ) : null}
       {doneTasks.length || ms.some((m) => m.done) ? (
         <>
@@ -388,7 +470,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
       ) : null}
       <div className="itMae">
         <span className="n">Mae</span>
-        <span>{!project && !ms.length ? 'Nothing serves this goal yet. Ask me for a first small step.' : 'Stuck or behind? Ask me for the next small step.'}</span>
+        <span>{!tasks.length && !evs.length && !ms.length ? 'Nothing serves this goal yet. Ask me for a first small step.' : 'Stuck or behind? Ask me for the next small step.'}</span>
         <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
       </div>
       <div className="itActs">

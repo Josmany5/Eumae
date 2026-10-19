@@ -28,7 +28,9 @@ export function MaeSteps({ steps }: { steps?: MaeStep[] }) {
 }
 
 export function PlanCard({ plan, onChange, notify, area = 'Chat' }: { plan: Plan; onChange: (p: Plan) => void; notify: Notify; area?: 'Chat' | 'Console' | 'Studio' | 'Library' | 'Classroom' | 'Guild' }) {
-  const lines = plan.steps.flatMap((s) => s.lines.map((l) => ({ ...l, danger: s.danger })));
+  const lines = plan.steps.flatMap((s) => s.lines.map((l) => ({ ...l, danger: s.danger, fresh: !!s.fresh })));
+  /* Mark what the latest message added, once older lines sit beside it. */
+  const mixed = lines.some((l) => l.fresh) && lines.some((l) => !l.fresh);
   const count = lines.length;
 
   const undo = (p: Plan) => {
@@ -65,6 +67,7 @@ export function PlanCard({ plan, onChange, notify, area = 'Chat' }: { plan: Plan
             <span className="maeTxt">
               {l.text}
               {l.detail ? <span className="fp">{l.detail}</span> : null}
+              {mixed && l.fresh ? <span className="fp maeNew">New</span> : null}
             </span>
           </div>
         ))}

@@ -14,7 +14,7 @@ import { getNotes } from '../notes';
 import { renderMd } from '../md';
 import { timeLabels } from '../stamp';
 import { runMaeTurn } from '../mae/loop';
-import { planNote, type Plan } from '../mae/dispatcher';
+import { planNote, detachFresh, type Plan } from '../mae/dispatcher';
 import { PlanCard, MaeSteps } from '../components/PlanCard';
 import { setFocus } from '../focus';
 
@@ -540,6 +540,8 @@ export default function ChatScreen() {
     const streamDone = () => {
       inFlight.current = Math.max(0, inFlight.current - 1);
     };
+    /* The card still waiting in this chat, if any: this turn adds to it. */
+    const openMsg = [...(history ?? msgs)].reverse().find((m) => m.plan?.status === 'pending');
     void runMaeTurn(body, 'Chat', (full) => {
       /* The whole text so far, not the new piece: replacing what the bubble shows
          is the only way two pieces arriving out of order could not show up as a
@@ -547,9 +549,18 @@ export default function ChatScreen() {
          is this same update. */
       setMsgs((m) => m.map((x) => (x.id === replyId ? { ...x, text: full } : x)));
       if (byVoice) feedVoiceReply(voiceId, full);
-    }).then((reply) => {
+    }, openMsg?.plan).then((reply) => {
       streamDone();
       setMsgs((m) => {
+        /* One open card per chat. A reply that changed the waiting card moves it
+           down to this reply; if the person approved or cancelled the old card
+           while Mae was answering, only what this turn added becomes a new card. */
+        let plan = reply.plan;
+        const oldNow = openMsg ? m.find((x) => x.id === openMsg.id)?.plan : undefined;
+        const carried = !!plan && !!openMsg?.plan && plan.id === openMsg.plan.id;
+        if (plan && carried && oldNow?.status !== 'pending') plan = detachFresh(plan) ?? undefined;
+        if (plan && !plan.steps.length) plan = undefined;
+        const emptied = carried && !!reply.plan && !reply.plan.steps.length;
         const next = m.map((x) =>
           x.id === replyId
             ? {
@@ -558,12 +569,13 @@ export default function ChatScreen() {
                 text: reply.text,
                 note: reply.error ?? undefined,
                 sources: reply.sources,
-                ...(reply.plan ? { plan: reply.plan } : {}),
+                ...(plan ? { plan } : {}),
                 ...(reply.steps.length ? { steps: reply.steps } : {}),
               }
-            : /* A new plan replaces any older one still waiting. */
-              reply.plan && x.plan?.status === 'pending'
-              ? { ...x, plan: { ...x.plan, status: 'cancelled' as const } }
+            : carried && x.id === openMsg!.id && oldNow?.status === 'pending'
+              ? emptied
+                ? { ...x, plan: { ...x.plan!, status: 'cancelled' as const } }
+                : { ...x, plan: undefined }
               : x,
         );
         saveNow(next);

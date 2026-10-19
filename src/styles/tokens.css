@@ -2090,3 +2090,5 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .maeDone{ padding:3px 0; color:var(--tx); }
 .maeOpen{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
 .maeUndo{ margin-top:6px; padding:6px 0; font-weight:600; }
+.gOwnHd{ display:flex; align-items:center; justify-content:space-between; }
+.maeNew{ color:var(--ac); font-weight:600; }

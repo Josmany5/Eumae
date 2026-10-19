@@ -32,6 +32,8 @@ export interface PlanStep {
   args: Record<string, unknown>;
   lines: PlanLine[];
   danger: boolean;
+  /** Added in the latest turn (the card marks these "new" when older lines sit beside them). */
+  fresh?: boolean;
 }
 
 export type PlanStatus = 'pending' | 'running' | 'done' | 'failed' | 'cancelled' | 'undone';
@@ -60,12 +62,75 @@ export interface CallOutcome {
 
 /* ───────────── declarations sent to the model ───────────── */
 
+/** Not in the registry: it edits the open card itself, so it lives here. */
+export const DROP_LINES = 'drop_plan_lines';
+const DROP_DECL = {
+  name: DROP_LINES,
+  description:
+    'Take lines off the plan card that is still waiting for approval, by their numbers in the card list. Use it when the person says to remove something, or to change a line: drop it, then stage the corrected version.',
+  parameters: { type: 'OBJECT', properties: { lines: { type: 'ARRAY', description: 'Card line numbers, starting at 1.', items: { type: 'INTEGER' } } }, required: ['lines'] },
+};
+
 export function declarations(actions: readonly Action[] = REGISTRY): Record<string, unknown>[] {
-  return actions.map((a) => ({
-    name: a.name,
-    description: a.risk === 'read' ? a.description : `${a.description} (Goes on the plan card; runs only after the person approves.)`,
-    parameters: toGemini(a.params),
-  }));
+  return [
+    ...actions.map((a) => ({
+      name: a.name,
+      description: a.risk === 'read' ? a.description : `${a.description} (Goes on the plan card; runs only after the person approves.)`,
+      parameters: toGemini(a.params),
+    })),
+    ...(actions === REGISTRY ? [DROP_DECL] : []),
+  ];
+}
+
+/** The card list as numbered lines, with where each sits in its step. */
+function cardLines(plan: Plan): { step: number; line: number; text: string }[] {
+  const out: { step: number; line: number; text: string }[] = [];
+  plan.steps.forEach((st, si) => st.lines.forEach((l, li) => out.push({ step: si, line: li, text: `${l.verb} ${l.kind.toLowerCase()}: ${l.text}${l.detail ? ` (${l.detail})` : ''}` })));
+  return out;
+}
+
+/** Drop card lines. A step that makes several items from one list (three tasks
+ *  in one create_tasks) loses just that item; a one-line step goes whole. */
+function dropLines(plan: Plan, nums: number[]): string | null {
+  const all = cardLines(plan);
+  const want = [...new Set(nums)].filter((n) => Number.isInteger(n));
+  if (!want.length) return 'Give the card line numbers to drop.';
+  const bad = want.filter((n) => n < 1 || n > all.length);
+  if (bad.length) return `The card has ${all.length} lines; there is no line ${bad.join(', ')}.`;
+  const hit = want.map((n) => all[n - 1]);
+  const bySteps = new Map<number, number[]>();
+  for (const h of hit) bySteps.set(h.step, [...(bySteps.get(h.step) ?? []), h.line]);
+  const next: PlanStep[] = [];
+  for (let si = 0; si < plan.steps.length; si++) {
+    const st = plan.steps[si];
+    const gone = bySteps.get(si);
+    if (!gone) {
+      next.push(st);
+      continue;
+    }
+    if (gone.length >= st.lines.length) continue;
+    const arrKey = Object.keys(st.args).find((k) => Array.isArray(st.args[k]) && (st.args[k] as unknown[]).length === st.lines.length);
+    if (!arrKey) return `Line ${want.find((n) => all[n - 1].step === si)} is part of a change that can only be dropped whole. Drop all its lines, then stage what should stay.`;
+    const keep = (_: unknown, i: number) => !gone.includes(i);
+    next.push({ ...st, args: { ...st.args, [arrKey]: (st.args[arrKey] as unknown[]).filter(keep) }, lines: st.lines.filter(keep) });
+  }
+  plan.steps = next;
+  return null;
+}
+
+/** Carry a card that is still waiting into the next turn: same id, older lines
+ *  no longer "new". */
+export function continuePlan(open: Plan): Plan {
+  const copy: Plan = JSON.parse(JSON.stringify(open));
+  copy.steps = copy.steps.map((st) => ({ ...st, fresh: false }));
+  return copy;
+}
+
+/** The person decided the old card while Mae was answering: keep only what
+ *  this turn added, as a card of its own. */
+export function detachFresh(plan: Plan): Plan | null {
+  const steps = plan.steps.filter((st) => st.fresh);
+  return steps.length ? { ...newPlan(), steps } : null;
 }
 
 /* ───────────── one model turn's calls ───────────── */
@@ -78,6 +143,25 @@ export function dispatch(calls: readonly ToolCall[], plan: Plan): CallOutcome[] 
   for (const call of calls) {
     const name = typeof call?.name === 'string' ? call.name : String(call?.name);
     const args = call?.args && typeof call.args === 'object' && !Array.isArray(call.args) ? call.args : {};
+    if (name === DROP_LINES) {
+      if (plan.status !== 'pending' || !plan.steps.length) {
+        out.push(refuse(name, 'There is no card waiting for approval to change.'));
+        continue;
+      }
+      const nums = Array.isArray(args.lines) ? (args.lines as unknown[]).map(Number) : [];
+      const err = dropLines(plan, nums);
+      if (err) {
+        out.push(refuse(name, err));
+        continue;
+      }
+      out.push({
+        name,
+        ok: true,
+        response: { ok: true, card_now: cardLines(plan).map((l, i) => `${i + 1}. ${l.text}`), note: plan.steps.length ? 'Dropped. The card shows what is left.' : 'The card is empty now.' },
+        label: `Took ${plural(nums.length, 'line')} off the plan`,
+      });
+      continue;
+    }
     const action = getAction(name);
     if (!action) {
       out.push(refuse(name, `There is no tool called "${name}". Use only the tools you were given.`));
@@ -128,7 +212,7 @@ export function dispatch(calls: readonly ToolCall[], plan: Plan): CallOutcome[] 
     } catch {
       lines = [];
     }
-    plan.steps.push({ name, args, lines, danger: action.risk === 'danger' });
+    plan.steps.push({ name, args, lines, danger: action.risk === 'danger', fresh: true });
     out.push({
       name,
       ok: true,
@@ -137,7 +221,8 @@ export function dispatch(calls: readonly ToolCall[], plan: Plan): CallOutcome[] 
         staged: true,
         step: plan.steps.length,
         will_do: lines.map((l) => `${l.verb} ${l.kind.toLowerCase()}: ${l.text}${l.detail ? ` (${l.detail})` : ''}`),
-        note: 'Not done yet. It is on the plan card. Tell the person the plan in a short list and ask them to approve. Do not say it is done.',
+        card_now: cardLines(plan).map((l, i) => `${i + 1}. ${l.text}`),
+        note: 'Not done yet. It is on the plan card with everything else listed in card_now. Tell the person briefly what you added and ask them to approve when ready. Do not say it is done.',
       },
       label: `Planned: ${lines.length === 1 ? `${lines[0].verb.toLowerCase()} ${lines[0].kind.toLowerCase()}` : `${lines.length} changes`}`,
     });
@@ -247,5 +332,10 @@ export function planNote(plan: Plan): string {
   if (plan.status === 'failed') return `[Plan failed, nothing changed: ${plan.error}]`;
   if (plan.status === 'cancelled') return '[The person cancelled that plan. Nothing was changed.]';
   if (plan.status === 'undone') return '[The person approved that plan, then undid it. Nothing from it remains.]';
-  return '[Plan waiting for approval.]';
+  const ls = cardLines(plan);
+  return `[Plan card STILL WAITING for approval, nothing made yet. It holds: ${ls.map((l, i) => `${i + 1}. ${l.text}`).join('; ')}. Anything new you stage is ADDED to this same card; never stage these lines again. To change or remove a line, use drop_plan_lines (then stage the corrected one).]`;
+}
+
+function plural(n: number, w: string): string {
+  return `${n} ${w}${n === 1 ? '' : 's'}`;
 }

@@ -8,7 +8,7 @@
 
 import { streamChat, type Reply } from '../chat';
 import { BASE_PROMPT, type ApiChatBody } from '../request';
-import { declarations, dispatch, newPlan, type Plan } from './dispatcher';
+import { continuePlan, declarations, dispatch, newPlan, type Plan } from './dispatcher';
 import { MAE_PROMPT, currentState } from './prompt';
 import type { Opened } from './registry';
 
@@ -48,9 +48,12 @@ export function withMae(body: ApiChatBody, where: string): ApiChatBody {
   };
 }
 
-export async function runMaeTurn(body: ApiChatBody, where: string, onText: (full: string) => void): Promise<MaeReply> {
+/** `open0` is the card still waiting in this thread, if any: this turn adds to
+ *  it (or drops lines from it) instead of starting a new one (his call, Oct 19). */
+export async function runMaeTurn(body: ApiChatBody, where: string, onText: (full: string) => void, open0?: Plan): Promise<MaeReply> {
   const base = withMae(body, where);
-  const plan = newPlan();
+  const plan = open0 && open0.status === 'pending' ? continuePlan(open0) : newPlan();
+  const before = JSON.stringify(plan.steps);
   const steps: MaeStep[] = [];
   const tail: { role: 'model' | 'user'; parts: Part[] }[] = [];
   const said: string[] = [];
@@ -64,7 +67,7 @@ export async function runMaeTurn(body: ApiChatBody, where: string, onText: (full
     if (reply.sources.length) sources = reply.sources;
     const calls = reply.calls ?? [];
     if (!reply.ok || !calls.length) {
-      return finish(reply, said, sources, plan, steps, open);
+      return finish(reply, said, sources, plan, steps, open, JSON.stringify(plan.steps) !== before);
     }
     const outcomes = dispatch(calls, plan);
     for (const o of outcomes) {
@@ -87,13 +90,15 @@ export async function runMaeTurn(body: ApiChatBody, where: string, onText: (full
     plan,
     steps,
     open,
+    JSON.stringify(plan.steps) !== before,
   );
 }
 
-function finish(reply: Reply, said: string[], sources: Reply['sources'], plan: Plan, steps: MaeStep[], open?: Opened): MaeReply {
+function finish(reply: Reply, said: string[], sources: Reply['sources'], plan: Plan, steps: MaeStep[], open: Opened | undefined, changed: boolean): MaeReply {
   let text = said.join('\n\n');
-  const staged = plan.steps.length > 0;
-  if (staged && !text) text = 'Here is the plan. Approve it on the card and I will make it.';
+  /* Only a card this turn changed rides the reply; an untouched open card stays where it is. */
+  const staged = changed;
+  if (staged && !text) text = plan.steps.length ? 'Here is the plan. Approve it on the card and I will make it.' : 'Took that off. The card is empty now.';
   const ok = reply.ok || (staged && !!text);
   return {
     ...reply,

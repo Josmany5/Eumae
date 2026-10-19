@@ -38,7 +38,7 @@ import { quickToEvent, removeEvent } from '../components/QuickAdd';
 import { undoable } from '../undo';
 import type { PageProps } from './index';
 
-const KIND_LABEL: Record<LinkKind, string> = { task: 'Task', file: 'File', note: 'Note', event: 'Event', goal: 'Goal' };
+export const KIND_LABEL: Record<LinkKind, string> = { task: 'Task', file: 'File', note: 'Note', event: 'Event', goal: 'Goal' };
 const SECTION: Record<LinkKind, string> = { task: 'Tasks', file: 'Files', note: 'Notes', event: 'Events', goal: 'Goals' };
 const ORDER: LinkKind[] = ['task', 'event', 'goal', 'note', 'file'];
 
@@ -51,7 +51,7 @@ interface Row {
 
 /* Everything of one kind that exists right now, as rows. Linked ids that no
    longer resolve (deleted, or in Library's trash) are simply not shown. */
-function rowsOf(k: LinkKind): Row[] {
+export function rowsOf(k: LinkKind): Row[] {
   switch (k) {
     case 'task':
       return getTasks().map((t) => ({
@@ -75,6 +75,27 @@ function rowsOf(k: LinkKind): Row[] {
     case 'goal':
       return getGoals().map((g) => ({ id: g.id, label: g.t, done: g.st === 'completed', sub: g.td ? 'By ' + fmtShort(g.td) : undefined }));
   }
+}
+
+/** Make one task, event or note from a typed line ("Call Marcus tomorrow 4pm")
+ *  and return its id. Shared by projects and goals. */
+export function createOfKind(k: 'task' | 'event' | 'note', text: string): string | null {
+  const name = text.trim();
+  if (!name) return null;
+  if (k === 'task') {
+    const q = parseQuick(name);
+    const t = createTask(q.title || name);
+    saveTask({ ...t, due: q.date, tm: q.time, est: q.mins });
+    return t.id;
+  }
+  if (k === 'note') {
+    const n = createNote(name.slice(0, 80));
+    const safe = name.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!);
+    saveNote({ ...n, body: `<div>${safe}</div>` });
+    return n.id;
+  }
+  const e = saveEvent(quickToEvent(parseQuick(name), ymd(new Date())));
+  return e.id ?? null;
 }
 
 export default function ProjectPage({ arg }: PageProps) {
@@ -385,7 +406,7 @@ function AddMenu({ onPick }: { onPick: (k: LinkKind) => void }) {
 }
 
 /* Then: name a new one, or go pick one you have. */
-function AddDialog({
+export function AddDialog({
   kind,
   projectName,
   onCreate,

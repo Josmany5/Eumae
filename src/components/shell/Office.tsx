@@ -7,7 +7,7 @@ import { getRoles } from '../../roles';
 import { getTasks } from '../../tasks';
 import { eventsBetween, ymd } from '../../events';
 import { runMaeTurn } from '../../mae/loop';
-import { planNote, type Plan } from '../../mae/dispatcher';
+import { planNote, detachFresh, type Plan } from '../../mae/dispatcher';
 import { PlanCard, MaeSteps } from '../PlanCard';
 import { buildRequest, toApiBody } from '../../request';
 import { createThread, getThread, saveThread, threadsChanged, type Msg, type Thread } from '../../threads';
@@ -268,16 +268,26 @@ function MaeTab({ tab }: { tab: TabId }) {
     threadsChanged();
     atBottomRef.current = true;
     setBusy(true);
-    void runMaeTurn(body, `${officeName(tab)} office`, (full) => put(full, true)).then((reply) => {
+    /* One open card per thread: this turn adds to the one still waiting. */
+    const openMsg = [...history].reverse().find((m) => m.plan?.status === 'pending');
+    void runMaeTurn(body, `${officeName(tab)} office`, (full) => put(full, true), openMsg?.plan).then((reply) => {
       setBusy(false);
-      /* A new plan replaces any older one still waiting. */
-      const prior = reply.plan
-        ? history.map((m) => (m.plan?.status === 'pending' ? { ...m, plan: { ...m.plan, status: 'cancelled' as const } } : m))
-        : history;
+      const now = (base.id ? getThread(base.id)?.messages : undefined) ?? history;
+      const oldNow = openMsg ? now.find((m) => m.id === openMsg.id)?.plan : undefined;
+      let plan = reply.plan;
+      const carried = !!plan && !!openMsg?.plan && plan.id === openMsg.plan.id;
+      if (plan && carried && oldNow?.status !== 'pending') plan = detachFresh(plan) ?? undefined;
+      if (plan && !plan.steps.length) plan = undefined;
+      const emptied = carried && !!reply.plan && !reply.plan.steps.length;
+      const prior = history.map((m) => {
+        const cur = now.find((x) => x.id === m.id) ?? m;
+        if (!(carried && m.id === openMsg!.id && oldNow?.status === 'pending')) return cur;
+        return emptied ? { ...cur, plan: { ...cur.plan!, status: 'cancelled' as const } } : { ...cur, plan: undefined };
+      });
       put(
         reply.ok ? reply.text : `I couldn't answer: ${reply.error}`,
         false,
-        { ...(reply.plan ? { plan: reply.plan } : {}), ...(reply.steps.length ? { steps: reply.steps } : {}) },
+        { ...(plan ? { plan } : {}), ...(reply.steps.length ? { steps: reply.steps } : {}) },
         prior,
       );
       threadsChanged();
