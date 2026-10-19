@@ -38,6 +38,9 @@ export interface Ref {
    *  strips it before the thread is written, and old threads carrying `url`
    *  still render (ChatScreen reads either). */
   url?: string;
+  /** Text Mae reads with the next message: an item added from the office's
+   *  Context tab (a note, task, event, project or Library file). */
+  ctx?: string;
 }
 
 /** How Eumae answers on this chat. The mockup keeps these five in module scope
@@ -132,6 +135,7 @@ export interface Nav {
    *  handed this list as a prop; it reads it here instead, because the send path
    *  is a second reader that no prop can reach. */
   refs: Ref[];
+  attach: (r: Ref) => void;
   detach: (label: string) => void;
   /** Empty the composer after a send — attachments belong to the message that
    *  carried them, not to the conversation. The panel keeps its own history. */
@@ -174,6 +178,7 @@ export const NavContext = createContext<Nav>({
   closePanel: () => {},
   openAdd: () => {},
   refs: [],
+  attach: () => {},
   detach: () => {},
   clearRefs: () => {},
   turn: DEFAULT_TURN,

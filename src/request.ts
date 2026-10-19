@@ -257,6 +257,13 @@ function timeStamp(): string {
   return `\n\nCurrent date and time: ${date}, ${time} (${tz}).`;
 }
 
+/** Items added from the office's Context tab ride under the message as text. */
+function ctxBlock(refs: readonly Ref[]): string {
+  const items = refs.filter((r) => r.ctx);
+  if (!items.length) return '';
+  return '\n\n---\nAttached for context:\n' + items.map((r) => `[${r.label}]\n${r.ctx!.slice(0, 6000)}`).join('\n\n');
+}
+
 export function toApiBody(
   req: TurnRequest,
   history: readonly ThreadTurn[],
@@ -270,7 +277,7 @@ export function toApiBody(
     data: {
       systemPrompt: BASE_PROMPT + directives(req, customRole) + timeStamp(),
       conversationHistory: historyOf(history),
-      message: req.text,
+      message: req.text + ctxBlock(req.refs),
       ...(attachments.length ? { attachments } : {}),
       ...(model ? { model } : {}),
       ...(functionDeclarations && functionDeclarations.length ? { functionDeclarations } : {}),

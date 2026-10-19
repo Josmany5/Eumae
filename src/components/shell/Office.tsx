@@ -12,7 +12,11 @@ import { createThread, getThread, saveThread, threadsChanged, type Msg, type Thr
 import { msgId } from '../../boot';
 import { timeLabels } from '../../stamp';
 import { getTask } from '../../tasks';
-import { getEvent } from '../../events';
+import { getEvent, getEvents } from '../../events';
+import { getNotes, titleOf, noteText } from '../../notes';
+import { getProjects, linkedIds } from '../../projects';
+import { getFiles } from '../../library';
+import type { Ref } from '../../nav';
 import { useFocus, setFocus, getFocus, FOCUS_LABEL } from '../../focus';
 import { ItemTab } from './ItemTab';
 import { MaeIcon } from './Header';
@@ -343,6 +347,91 @@ function Seg<T extends string>({ value, options, onPick }: { value: T; options: 
   );
 }
 
+/* Context › Add from: pick a project, note, Library file, event or task and
+   it rides with your next message as text Mae reads. */
+type SrcKind = 'Projects' | 'Notes' | 'Library' | 'Calendar' | 'Tasks';
+const SRC: SrcKind[] = ['Projects', 'Notes', 'Library', 'Calendar', 'Tasks'];
+function sourceItems(k: SrcKind): Ref[] {
+  const fmtD = (d?: string) => (d ? new Date(d + 'T12:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '');
+  switch (k) {
+    case 'Projects': {
+      const tasks = getTasks();
+      return getProjects().map((p) => {
+        const open = linkedIds(p.id, 'task').map((id) => tasks.find((t) => t.id === id)).filter((t) => t && !t.d).map((t) => '- ' + t!.t);
+        return { label: p.n, icon: 'fol', ctx: `Project: ${p.n}${p.d ? '\n' + p.d : ''}${p.due ? '\nDue ' + fmtD(p.due) : ''}${open.length ? '\nOpen tasks:\n' + open.join('\n') : ''}` };
+      });
+    }
+    case 'Notes':
+      return getNotes().map((n) => ({ label: titleOf(n), icon: 'doc', ctx: `Note: ${titleOf(n)}\n${noteText(n)}` }));
+    case 'Library':
+      return getFiles().map((f) => ({ label: f.t, icon: 'doc', ctx: `Library file: ${f.t}\n${f.b}` }));
+    case 'Calendar':
+      return [...getEvents()]
+        .sort((a, b) => (a.d + a.tm).localeCompare(b.d + b.tm))
+        .map((e) => ({ label: `${e.t} · ${fmtD(e.d)}`, icon: 'cal', ctx: `Event: ${e.t}, ${fmtD(e.d)}${e.tm ? ' ' + e.tm : ''}${e.loc ? ', at ' + e.loc : ''}` }));
+    case 'Tasks':
+      return getTasks()
+        .filter((t) => !t.d)
+        .map((t) => ({
+          label: t.t,
+          icon: 'chk',
+          ctx: `Task: ${t.t}${t.due ? ', due ' + fmtD(t.due) + (t.tm ? ' ' + t.tm : '') : ''}${t.sub?.length ? '\nSteps:\n' + t.sub.map((x) => (x.d ? '- [done] ' : '- ') + x.t).join('\n') : ''}`,
+        }));
+  }
+}
+function AddFrom() {
+  const { attach, refs } = useNav();
+  const [src, setSrc] = useState<SrcKind | null>(null);
+  const [q, setQ] = useState('');
+  const items = src ? sourceItems(src).filter((r) => r.label.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 40) : [];
+  return (
+    <>
+      <div className="flbl">Add from</div>
+      <div className="ctxChips">
+        {SRC.map((k) => (
+          <button
+            key={k}
+            className={'ctxChip' + (src === k ? ' on' : '')}
+            onClick={() => {
+              setSrc((v) => (v === k ? null : k));
+              setQ('');
+            }}
+          >
+            + {k}
+          </button>
+        ))}
+      </div>
+      {src ? (
+        <div className="ctxPick">
+          <input className="sinput" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${src.toLowerCase()}`} aria-label={`Search ${src}`} autoFocus />
+          {items.length ? (
+            items.map((r) => {
+              const on = refs.some((x) => x.label === r.label);
+              return (
+                <button
+                  key={r.label}
+                  className="frow ctxRow"
+                  disabled={on}
+                  onClick={() => {
+                    attach(r);
+                    setSrc(null);
+                  }}
+                >
+                  <Icon name={r.icon} />
+                  <span className="ft">{r.label}</span>
+                  <span className="fmeta">{on ? 'Attached' : 'Add'}</span>
+                </button>
+              );
+            })
+          ) : (
+            <p className="oIntro">Nothing here{q ? ' matches' : ' yet'}.</p>
+          )}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 function ContextTab() {
   const { refs, detach, turn, setTurn } = useNav();
   const roles = ['Default', 'Coach', 'Teacher', 'Sparring partner', ...getRoles().map((r) => r.n)];
@@ -352,7 +441,7 @@ function ContextTab() {
   };
   return (
     <>
-      <div className="flbl">Attached to this message</div>
+      <div className="flbl">Attached</div>
       {refs.length ? (
         refs.map((r) => (
           <div key={r.label} className="frow">
@@ -364,8 +453,10 @@ function ContextTab() {
           </div>
         ))
       ) : (
-        <p className="oIntro">Nothing attached. The paperclip on the composer brings in a photo or a PDF.</p>
+        <p className="oIntro">Nothing attached yet. Add something below, or use the paperclip for a photo or PDF.</p>
       )}
+
+      <AddFrom />
 
       <div className="flbl">Always in context</div>
       <div className="frow"><span className="ft">Your projects</span></div>

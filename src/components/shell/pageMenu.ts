@@ -28,13 +28,6 @@ export interface MenuSection {
 export const PAGE_MENU: Record<TabId, MenuSection[]> = {
   chat: [
     { items: [{ label: 'New chat', icon: 'pls' }] },
-    {
-      heading: 'Context',
-      items: [
-        { label: 'Attach an item', icon: 'lnk' },
-        { label: 'Scope to a project', icon: 'fol' },
-      ],
-    },
     { heading: 'Recent chats', items: [], empty: 'No chats yet' },
   ],
   console: [
