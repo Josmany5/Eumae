@@ -112,7 +112,7 @@ const ROLE: Partial<Record<TabId, { name: string; intro: string; prompt: string;
    and the old one stays in Chat. */
 const FRESH_AFTER = 60 * 60 * 1000;
 const officeKey = (tab: TabId) => 'eumae:office:' + tab;
-const officeName = (tab: TabId) => tab[0].toUpperCase() + tab.slice(1) + ' office';
+const officeName = (tab: TabId) => tab[0].toUpperCase() + tab.slice(1);
 function currentOfficeThread(tab: TabId): Thread | undefined {
   let id: string | null = null;
   try {

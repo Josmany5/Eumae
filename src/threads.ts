@@ -54,7 +54,10 @@ function load(): Thread[] {
       }
       const msgs = cleanMessages(t.messages);
       dropped += t.messages.length - msgs.length;
-      cleaned.push({ ...t, messages: msgs });
+      /* Office threads are labelled by page alone ("Console"), not "Console office". */
+      const fix = t.from && t.from.endsWith(' office');
+      if (fix) dropped++;
+      cleaned.push(fix ? { ...t, title: t.title === t.from ? t.from.slice(0, -7) : t.title, from: t.from.slice(0, -7), messages: msgs } : { ...t, messages: msgs });
     }
     cache = cleaned;
     /* A bad row dies once: write the cleaned list back so the next boot
