@@ -2125,3 +2125,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .dashSlot{ flex:none; margin-left:auto; align-self:center; display:flex; }
 .dashSlot .imBtn.dashEdit{ width:auto; height:auto; min-width:84px; padding:11px 20px; border-radius:12px; font-size:15px; font-weight:600;
   background:var(--card2); color:var(--tx); justify-content:center; }
+/* Edit reads as a plain text button, iOS style; Done stays a small filled pill (his call, Oct 19). */
+.dashSlot .imBtn.dashEdit{ min-width:0; padding:6px 10px; margin-right:-10px; border-radius:8px; font-size:16px; background:transparent; color:var(--ac); }
+.dashSlot .imBtn.dashEdit:hover{ background:var(--acsoft); }
+.dashSlot .dashEdit.pri{ min-width:0; padding:6px 14px; border-radius:999px; font-size:15px; }
