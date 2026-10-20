@@ -2092,3 +2092,16 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .maeUndo{ margin-top:6px; padding:6px 0; font-weight:600; }
 .gOwnHd{ display:flex; align-items:center; justify-content:space-between; }
 .maeNew{ color:var(--ac); font-weight:600; }
+/* Phone task rows (his screenshot IMG_5093, Oct 19): the title gets the full
+   width and reads as a sentence; priority, project and date drop to a second
+   line under it instead of squeezing the title into a narrow column. */
+@media (max-width:899px){
+  .tkList .tkRow{ display:grid; grid-template-columns:26px auto auto 1fr auto; column-gap:0; row-gap:4px; align-items:center; }
+  .tkList .tkRow > .fchk, .tkList .tkRow > .tkBox{ grid-column:1; grid-row:1; align-self:start; margin-top:3px; }
+  .tkList .tkRow > .ft{ grid-column:2 / 5; grid-row:1; }
+  .tkList .tkRow > .imBtn{ grid-column:5; grid-row:1; align-self:start; margin-left:8px; }
+  .tkList .tkRow > .tkPrL{ grid-column:2; grid-row:2; margin-right:10px; }
+  .tkList .tkRow > .tkPill{ grid-column:3; grid-row:2; margin-right:10px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tkList .tkRow > .fmeta{ grid-column:4; grid-row:2; text-align:left; max-width:none; }
+  .tkList .tkRow .tlT{ text-align:left; white-space:normal; overflow-wrap:break-word; }
+}
