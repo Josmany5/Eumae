@@ -2106,3 +2106,17 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   .tkList .tkRow > .fmeta{ grid-column:4; grid-row:2; text-align:left; max-width:none; }
   .tkList .tkRow .tlT{ text-align:left; white-space:normal; overflow-wrap:break-word; }
 }
+
+/* Console/Guild edit bar: one flat row, no card (his call, Oct 19). */
+.pdTools{ gap:6px; margin:0 0 10px; }
+.pdBar{ display:flex; align-items:center; gap:4px; }
+.pdTools .pdName{ flex:1; min-width:0; margin:0; }
+.pdName .sinput{ background:transparent; padding:6px 0; font-size:17px; font-weight:600; border-radius:0;
+  border-bottom:1px solid var(--hair); }
+.pdName .sinput:focus{ outline:none; border-bottom-color:var(--ac); }
+.pdLink{ background:transparent; border:0; color:var(--ac); font:inherit; font-size:15px; font-weight:600;
+  padding:8px 8px; border-radius:8px; white-space:nowrap; cursor:pointer; }
+.pdLink:hover, .pdLink.on{ background:var(--acsoft); }
+.pdLink.rd{ color:var(--rd); }
+.pdLink.rd:hover{ background:var(--rdsoft); }
+.pdHint{ color:var(--mut); }

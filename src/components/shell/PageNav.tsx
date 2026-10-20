@@ -104,11 +104,11 @@ export function usePageKeys(
 
 /* Edit mode: name the page you're on. Saves on Enter or when you leave the
    field; empty goes back to the default name. */
-export function PageNameField({ value, onSave }: { value: string; onSave: (name: string) => void }) {
+export function PageNameField({ value, onSave, bare }: { value: string; onSave: (name: string) => void; bare?: boolean }) {
   const [v, setV] = useState(value);
   return (
-    <label className="pnName">
-      <span className="xs m">Page name</span>
+    <label className={bare ? 'pnName pdName' : 'pnName'}>
+      {bare ? null : <span className="xs m">Page name</span>}
       <input
         className="sinput"
         value={v}

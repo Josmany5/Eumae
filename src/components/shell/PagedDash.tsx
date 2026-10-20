@@ -189,14 +189,14 @@ export function PagedDash({
   return (
     <div className={'pdash' + (picked ? ' picking' : '')}>
       {editing ? (
-        <div className="pdTools card">
-          <PageNameField key={cur + ':' + names[cur]} value={names[cur] ?? ''} onSave={(v) => { ops.rename(cur, v); onChange(); }} />
-          <div className="btns pdBtns">
-            <button className="pri" onClick={() => setAddOpen((v) => !v)} aria-expanded={addOpen}>
-              + Add widget
+        <div className="pdTools">
+          <div className="pdBar">
+            <PageNameField bare key={cur + ':' + names[cur]} value={names[cur] ?? ''} onSave={(v) => { ops.rename(cur, v); onChange(); }} />
+            <button className={'pdLink' + (addOpen ? ' on' : '')} onClick={() => setAddOpen((v) => !v)} aria-expanded={addOpen}>
+              + Widget
             </button>
             <button
-              className="fb"
+              className="pdLink"
               onClick={() => {
                 const i = ops.addPage();
                 onChange();
@@ -204,12 +204,12 @@ export function PagedDash({
                 setPage(i);
               }}
             >
-              + New page
+              + Page
             </button>
             {n > 1 ? (
               <button
-                className="fb"
-                style={{ color: 'var(--rd)' }}
+                className="pdLink rd"
+                aria-label="Remove page"
                 onClick={() => {
                   /* No question: the page goes, Undo brings it back with
                      its widgets where they were. */
@@ -227,7 +227,7 @@ export function PagedDash({
                   });
                 }}
               >
-                Remove page
+                Remove
               </button>
             ) : null}
           </div>
@@ -260,10 +260,7 @@ export function PagedDash({
               )}
             </div>
           ) : null}
-          <div className="xs m">
-            Drag a widget to reorder it. Hold it over a side arrow to carry it to another page. On a phone, hold a widget to pick it up,
-            then tap where it goes.
-          </div>
+          <div className="xs m pdHint">Hold a widget to move it. Tap the name to rename the page.</div>
         </div>
       ) : null}
       <PageNav names={names} page={cur} onJump={jump} />
