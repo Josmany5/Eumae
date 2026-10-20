@@ -389,11 +389,9 @@ export default function ChatScreen() {
     const brief = takePendingBrief();
     if (!brief) return;
     briefTaken.current = true;
-    if (msgs.length === 0) {
-      send(brief);
-    } else {
-      notify('Studio brief ready — sending it in a fresh chat would keep this thread clean.');
-    }
+    /* Studio opens a fresh chat first; if one with history ever gets here, send
+       it there anyway rather than leave it waiting behind a toast. */
+    send(brief);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

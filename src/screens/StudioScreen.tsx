@@ -14,6 +14,7 @@ import {
   queueBrief,
 } from '../studio';
 import { getFiles, type LibFile } from '../library';
+import { getThread } from '../threads';
 import { createProject, saveProject } from '../projects';
 import { createFlow, saveFlow } from '../flows';
 import { Icon } from '../components/shell/icons';
@@ -35,7 +36,7 @@ import { Icon } from '../components/shell/icons';
 type Walk = { cat: string | null; tpl: string | null };
 
 export default function StudioScreen() {
-  const { notify, go, goTab } = useNav();
+  const { notify, go, goTab, newChat, currentThreadId } = useNav();
   const [walk, setWalk] = useState<Walk>({ cat: null, tpl: null });
   const [variant, setVariant] = useState(0);
   const [purpose, setPurpose] = useState('');
@@ -86,15 +87,17 @@ export default function StudioScreen() {
         steps: steps.length ? steps : t ? [...t.s] : [],
       });
       notify(`${cat} created — brief sent to Chat.`);
-    } else {
-      notify('Brief sent to Chat.');
     }
     queueBrief(brief);
     setWalk({ cat: null, tpl: null });
     setVariant(0);
     setPurpose('');
     setDetails('');
-    goTab('chat');
+    /* A brief always lands in an empty chat (his call, Oct 20): the chat you
+       were in stays as it was, and a new one opens with the brief sent. */
+    const cur = currentThreadId ? getThread(currentThreadId) : undefined;
+    if (cur && cur.messages.length > 0) newChat();
+    else goTab('chat');
   };
 
   if (!walk.cat) {
