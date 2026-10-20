@@ -19,6 +19,7 @@ import {
   type WidgetId,
 } from '../dash';
 import { WidgetCard, WIDGET_NAV } from '../components/shell/widgets';
+import { getPinnedProject } from '../projects';
 
 /* The Console — the mockup's widget dashboard (second rCon layer), rebuilt
  * as React on tokens.
@@ -65,6 +66,11 @@ export default function ConsoleScreen() {
     if (nav.tab === 'library' || nav.tab === 'guild') {
       goTab(nav.tab);
       return;
+    }
+    /* A pinned project opens its own page, not the Projects list (his call). */
+    if (id === 'pj8') {
+      const p = getPinnedProject();
+      if (p) return go('project', p.id);
     }
     if (nav.page) go(nav.page);
   };
