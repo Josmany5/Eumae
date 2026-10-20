@@ -116,7 +116,6 @@ export function PlanCard({ plan, onChange, notify, area = 'Chat' }: { plan: Plan
             <span className="maeTxt">
               {l.text}
               {l.detail ? <span className="fp">{l.detail}</span> : null}
-              {l.guess ? <span className="fp maeGuess">Mae's guess: {l.guess}</span> : null}
               {mixed && l.fresh ? <span className="fp maeNew">New</span> : null}
             </span>
           </div>

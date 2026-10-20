@@ -437,7 +437,7 @@ const reads: Action[] = [
 /* ───────────────────────── creates ───────────────────────── */
 
 /* Honesty (2B, his call Oct 19): every detail Mae filled in herself is named,
-   and the card shows it as "Mae's guess". */
+   and Mae SAYS it in her reply (guess.ts checks her too; no card label, his call 9:47 PM). */
 const guessedField = list(
   "Names of the fields YOU filled in that the person did not say (e.g. [\"due\", \"estimate\", \"priority\"]). Leave out when every detail came from them.",
   s('A field name from this object.', { max: 30 }),

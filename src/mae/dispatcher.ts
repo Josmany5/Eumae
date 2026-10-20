@@ -16,6 +16,7 @@
 
 import { check, toGemini } from './schema';
 import { resolveWhen } from './when';
+import { guessesIn } from './guess';
 import { REGISTRY, getAction, type Action, type PlanLine, type Result, type Opened, type ItemKind } from './registry';
 import { snapshotTasks, restoreTasks } from '../tasks';
 import { snapshotEvents, restoreEvents } from '../events';
@@ -139,7 +140,8 @@ export function detachFresh(plan: Plan): Plan | null {
 /** Sort one turn's calls: reads run now, writes join the plan being built.
  *  `plan` is mutated (steps appended) so a turn that loops several times
  *  builds one plan, not several. */
-export function dispatch(calls: readonly ToolCall[], plan: Plan): CallOutcome[] {
+/** `heard` is everything the person typed in this thread, for the guess detector. */
+export function dispatch(calls: readonly ToolCall[], plan: Plan, heard = ''): CallOutcome[] {
   const out: CallOutcome[] = [];
   for (const call of calls) {
     const name = typeof call?.name === 'string' ? call.name : String(call?.name);
@@ -175,6 +177,7 @@ export function dispatch(calls: readonly ToolCall[], plan: Plan): CallOutcome[] 
       out.push(refuse(name, `Nothing was done. ${when.error} Then call again with what they say.`));
       continue;
     }
+    const raw = args;
     args = when.value as typeof args;
     const formErr = check(action.params, args);
     if (formErr) {
@@ -222,6 +225,7 @@ export function dispatch(calls: readonly ToolCall[], plan: Plan): CallOutcome[] 
       lines = [];
     }
     plan.steps.push({ name, args, lines, danger: action.risk === 'danger', fresh: true });
+    const added = guessesIn(name, args, raw, heard);
     out.push({
       name,
       ok: true,
@@ -231,6 +235,12 @@ export function dispatch(calls: readonly ToolCall[], plan: Plan): CallOutcome[] 
         step: plan.steps.length,
         will_do: lines.map((l) => `${l.verb} ${l.kind.toLowerCase()}: ${l.text}${l.detail ? ` (${l.detail})` : ''}`),
         card_now: cardLines(plan).map((l, i) => `${i + 1}. ${l.text}`),
+        ...(added.length
+          ? {
+              you_added: added,
+              must_say: 'The person did not say the details in you_added; you filled them in. In your reply, name each one and why in a few plain words ("I guessed about an hour, since a first draft usually takes that"), so they can change it before approving. Do not skip this.',
+            }
+          : {}),
         note: 'Not done yet. It is on the plan card with everything else listed in card_now. Tell the person briefly what you added and ask them to approve when ready. Do not say it is done. Any day or time in will_do was worked out by the app from their words: repeat it as written there.',
       },
       label: `Planned: ${lines.length === 1 ? `${lines[0].verb.toLowerCase()} ${lines[0].kind.toLowerCase()}` : `${lines.length} changes`}`,

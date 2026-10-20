@@ -53,6 +53,7 @@ export function withMae(body: ApiChatBody, where: string): ApiChatBody {
  *  it (or drops lines from it) instead of starting a new one (his call, Oct 19). */
 export async function runMaeTurn(body: ApiChatBody, where: string, onText: (full: string) => void, open0?: Plan): Promise<MaeReply> {
   const base = withMae(body, where);
+  const heard = [...body.data.conversationHistory.filter((m) => m.role === 'user').map((m) => m.content), body.data.message].join('\n');
   const plan = open0 && open0.status === 'pending' ? continuePlan(open0) : newPlan();
   const before = JSON.stringify(plan.steps);
   const steps: MaeStep[] = [];
@@ -70,7 +71,7 @@ export async function runMaeTurn(body: ApiChatBody, where: string, onText: (full
     if (!reply.ok || !calls.length) {
       return finish(reply, said, sources, plan, steps, open, JSON.stringify(plan.steps) !== before);
     }
-    const outcomes = dispatch(calls, plan);
+    const outcomes = dispatch(calls, plan, heard);
     for (const o of outcomes) {
       steps.push({ label: o.label, ok: o.ok });
       if (o.open) open = o.open;

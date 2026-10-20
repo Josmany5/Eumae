@@ -26,7 +26,7 @@ globalThis.localStorage = {
 
 const out = buildSync({
   stdin: {
-    contents: `export * from './src/mae/dispatcher'; export { REGISTRY, humanTimes } from './src/mae/registry'; export { resolveDate, resolveTime } from './src/mae/when'; export { check, toGemini } from './src/mae/schema';
+    contents: `export * from './src/mae/dispatcher'; export { REGISTRY, humanTimes } from './src/mae/registry'; export { resolveDate, resolveTime } from './src/mae/when'; export { guessesIn } from './src/mae/guess'; export { check, toGemini } from './src/mae/schema';
       export { getTasks, getTask } from './src/tasks'; export { getEvents, saveEvent, ymd } from './src/events'; export { getGoals, goalOf, goalLinkedIds } from './src/goals';
       export { getProjects, linkedIds } from './src/projects'; export { getNotes, titleOf } from './src/notes'; export { parseEvent } from './src/chat';`,
     resolveDir: new URL('..', import.meta.url).pathname,
@@ -57,9 +57,9 @@ const d = (n) => {
   x.setDate(x.getDate() + n);
   return M.ymd(x);
 };
-const stage = (calls) => {
+const stage = (calls, heard = "") => {
   const plan = M.newPlan();
-  const res = M.dispatch(calls, plan);
+  const res = M.dispatch(calls, plan, heard);
   return { plan, res };
 };
 
@@ -259,6 +259,20 @@ const stage = (calls) => {
   const want = M.ymd(new Date(Date.now() + 86400000));
   check('stage-resolves-phrase', res[0].ok && plan.steps[0].args.tasks[0].due === want && plan.steps[0].args.tasks[0].time === '15:00', JSON.stringify(res[0]));
   check('stage-refuses-ambiguous', !stage([{ name: 'create_tasks', args: { tasks: [{ title: 'x', time: '7' }] } }]).res[0].ok);
+}
+
+// Guess detector: details the person never said go back to Mae to name.
+{
+  const G = M.guessesIn;
+  const t = { tasks: [{ title: 'Write for 1 hour on the book', estimate: 60, priority: 'high' }] };
+  check('guess-detects', JSON.stringify(G('create_tasks', t, t, 'Help me work on my book this week')) === JSON.stringify(['Write for 1 hour on the book: about 1 hour, high priority']), JSON.stringify(G('create_tasks', t, t, 'Help me work on my book this week')));
+  check('guess-quiet-when-said', G('create_tasks', t, t, 'write for an hour, it is urgent').length === 0);
+  const d = { tasks: [{ title: 'Call PT', due: '2026-10-20' }] };
+  check('guess-date', G('create_tasks', d, d, 'add call PT').length === 1 && G('create_tasks', d, { tasks: [{ due: 'tomorrow' }] }, 'call PT tomorrow').length === 0);
+  const e = { events: [{ title: 'Dinner', date: '2026-10-23', start: '19:00', location: 'Saggio' }] };
+  check('guess-event-place', /place \(Saggio\)/.test(G('create_events', e, { events: [{ date: 'friday', start: '7 pm' }] }, 'dinner friday at 7 pm')[0] ?? ''));
+  const r = stage([{ name: 'create_tasks', args: { tasks: [{ title: 'Draft intro', estimate: 45 }] } }], 'draft the intro');
+  check('guess-in-response', r.res[0].ok && r.res[0].response.you_added?.[0] === 'Draft intro: about 45 min', JSON.stringify(r.res[0].response));
 }
 
 if (failures.length) {
