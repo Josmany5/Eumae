@@ -175,6 +175,8 @@ export function PagedDash({
   const touchDrag = useRef(false);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const overRef = useRef<Slot | null>(null);
+  const lastY = useRef<number | null>(null);
+  const scrollLoop = useRef(0);
   const moveRef = useRef(moveTo);
   moveRef.current = moveTo;
   const flipRef = useRef(armFlip);
@@ -195,16 +197,40 @@ export function PagedDash({
       }
       const arr = el?.closest('.pgArr') as HTMLElement | null;
       if (arr) flipRef.current(arr.classList.contains('l') ? -1 : 1);
-      const sc = document.getElementById('mn');
+      lastY.current = t.clientY;
+      if (!scrollLoop.current) scrollLoop.current = requestAnimationFrame(edgeScroll);
+    };
+    /* The screen's own scroller (#mn itself doesn't scroll). Keeps going
+       while the finger rests near an edge, faster the closer it is. */
+    const scroller = () => {
+      let el: HTMLElement | null = stageRef.current;
+      while (el && el !== document.body) {
+        const oy = getComputedStyle(el).overflowY;
+        if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) return el;
+        el = el.parentElement;
+      }
+      return (document.scrollingElement as HTMLElement) ?? null;
+    };
+    const edgeScroll = () => {
+      scrollLoop.current = 0;
+      if (!touchDrag.current || lastY.current == null) return;
+      const sc = scroller();
       if (sc) {
         const r = sc.getBoundingClientRect();
-        if (t.clientY < r.top + 70) sc.scrollBy(0, -14);
-        else if (t.clientY > r.bottom - 160) sc.scrollBy(0, 14);
+        const top = Math.max(r.top, 0) + 90;
+        const bot = Math.min(r.bottom, window.innerHeight) - 170;
+        const y = lastY.current;
+        const v = y < top ? -Math.min(18, (top - y) / 4 + 4) : y > bot ? Math.min(18, (y - bot) / 4 + 4) : 0;
+        if (v) sc.scrollBy(0, v);
+        if (v) scrollLoop.current = requestAnimationFrame(edgeScroll);
       }
     };
     const onEnd = () => {
       if (!touchDrag.current) return;
       touchDrag.current = false;
+      lastY.current = null;
+      if (scrollLoop.current) cancelAnimationFrame(scrollLoop.current);
+      scrollLoop.current = 0;
       const to = overRef.current;
       overRef.current = null;
       if (to) moveRef.current(to);
