@@ -48,6 +48,8 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
   const { go, notify, openPanel } = useNav();
   const [, setTick] = useState(0);
   const [showEarlier, setShowEarlier] = useState(false);
+  /* Move opens a day + time picker on that row (his call: no silent "tomorrow"). */
+  const [moving, setMoving] = useState<{ id: string; due: string; tm: string } | null>(null);
   const refresh = () => {
     setTick((n) => n + 1);
     onChange();
@@ -80,10 +82,12 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
     refresh();
   };
 
-  const move = (t: Task) => {
+  const move = (t: Task, due: string, tm: string) => {
     const before = { ...t };
-    saveTask({ ...t, due: tomorrow });
-    notify('Moved to tomorrow.', { undo: () => { saveTask(before); refresh(); } });
+    saveTask({ ...t, due, tm: tm || undefined });
+    setMoving(null);
+    const when = new Date(due + 'T12:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    notify(`Moved to ${when}${tm ? ' at ' + fmtTime(tm) : ''}.`, { undo: () => { saveTask(before); refresh(); } });
     refresh();
   };
 
@@ -130,18 +134,44 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
             <div className="fsub">{[i.ev.loc, i.ev.rep ? '↻ repeats' : ''].filter(Boolean).join(' · ')}</div>
           ) : null}
           {opts.actions && i.kind === 'task' ? (
-            <div className="tlActs">
-              <button className="pri" onClick={() => done(i.task)}>Done</button>
-              <button onClick={() => move(i.task)}>Move</button>
-              <button
-                onClick={() => {
-                  setFocus({ k: 'task', id: i.task.id });
-                  openPanel('mae');
-                }}
-              >
-                Ask Mae
-              </button>
-            </div>
+            moving && moving.id === i.task.id ? (
+              <div className="tlMove">
+                <input
+                  type="date"
+                  className="sinput"
+                  aria-label="New day"
+                  value={moving.due}
+                  min={today}
+                  onChange={(e) => setMoving({ ...moving, due: e.target.value })}
+                />
+                <input
+                  type="time"
+                  className="sinput"
+                  aria-label="New time (optional)"
+                  value={moving.tm}
+                  onChange={(e) => setMoving({ ...moving, tm: e.target.value })}
+                />
+                <div className="tlActs">
+                  <button className="pri" disabled={!moving.due} onClick={() => move(i.task, moving.due, moving.tm)}>
+                    Save
+                  </button>
+                  <button onClick={() => setMoving(null)}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div className="tlActs">
+                <button className="pri" onClick={() => done(i.task)}>Done</button>
+                <button onClick={() => setMoving({ id: i.task.id, due: '', tm: i.task.tm ?? '' })}>Move</button>
+                <button
+                  onClick={() => {
+                    setFocus({ k: 'task', id: i.task.id });
+                    openPanel('mae');
+                  }}
+                >
+                  Ask Mae
+                </button>
+              </div>
+            )
           ) : null}
         </div>
         <span className="tlR">
