@@ -17,6 +17,9 @@ import { runMaeTurn } from '../mae/loop';
 import { planNote, detachFresh, type Plan } from '../mae/dispatcher';
 import { PlanCard, MaeSteps } from '../components/PlanCard';
 import { setFocus } from '../focus';
+import { extractHtml, hideHtmlWhileStreaming, addFromReply, sandboxContext, openSbx } from '../sandbox';
+import { SbxRow } from '../components/SandboxView';
+import { useMedia } from '../useMedia';
 
 /** History as Mae should read it: each reply that carried a plan says what
  *  became of it, so she never guesses whether something was made. */
@@ -126,7 +129,16 @@ export function welcomeFor(f: WelcomeFacts): { title: string; sub: string } {
  *  not re-render every bubble on every chunk. */
 function ReplyText({ text, streaming }: { text: string; streaming?: boolean }) {
   const html = useMemo(() => (streaming ? null : renderMd(text)), [text, streaming]);
-  if (html === null) return <>{text}</>;
+  if (html === null) {
+    /* The page's code never shows in the bubble: it goes to the Sandbox. */
+    const h = hideHtmlWhileStreaming(text);
+    return (
+      <>
+        {h.text}
+        {h.making ? <div className="bubbleNote">Making it in the Sandbox…</div> : null}
+      </>
+    );
+  }
   return <span className="md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
@@ -283,6 +295,8 @@ function ImageViewer({ url, alt, onClose }: { url: string; alt: string; onClose:
 
 export default function ChatScreen() {
   const { turn, refs, clearRefs, notify, currentThreadId: threadId, threads } = useNav();
+  const { openPanel } = useNav();
+  const wide = useMedia('(min-width:900px)');
   /* The welcome reads the person's own stuff once per mount — threads from
      nav (already in memory), uploads + notes counted lazily (storage reads,
      memoized so one mount is one read each). */
@@ -490,6 +504,9 @@ export default function ChatScreen() {
       withPlanNotes(history ?? msgs),
       custom,
     );
+    /* The chat's page, so an edit changes that code rather than a memory of it. */
+    const sbx = sandboxContext(threadId);
+    if (sbx) body.data.systemPrompt += sbx;
 
     /* Two ids from one counter — the turn, and the reply it is
        waiting for — so the reply can still be found in the list while pieces of
@@ -551,6 +568,18 @@ export default function ChatScreen() {
       if (byVoice) feedVoiceReply(voiceId, full);
     }, openMsg?.plan).then((reply) => {
       streamDone();
+      /* A page in the reply goes to the Sandbox; the bubble keeps the words. */
+      const pulled = reply.ok ? extractHtml(reply.text) : { html: null, rest: reply.text };
+      let made: Msg['made'];
+      if (pulled.html) {
+        const r = addFromReply(threadId, pulled.html, text.trim());
+        made = { id: r.item.id, v: r.item.versions.length, title: r.item.title };
+        reply = { ...reply, text: pulled.rest || (r.isNew ? `Made ${r.item.title}.` : `Updated ${r.item.title}.`) };
+        openSbx(r.item.id);
+        if (wide) openPanel('sandbox');
+        notify(r.isNew ? `Made ${r.item.title}` : `${r.item.title} is now v${made.v}`, { undo: r.undo });
+        logEv({ area: 'Chat', text: r.isNew ? `Made in Sandbox: ${r.item.title}` : `Sandbox v${made.v}: ${r.item.title}` });
+      }
       setMsgs((m) => {
         /* One open card per chat. A reply that changed the waiting card moves it
            down to this reply; if the person approved or cancelled the old card
@@ -571,6 +600,7 @@ export default function ChatScreen() {
                 sources: reply.sources,
                 ...(plan ? { plan } : {}),
                 ...(reply.steps.length ? { steps: reply.steps } : {}),
+                ...(made ? { made } : {}),
               }
             : carried && x.id === openMsg!.id && oldNow?.status === 'pending'
               ? emptied
@@ -818,6 +848,7 @@ export default function ChatScreen() {
                       ) : null}
                       {m.role === 'eumae' && !m.streaming ? <MaeSteps steps={m.steps} plan={m.plan} /> : null}
                       {m.plan ? <PlanCard plan={m.plan} notify={notify} onChange={(p) => setPlan(m.id, p)} /> : null}
+                      {m.made ? <SbxRow made={m.made} /> : null}
                     </>
                   )}
                   {/* The two buttons under a message, from wove's two rows: `rowA`

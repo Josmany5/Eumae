@@ -16,6 +16,8 @@ export interface Msg extends ThreadTurn {
   plan?: Plan;
   /** Mae's tool steps for this reply ("Read the overview"). */
   steps?: MaeStep[];
+  /** A page this reply made or changed in the Sandbox (src/sandbox.ts). */
+  made?: { id: string; v: number; title: string };
 }
 
 /** A conversation thread — the unit of chat persistence. */

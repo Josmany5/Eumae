@@ -21,6 +21,9 @@ import { getFiles } from '../../library';
 import type { Ref } from '../../nav';
 import { useFocus, setFocus, getFocus, FOCUS_LABEL, takeAsk, onAsk } from '../../focus';
 import { ItemTab } from './ItemTab';
+import { SandboxView, useSbx } from '../SandboxView';
+import { getOpenSbx, getSbx, latestForThread } from '../../sandbox';
+import { getCurrentThreadId } from '../../threads';
 import { MaeIcon } from './Header';
 import { getGoals, goalPct, goalCount } from '../../goals';
 
@@ -555,6 +558,14 @@ function ContextTab() {
   );
 }
 
+/* What the Sandbox shows: the page last opened, else this chat's newest page. */
+function SandboxTab() {
+  useSbx();
+  const open = getSbx(getOpenSbx()) ?? latestForThread(getCurrentThreadId());
+  if (!open) return <Empty title="Nothing built yet" note="Ask Mae in this chat to make a page, a widget, a calculator or a game. It opens here, and each change becomes a new version." />;
+  return <SandboxView id={open.id} />;
+}
+
 function Empty({ title, note }: { title: string; note: string }) {
   return (
     <div className="oEmpty">
@@ -716,7 +727,7 @@ export default function Office({ tab, open, view, onView, onClose, onToggle }: O
           ) : v === 'context' ? (
             <ContextTab />
           ) : v === 'sandbox' ? (
-            <Empty title="Nothing built yet" note="When Mae makes something in this chat, like a page, a document or a chart, it opens here." />
+            <SandboxTab />
           ) : v === 'build' ? (
             <Empty title="Nothing to build yet" note="Pick something to make in Studio and its steps, preview and Mae's tips show here." />
           ) : v === 'details' ? (

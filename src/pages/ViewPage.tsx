@@ -12,6 +12,7 @@ import { renderMd } from '../md';
 import type { PageProps } from './index';
 import { FileMenu } from '../components/FileMenu';
 import { ProjectChip } from '../components/ItemMenu';
+import { SbxFrame } from '../components/SandboxView';
 
 function fmtEdited(ms: number): string {
   const d = new Date(ms);
@@ -98,6 +99,7 @@ export default function ViewPage({ arg }: PageProps) {
   const f = getFiles().find((x) => x.id === id);
   const html = useMemo(() => renderMd(f?.b || ''), [f?.b]);
   if (!f) return <div className="empty">No file here.</div>;
+  const isPage = (f.k === 'WEB' || f.k === 'WIDGET' || f.k === 'GAME') && /^\s*(<!doctype|<html|<head|<body|<div|<style|<main)/i.test(f.b);
   const fav = getFavs().includes(f.id);
   const meta = `${folderOf(f)} · v${f.v} · edited ${fmtEdited(f.createdAt)} · ${readMins(f.b)} min read`;
   return (
@@ -110,10 +112,15 @@ export default function ViewPage({ arg }: PageProps) {
         </div>
         <FileMenu file={f} showOpen={false} onChange={() => setTick((t) => t + 1)} onDeleted={back} />
       </div>
-      <div style={{ marginTop: 12 }}>
-        <FileHero k={f.k} t={f.t} b={f.b} />
-      </div>
-      {f.b ? (
+      {isPage ? null : (
+        <div style={{ marginTop: 12 }}>
+          <FileHero k={f.k} t={f.t} b={f.b} />
+        </div>
+      )}
+      {isPage ? (
+        /* A page saved from the Sandbox runs, in the same locked frame. */
+        <SbxFrame key={f.v} html={f.b} title={f.t} className="sbxFrame sbxFrameFile" />
+      ) : f.b ? (
         <div className="md" style={{ fontSize: 17, lineHeight: 1.65, marginTop: 12 }}>
           <span dangerouslySetInnerHTML={{ __html: html }} />
         </div>

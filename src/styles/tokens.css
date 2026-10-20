@@ -2147,3 +2147,28 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .tlField > span{ width:42px; flex:none; font-size:15px; color:var(--mut); }
 .tlMove .tlField .sinput{ flex:1; min-width:0; -webkit-appearance:none; appearance:none; min-height:40px; color:var(--tx); text-align:left; }
 .tlMove .tlField .sinput::-webkit-date-and-time-value{ text-align:left; }
+
+/* The Sandbox (src/sandbox.ts): a page Mae made, in a locked frame. The frame
+   is white because a made page brings its own colours. */
+.sbx{ display:flex; flex-direction:column; gap:4px; }
+.sbxHead{ display:flex; align-items:flex-start; gap:10px; }
+.sbxHead .g, .sbxFullHead .g{ flex:1; min-width:0; }
+.sbxTitle{ font-size:18px; font-weight:700; color:var(--tx); overflow-wrap:anywhere; }
+.sbxMeta{ font-size:15px; color:var(--mut); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sbxVers{ display:flex; gap:6px; overflow-x:auto; margin-top:8px; scrollbar-width:none; }
+.sbxVers .chip.on{ background:var(--acsoft); color:var(--ac); font-weight:600; }
+.sbxFrame{ width:100%; height:62vh; min-height:360px; border:0; border-radius:12px; background:#fff; display:block; }
+.sbxFrameFull{ flex:1; height:auto; min-height:0; border-radius:0; }
+.sbxFrameFile{ height:70vh; margin-top:12px; }
+.sbxCode{ margin:0; max-height:62vh; overflow:auto; padding:12px; border-radius:12px; background:var(--card); color:var(--tx); font-size:13px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
+.sbxFull{ position:fixed; inset:0; z-index:200; display:flex; flex-direction:column; background:var(--bg); height:100dvh; padding-bottom:env(safe-area-inset-bottom); }
+.sbxFullHead{ display:flex; align-items:center; gap:12px; padding:max(12px, env(safe-area-inset-top)) 16px 12px; }
+.sbxClose{ width:44px; height:44px; flex:none; border-radius:99px; background:var(--card2); color:var(--tx); display:flex; align-items:center; justify-content:center; }
+/* The one row a reply shows for what it made — flat, like the rest. */
+.sbxRow{ display:flex; align-items:center; gap:10px; width:100%; max-width:420px; margin-top:6px; padding:10px 12px; border-radius:12px; background:var(--card); color:var(--tx); text-align:left; font-size:16px; }
+.sbxRow:hover{ background:var(--card2); }
+.sbxRow:disabled{ opacity:.5; cursor:default; }
+.sbxRowIc{ color:var(--ac); display:flex; }
+.sbxRowT{ flex:1; min-width:0; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sbxRowV{ color:var(--mut); font-size:15px; }
+.sbxRowGo{ color:var(--ac); font-weight:600; font-size:15px; }

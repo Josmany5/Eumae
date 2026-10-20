@@ -257,6 +257,16 @@ export function addFile(t: string, k: LibKind, folder?: string): LibFile {
   return { ...f };
 }
 
+/** A file born with a body: a page saved from the Sandbox. Live, since the
+ *  person chose to keep it. */
+export function addFileWith(t: string, k: LibKind, b: string, folder?: string): LibFile {
+  const f = addFile(t, k, folder);
+  const s = load();
+  const next: LibFile = { ...f, b, st: 'live' };
+  save({ ...s, files: s.files.map((x) => (x.id === f.id ? next : x)) });
+  return { ...next };
+}
+
 export function toggleFav(id: string): boolean {
   const s = load();
   const on = !s.favs.includes(id);

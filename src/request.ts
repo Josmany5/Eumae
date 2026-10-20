@@ -74,7 +74,9 @@ const MODE_CLAUSE: Record<Mode, string> = {
 const VISUAL =
   'If you make something visual for them to use (a page, widget, calculator, game, document ' +
   'layout), return it as one complete html code block: whole, working on its own, and at the ' +
-  'end of the reply. The words above the block are a guide to it — never a second copy.';
+  'end of the reply. The words above the block are a guide to it — never a second copy. It runs in a ' +
+  'locked frame with no internet: inline all CSS and JavaScript, load nothing from outside, and use no ' +
+  'storage, cookies or history changes.';
 
 /** How this one message was asked: the chat's turn, plus the two things that
  *  belong to the message rather than to the chat — what was attached, and what
