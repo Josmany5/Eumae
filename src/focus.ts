@@ -103,3 +103,23 @@ export function onDataChange(f: () => void): () => void {
     dataSubs.delete(f);
   };
 }
+
+/* "Ask Mae" from a row: open the office and send a ready question, so she
+   answers right away instead of waiting on an empty box (his call, Oct 20). */
+let pendingAsk: string | null = null;
+const askers = new Set<() => void>();
+export function askMae(q: string): void {
+  pendingAsk = q;
+  askers.forEach((f) => f());
+}
+export function takeAsk(): string | null {
+  const q = pendingAsk;
+  pendingAsk = null;
+  return q;
+}
+export function onAsk(f: () => void): () => void {
+  askers.add(f);
+  return () => {
+    askers.delete(f);
+  };
+}

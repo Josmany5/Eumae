@@ -3,7 +3,7 @@ import { useNav } from '../../nav';
 import { getTasks, getLists, toggleTask, saveTask, type Task } from '../../tasks';
 import { dayEvents, ymd, mins, type CalEvent } from '../../events';
 import { fmtTime } from '../../quickadd';
-import { setFocus, onDataChange } from '../../focus';
+import { setFocus, onDataChange, askMae } from '../../focus';
 import { TYPE_LABEL } from '../QuickAdd';
 
 /* Console › Timeline widget (Oct 18, his call: Today = Option A as a widget,
@@ -136,6 +136,8 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
           {opts.actions && i.kind === 'task' ? (
             moving && moving.id === i.task.id ? (
               <div className="tlMove">
+                <label className="tlField">
+                  <span>Day</span>
                 <input
                   type="date"
                   className="sinput"
@@ -144,6 +146,9 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
                   min={today}
                   onChange={(e) => setMoving({ ...moving, due: e.target.value })}
                 />
+                </label>
+                <label className="tlField">
+                  <span>Time</span>
                 <input
                   type="time"
                   className="sinput"
@@ -151,6 +156,7 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
                   value={moving.tm}
                   onChange={(e) => setMoving({ ...moving, tm: e.target.value })}
                 />
+                </label>
                 <div className="tlActs">
                   <button className="pri" disabled={!moving.due} onClick={() => move(i.task, moving.due, moving.tm)}>
                     Save
@@ -161,10 +167,15 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
             ) : (
               <div className="tlActs">
                 <button className="pri" onClick={() => done(i.task)}>Done</button>
-                <button onClick={() => setMoving({ id: i.task.id, due: '', tm: i.task.tm ?? '' })}>Move</button>
+                <button onClick={() => setMoving({ id: i.task.id, due: today, tm: i.task.tm ?? '' })}>Move</button>
                 <button
                   onClick={() => {
                     setFocus({ k: 'task', id: i.task.id });
+                    askMae(
+                      opts.over && i.task.due
+                        ? `Help me with "${i.t}". It was due ${fmtDue(i.task.due)} and it's overdue. What should I do?`
+                        : `Help me with "${i.t}". What should I do?`,
+                    );
                     openPanel('mae');
                   }}
                 >

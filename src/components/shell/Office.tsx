@@ -19,7 +19,7 @@ import { getNotes, titleOf, noteText } from '../../notes';
 import { getProjects, linkedIds } from '../../projects';
 import { getFiles } from '../../library';
 import type { Ref } from '../../nav';
-import { useFocus, setFocus, getFocus, FOCUS_LABEL } from '../../focus';
+import { useFocus, setFocus, getFocus, FOCUS_LABEL, takeAsk, onAsk } from '../../focus';
 import { ItemTab } from './ItemTab';
 import { MaeIcon } from './Header';
 import { getGoals, goalPct, goalCount } from '../../goals';
@@ -248,10 +248,10 @@ function MaeTab({ tab }: { tab: TabId }) {
   }, [text]);
   const stamps = timeLabels(list.map((m) => m.ts));
 
-  const send = () => {
-    const q = text.trim();
+  const send = (preset?: string) => {
+    const q = (typeof preset === 'string' ? preset : text).trim();
     if (!q || busy) return;
-    setText('');
+    if (typeof preset !== 'string') setText('');
     const base = thread ?? { ...createThread(), title: officeName(tab), from: officeName(tab) };
     const history = base.messages;
     const body = toApiBody(
@@ -295,6 +295,18 @@ function MaeTab({ tab }: { tab: TabId }) {
       if (!reply.ok) logEv({ area: AREA[tab], text: `Mae couldn't answer: ${reply.error}`, status: 'bad' });
     });
   };
+
+  /* A row's "Ask Mae" left a question: send it as soon as this tab is up. */
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  useEffect(() => {
+    const go = () => {
+      const q = takeAsk();
+      if (q) window.setTimeout(() => sendRef.current(q), 0);
+    };
+    go();
+    return onAsk(go);
+  }, []);
 
   /** A plan card changed (approved, cancelled, undone): keep it on its message. */
   const setPlan = (id: number, plan: Plan) => {

@@ -2142,3 +2142,8 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .tlMove .tlActs{ margin-top:0; width:100%; }
 /* Hover tints only where hover exists, so a tapped button doesn't stay lit on iPhone. */
 @media (hover:none){ .dashSlot .imBtn.dashEdit:hover{ background:transparent; } }
+/* Move picker: labelled fields that always show their value (iOS hides an empty date input). */
+.tlField{ display:flex; align-items:center; gap:10px; flex:1 1 100%; }
+.tlField > span{ width:42px; flex:none; font-size:15px; color:var(--mut); }
+.tlMove .tlField .sinput{ flex:1; min-width:0; -webkit-appearance:none; appearance:none; min-height:40px; color:var(--tx); text-align:left; }
+.tlMove .tlField .sinput::-webkit-date-and-time-value{ text-align:left; }
