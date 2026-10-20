@@ -19,6 +19,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useNav } from '../nav';
 import { getProjects, projectOf, linkItem, unlinkItem, type LinkKind } from '../projects';
+import { getGoals, goalOf, linkToGoal, unlinkFromGoal, isActiveGoal, type GoalLinkKind } from '../goals';
 
 export interface MenuEntry {
   label: string;
@@ -52,7 +53,7 @@ export function ItemMenu(props: ItemMenuProps) {
   const { notify } = useNav();
   const btn = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const [dialog, setDialog] = useState<'rename' | 'project' | null>(null);
+  const [dialog, setDialog] = useState<'rename' | 'project' | 'goal' | null>(null);
 
   const linked = props.link ? projectOf(props.link.k, props.link.id) : undefined;
   const entries: MenuEntry[] = [];
@@ -75,6 +76,30 @@ export function ItemMenu(props: ItemMenuProps) {
           notify(`Unlinked from ${from.n}.`, {
             undo: () => {
               linkItem(from.id, k, id);
+              props.onChange?.();
+            },
+          });
+        },
+      });
+    }
+  }
+  /* Goal membership (his call, Oct 19): tasks, events and notes can serve a
+     goal, separate from their project. */
+  const gk = props.link && (props.link.k === 'task' || props.link.k === 'event' || props.link.k === 'note') ? (props.link.k as GoalLinkKind) : null;
+  const inGoal = gk && props.link ? goalOf(gk, props.link.id) : undefined;
+  if (gk && props.link) {
+    entries.push({ label: inGoal ? 'Move to goal' : 'Add to goal', onClick: () => setDialog('goal') });
+    if (inGoal) {
+      const id = props.link.id;
+      const from = inGoal;
+      entries.push({
+        label: `Remove from ${from.t}`,
+        onClick: () => {
+          unlinkFromGoal(gk, id);
+          props.onChange?.();
+          notify(`Removed from ${from.t}.`, {
+            undo: () => {
+              linkToGoal(from.id, gk, id);
               props.onChange?.();
             },
           });
@@ -140,6 +165,32 @@ export function ItemMenu(props: ItemMenuProps) {
               undo: () => {
                 if (before) linkItem(before, k, id);
                 else unlinkItem(k, id);
+                props.onChange?.();
+              },
+            });
+          }}
+        />
+      ) : null}
+      {dialog === 'goal' && gk && props.link ? (
+        <PickDialog
+          title={inGoal ? 'Move to goal' : 'Add to goal'}
+          empty="No goals yet. Make one in Goals."
+          rows={getGoals()
+            .filter((g) => isActiveGoal(g) || g.id === inGoal?.id)
+            .map((g) => ({ id: g.id, label: g.t, sub: g.id === inGoal?.id ? 'In this one now' : g.d }))}
+          onCancel={() => setDialog(null)}
+          onPick={(gid) => {
+            setDialog(null);
+            const id = props.link!.id;
+            const before = inGoal?.id;
+            if (gid === before) return;
+            linkToGoal(gid, gk, id);
+            props.onChange?.();
+            const to = getGoals().find((g) => g.id === gid);
+            notify(`${before ? 'Moved' : 'Added'} to ${to?.t ?? 'goal'}.`, {
+              undo: () => {
+                if (before) linkToGoal(before, gk, id);
+                else unlinkFromGoal(gk, id);
                 props.onChange?.();
               },
             });

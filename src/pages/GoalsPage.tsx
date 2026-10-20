@@ -29,6 +29,7 @@ import { nextMilestone } from '../milestones';
 import { fmtShort } from '../quickadd';
 import { projectOf } from '../projects';
 import { setFocus, onDataChange, dataChanged } from '../focus';
+import { useGoalAdd } from '../components/GoalAdd';
 import type { PageProps } from './index';
 
 type Mode = 'active' | 'project' | 'done' | 'letgo';
@@ -233,6 +234,7 @@ function GoalRow({ g, onOpen, onEdit, onDelete, refresh }: { g: Goal; onOpen: ()
       },
     });
   };
+  const goalAdd = useGoalAdd(g, refresh);
   const sub = [count, pace === 'behind' ? 'Behind pace' : pace === 'on' ? 'On track' : ''].filter(Boolean);
   return (
     <div className={'frow top tkRow gRow' + (closed ? ' past' : '')}>
@@ -275,12 +277,13 @@ function GoalRow({ g, onOpen, onEdit, onDelete, refresh }: { g: Goal; onOpen: ()
             ? [{ label: 'Bring back', onClick: () => setSt('in-progress', 'Goal is active again.') }]
             : closed
               ? undefined
-              : [{ label: 'Let go', onClick: () => setSt('let-go', 'Goal let go. It stays in your record.') }]
+              : [...goalAdd.entries, { label: 'Let go', onClick: () => setSt('let-go', 'Goal let go. It stays in your record.') }]
         }
         link={{ k: 'goal', id: g.id }}
         onChange={refresh}
         onDelete={onDelete}
       />
+      {goalAdd.dialogs}
     </div>
   );
 }

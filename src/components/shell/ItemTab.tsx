@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNav, type PanelView } from '../../nav';
 import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists } from '../../tasks';
 import { projectOf, linkedIds } from '../../projects';
-import { getGoals, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct, goalCount, goalPace, isActiveGoal, GOAL_STATUS_LABEL, goalLinkedIds, goalOf, linkToGoal, unlinkFromGoal, type Goal, type GoalLinkKind } from '../../goals';
+import { getGoals, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct, goalCount, goalPace, isActiveGoal, GOAL_STATUS_LABEL, goalLinkedIds, goalOf, linkToGoal, unlinkFromGoal, type Goal } from '../../goals';
 import { getNote, titleOf } from '../../notes';
-import { rowsOf, AddDialog, createOfKind, KIND_LABEL } from '../../pages/ProjectPage';
-import { PickDialog } from '../ItemMenu';
+import { useGoalAdd } from '../GoalAdd';
 import { sortMilestones } from '../../milestones';
 import { dueLabel } from '../../pages/GoalsPage';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
@@ -255,11 +254,10 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
 function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   const { notify } = useNav();
   const [, setTick] = useState(0);
-  const [adding, setAdding] = useState<GoalLinkKind | null>(null);
-  const [linking, setLinking] = useState<GoalLinkKind | null>(null);
   useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const refresh = () => setTick((n) => n + 1);
   const g = getGoals().find((x) => x.id === focus.id);
+  const goalAdd = useGoalAdd(g, refresh);
   if (!g) {
     return (
       <div className="oEmpty">
@@ -343,26 +341,6 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
           <span className={'ft' + (cls ? ' ' + cls : '')}>{v}</span>
         </div>
       ))}
-      {ms.length ? (
-        <>
-          <div className="flbl">Milestones</div>
-          {ms.map((m, i) => (
-            <div key={m.id} className={'frow itStep' + (i === firstOpen ? ' cur' : '')}>
-              <button
-                className={'itNum' + (m.done ? ' on' : '')}
-                aria-label={m.done ? `Reopen ${m.t}` : `Done: ${m.t}`}
-                onClick={() =>
-                  put({ ...g, ms: (g.ms ?? []).map((x) => (x.id === m.id ? { ...x, done: !x.done } : x)) }, m.done ? 'Milestone reopened.' : 'Milestone done.')
-                }
-              >
-                {m.done ? '✓' : i + 1}
-              </button>
-              <span className="ft">{m.t}</span>
-              {m.d ? <span className="fmeta">{fmtShort(m.d)}</span> : null}
-            </div>
-          ))}
-        </>
-      ) : null}
       <div className="flbl gOwnHd">
         <span>
           Steps <span className="fmeta">{open.length + evs.length + notes.length}</span>
@@ -371,7 +349,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
           name="this goal"
           className="pjAddBtn"
           buttonLabel="+ Add"
-          extra={(['task', 'event', 'note'] as GoalLinkKind[]).map((k) => ({ label: KIND_LABEL[k], onClick: () => setAdding(k) }))}
+          extra={goalAdd.entries}
         />
       </div>
       {!open.length && !evs.length && !notes.length ? <p className="fmeta itSub">No tasks, events or notes under this goal yet.</p> : null}
@@ -407,53 +385,26 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
           />
         </div>
       ))}
-      {adding ? (
-        <AddDialog
-          kind={adding}
-          projectName={g.t}
-          onCancel={() => setAdding(null)}
-          onCreate={(text) => {
-            const k = adding;
-            setAdding(null);
-            const id = createOfKind(k, text);
-            if (!id) return;
-            linkToGoal(g.id, k, id);
-            refresh();
-            dataChanged();
-            notify(`${KIND_LABEL[k]} added to ${g.t}.`);
-          }}
-          onLink={() => {
-            setLinking(adding);
-            setAdding(null);
-          }}
-        />
-      ) : null}
-      {linking ? (
-        <PickDialog
-          title={`Link a ${KIND_LABEL[linking].toLowerCase()}`}
-          empty="Nothing to link yet."
-          rows={rowsOf(linking)
-            .filter((r) => goalOf(linking, r.id)?.id !== g.id)
-            .map((r) => {
-              const other = goalOf(linking, r.id);
-              return { id: r.id, label: r.label, sub: [r.sub, other ? 'Now under ' + other.t : ''].filter(Boolean).join(' · ') };
-            })}
-          onCancel={() => setLinking(null)}
-          onPick={(rid) => {
-            const k = linking;
-            setLinking(null);
-            linkToGoal(g.id, k, rid);
-            refresh();
-            dataChanged();
-            notify(`Linked to ${g.t}.`, {
-              undo: () => {
-                unlinkFromGoal(k, rid);
-                refresh();
-                dataChanged();
-              },
-            });
-          }}
-        />
+      {goalAdd.dialogs}
+      {ms.length ? (
+        <>
+          <div className="flbl">Milestones</div>
+          {ms.map((m, i) => (
+            <div key={m.id} className={'frow itStep' + (i === firstOpen ? ' cur' : '')}>
+              <button
+                className={'itNum' + (m.done ? ' on' : '')}
+                aria-label={m.done ? `Reopen ${m.t}` : `Done: ${m.t}`}
+                onClick={() =>
+                  put({ ...g, ms: (g.ms ?? []).map((x) => (x.id === m.id ? { ...x, done: !x.done } : x)) }, m.done ? 'Milestone reopened.' : 'Milestone done.')
+                }
+              >
+                {m.done ? '✓' : i + 1}
+              </button>
+              <span className="ft">{m.t}</span>
+              {m.d ? <span className="fmeta">{fmtShort(m.d)}</span> : null}
+            </div>
+          ))}
+        </>
       ) : null}
       {doneTasks.length || ms.some((m) => m.done) ? (
         <>
@@ -478,7 +429,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         <ItemMenu
           name={g.t}
           edit={edit}
-          extra={
+          extra={[...goalAdd.entries, ...(
             g.st === 'let-go'
               ? [{ label: 'Bring back', onClick: () => put({ ...g, st: 'in-progress' }, 'Goal is active again.') }]
               : g.st === 'completed'
@@ -487,7 +438,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
                     { label: 'Mark done', onClick: () => put({ ...g, st: 'completed' }, 'Goal done. Nice work.') },
                     { label: 'Let go', onClick: () => put({ ...g, st: 'let-go' }, 'Goal let go. It stays in your record.') },
                   ]
-          }
+          )]}
           link={{ k: 'goal', id: g.id }}
           onChange={refresh}
           onDelete={() => {
