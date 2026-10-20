@@ -32,6 +32,10 @@ export interface PagedDashOps {
 
 type Slot = { page: number; idx: number };
 
+/* Touch screens: no native drag. On iPhone a draggable card grabs the touch,
+   so the page can't scroll while you look for where the widget goes. */
+const COARSE = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
+
 export function PagedDash({
   pages,
   names,
@@ -308,7 +312,7 @@ export function PagedDash({
                     <div
                       key={w}
                       className={'pdCell' + (isPicked ? ' picked' : '') + (isOver ? ' over' : '')}
-                      draggable={editing}
+                      draggable={editing && !COARSE}
                       onDragStart={(e) => {
                         e.dataTransfer.effectAllowed = 'move';
                         e.dataTransfer.setData('text/plain', w);
@@ -357,6 +361,17 @@ export function PagedDash({
                 })}
               </div>
               {editing && widgets.length === 0 ? <div className="pdEmpty">Empty page. Drop or add widgets here.</div> : null}
+              {editing && picked && widgets.length > 0 ? (
+                <button
+                  className="pdEnd"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    moveTo({ page: pi, idx: picked.page === pi ? widgets.length - 1 : widgets.length });
+                  }}
+                >
+                  Put it at the bottom
+                </button>
+              ) : null}
             </div>
           ))}
         </div>
