@@ -335,7 +335,7 @@ function MaeTab({ tab }: { tab: TabId }) {
               <div className="oMae1">
                 <div className="n">Mae</div>
                 {m.text || <span className="fsub">Thinking…</span>}
-                {!m.streaming ? <MaeSteps steps={m.steps} /> : null}
+                {!m.streaming ? <MaeSteps steps={m.steps} plan={m.plan} /> : null}
                 {m.plan ? <PlanCard plan={m.plan} notify={notify} area={AREA[tab]} onChange={(p) => setPlan(m.id, p)} /> : null}
               </div>
             )}

@@ -816,7 +816,7 @@ export default function ChatScreen() {
                           ) : null}
                         </div>
                       ) : null}
-                      {m.role === 'eumae' && !m.streaming ? <MaeSteps steps={m.steps} /> : null}
+                      {m.role === 'eumae' && !m.streaming ? <MaeSteps steps={m.steps} plan={m.plan} /> : null}
                       {m.plan ? <PlanCard plan={m.plan} notify={notify} onChange={(p) => setPlan(m.id, p)} /> : null}
                     </>
                   )}
