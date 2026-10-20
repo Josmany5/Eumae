@@ -361,17 +361,6 @@ export function PagedDash({
                 })}
               </div>
               {editing && widgets.length === 0 ? <div className="pdEmpty">Empty page. Drop or add widgets here.</div> : null}
-              {editing && picked && widgets.length > 0 ? (
-                <button
-                  className="pdEnd"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    moveTo({ page: pi, idx: picked.page === pi ? widgets.length - 1 : widgets.length });
-                  }}
-                >
-                  Put it at the bottom
-                </button>
-              ) : null}
             </div>
           ))}
         </div>

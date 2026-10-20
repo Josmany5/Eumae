@@ -2130,5 +2130,5 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .dashSlot .imBtn.dashEdit{ min-width:0; padding:6px 10px; margin-right:-10px; border-radius:8px; font-size:16px; background:transparent; color:var(--ac); }
 .dashSlot .imBtn.dashEdit:hover{ background:var(--acsoft); }
 .dashSlot .dashEdit.pri{ min-width:0; padding:6px 14px; border-radius:999px; font-size:15px; }
-.pdEnd{ display:block; width:100%; margin:10px 0 4px; padding:14px; border-radius:14px; border:1.5px dashed var(--ac);
-  background:var(--acsoft); color:var(--ac); font:inherit; font-size:15px; font-weight:600; }
+/* Rearranging: a long press picks the widget up, never selects its text or opens iOS's callout. */
+.ed8 .pdCell, .ed8 .pdCell *{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
