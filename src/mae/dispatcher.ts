@@ -15,6 +15,7 @@
  *  Nothing here throws to the caller. */
 
 import { check, toGemini } from './schema';
+import { resolveWhen } from './when';
 import { REGISTRY, getAction, type Action, type PlanLine, type Result, type Opened, type ItemKind } from './registry';
 import { snapshotTasks, restoreTasks } from '../tasks';
 import { snapshotEvents, restoreEvents } from '../events';
@@ -142,7 +143,7 @@ export function dispatch(calls: readonly ToolCall[], plan: Plan): CallOutcome[] 
   const out: CallOutcome[] = [];
   for (const call of calls) {
     const name = typeof call?.name === 'string' ? call.name : String(call?.name);
-    const args = call?.args && typeof call.args === 'object' && !Array.isArray(call.args) ? call.args : {};
+    let args = call?.args && typeof call.args === 'object' && !Array.isArray(call.args) ? call.args : {};
     if (name === DROP_LINES) {
       if (plan.status !== 'pending' || !plan.steps.length) {
         out.push(refuse(name, 'There is no card waiting for approval to change.'));
@@ -167,6 +168,14 @@ export function dispatch(calls: readonly ToolCall[], plan: Plan): CallOutcome[] 
       out.push(refuse(name, `There is no tool called "${name}". Use only the tools you were given.`));
       continue;
     }
+    /* Dates and times in the person's words become real values here, by
+       code (when.ts); Mae never does calendar maths. */
+    const when = resolveWhen(action.params, args);
+    if (when.error) {
+      out.push(refuse(name, `Nothing was done. ${when.error} Then call again with what they say.`));
+      continue;
+    }
+    args = when.value as typeof args;
     const formErr = check(action.params, args);
     if (formErr) {
       out.push(refuse(name, `The ${name} call was malformed: ${formErr} Nothing was done; fix it and call again.`));
@@ -222,7 +231,7 @@ export function dispatch(calls: readonly ToolCall[], plan: Plan): CallOutcome[] 
         step: plan.steps.length,
         will_do: lines.map((l) => `${l.verb} ${l.kind.toLowerCase()}: ${l.text}${l.detail ? ` (${l.detail})` : ''}`),
         card_now: cardLines(plan).map((l, i) => `${i + 1}. ${l.text}`),
-        note: 'Not done yet. It is on the plan card with everything else listed in card_now. Tell the person briefly what you added and ask them to approve when ready. Do not say it is done.',
+        note: 'Not done yet. It is on the plan card with everything else listed in card_now. Tell the person briefly what you added and ask them to approve when ready. Do not say it is done. Any day or time in will_do was worked out by the app from their words: repeat it as written there.',
       },
       label: `Planned: ${lines.length === 1 ? `${lines[0].verb.toLowerCase()} ${lines[0].kind.toLowerCase()}` : `${lines.length} changes`}`,
     });

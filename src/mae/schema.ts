@@ -99,8 +99,8 @@ export function toGemini(p: Param): Record<string, unknown> {
     case 'string':
       out.type = 'STRING';
       if (p.enum) out.enum = [...p.enum];
-      if (p.format === 'date') note.push('Format YYYY-MM-DD.');
-      if (p.format === 'time') note.push('Format HH:MM, 24-hour.');
+      if (p.format === 'date') note.push("A day in the person's own words ('tomorrow', 'friday', 'in 3 weeks', 'Nov 14', 'the second Friday of November') or YYYY-MM-DD. The app works out the date; never count days yourself.");
+      if (p.format === 'time') note.push("A time like '7 pm', '7:30 am', 'noon', or HH:MM on a 24-hour clock.");
       break;
     case 'number':
       out.type = p.integer ? 'INTEGER' : 'NUMBER';

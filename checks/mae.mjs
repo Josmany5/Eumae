@@ -26,7 +26,7 @@ globalThis.localStorage = {
 
 const out = buildSync({
   stdin: {
-    contents: `export * from './src/mae/dispatcher'; export { REGISTRY, humanTimes } from './src/mae/registry'; export { check, toGemini } from './src/mae/schema';
+    contents: `export * from './src/mae/dispatcher'; export { REGISTRY, humanTimes } from './src/mae/registry'; export { resolveDate, resolveTime } from './src/mae/when'; export { check, toGemini } from './src/mae/schema';
       export { getTasks, getTask } from './src/tasks'; export { getEvents, saveEvent, ymd } from './src/events'; export { getGoals, goalOf, goalLinkedIds } from './src/goals';
       export { getProjects, linkedIds } from './src/projects'; export { getNotes, titleOf } from './src/notes'; export { parseEvent } from './src/chat';`,
     resolveDir: new URL('..', import.meta.url).pathname,
@@ -233,6 +233,32 @@ const stage = (calls) => {
   check('guess-label', a.guess === 'due date, how long' && !b.guess, JSON.stringify(a));
   check('guess-not-saved', M.executePlan(plan).status === 'done' && !('guessed' in M.getTasks().find((t) => t.t === 'Draft chapter one')));
   check('human-times', M.humanTimes('Dinner at 19:00, gym 07:30, call at 10:00 AM') === 'Dinner at 7 pm, gym 7:30 am, call at 10:00 AM');
+}
+
+// Dates in the person's words, worked out by code. Monday Oct 19, 2026.
+{
+  const now = new Date(2026, 9, 19, 21, 53);
+  const D = (s) => M.resolveDate(s, now);
+  const cases = {
+    tomorrow: '2026-10-20', today: '2026-10-19', 'in 3 weeks': '2026-11-09', 'three weeks from now': '2026-11-09', 'in a week': '2026-10-26',
+    friday: '2026-10-23', 'this friday': '2026-10-23', monday: '2026-10-26', 'next monday': '2026-10-26', 'friday next week': '2026-10-30',
+    'next week': '2026-10-26', 'end of the month': '2026-10-31', 'next month': '2026-11-01', 'this weekend': '2026-10-24',
+    'Nov 14': '2026-11-14', 'november 14th': '2026-11-14', '14 November': '2026-11-14', 'the 25th': '2026-10-25', 'the 5th': '2026-11-05',
+    'the second Friday of November': '2026-11-13', 'last monday of next month': '2026-11-30', 'Jan 3': '2027-01-03', '10/30': '2026-10-30',
+    'in 2 months': '2026-12-19', '2026-12-01': '2026-12-01',
+  };
+  const bad = Object.entries(cases).filter(([k, v]) => { const r = D(k); return !r.ok || r.value !== v; }).map(([k, v]) => `${k}→${JSON.stringify(D(k))} want ${v}`);
+  check('dates-resolve', !bad.length, bad.join('; '));
+  const nf = D('next friday');
+  check('dates-ambiguous-asks', !nf.ok && /Oct 23/.test(nf.why) && /Oct 30/.test(nf.why), JSON.stringify(nf));
+  check('dates-unknown-asks', !D('sometime soonish').ok);
+  const T = M.resolveTime;
+  check('times-resolve', T('7 pm').value === '19:00' && T('7:30am').value === '07:30' && T('noon').value === '12:00' && T('12 am').value === '00:00' && T('8 in the evening').value === '20:00' && T('19:15').value === '19:15');
+  check('times-ambiguous-asks', !T('7').ok && !T('7:30').ok);
+  const { res, plan } = stage([{ name: 'create_tasks', args: { tasks: [{ title: 'Call the physical therapist', due: 'tomorrow', time: '3 pm' }] } }]);
+  const want = M.ymd(new Date(Date.now() + 86400000));
+  check('stage-resolves-phrase', res[0].ok && plan.steps[0].args.tasks[0].due === want && plan.steps[0].args.tasks[0].time === '15:00', JSON.stringify(res[0]));
+  check('stage-refuses-ambiguous', !stage([{ name: 'create_tasks', args: { tasks: [{ title: 'x', time: '7' }] } }]).res[0].ok);
 }
 
 if (failures.length) {
