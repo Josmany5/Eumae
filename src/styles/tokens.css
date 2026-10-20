@@ -2122,3 +2122,6 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .pdHint{ color:var(--mut); }
 .pdBar{ justify-content:space-between; }
 .pdBar .imBtn.pdLink{ color:var(--ac); font-weight:600; width:auto; height:auto; padding:8px 12px; margin-left:-12px; font-size:16px; }
+.dashSlot{ flex:none; margin-left:auto; align-self:center; display:flex; }
+.dashSlot .imBtn.dashEdit{ width:auto; height:auto; min-width:84px; padding:11px 20px; border-radius:12px; font-size:15px; font-weight:600;
+  background:var(--card2); color:var(--tx); justify-content:center; }

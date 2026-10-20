@@ -37,6 +37,7 @@ export default function ConsoleScreen() {
   const [tasks, setTasks] = useState<Task[]>(() => getTasks());
   const [dash, setDash] = useState<Dashboard>(() => getDashboard());
   const [editing, setEditing] = useState(false);
+  const [headSlot, setHeadSlot] = useState<HTMLDivElement | null>(null);
   const [briefOpen, setBriefOpen] = useState(false);
   const holdTimer = useRef<number | null>(null);
 
@@ -97,11 +98,9 @@ export default function ConsoleScreen() {
       <div className="row dashHead">
         <div className="g">
           <div className="screenT dupT">Console</div>
-          <div className="screenS">{editing ? 'Editing this dashboard.' : `${today} · ${openCount} left today`}</div>
+          <div className="screenS">{editing ? 'Rearranging. Hold a widget, then tap where it goes.' : `${today} · ${openCount} left today`}</div>
         </div>
-        <button className={'dashEdit' + (editing ? ' pri' : '')} onClick={() => setEditing((v) => !v)}>
-          {editing ? 'Done' : 'Edit'}
-        </button>
+        <div className="dashSlot" ref={setHeadSlot} />
       </div>
       <PagedDash
         pages={dash.pages}
@@ -109,6 +108,8 @@ export default function ConsoleScreen() {
         allIds={WIDGET_IDS}
         titles={WIDGET_TITLES}
         editing={editing}
+        headSlot={headSlot}
+        onRearrange={setEditing}
         notify={notify}
         onChange={refresh}
         ops={{

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { NotifyOpts } from '../../nav';
 import { PageNav, usePageKeys } from './PageNav';
 import { ItemMenu } from '../ItemMenu';
@@ -41,6 +42,8 @@ export function PagedDash({
   onChange,
   notify,
   renderCard,
+  headSlot,
+  onRearrange,
 }: {
   pages: string[][];
   names: string[];
@@ -51,6 +54,10 @@ export function PagedDash({
   onChange: () => void;
   notify: (m: string, opts?: NotifyOpts) => void;
   renderCard: (id: string, page: number, idx: number, pageLen: number) => ReactNode;
+  /** The screen header's spot for the Edit / Done button. */
+  headSlot?: HTMLElement | null;
+  /** Turn the wiggle (rearrange) mode on or off. */
+  onRearrange?: (on: boolean) => void;
 }) {
   const [page, setPage] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
@@ -187,60 +194,64 @@ export function PagedDash({
     );
   };
 
+  /* Edit is one menu (his call, Oct 19): Rearrange turns on the wiggle,
+     the rest act on the page you're on. While rearranging it reads Done. */
+  const removeCur = () => {
+    /* No question: the page goes, Undo brings it back with its widgets. */
+    const snap = ops.snapshot();
+    const was = cur;
+    ops.removePage(cur);
+    onChange();
+    setPage(Math.max(0, cur - 1));
+    notify('Page removed.', {
+      undo: () => {
+        ops.restore(snap);
+        onChange();
+        setPage(was);
+      },
+    });
+  };
+  const headBtn = editing ? (
+    <button className="dashEdit pri" onClick={() => onRearrange?.(false)}>
+      Done
+    </button>
+  ) : (
+    <ItemMenu
+      name={names[cur] ?? 'this page'}
+      buttonLabel="Edit"
+      className="dashEdit"
+      rename={{ value: names[cur] ?? '', title: 'Rename page', save: (v) => { ops.rename(cur, v); onChange(); } }}
+      extra={[
+        { label: 'Rearrange widgets', onClick: () => onRearrange?.(true) },
+        { label: 'Add widget', onClick: () => setAddOpen(true) },
+        {
+          label: 'New page',
+          onClick: () => {
+            const i = ops.addPage();
+            onChange();
+            setDir(1);
+            setPage(i);
+            notify('New page added.');
+          },
+        },
+      ]}
+      deleteLabel="Remove page"
+      onDelete={n > 1 ? removeCur : undefined}
+      onChange={onChange}
+    />
+  );
+
   return (
     <div className={'pdash' + (picked ? ' picking' : '')}>
-      {editing ? (
+      {headSlot ? createPortal(headBtn, headSlot) : null}
+      {addOpen ? (
         <div className="pdTools">
           <div className="pdBar">
-            {/* One plain door: "Edit page" opens a menu that says what you can do. */}
-            <ItemMenu
-              name={names[cur] ?? 'this page'}
-              buttonLabel={`Edit page${names[cur] ? ': ' + names[cur] : ''}`}
-              className="pdLink"
-              rename={{ value: names[cur] ?? '', title: 'Rename page', save: (v) => { ops.rename(cur, v); onChange(); } }}
-              extra={[
-                { label: 'Add widget', onClick: () => setAddOpen(true) },
-                {
-                  label: 'New page',
-                  onClick: () => {
-                    const i = ops.addPage();
-                    onChange();
-                    setDir(1);
-                    setPage(i);
-                    notify('New page added.');
-                  },
-                },
-              ]}
-              deleteLabel="Remove page"
-              onDelete={
-                n > 1
-                  ? () => {
-                      /* No question: the page goes, Undo brings it back with
-                         its widgets where they were. */
-                      const snap = ops.snapshot();
-                      const was = cur;
-                      ops.removePage(cur);
-                      onChange();
-                      setPage(Math.max(0, cur - 1));
-                      notify('Page removed.', {
-                        undo: () => {
-                          ops.restore(snap);
-                          onChange();
-                          setPage(was);
-                        },
-                      });
-                    }
-                  : undefined
-              }
-              onChange={onChange}
-            />
-            {addOpen ? (
-              <button className="pdLink" onClick={() => setAddOpen(false)}>
-                Close
-              </button>
-            ) : null}
+            <b className="s">Add to {names[cur] ?? 'this page'}</b>
+            <button className="pdLink" onClick={() => setAddOpen(false)}>
+              Close
+            </button>
           </div>
-          {addOpen ? (
             <div className="pdAdd">
               {addable.length ? (
                 addable.map((id) => {
@@ -268,8 +279,6 @@ export function PagedDash({
                 <div className="s m">Every widget is already on this page.</div>
               )}
             </div>
-          ) : null}
-          <div className="xs m pdHint">Hold a widget to move it.</div>
         </div>
       ) : null}
       <PageNav names={names} page={cur} onJump={jump} />

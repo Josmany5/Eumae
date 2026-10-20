@@ -36,6 +36,7 @@ export default function GuildScreen() {
   const { notify, go, goTab } = useNav();
   const [dash, setDash] = useState<GuildDashboard>(() => getGuildDashboard());
   const [editing, setEditing] = useState(false);
+  const [headSlot, setHeadSlot] = useState<HTMLDivElement | null>(null);
   const holdTimer = useRef<number | null>(null);
 
   const refresh = () => {
@@ -80,11 +81,9 @@ export default function GuildScreen() {
       <div className="row dashHead">
         <div className="g">
           <div className="screenT dupT">Guild</div>
-          <div className="screenS">{editing ? 'Editing this dashboard.' : 'People, requests, shared work. ' + unread + ' unread'}</div>
+          <div className="screenS">{editing ? 'Rearranging. Hold a widget, then tap where it goes.' : 'People, requests, shared work. ' + unread + ' unread'}</div>
         </div>
-        <button className={'dashEdit' + (editing ? ' pri' : '')} onClick={() => setEditing((v) => !v)}>
-          {editing ? 'Done' : 'Edit'}
-        </button>
+        <div className="dashSlot" ref={setHeadSlot} />
       </div>
       <PagedDash
         pages={dash.pages}
@@ -92,6 +91,8 @@ export default function GuildScreen() {
         allIds={GUILD_WIDGET_IDS}
         titles={GUILD_WIDGET_TITLES}
         editing={editing}
+        headSlot={headSlot}
+        onRearrange={setEditing}
         notify={notify}
         onChange={refresh}
         ops={{
