@@ -76,7 +76,7 @@ export function MaeSteps({ steps, plan }: { steps?: MaeStep[]; plan?: Plan }) {
 }
 
 export function PlanCard({ plan, onChange, notify, area = 'Chat' }: { plan: Plan; onChange: (p: Plan) => void; notify: Notify; area?: 'Chat' | 'Console' | 'Studio' | 'Library' | 'Classroom' | 'Guild' }) {
-  const { go } = useNav();
+  const { go, goTab } = useNav();
   const lines = plan.steps.flatMap((s) => s.lines.map((l) => ({ ...l, danger: s.danger, fresh: !!s.fresh })));
   /* Mark what the latest message added, once older lines sit beside it. */
   const mixed = lines.some((l) => l.fresh) && lines.some((l) => !l.fresh);
@@ -145,16 +145,18 @@ export function PlanCard({ plan, onChange, notify, area = 'Chat' }: { plan: Plan
     for (const t of made) byKind.set(t.kind, [...(byKind.get(t.kind) ?? []).filter((x) => x.id !== t.id), t]);
     const line = madeLine(plan);
     const page: Record<string, string> = { task: 'tasks', event: 'cal', goal: 'goals', project: 'projects', note: 'notes' };
+    /* View takes you to the real page in Console (his call, Oct 19), not a
+       copy inside Chat. One item: its own page for a project or note; for a
+       task, event or goal, its Console page, and on desktop its office tab
+       opens beside it. */
     const view = (k: ItemKind, items: typeof made) => {
-      if (items.length === 1) {
-        const it = items[0];
-        if (k === 'project') return go('project', it.id);
-        if (k === 'note') return go('note', it.id);
-        go(page[k]);
-        setFocus({ k: k as 'task' | 'event' | 'goal', id: it.id });
-        return;
-      }
+      goTab('console');
+      const one = items.length === 1 ? items[0] : undefined;
+      if (one && k === 'project') return go('project', one.id);
+      if (one && k === 'note') return go('note', one.id);
       go(page[k]);
+      const wide = typeof window !== 'undefined' && window.matchMedia?.('(min-width: 900px)').matches;
+      if (one && wide) setFocus({ k: k as 'task' | 'event' | 'goal', id: one.id });
     };
     const groups = [...byKind.entries()].filter(([k]) => page[k]).sort((a, b) => KIND_ORDER.indexOf(a[0]) - KIND_ORDER.indexOf(b[0]));
     return (
