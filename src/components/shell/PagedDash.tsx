@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { NotifyOpts } from '../../nav';
 import { PageNav, PageNameField, usePageKeys } from './PageNav';
 
@@ -74,9 +74,36 @@ export function PagedDash({
   };
   usePageKeys(stageRef, cur, n, jump, !picked);
 
+  /* Entering or leaving edit (a long press) re-lays out the page, and the
+     phone swipe row could snap back to page 1. Hold the page you were on:
+     put the scroll back and ignore the scroll events the relayout fires. */
+  const pageRef = useRef(cur);
+  pageRef.current = cur;
+  const holdUntil = useRef(0);
+  useLayoutEffect(() => {
+    const keep = pageRef.current;
+    holdUntil.current = Date.now() + 400;
+    const put = () => {
+      const el = swipeRef.current;
+      if (el && el.clientWidth) el.scrollLeft = keep * el.clientWidth;
+    };
+    put();
+    setPage(keep);
+    const r1 = requestAnimationFrame(() => {
+      put();
+      requestAnimationFrame(put);
+    });
+    const t = window.setTimeout(put, 250);
+    return () => {
+      cancelAnimationFrame(r1);
+      window.clearTimeout(t);
+    };
+  }, [editing]);
+
   const onSwipeScroll = () => {
     const el = swipeRef.current;
     if (!el) return;
+    if (Date.now() < holdUntil.current) return;
     const i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
     if (i !== page && i >= 0 && i < n) setPage(i);
   };
