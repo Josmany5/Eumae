@@ -2092,6 +2092,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .maeUndo{ margin-top:6px; padding:6px 0; font-weight:600; }
 .gOwnHd{ display:flex; align-items:center; justify-content:space-between; }
 .maeNew{ color:var(--ac); font-weight:600; }
+.maeGuess{ font-style:italic; }
 /* Phone task rows (his screenshot IMG_5093, Oct 19): the title gets the full
    width and reads as a sentence; priority, project and date drop to a second
    line under it instead of squeezing the title into a narrow column. */

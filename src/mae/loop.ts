@@ -6,6 +6,7 @@
  *  stream, a small row per step, and — when something would change — one plan
  *  card at the end, which nothing runs until they tap Approve. */
 
+import { humanTimes } from './registry';
 import { streamChat, type Reply } from '../chat';
 import { BASE_PROMPT, type ApiChatBody } from '../request';
 import { continuePlan, declarations, dispatch, newPlan, type Plan } from './dispatcher';
@@ -59,7 +60,7 @@ export async function runMaeTurn(body: ApiChatBody, where: string, onText: (full
   const said: string[] = [];
   let sources: Reply['sources'] = [];
   let open: Opened | undefined;
-  const show = (cur: string) => onText([...said, cur].filter((x) => x.trim()).join('\n\n'));
+  const show = (cur: string) => onText(humanTimes([...said, cur].filter((x) => x.trim()).join('\n\n')));
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const reply = await streamChat({ ...base, data: { ...base.data, ...(tail.length ? { tail } : {}) } }, show);
@@ -95,7 +96,7 @@ export async function runMaeTurn(body: ApiChatBody, where: string, onText: (full
 }
 
 function finish(reply: Reply, said: string[], sources: Reply['sources'], plan: Plan, steps: MaeStep[], open: Opened | undefined, changed: boolean): MaeReply {
-  let text = said.join('\n\n');
+  let text = humanTimes(said.join('\n\n'));
   /* Only a card this turn changed rides the reply; an untouched open card stays where it is. */
   const staged = changed;
   if (staged && !text) text = plan.steps.length ? 'Here is the plan. Approve it on the card and I will make it.' : 'Took that off. The card is empty now.';

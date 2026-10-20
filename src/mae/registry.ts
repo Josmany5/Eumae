@@ -35,6 +35,8 @@ export interface PlanLine {
   verb: 'Create' | 'Edit' | 'Complete' | 'Reopen' | 'Move' | 'Add' | 'Log' | 'Link' | 'Unlink' | 'Delete' | 'Skip';
   text: string;
   detail?: string;
+  /** What Mae filled in herself, in plain words ("due date, 30 min"). */
+  guess?: string;
 }
 
 export interface Opened {
@@ -121,12 +123,29 @@ function fmtDate(d?: string): string {
   return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-function fmtTime(tm?: string): string {
+export function fmtTime(tm?: string): string {
   if (!tm) return '';
   const m = /^(\d{1,2}):(\d{2})$/.exec(tm);
   if (!m) return tm;
   const h = Number(m[1]);
-  return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
+  return `${h % 12 || 12}${m[2] === '00' ? '' : ':' + m[2]} ${h < 12 ? 'am' : 'pm'}`;
+}
+
+/* 5B (his call, Oct 19): people read "7 pm", never "19:00". Tool fields stay
+   HH:MM; anything Mae SAYS is put back into a human clock. Skips ranges of
+   digits that are not times (ratios like 3:2 stay, since the minutes must be
+   two digits) and anything already followed by am/pm. */
+export function humanTimes(text: string): string {
+  return text.replace(/(^|[^\d:])([01]?\d|2[0-3]):([0-5]\d)(?!\d|:\d)(?!\s?(?:[aApP]\.?[mM]\b))/g, (_m, pre, hh, mm) => {
+    const h = Number(hh);
+    return `${pre}${h % 12 || 12}${mm === '00' ? '' : ':' + mm} ${h < 12 ? 'am' : 'pm'}`;
+  });
+}
+
+const GUESS_WORD: Record<string, string> = { due: 'due date', time: 'time', estimate: 'how long', priority: 'priority', repeat: 'repeat', date: 'date', start: 'start time', end: 'end time', target_date: 'target date', target: 'target', pace: 'pace', milestones: 'milestones', location: 'place', subtasks: 'steps', list: 'list', type: 'type' };
+function guessOf(x: Args): string | undefined {
+  const g: string[] = Array.isArray(x.guessed) ? x.guessed.filter((k: unknown) => typeof k === 'string' && x[k as string] !== undefined && x[k as string] !== '') : [];
+  return g.length ? [...new Set(g.map((k) => GUESS_WORD[k] ?? k.replace(/_/g, ' ')))].join(', ') : undefined;
 }
 
 const join = (...parts: (string | false | undefined | null)[]) => parts.filter(Boolean).join(' · ');
@@ -417,6 +436,14 @@ const reads: Action[] = [
 
 /* ───────────────────────── creates ───────────────────────── */
 
+/* Honesty (2B, his call Oct 19): every detail Mae filled in herself is named,
+   and the card shows it as "Mae's guess". */
+const guessedField = list(
+  "Names of the fields YOU filled in that the person did not say (e.g. [\"due\", \"estimate\", \"priority\"]). Leave out when every detail came from them.",
+  s('A field name from this object.', { max: 30 }),
+  { maxItems: 20 },
+);
+
 const taskFields: Record<string, Param> = {
   title: s('One task, in the person\'s words. Never several tasks in one title.', { max: 200 }),
   due: date('Due date. Leave out when none was given; never invent one.'),
@@ -430,6 +457,7 @@ const taskFields: Record<string, Param> = {
   subtasks: list('Subtask titles, one per step.', s('Subtask.', { max: 200 }), { maxItems: 30 }),
   project: projectField,
   goal: goalField,
+  guessed: guessedField,
 };
 
 function verifyTask(t: Args, at: string, ctx: StageCtx): string | null {
@@ -459,6 +487,7 @@ const eventFields: Record<string, Param> = {
   notes: s('Notes.', { max: 2000 }),
   project: projectField,
   goal: goalField,
+  guessed: guessedField,
 };
 
 function verifyEvent(e: Args, at: string, ctx: StageCtx | null): string | null {
@@ -491,6 +520,7 @@ const goalFields: Record<string, Param> = {
   milestones: list('Dated checkpoints on the way.', milestoneItem, { maxItems: 30 }),
   project: projectField,
   ref: s('Short ref for this plan, e.g. "g1", so other steps can put tasks, events or notes under this new goal with goal: "g1".', { max: 20 }),
+  guessed: guessedField,
 };
 
 function verifyGoal(g: Args, at: string, ctx: StageCtx | null): string | null {
@@ -513,7 +543,7 @@ const creates: Action[] = [
       }
       return null;
     },
-    preview: (a) => a.tasks.map((t: Args) => ({ kind: 'Task', verb: 'Create', text: t.title.trim(), detail: taskDetail(t) || undefined })),
+    preview: (a) => a.tasks.map((t: Args) => ({ kind: 'Task', verb: 'Create', text: t.title.trim(), detail: taskDetail(t) || undefined, guess: guessOf(t) })),
     run: (a, ctx) => {
       const touched: Result['touched'] = [];
       for (const t of a.tasks as Args[]) {
@@ -555,7 +585,7 @@ const creates: Action[] = [
       }
       return null;
     },
-    preview: (a) => a.events.map((e: Args) => ({ kind: 'Event', verb: 'Create', text: e.title.trim(), detail: eventDetail(e) })),
+    preview: (a) => a.events.map((e: Args) => ({ kind: 'Event', verb: 'Create', text: e.title.trim(), detail: eventDetail(e), guess: guessOf(e) })),
     run: (a, ctx) => {
       const touched: Result['touched'] = [];
       for (const e of a.events as Args[]) {
@@ -601,6 +631,7 @@ const creates: Action[] = [
         verb: 'Create',
         text: g.title.trim(),
         detail: join(g.target !== undefined && `${g.current ?? 0} of ${g.target}${g.unit ? ' ' + g.unit : ''}`, g.target_date && `by ${fmtDate(g.target_date)}`, g.pace && `${g.pace} per ${g.pace_per}`, g.milestones?.length && plural(g.milestones.length, 'milestone')) || undefined,
+        guess: guessOf(g),
       })),
     run: (a, ctx) => {
       const touched: Result['touched'] = [];

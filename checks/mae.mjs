@@ -26,7 +26,7 @@ globalThis.localStorage = {
 
 const out = buildSync({
   stdin: {
-    contents: `export * from './src/mae/dispatcher'; export { REGISTRY } from './src/mae/registry'; export { check, toGemini } from './src/mae/schema';
+    contents: `export * from './src/mae/dispatcher'; export { REGISTRY, humanTimes } from './src/mae/registry'; export { check, toGemini } from './src/mae/schema';
       export { getTasks, getTask } from './src/tasks'; export { getEvents, saveEvent, ymd } from './src/events'; export { getGoals, goalOf, goalLinkedIds } from './src/goals';
       export { getProjects, linkedIds } from './src/projects'; export { getNotes, titleOf } from './src/notes'; export { parseEvent } from './src/chat';`,
     resolveDir: new URL('..', import.meta.url).pathname,
@@ -224,6 +224,15 @@ const stage = (calls) => {
   check('goal-unlink', !M.goalOf('task', t.id));
   const li = M.REGISTRY.find((a) => a.name === 'list_items').run({ kind: 'event', goal: g.id }, {});
   check('goal-list-filter', li.ok && li.data.items.length === 1 && li.data.items[0].goal === 'Write my book', JSON.stringify(li.data));
+}
+
+// Honesty bite: guesses are named on the card, times read like people say them.
+{
+  const { plan } = stage([{ name: 'create_tasks', args: { tasks: [{ title: 'Draft chapter one', due: d(3), estimate: 60, guessed: ['due', 'estimate'] }, { title: 'Email editor' }] } }]);
+  const [a, b] = plan.steps[0].lines;
+  check('guess-label', a.guess === 'due date, how long' && !b.guess, JSON.stringify(a));
+  check('guess-not-saved', M.executePlan(plan).status === 'done' && !('guessed' in M.getTasks().find((t) => t.t === 'Draft chapter one')));
+  check('human-times', M.humanTimes('Dinner at 19:00, gym 07:30, call at 10:00 AM') === 'Dinner at 7 pm, gym 7:30 am, call at 10:00 AM');
 }
 
 if (failures.length) {
