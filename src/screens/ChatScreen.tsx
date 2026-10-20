@@ -17,7 +17,7 @@ import { runMaeTurn } from '../mae/loop';
 import { planNote, detachFresh, type Plan } from '../mae/dispatcher';
 import { PlanCard, MaeSteps } from '../components/PlanCard';
 import { setFocus } from '../focus';
-import { extractHtml, hideHtmlWhileStreaming, addFromReply, sandboxContext, openSbx } from '../sandbox';
+import { extractHtml, hideHtmlWhileStreaming, addFromReply, sandboxContext, openSbx, wantsAThing, thingHint } from '../sandbox';
 import { SbxRow } from '../components/SandboxView';
 import { useMedia } from '../useMedia';
 
@@ -507,6 +507,8 @@ export default function ChatScreen() {
     /* The chat's page, so an edit changes that code rather than a memory of it. */
     const sbx = sandboxContext(threadId);
     if (sbx) body.data.systemPrompt += sbx;
+    const thing = wantsAThing(text);
+    if (thing) body.data.systemPrompt += thingHint(thing);
 
     /* Two ids from one counter — the turn, and the reply it is
        waiting for — so the reply can still be found in the list while pieces of

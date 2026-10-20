@@ -113,6 +113,37 @@ export function titleOfHtml(html: string): string {
   return clean.slice(0, 60) || 'Untitled page';
 }
 
+/* ---- Is this a "make me a thing" ask? ---- */
+
+/* Deterministic, not left to the model: "Make a Game (Arcade style: Neon
+ * Strikers)" came back as a Create project card (Oct 20), because the prompt's
+ * own rule says make/build/create + a thing = tools. A visual noun plus a make
+ * verb, with no task/event/goal/project/note words, is a page. */
+const THING = /\b(game|page|web ?page|website|site|landing|portfolio|app|calculator|widget|tracker|timer|quiz|invitation|invite|poster|flyer|dashboard|resume|résumé|menu card|card|chart|slides?|deck|form|tool|clock|counter|board)\b/i;
+const MAKE = /\b(make|build|create|design|draw up|code|generate|whip up|put together)\b/i;
+const OBJECT = /\b(tasks?|to-?dos?|events?|meetings?|reminders?|goals?|projects?|notes?|milestones?|subtasks?|calendar|schedule)\b/i;
+const STUDIO = /^make an? .+\(.+ style: .+\)/i;
+
+export function wantsAThing(text: string): 'studio' | 'ask' | null {
+  const t = text.trim();
+  if (STUDIO.test(t)) return 'studio';
+  if (MAKE.test(t) && THING.test(t) && !OBJECT.test(t)) return 'ask';
+  return null;
+}
+
+export const THING_TURN = '# THIS TURN: THEY WANT A THING MADE';
+
+export function thingHint(kind: 'studio' | 'ask'): string {
+  return (
+    '\n\n' + THING_TURN + '\n' +
+    'This message asks you to make something to use (a page, game, app or widget). Answer with the page itself ' +
+    'in one ```html block for the Sandbox. Do NOT create a project, task, note or any plan card for it.' +
+    (kind === 'studio'
+      ? ' It is a full brief from Studio, so make it now: one line on what you made and how to play or use it, then the page.'
+      : ' If the ask is very thin, you may ask one short question first; otherwise make it now.')
+  );
+}
+
 /* ---- The lock ---- */
 
 /* Scripts and inline styles run, so games and calculators work. Everything that

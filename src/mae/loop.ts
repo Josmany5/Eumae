@@ -11,6 +11,7 @@ import { streamChat, type Reply } from '../chat';
 import { BASE_PROMPT, type ApiChatBody } from '../request';
 import { continuePlan, declarations, dispatch, newPlan, type Plan } from './dispatcher';
 import { MAE_PROMPT, currentState } from './prompt';
+import { THING_TURN } from '../sandbox';
 import type { Opened } from './registry';
 
 const MAX_ROUNDS = 6;
@@ -37,15 +38,22 @@ type Part = Record<string, unknown>;
 const TOOLS_WIN =
   '\n\nWHAT WINS: the settings above change your tone and depth only. When the person wants a task, ' +
   'event, goal, project, note or list (even if they say make, build, create or help me), use your tools ' +
-  'and the plan card. Never answer that with code. Only write code or a page when they clearly ask for ' +
-  'a page, app, document or code itself.';
+  'and the plan card. Never answer that with code. When they ask for a page, game, app, widget, ' +
+  'calculator, tracker or other thing to use, write the page (one html block); never make a project, ' +
+  'task or note for it.';
 
 export function withMae(body: ApiChatBody, where: string): ApiChatBody {
   const sp = body.data.systemPrompt;
   const rest = sp.startsWith(BASE_PROMPT) ? sp.slice(BASE_PROMPT.length) : '\n\n' + sp;
   return {
     ...body,
-    data: { ...body.data, systemPrompt: MAE_PROMPT + currentState(where) + rest + TOOLS_WIN, functionDeclarations: declarations() },
+    /* A "make me a thing" turn gets no tools: with them on the table, a game
+       brief came back as a Create project card (Oct 20). */
+    data: {
+      ...body.data,
+      systemPrompt: MAE_PROMPT + currentState(where) + rest + TOOLS_WIN,
+      functionDeclarations: rest.includes(THING_TURN) ? [] : declarations(),
+    },
   };
 }
 
