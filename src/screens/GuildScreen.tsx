@@ -81,7 +81,7 @@ export default function GuildScreen() {
       <div className="row dashHead">
         <div className="g">
           <div className="screenT dupT">Guild</div>
-          <div className="screenS">{editing ? 'Rearranging. Hold a widget, then tap where it goes.' : 'People, requests, shared work. ' + unread + ' unread'}</div>
+          <div className="screenS">{editing ? 'Rearranging. Hold a widget and drag it.' : 'People, requests, shared work. ' + unread + ' unread'}</div>
         </div>
         <div className="dashSlot" ref={setHeadSlot} />
       </div>

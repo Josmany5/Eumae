@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { NotifyOpts } from '../../nav';
 import { PageNav, usePageKeys } from './PageNav';
@@ -169,6 +169,61 @@ export function PagedDash({
     flipTimer.current = null;
   };
 
+  /* Phone drag (his ask): hold a widget, then drag it with your finger.
+     While it's held the page doesn't scroll, except near the top and bottom
+     edges, where it scrolls for you so a widget can travel down the page. */
+  const touchDrag = useRef(false);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const overRef = useRef<Slot | null>(null);
+  const moveRef = useRef(moveTo);
+  moveRef.current = moveTo;
+  const flipRef = useRef(armFlip);
+  flipRef.current = armFlip;
+  useEffect(() => {
+    const onMove = (e: TouchEvent) => {
+      if (!touchDrag.current) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      const el = document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null;
+      const cell = el?.closest('.pdCell') as HTMLElement | null;
+      if (cell && cell.dataset.pi != null) {
+        const slot = { page: Number(cell.dataset.pi), idx: Number(cell.dataset.wi) };
+        if (!overRef.current || overRef.current.page !== slot.page || overRef.current.idx !== slot.idx) {
+          overRef.current = slot;
+          setOver(slot);
+        }
+      }
+      const arr = el?.closest('.pgArr') as HTMLElement | null;
+      if (arr) flipRef.current(arr.classList.contains('l') ? -1 : 1);
+      const sc = document.getElementById('mn');
+      if (sc) {
+        const r = sc.getBoundingClientRect();
+        if (t.clientY < r.top + 70) sc.scrollBy(0, -14);
+        else if (t.clientY > r.bottom - 160) sc.scrollBy(0, 14);
+      }
+    };
+    const onEnd = () => {
+      if (!touchDrag.current) return;
+      touchDrag.current = false;
+      const to = overRef.current;
+      overRef.current = null;
+      if (to) moveRef.current(to);
+      else {
+        drag.current = null;
+        setPicked(null);
+        setOver(null);
+      }
+    };
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+    document.addEventListener('touchcancel', onEnd);
+    return () => {
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      document.removeEventListener('touchcancel', onEnd);
+    };
+  }, []);
+
   const here = new Set(pages[cur] ?? []);
   const where = (id: string) => pages.findIndex((p) => p.includes(id));
   const addable = allIds.filter((id) => !here.has(id));
@@ -331,17 +386,29 @@ export function PagedDash({
                         moveTo({ page: pi, idx: wi });
                       }}
                       onDragEnd={clear}
-                      onTouchStart={() => {
-                        if (!editing || picked) return;
-                        holdTimer.current = window.setTimeout(() => {
-                          drag.current = { page: pi, idx: wi };
-                          setPicked({ page: pi, idx: wi });
-                          notify('Picked up. Tap where it goes, or an arrow for another page.');
-                        }, 450);
-                      }}
-                      onTouchMove={() => {
+                      data-pi={pi}
+                      data-wi={wi}
+                      onTouchStart={(e) => {
+                        if (!editing || touchDrag.current) return;
+                        const t0 = e.touches[0];
+                        touchStart.current = { x: t0.clientX, y: t0.clientY };
                         if (holdTimer.current) window.clearTimeout(holdTimer.current);
-                        holdTimer.current = null;
+                        holdTimer.current = window.setTimeout(() => {
+                          holdTimer.current = null;
+                          drag.current = { page: pi, idx: wi };
+                          touchDrag.current = true;
+                          setPicked({ page: pi, idx: wi });
+                          navigator.vibrate?.(10);
+                        }, 350);
+                      }}
+                      onTouchMove={(e) => {
+                        /* Before pickup: a real move means scroll, so drop the hold. Small jitter is fine. */
+                        if (!holdTimer.current || !touchStart.current) return;
+                        const t1 = e.touches[0];
+                        if (Math.abs(t1.clientX - touchStart.current.x) + Math.abs(t1.clientY - touchStart.current.y) > 12) {
+                          window.clearTimeout(holdTimer.current);
+                          holdTimer.current = null;
+                        }
                       }}
                       onTouchEnd={() => {
                         if (holdTimer.current) window.clearTimeout(holdTimer.current);
