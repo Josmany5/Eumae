@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { NotifyOpts } from '../../nav';
-import { PageNav, PageNameField, usePageKeys } from './PageNav';
+import { PageNav, usePageKeys } from './PageNav';
+import { ItemMenu } from '../ItemMenu';
 
 /* Shared paged dashboard for Console and Guild, laid out like phone home screens.
  *
@@ -191,43 +192,51 @@ export function PagedDash({
       {editing ? (
         <div className="pdTools">
           <div className="pdBar">
-            <PageNameField bare key={cur + ':' + names[cur]} value={names[cur] ?? ''} onSave={(v) => { ops.rename(cur, v); onChange(); }} />
-            <button className={'pdLink' + (addOpen ? ' on' : '')} onClick={() => setAddOpen((v) => !v)} aria-expanded={addOpen}>
-              + Widget
-            </button>
-            <button
+            {/* One plain door: "Edit page" opens a menu that says what you can do. */}
+            <ItemMenu
+              name={names[cur] ?? 'this page'}
+              buttonLabel={`Edit page${names[cur] ? ': ' + names[cur] : ''}`}
               className="pdLink"
-              onClick={() => {
-                const i = ops.addPage();
-                onChange();
-                setDir(1);
-                setPage(i);
-              }}
-            >
-              + Page
-            </button>
-            {n > 1 ? (
-              <button
-                className="pdLink rd"
-                aria-label="Remove page"
-                onClick={() => {
-                  /* No question: the page goes, Undo brings it back with
-                     its widgets where they were. */
-                  const snap = ops.snapshot();
-                  const was = cur;
-                  ops.removePage(cur);
-                  onChange();
-                  setPage(Math.max(0, cur - 1));
-                  notify('Page removed.', {
-                    undo: () => {
-                      ops.restore(snap);
+              rename={{ value: names[cur] ?? '', title: 'Rename page', save: (v) => { ops.rename(cur, v); onChange(); } }}
+              extra={[
+                { label: 'Add widget', onClick: () => setAddOpen(true) },
+                {
+                  label: 'New page',
+                  onClick: () => {
+                    const i = ops.addPage();
+                    onChange();
+                    setDir(1);
+                    setPage(i);
+                    notify('New page added.');
+                  },
+                },
+              ]}
+              deleteLabel="Remove page"
+              onDelete={
+                n > 1
+                  ? () => {
+                      /* No question: the page goes, Undo brings it back with
+                         its widgets where they were. */
+                      const snap = ops.snapshot();
+                      const was = cur;
+                      ops.removePage(cur);
                       onChange();
-                      setPage(was);
-                    },
-                  });
-                }}
-              >
-                Remove
+                      setPage(Math.max(0, cur - 1));
+                      notify('Page removed.', {
+                        undo: () => {
+                          ops.restore(snap);
+                          onChange();
+                          setPage(was);
+                        },
+                      });
+                    }
+                  : undefined
+              }
+              onChange={onChange}
+            />
+            {addOpen ? (
+              <button className="pdLink" onClick={() => setAddOpen(false)}>
+                Close
               </button>
             ) : null}
           </div>
@@ -260,7 +269,7 @@ export function PagedDash({
               )}
             </div>
           ) : null}
-          <div className="xs m pdHint">Hold a widget to move it. Tap the name to rename the page.</div>
+          <div className="xs m pdHint">Hold a widget to move it.</div>
         </div>
       ) : null}
       <PageNav names={names} page={cur} onJump={jump} />
