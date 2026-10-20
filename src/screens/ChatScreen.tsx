@@ -17,7 +17,7 @@ import { runMaeTurn } from '../mae/loop';
 import { planNote, detachFresh, type Plan } from '../mae/dispatcher';
 import { PlanCard, MaeSteps } from '../components/PlanCard';
 import { setFocus } from '../focus';
-import { extractHtml, hideHtmlWhileStreaming, addFromReply, sandboxContext, openSbx, wantsAThing, thingHint } from '../sandbox';
+import { extractHtml, hideHtmlWhileStreaming, addFromReply, sandboxContext, openSbx, wantsAThing, thingHint, saidNoHint } from '../sandbox';
 import { SbxRow } from '../components/SandboxView';
 import { useMedia } from '../useMedia';
 
@@ -507,6 +507,7 @@ export default function ChatScreen() {
     if (sbx) body.data.systemPrompt += sbx;
     const thing = wantsAThing(text);
     if (thing) body.data.systemPrompt += thingHint(thing);
+    body.data.systemPrompt += saidNoHint(text);
 
     /* Two ids from one counter — the turn, and the reply it is
        waiting for — so the reply can still be found in the list while pieces of

@@ -131,6 +131,13 @@ export function wantsAThing(text: string): 'studio' | 'ask' | null {
   return null;
 }
 
+/** A bare "no" to an offer is a no, not a go-ahead (Oct 20). */
+export function saidNoHint(text: string): string {
+  return /^(no|nope|nah|no thanks|no thank you|not that|don'?t)[.!]*$/i.test(text.trim())
+    ? '\n\n# THIS TURN: THEY SAID NO\nThey turned down what you last offered. Do not make it or any version of it. In one or two lines, ask what they want instead.'
+    : '';
+}
+
 export const THING_TURN = '# THIS TURN: THEY WANT A THING MADE';
 
 export function thingHint(kind: 'studio' | 'ask'): string {

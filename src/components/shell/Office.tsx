@@ -22,7 +22,8 @@ import type { Ref } from '../../nav';
 import { useFocus, setFocus, getFocus, FOCUS_LABEL, takeAsk, onAsk } from '../../focus';
 import { ItemTab } from './ItemTab';
 import { SandboxView, useSbx } from '../SandboxView';
-import { getOpenSbx, getSbx, latestForThread } from '../../sandbox';
+import { getOpenSbx, getSbx, latestForThread, wantsAThing, thingHint, extractHtml, hideHtmlWhileStreaming, addFromReply, openSbx, saidNoHint } from '../../sandbox';
+import { SbxRow } from '../SandboxView';
 import { getCurrentThreadId } from '../../threads';
 import { MaeIcon } from './Header';
 import { getGoals, goalPct, goalCount } from '../../goals';
@@ -99,7 +100,7 @@ const ROLE: Partial<Record<TabId, { name: string; intro: string; prompt: string;
   studio: {
     name: 'Coach',
     intro: 'Tell me what you want to make. I\'ll ask what I need and give you tips as you go.',
-    prompt: 'You are Mae acting as a creative coach in Studio. Ask short questions that fill in a brief, give practical tips, and explain why choices work.',
+    prompt: 'You are Mae acting as a creative coach in Studio. Ask short questions that fill in a brief, give practical tips, and explain why choices work. When they want something to see or use (a page, game, tracker, widget), make it as one ```html block: it goes to the Sandbox, never shown as code. If they say no to an offer, do NOT make it; ask what they want instead. Never claim you made something unless this reply contains it.',
     hint: 'Help me make a one-pager',
   },
   library: {
@@ -214,6 +215,21 @@ function consoleContext(): string {
   return `\n\nOpen tasks:\n${open.join('\n') || '- none'}\n\nNext 7 days:\n${evs.join('\n') || '- nothing scheduled'}`;
 }
 
+/** A page Mae made from the office: Open takes you to its chat with the Sandbox up. */
+function OfficeMade({ made, threadId }: { made: NonNullable<Msg['made']>; threadId: string }) {
+  const { switchThread, goTab } = useNav();
+  return (
+    <div
+      onClickCapture={() => {
+        switchThread(threadId);
+        goTab('chat');
+      }}
+    >
+      <SbxRow made={made} />
+    </div>
+  );
+}
+
 function MaeTab({ tab }: { tab: TabId }) {
   const role = ROLE[tab]!;
   const { turn, switchThread, goTab, notify } = useNav();
@@ -263,6 +279,11 @@ function MaeTab({ tab }: { tab: TabId }) {
       null,
     );
     body.data.systemPrompt += `\n\n${role.prompt}${tab === 'console' ? consoleContext() : ''}${focusContext()}`;
+    /* Same rule as Chat: a "make me a thing" ask gets a page, not a project card.
+       A bare no is a no (Oct 20: "no" came back as a 300-line page). */
+    const thing = wantsAThing(q);
+    if (thing) body.data.systemPrompt += thingHint(thing);
+    body.data.systemPrompt += saidNoHint(q);
     const mine: Msg = { id: msgId(), role: 'you', text: q, ts: Date.now() };
     const replyId = msgId();
     const put = (reply: string, streaming: boolean, extra: Partial<Msg> = {}, prior: Msg[] = history) =>
@@ -273,7 +294,10 @@ function MaeTab({ tab }: { tab: TabId }) {
     setBusy(true);
     /* One open card per thread: this turn adds to the one still waiting. */
     const openMsg = [...history].reverse().find((m) => m.plan?.status === 'pending');
-    void runMaeTurn(body, `${officeName(tab)} office`, (full) => put(full, true), openMsg?.plan).then((reply) => {
+    void runMaeTurn(body, `${officeName(tab)} office`, (full) => {
+      const h = hideHtmlWhileStreaming(full);
+      put(h.text || (h.making ? 'Making it…' : ''), true);
+    }, openMsg?.plan).then((reply) => {
       setBusy(false);
       const now = (base.id ? getThread(base.id)?.messages : undefined) ?? history;
       const oldNow = openMsg ? now.find((m) => m.id === openMsg.id)?.plan : undefined;
@@ -287,10 +311,22 @@ function MaeTab({ tab }: { tab: TabId }) {
         if (!(carried && m.id === openMsg!.id && oldNow?.status === 'pending')) return cur;
         return emptied ? { ...cur, plan: { ...cur.plan!, status: 'cancelled' as const } } : { ...cur, plan: undefined };
       });
+      /* A page in the reply goes to the Sandbox; the bubble keeps the words. */
+      let text = reply.ok ? reply.text : `I couldn't answer: ${reply.error}`;
+      let made: Msg['made'];
+      const pulled = reply.ok ? extractHtml(reply.text) : { html: null, rest: text };
+      if (pulled.html && base.id) {
+        const r = addFromReply(base.id, pulled.html, q);
+        made = { id: r.item.id, v: r.item.versions.length, title: r.item.title };
+        text = pulled.rest || (r.isNew ? `Made ${r.item.title}.` : `Updated ${r.item.title}.`);
+        openSbx(r.item.id);
+        notify(r.isNew ? `Made ${r.item.title}` : `${r.item.title} is now v${made.v}`, { undo: r.undo });
+        logEv({ area: AREA[tab], text: r.isNew ? `Made in Sandbox: ${r.item.title}` : `Sandbox v${made.v}: ${r.item.title}` });
+      }
       put(
-        reply.ok ? reply.text : `I couldn't answer: ${reply.error}`,
+        text,
         false,
-        { ...(plan ? { plan } : {}), ...(reply.steps.length ? { steps: reply.steps } : {}) },
+        { ...(plan ? { plan } : {}), ...(reply.steps.length ? { steps: reply.steps } : {}), ...(made ? { made } : {}) },
         prior,
       );
       threadsChanged();
@@ -351,6 +387,7 @@ function MaeTab({ tab }: { tab: TabId }) {
                 <div className="n">Mae</div>
                 {m.text || <span className="fsub">Thinking…</span>}
                 {!m.streaming ? <MaeSteps steps={m.steps} plan={m.plan} /> : null}
+                {m.made && thread ? <OfficeMade made={m.made} threadId={thread.id} /> : null}
                 {m.plan ? <PlanCard plan={m.plan} notify={notify} area={AREA[tab]} onChange={(p) => setPlan(m.id, p)} /> : null}
               </div>
             )}
