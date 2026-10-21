@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNav } from '../../nav';
 import { getTasks, getLists, toggleTask, saveTask, type Task } from '../../tasks';
 import { dayEvents, ymd, mins, type CalEvent } from '../../events';
+import { isOverdue, toConfirm } from '../../due';
+import { AttendAsk } from './Attend';
 import { fmtTime } from '../../quickadd';
 import { setFocus, onDataChange, askMae } from '../../focus';
 import { TYPE_LABEL } from '../QuickAdd';
@@ -50,6 +52,9 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
   const [showEarlier, setShowEarlier] = useState(false);
   /* Move opens a day + time picker on that row (his call: no silent "tomorrow"). */
   const [moving, setMoving] = useState<{ id: string; due: string; tm: string } | null>(null);
+  /* An event just marked Not attended stays on the spine while it offers
+     "Reschedule?", even though it no longer needs an answer. */
+  const [held, setHeld] = useState<{ ev: CalEvent; day: string }[]>([]);
   const refresh = () => {
     setTick((n) => n + 1);
     onChange();
@@ -63,8 +68,15 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
 
   const all = getTasks();
   const open = all.filter((t) => !t.d);
-  const overdue = open.filter((t) => t.due && t.due < today);
-  const todayItems = itemsFor(today, all);
+  /* Overdue by the clock, not the calendar (Oct 21): an 11 AM task is late at 11:01. */
+  const overdue = open.filter((t) => isOverdue(t, now));
+  const lateIds = new Set(overdue.map((t) => t.id));
+  /* Ended events wait for "Did you attend?" — never assumed (his call, Oct 21). */
+  const asks = [...held, ...toConfirm(now).filter((a) => !held.some((h) => h.ev.id === a.ev.id && h.day === a.day))];
+  const askIds = new Set(asks.filter((a) => a.day === today).map((a) => a.ev.id));
+  const todayItems = itemsFor(today, all).filter(
+    (i) => !(i.kind === 'task' && lateIds.has(i.task.id)) && !(i.kind === 'event' && askIds.has(i.ev.id)),
+  );
   const attention = todayItems.filter((i) => i.kind === 'task' && !i.task.d && !i.tm && URGENT.has(i.task.pr ?? ''));
   const timed = todayItems.filter((i) => i.tm && !attention.includes(i)).sort(byTime);
   const earlier = timed.filter((i) => mins(i.tm) < nowMin);
@@ -216,9 +228,40 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
           </button>
         ) : null}
         {showEarlier ? earlier.map((i) => row(i, { past: true })) : null}
-        {overdue.length || attention.length ? <div className="sdiv att">Needs attention</div> : null}
+        {overdue.length || attention.length || asks.length ? <div className="sdiv att">Needs attention</div> : null}
         {overdue.map((t) => row({ kind: 'task', key: 'o' + t.id, t: t.t, tm: t.tm, task: t }, { over: true, actions: true }))}
         {attention.map((i) => row(i, { actions: true }))}
+        {asks.map((a) => (
+          <div key={'a' + a.ev.id + a.day} className="frow top tlRow ev">
+            <div className="ft">
+              <button
+                className="tlT"
+                onClick={() => {
+                  if (editing) return;
+                  setFocus({ k: 'event', id: a.ev.id!, day: a.day });
+                  openPanel('item');
+                }}
+              >
+                <span>{a.ev.t}</span>
+              </button>
+              <AttendAsk
+                ev={a.ev}
+                day={a.day}
+                onChange={refresh}
+                onMark={(v) => {
+                  if (v === 'no') setHeld((h) => [...h.filter((x) => !(x.ev.id === a.ev.id && x.day === a.day)), a]);
+                }}
+                onSettled={() => setHeld((h) => h.filter((x) => !(x.ev.id === a.ev.id && x.day === a.day)))}
+              />
+            </div>
+            <span className="tlR">
+              <span className="fmeta">
+                {a.day === today ? '' : fmtDue(a.day) + (a.ev.allDay || !a.ev.tm ? '' : ' · ')}
+                {a.ev.allDay || !a.ev.tm ? (a.day === today ? 'All day' : '') : fmtTime(a.ev.tm)}
+              </span>
+            </span>
+          </div>
+        ))}
         <div className="snow">Now · {now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
         {later.map((i) => row(i))}
         {anytime.length ? <div className="sdiv">Anytime</div> : null}

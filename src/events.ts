@@ -33,6 +33,10 @@ export interface CalEvent {
   /** Repeating events: dates (YYYY-MM-DD) removed from the series one at a
    *  time — "delete this occurrence" — while the rest keep repeating. */
   skip?: string[];
+  /** Did you attend? One answer per occurrence date (YYYY-MM-DD): 'yes'
+   *  attended, 'no' not attended. Absent means not answered — never assumed
+   *  (his call, Oct 21). */
+  att?: Record<string, 'yes' | 'no'>;
 }
 
 export type EventType = 'class' | 'meeting' | 'appointment' | 'other';
@@ -200,4 +204,44 @@ export function snapshotEvents(): CalEvent[] {
 
 export function restoreEvents(s: CalEvent[]): void {
   save(s);
+}
+
+/* ── Attendance (Oct 21, his call): after an event ends, Eumae asks
+   "Did you attend?" and keeps the answer per occurrence. ── */
+
+export function attendanceOf(e: CalEvent, day: string): 'yes' | 'no' | undefined {
+  return e.att && typeof e.att === 'object' ? e.att[day] : undefined;
+}
+
+/** Answer (or clear, with null) one occurrence. Writes the stored series by
+ *  id, never the dated copy dayEvents hands out. */
+export function setAttendance(id: string, day: string, v: 'yes' | 'no' | null): void {
+  save(
+    load().map((e) => {
+      if (e.id !== id) return e;
+      const att = { ...(e.att && typeof e.att === 'object' ? e.att : {}) };
+      if (v) att[day] = v;
+      else delete att[day];
+      return { ...e, att };
+    }),
+  );
+}
+
+function hhmm(m: number): string {
+  const c = Math.max(0, Math.min(23 * 60 + 59, m));
+  return `${String(Math.floor(c / 60)).padStart(2, '0')}:${String(c % 60).padStart(2, '0')}`;
+}
+
+/** Move one occurrence to a new day and time. A one-off event moves; a
+ *  repeating one keeps its series and gets a one-off copy on the new day.
+ *  The length is kept when there is an end time. */
+export function rescheduleOccurrence(id: string, newDay: string, newTm: string): CalEvent | undefined {
+  const e = getEvent(id);
+  if (!e) return undefined;
+  const len = e.end && e.tm ? mins(e.end) - mins(e.tm) : undefined;
+  const tm = newTm || e.tm;
+  const end = len !== undefined && len > 0 && newTm ? hhmm(mins(newTm) + len) : newTm ? undefined : e.end;
+  if (!e.rep) return saveEvent({ ...e, d: newDay, tm, end, allDay: newTm ? false : e.allDay });
+  const copy: CalEvent = { d: newDay, tm, t: e.t, end, loc: e.loc, type: e.type, note: e.note, allDay: newTm ? false : e.allDay };
+  return saveEvent(copy);
 }

@@ -2172,3 +2172,8 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .sbxRowT{ flex:1; min-width:0; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sbxRowV{ color:var(--mut); font-size:15px; }
 .sbxRowGo{ color:var(--ac); font-weight:600; font-size:15px; }
+
+/* "Did you attend?" (Oct 21): the unanswered word reads in the accent; the
+   Event tab's ask sits under the title. */
+.fmeta.ask, .fmeta .ask{ color:var(--ac); }
+.itAttend{ margin:4px 0 14px; }

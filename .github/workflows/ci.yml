@@ -29,3 +29,4 @@ jobs:
       - run: npm run check:voice
       - run: npm run check:voice:selftest
       - run: npm run check:lang
+      - run: npm run check:due

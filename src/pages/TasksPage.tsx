@@ -37,6 +37,7 @@ import { projectOf, linkedIds } from '../projects';
 import { getGoals } from '../goals';
 import { setFocus, onEditTask, onDataChange } from '../focus';
 import { TaskForm } from '../components/TaskForm';
+import { isOverdue } from '../due';
 
 type Mode = 'day' | 'project' | 'goal' | 'matrix' | 'done';
 const MODES: { id: Mode; label: string }[] = [
@@ -570,7 +571,7 @@ function groupTasks(tasks: Task[], mode: Mode): Group[] {
     ];
     for (const t of sorted) {
       const d = t.due;
-      const i = !d ? 5 : d < today ? 0 : d === today ? 1 : d === tmw ? 2 : d <= wk ? 3 : 4;
+      const i = !d ? 5 : isOverdue(t) ? 0 : d === today ? 1 : d === tmw ? 2 : d <= wk ? 3 : 4;
       g[i].tasks.push(t);
     }
     return g.filter((x) => x.tasks.length);
@@ -602,7 +603,7 @@ function sideLabel(t: Task, mode: Mode): { text: string; red?: boolean } {
   const today = ymdOf(new Date());
   const day = new Date(t.due + 'T12:00');
   const dow = day.toLocaleDateString(undefined, { weekday: 'short' });
-  if (!t.d && t.due < today) return { text: dow + (time ? ' ' + time : ''), red: true };
+  if (isOverdue(t)) return { text: t.due === today ? time : dow + (time ? ' ' + time : ''), red: true };
   if (mode === 'day') {
     /* His screenshot (Oct 19): the group header says the day, so the row
        shows the time today and tomorrow, the weekday this week, the date later. */
@@ -631,7 +632,7 @@ function TaskMeta({ task, subs, hideDate }: { task: Task; subs: string; hideDate
   const today = todayYmd();
   let late = false;
   if (task.due && !hideDate) {
-    late = !task.d && task.due < today;
+    late = isOverdue(task);
     const tmw = new Date();
     tmw.setDate(tmw.getDate() + 1);
     const tomorrow = `${tmw.getFullYear()}-${String(tmw.getMonth() + 1).padStart(2, '0')}-${String(tmw.getDate()).padStart(2, '0')}`;

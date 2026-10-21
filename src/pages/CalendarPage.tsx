@@ -16,6 +16,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNav } from '../nav';
 import { dayEvents, getEvent, saveEvent, deleteEvent, ymd, mins, type CalEvent } from '../events';
 import { getTasks, toggleTask, type Task } from '../tasks';
+import { attendanceOf } from '../events';
+import { hasEnded } from '../due';
+
+/* An ended event says whether you attended; it is never assumed (Oct 21). An
+   unanswered one reads "Did you attend?" in the accent and is not greyed out;
+   tap it to answer in its Event tab. */
+function attendWord(ev: CalEvent | undefined, day: string): { text: string; ask: boolean } | null {
+  if (!ev || ev.example || !ev.id || !hasEnded(ev, day)) return null;
+  const a = attendanceOf(ev, day);
+  return a === 'yes' ? { text: 'Attended', ask: false } : a === 'no' ? { text: 'Not attended', ask: false } : { text: 'Did you attend?', ask: true };
+}
 import { QuickAdd, EventForm, quickToEvent, removeEvent } from '../components/QuickAdd';
 import { setFocus, onEditEvent, onDataChange } from '../focus';
 import { evKind } from '../components/shell/Timeline';
@@ -451,7 +462,8 @@ export function HourDay({ day, today, items, onItem, onCheck, onAdd }: {
   const kindOf = (it: Item) =>
     it.kind === 'event' && it.ev ? evKind(it.ev) : it.kind === 'task' ? 'Task' : it.kind[0].toUpperCase() + it.kind.slice(1);
   const row = (it: Item) => {
-    const past = day < today || (day === today && (it.end ?? it.start ?? 1440) < nowM);
+    const aw = it.kind === 'event' ? attendWord(it.ev, day) : null;
+    const past = aw ? !aw.ask : day < today || (day === today && (it.end ?? it.start ?? 1440) < nowM);
     return (
       <div key={it.key} className={'frow agRow2 hdItem c-' + it.color + (it.done || past ? ' past' : '')}>
         {it.kind === 'task' && it.task ? (
@@ -467,7 +479,7 @@ export function HourDay({ day, today, items, onItem, onCheck, onAdd }: {
         </div>
         <span className="fmeta">
           {it.start !== undefined ? fmtTime(minsToTm(it.start)) + (it.end !== undefined && it.kind === 'event' ? ' – ' + fmtTime(minsToTm(it.end)) : '') + ' · ' : ''}
-          {kindOf(it)}
+          {aw ? <span className={aw.ask ? 'ask' : ''}>{aw.text}</span> : kindOf(it)}
         </span>
       </div>
     );
@@ -534,7 +546,8 @@ function DaySection({ day, today, items, onItem, onCheck, onAdd }: {
       </div>
       {items.length ? (
         items.map((it) => {
-          const past = day < today || (day === today && it.end !== undefined && it.end < nowM);
+          const aw = it.kind === 'event' ? attendWord(it.ev, day) : null;
+          const past = aw ? !aw.ask : day < today || (day === today && it.end !== undefined && it.end < nowM);
           return (
             <div key={it.key} className={'frow top agRow2 c-' + it.color + (it.done || past ? ' past' : '')}>
               <span className="agT fmeta">
@@ -556,7 +569,7 @@ function DaySection({ day, today, items, onItem, onCheck, onAdd }: {
                   </div>
                 ) : null}
               </div>
-              <span className="fmeta">{it.kind === 'event' && it.ev ? evKind(it.ev) : it.kind === 'task' ? 'Task' : it.kind === 'milestone' ? 'Milestone' : it.kind === 'goal' ? 'Goal' : 'Project'}</span>
+              <span className={'fmeta' + (aw?.ask ? ' ask' : '')}>{aw ? aw.text : it.kind === 'event' && it.ev ? evKind(it.ev) : it.kind === 'task' ? 'Task' : it.kind === 'milestone' ? 'Milestone' : it.kind === 'goal' ? 'Goal' : 'Project'}</span>
             </div>
           );
         })

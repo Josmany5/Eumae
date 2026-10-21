@@ -34,6 +34,7 @@
     "check:chat-md:selftest": "node checks/chat-md.selftest.mjs",
     "check:boot": "node checks/boot.mjs",
     "check:lang": "node checks/lang.mjs",
+    "check:due": "node checks/due.mjs",
     "check:welcome": "node checks/welcome.mjs",
     "check:threadwin": "node checks/threadwin.mjs",
     "check:notes": "node checks/notes.mjs",

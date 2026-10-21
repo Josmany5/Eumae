@@ -14,6 +14,8 @@ import { removeEvent, TYPE_LABEL } from '../QuickAdd';
 import { ItemMenu } from '../ItemMenu';
 import { itemsOn, minsToTm } from '../../pages/CalendarPage';
 import { evKind } from './Timeline';
+import { isOverdue, hasEnded } from '../../due';
+import { AttendAsk } from './Attend';
 
 /** The tapped item's own tab in Mae's office: what it is, its details, its
  *  steps, and the moves you'd make on it. Read-only; Edit opens the form. */
@@ -94,6 +96,7 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
   const dayWord =
     d === today ? 'Today' : d === ymd(tmw) ? 'Tomorrow' : new Date(d + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
   const time = ev.allDay || !ev.tm ? 'All day' : fmtTime(ev.tm) + (ev.end ? ' – ' + fmtTime(ev.end) : '');
+  const ended = !ev.example && !!ev.id && hasEnded(ev, d);
   const project = projectOf('event', ev.id!);
   const kv: [string, string][] = [['When', dayWord + ', ' + time]];
   if (ev.loc) kv.push(['Where', ev.loc]);
@@ -113,6 +116,11 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
     <div className="itab">
       <h2 className="itT">{ev.t}</h2>
       {d < today ? <p className="fmeta itSub">Past</p> : <div style={{ height: 8 }} />}
+      {ended ? (
+        <div className="itAttend">
+          <AttendAsk ev={ev} day={d} onChange={() => setTick((n) => n + 1)} />
+        </div>
+      ) : null}
       {kv.map(([k, v]) => (
         <div key={k} className="frow itKV">
           <span className="fmeta">{k}</span>
@@ -168,7 +176,7 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
   const when = t.due
     ? (t.due === tY ? 'Today' : t.due === ymdOf(tm) ? 'Tomorrow' : fmtShort(t.due)) + (t.tm ? ', ' + fmtTime(t.tm) : '')
     : 'Someday';
-  const late = !t.d && !!t.due && t.due < tY;
+  const late = isOverdue(t);
   const project = projectOf('task', t.id);
   /* Its own goal first; else the goal of its project, as before. */
   const goalId = goalOf('task', t.id)?.id ?? (project ? linkedIds(project.id, 'goal')[0] : undefined);

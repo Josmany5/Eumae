@@ -19,6 +19,7 @@
 import type { ObjectParam, Param } from './schema';
 import { getTasks, getTask, saveTask, createTask, deleteTask, getLists, addList, type Task, type TaskPriority } from '../tasks';
 import { getEvents, getEvent, saveEvent, deleteEvent, skipOccurrence, dayEvents, ymd, type CalEvent, type EventType } from '../events';
+import { isOverdue, toConfirm } from '../due';
 import { getGoals, saveGoal, createGoal, deleteGoal, goalPct, goalCount, isActiveGoal, goalOf, goalLinkedIds, linkToGoal, unlinkFromGoal, type Goal, type GoalStatus, type GoalLinkKind } from '../goals';
 import { getProjects, getProject, saveProject, createProject, deleteProject, linkItem, unlinkItem, projectOf, linkedIds, type LinkKind } from '../projects';
 import { getNotes, getNote, saveNote, createNote, deleteNote, titleOf, noteText } from '../notes';
@@ -258,8 +259,10 @@ const reads: Action[] = [
         data: {
           today: t,
           tomorrow: tm,
-          overdue_tasks: open.filter((x) => x.due && x.due < t).map(taskRow),
-          today_tasks: open.filter((x) => x.due === t).map(taskRow),
+          overdue_tasks: open.filter((x) => isOverdue(x)).map(taskRow),
+          today_tasks: open.filter((x) => x.due === t && !isOverdue(x)).map(taskRow),
+          /* Ended, unanswered: the person has not said whether they attended. */
+          events_awaiting_attendance: toConfirm().map(({ ev, day }) => ({ id: ev.id, title: ev.t, date: day, time: ev.tm })),
           today_events: dayEvents(t).map(eventRow),
           tomorrow_tasks: open.filter((x) => x.due === tm).map(taskRow),
           tomorrow_events: dayEvents(tm).map(eventRow),

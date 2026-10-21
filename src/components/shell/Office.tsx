@@ -6,6 +6,7 @@ import { useNav, type Mode, type Model, type PanelView, type Thinking } from '..
 import { getRoles } from '../../roles';
 import { getTasks } from '../../tasks';
 import { eventsBetween, ymd } from '../../events';
+import { isOverdue } from '../../due';
 import { runMaeTurn } from '../../mae/loop';
 import { planNote, detachFresh, type Plan } from '../../mae/dispatcher';
 import { PlanCard, MaeSteps } from '../PlanCard';
@@ -208,7 +209,7 @@ function consoleContext(): string {
     .filter((t) => !t.d)
     .sort((a, b) => (a.due ?? '9999').localeCompare(b.due ?? '9999'))
     .slice(0, 15)
-    .map((t) => `- ${t.t}${t.due ? ` (due ${t.due}${t.tm ? ' ' + t.tm : ''}${t.due < today ? ', overdue' : ''})` : ''}`);
+    .map((t) => `- ${t.t}${t.due ? ` (due ${t.due}${t.tm ? ' ' + t.tm : ''}${isOverdue(t) ? ', overdue' : ''})` : ''}`);
   const evs = eventsBetween(today, 7)
     .slice(0, 15)
     .map((e) => `- ${e.d} ${e.allDay ? 'all day' : e.tm}: ${e.t}`);
