@@ -186,7 +186,7 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
           <KV k="Ends at" v={ev.end ? fmtTime(ev.end) : ''} edit={editing ? <TimeIn label="End time" value={e.end ?? ''} onChange={(v) => set({ end: v || undefined })} /> : undefined} />
         </>
       ) : null}
-      <KV k="Where" v={ev.loc} edit={editing ? <TextIn label="Where" value={e.loc ?? ''} onChange={(v) => set({ loc: v })} /> : undefined} />
+      <KV k="Location" v={ev.loc} edit={editing ? <TextIn label="Location" value={e.loc ?? ''} onChange={(v) => set({ loc: v })} /> : undefined} />
       <KV
         k="Repeats"
         v={ev.rep ? repLabel(ev.rep, ev.d) : 'No'}
@@ -354,7 +354,7 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         <KV k="On" edit={<WeekDays days={e.repDays && e.repDays.length ? e.repDays : e.due ? [new Date(e.due + 'T12:00').getDay()] : []} onChange={(repDays) => set({ repDays })} />} />
       ) : null}
       {editing && e.rep && e.rep !== 'none' ? <KV k="Until" edit={<DateIn label="Repeat until" value={e.repUntil ?? ''} onChange={(v) => set({ repUntil: v || undefined })} />} /> : null}
-      <KV k="Estimate" v={estWord} edit={editing ? <span className="itPair"><NumIn label="Estimate in minutes" value={e.est} onChange={(est) => set({ est })} /><span className="fmeta">min</span></span> : undefined} />
+      <KV k="Duration" v={estWord} edit={editing ? <span className="itPair"><NumIn label="Duration in minutes" value={e.est} onChange={(est) => set({ est })} /><span className="fmeta">min</span></span> : undefined} />
       <KV k="List" v={list?.n ?? 'Inbox'} edit={editing ? <Pick label="List" value={e.list ?? 'inbox'} options={lists.map((l) => [l.id, l.n] as [string, string])} onChange={(list) => set({ list })} /> : undefined} />
       <LinkRows editing={editing} links={links} onLinks={setLinks} project={project?.n} goal={goal?.t} withGoal />
       {subs.length || editing ? (

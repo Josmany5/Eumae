@@ -242,22 +242,41 @@ function MaeTab({ tab }: { tab: TabId }) {
   const box = useRef<HTMLTextAreaElement>(null);
   const [atBottom, setAtBottom] = useState(true);
   const atBottomRef = useRef(true);
+  /* Follow the thread until Mae's reply starts; then hold her first line at
+     the top so you read from the start (his call, Oct 21). Scrolling by hand
+     stops the follow; reaching the bottom again resumes it. */
+  const followRef = useRef(true);
+  const progRef = useRef(-1);
   const onScroll = () => {
     const el = scroller.current;
     if (!el) return;
     const v = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
     atBottomRef.current = v;
     setAtBottom(v);
+    if (Math.abs(el.scrollTop - progRef.current) > 2) followRef.current = v;
+  };
+  const setTop = (el: HTMLDivElement, y: number) => {
+    progRef.current = Math.max(0, Math.round(y));
+    el.scrollTop = y;
   };
   const toBottom = () => {
     const el = scroller.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el) setTop(el, el.scrollHeight - el.clientHeight);
     atBottomRef.current = true;
+    followRef.current = true;
     setAtBottom(true);
   };
-  /* Follow new words only when you're already at the bottom. */
   useEffect(() => {
-    if (atBottomRef.current) toBottom();
+    const el = scroller.current;
+    if (!el || !followRef.current) return;
+    const last = list[list.length - 1];
+    if (!last || last.role === 'you') return toBottom();
+    const node = el.querySelector<HTMLElement>(`[data-mid="${last.id}"]`);
+    const bottom = el.scrollHeight - el.clientHeight;
+    if (!node) return setTop(el, bottom);
+    const top = node.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 8;
+    setTop(el, Math.min(bottom, top));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list]);
   /* The box grows with what's in it, up to about six lines. */
   useEffect(() => {
@@ -292,6 +311,7 @@ function MaeTab({ tab }: { tab: TabId }) {
     put('', true);
     threadsChanged();
     atBottomRef.current = true;
+    followRef.current = true;
     setBusy(true);
     /* One open card per thread: this turn adds to the one still waiting. */
     const openMsg = [...history].reverse().find((m) => m.plan?.status === 'pending');
@@ -384,7 +404,7 @@ function MaeTab({ tab }: { tab: TabId }) {
             {m.role === 'you' ? (
               <div className="oMe">{m.text}</div>
             ) : (
-              <div className="oMae1">
+              <div className="oMae1" data-mid={m.id}>
                 <div className="n">Mae</div>
                 {m.text || <span className="fsub">Thinking…</span>}
                 {!m.streaming ? <MaeSteps steps={m.steps} plan={m.plan} /> : null}
