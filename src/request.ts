@@ -1,4 +1,4 @@
-import { replyLanguageLine } from './voiceLang';
+import { replyLanguageLine, replyLanguageNudge } from './voiceLang';
 import type { Mode, Model, Ref, Turn } from './nav';
 import type { CustomRole } from './roles';
 
@@ -282,7 +282,7 @@ export function toApiBody(
     data: {
       systemPrompt: BASE_PROMPT + directives(req, customRole) + timeStamp() + replyLanguageLine(),
       conversationHistory: historyOf(history),
-      message: req.text + ctxBlock(req.refs),
+      message: req.text + ctxBlock(req.refs) + replyLanguageNudge(),
       ...(attachments.length ? { attachments } : {}),
       ...(model ? { model } : {}),
       ...(functionDeclarations && functionDeclarations.length ? { functionDeclarations } : {}),

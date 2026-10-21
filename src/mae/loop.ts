@@ -12,6 +12,7 @@ import { BASE_PROMPT, type ApiChatBody } from '../request';
 import { continuePlan, declarations, dispatch, newPlan, type Plan } from './dispatcher';
 import { MAE_PROMPT, currentState } from './prompt';
 import { THING_TURN } from '../sandbox';
+import { languageLast } from '../voiceLang';
 import type { Opened } from './registry';
 
 const MAX_ROUNDS = 6;
@@ -51,7 +52,7 @@ export function withMae(body: ApiChatBody, where: string): ApiChatBody {
        brief came back as a Create project card (Oct 20). */
     data: {
       ...body.data,
-      systemPrompt: MAE_PROMPT + currentState(where) + rest + TOOLS_WIN,
+      systemPrompt: languageLast(MAE_PROMPT + currentState(where) + rest + TOOLS_WIN),
       functionDeclarations: rest.includes(THING_TURN) ? [] : declarations(),
     },
   };

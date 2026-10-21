@@ -97,10 +97,23 @@ export function storedVoiceLang(): VoiceLang {
   }
 }
 
-/** The line Mae's prompt gets. Nothing for English (US), so the default prompt
- *  is exactly what it was. */
-export function replyLanguageLine(): string {
-  const l = storedVoiceLang();
-  if (l.code === DEFAULT_VOICE_LANG.code) return '';
-  return `\n\nLanguage: the user's language is ${l.english}. Answer in ${l.english}, unless they clearly write to you in another language; then answer in theirs.`;
+/** The language rule, the same template for every language (English too):
+ *  the setting decides, never the language earlier messages happen to be in.
+ *  It was soft before ("unless they clearly write in another language") and
+ *  blank for English, so an old Spanish chat kept Mae in Spanish (Oct 20). */
+export function replyLanguageLine(l: VoiceLang = storedVoiceLang()): string {
+  return `\n\nLANGUAGE (app setting, overrides everything above): reply only in ${l.english}, even if earlier messages in this chat are in a different language. Short replies like "ok" or "yes" do not change the language.`;
+}
+
+/** The same rule in one line, riding under the newest message, where the model
+ *  weighs it most. It goes to the model only; the thread stores what was typed. */
+export function replyLanguageNudge(l: VoiceLang = storedVoiceLang()): string {
+  return `\n\n(Reply in ${l.english}.)`;
+}
+
+/** Moves the language rule to the very end of a system prompt, after anything
+ *  later code appended (sandbox, hints, tool rules). */
+export function languageLast(systemPrompt: string, l: VoiceLang = storedVoiceLang()): string {
+  const line = replyLanguageLine(l);
+  return systemPrompt.split(line).join('') + line;
 }
