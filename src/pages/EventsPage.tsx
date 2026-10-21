@@ -6,7 +6,7 @@
  * one line ("Kung fu every Mon Wed 7-8:30pm"); More opens every field.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNav } from '../nav';
 import {
   eventsBetween,
@@ -18,7 +18,8 @@ import {
   type CalEvent,
   type EventType,
 } from '../events';
-import { QuickAdd, EventForm, EventDetail, EventMenu, quickToEvent, removeEvent } from '../components/QuickAdd';
+import { QuickAdd, EventForm, EventMenu, quickToEvent, removeEvent } from '../components/QuickAdd';
+import { setFocus } from '../focus';
 import { ProjectChip } from '../components/ItemMenu';
 import { fmtTime, repLabel } from '../quickadd';
 import type { PageProps } from './index';
@@ -33,15 +34,23 @@ const LABEL: Record<Filter, string> = {
 };
 
 export default function EventsPage({ arg }: PageProps) {
-  const { notify, go } = useNav();
+  const { notify, go, openPanel } = useNav();
   const [filter, setFilter] = useState<Filter>('all');
   const [tick, setTick] = useState(0);
   const [form, setForm] = useState<{ ev: CalEvent; editing: boolean } | null>(null);
-  /* Opened with an event id (from a project): show that event's card. */
-  const [view1, setView1] = useState<{ ev: CalEvent; day: string } | null>(() => {
+  /* A tapped event opens in Mae's office (his call, Oct 21), never a card. */
+  const open = (e: CalEvent) => {
+    if (!e.id) return;
+    setForm(null);
+    setFocus({ k: 'event', id: e.id, day: e.d });
+    openPanel('item');
+  };
+  /* Opened with an event id (from a project): open it in the office. */
+  useEffect(() => {
     const e = typeof arg === 'string' ? getEvent(arg) : undefined;
-    return e ? { ev: e, day: e.d } : null;
-  });
+    if (e) open(e);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arg]);
   const refresh = () => setTick((t) => t + 1);
   const today = ymd(new Date());
 
@@ -82,21 +91,6 @@ export default function EventsPage({ arg }: PageProps) {
         }}
         onMore={(q) => setForm({ ev: quickToEvent(q, today), editing: false })}
       />
-      {view1 && !form ? (
-        <EventDetail
-          ev={view1.ev}
-          day={view1.day}
-          onClose={() => setView1(null)}
-          onEdit={() => {
-            setForm({ ev: view1.ev, editing: true });
-            setView1(null);
-          }}
-          onDelete={(scope) => {
-            setView1(null);
-            removeEvent(notify, view1.ev, view1.day, scope, refresh);
-          }}
-        />
-      ) : null}
       {form ? (
         <EventForm
           initial={form.ev}
@@ -129,46 +123,35 @@ export default function EventsPage({ arg }: PageProps) {
         groups.map((g) => (
           <div key={g.title}>
             <h3 className="sec">{g.title}</h3>
-            <div className="card cardPad">
-              {g.rows.map((e) => (
-                <div key={(e.id ?? e.t) + e.d} className="imWrap">
-                <button
-                  className={'agRow c-' + (e.type ?? 'other')}
-                  onClick={() => {
-                    setForm(null);
-                    setView1({ ev: (e.id && getEvent(e.id)) || e, day: e.d });
-                  }}
-                >
-                  <span className="agTm">
-                    {g.title === 'Today' || g.title === 'Tomorrow' ? '' : <span className="xs m">{g.title === 'Repeating' ? 'Next ' : ''}{dayLabel(e.d)}<br /></span>}
-                    {e.allDay || !e.tm ? 'All day' : fmtTime(e.tm)}
-                  </span>
-                  <i />
-                  <span className="g">
-                    {e.t}
-                    <span className="xs m">
-                      {e.end && !e.allDay ? ' · until ' + fmtTime(e.end) : ''}
-                      {e.loc ? ' · ' + e.loc : ''}
-                      {e.rep ? ' · ↻ ' + repLabel(e.rep, (e.id && getEvent(e.id)?.d) || e.d) : ''}
+            <div>
+              {g.rows.map((e) => {
+                const full = (e.id && getEvent(e.id)) || e;
+                return (
+                  <div key={(e.id ?? e.t) + e.d} className={'frow agRow2 c-' + (e.type ?? 'other')}>
+                    <i className="agBar" />
+                    <div className="ft">
+                      <button className="tlT" onClick={() => open(full)}>
+                        {e.t}
+                      </button>
+                      {e.loc || e.rep ? (
+                        <div className="fsub">{[e.loc, e.rep ? '↻ ' + repLabel(e.rep, full.d) : ''].filter(Boolean).join(' · ')}</div>
+                      ) : null}
+                      {e.id ? <ProjectChip k="event" id={e.id} /> : null}
+                    </div>
+                    <span className="fmeta">
+                      {g.title === 'Today' || g.title === 'Tomorrow' ? '' : (g.title === 'Repeating' ? 'Next ' : '') + dayLabel(e.d) + ' · '}
+                      {e.allDay || !e.tm ? 'All day' : fmtTime(e.tm) + (e.end ? ' – ' + fmtTime(e.end) : '')}
                     </span>
-                    {e.id ? <ProjectChip k="event" id={e.id} /> : null}
-                  </span>
-                </button>
-                <EventMenu
-                  ev={(e.id && getEvent(e.id)) || e}
-                  onOpen={() => {
-                    setForm(null);
-                    setView1({ ev: (e.id && getEvent(e.id)) || e, day: e.d });
-                  }}
-                  onEdit={() => {
-                    setView1(null);
-                    setForm({ ev: (e.id && getEvent(e.id)) || e, editing: true });
-                  }}
-                  onDelete={(scope) => removeEvent(notify, (e.id && getEvent(e.id)) || e, e.d, scope, refresh)}
-                  onChange={refresh}
-                />
-                </div>
-              ))}
+                    <EventMenu
+                      ev={full}
+                      onOpen={() => open(full)}
+                      onEdit={() => open(full)}
+                      onDelete={(scope) => removeEvent(notify, full, e.d, scope, refresh)}
+                      onChange={refresh}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))

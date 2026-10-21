@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useNav, type PanelView } from '../../nav';
-import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists, saveTask } from '../../tasks';
+import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists, saveTask, type Task } from '../../tasks';
 import { projectOf, linkedIds } from '../../projects';
-import { getGoals, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct, goalCount, goalPace, isActiveGoal, GOAL_STATUS_LABEL, goalLinkedIds, goalOf, linkToGoal, unlinkFromGoal, type Goal } from '../../goals';
+import { getGoals, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct, goalCount, goalPace, isActiveGoal, GOAL_STATUS_LABEL, goalLinkedIds, goalOf, linkToGoal, unlinkFromGoal, type Goal, type GoalStatus } from '../../goals';
 import { getNote, titleOf } from '../../notes';
 import { useGoalAdd } from '../GoalAdd';
 import { sortMilestones } from '../../milestones';
 import { dueLabel } from '../../pages/GoalsPage';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
 import { setFocus, onDataChange, dataChanged, type Focus } from '../../focus';
-import { getEvent, saveEvent, ymd, importanceOf, IMPORTANCE_LABEL } from '../../events';
-import { removeEvent, TYPE_LABEL, EventForm } from '../QuickAdd';
-import { TaskForm } from '../TaskForm';
-import { GoalForm } from '../GoalForm';
-import { ItemActs, LinkFields, applyLinks, currentLinks, type Links } from './ItemEdit';
+import { getEvent, saveEvent, ymd, importanceOf, IMPORTANCE_LABEL, EVENT_IMPORTANCE, EVENT_TYPES, type CalEvent, type EventType, type EventImportance } from '../../events';
+import { removeEvent, TYPE_LABEL } from '../QuickAdd';
+import { MilestonesEditor } from '../Milestones';
+import { ItemActs, applyLinks, currentLinks, type Links } from './ItemEdit';
+import { KV, TextIn, DateIn, TimeIn, NumIn, Pick, LinkRows, WeekDays, EditActs } from './ItemFields';
 import { ItemMenu } from '../ItemMenu';
 import { itemsOn, minsToTm } from '../../pages/CalendarPage';
 import { evKind } from './Timeline';
@@ -21,8 +21,8 @@ import { isOverdue, hasEnded } from '../../due';
 import { AttendAsk } from './Attend';
 
 /** The tapped item's own tab in Mae's office: what it is, its details, its
- *  steps, and the moves you'd make on it. Read-only first; Edit turns this
- *  tab into the item's form in place (LOCKED Oct 21), Delete sits beside it. */
+ *  steps, and the moves you'd make on it. Read-only first; Edit turns each
+ *  row's value into an input in place (his correction, Oct 21 4:22 PM), Delete sits beside it. */
 export function ItemTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   if (focus.k === 'day') return <DayTab day={focus.id} />;
   if (focus.k === 'goal') return <GoalTab focus={focus} onView={onView} />;
@@ -82,9 +82,9 @@ function DayTab({ day }: { day: string }) {
 
 function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   const { notify } = useNav();
-  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<CalEvent | null>(null);
   const [links, setLinks] = useState<Links>({ project: '', goal: '' });
-  useEffect(() => setEditing(false), [focus.id]);
+  useEffect(() => setDraft(null), [focus.id]);
   const [, setTick] = useState(0);
   useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const ev = getEvent(focus.id);
@@ -96,88 +96,120 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
       </div>
     );
   }
+  const editing = !!draft;
+  const e = draft ?? ev;
+  const set = (p: Partial<CalEvent>) => setDraft({ ...(draft ?? ev), ...p });
   const d = focus.day ?? ev.d;
   const today = ymd(new Date());
   const tmw = new Date();
   tmw.setDate(tmw.getDate() + 1);
   const dayWord =
     d === today ? 'Today' : d === ymd(tmw) ? 'Tomorrow' : new Date(d + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-  const time = ev.allDay || !ev.tm ? 'All day' : fmtTime(ev.tm) + (ev.end ? ' – ' + fmtTime(ev.end) : '');
   const ended = !ev.example && !!ev.id && hasEnded(ev, d);
   const project = projectOf('event', ev.id!);
-  const kv: [string, string][] = [['When', dayWord + ', ' + time]];
-  if (ev.loc) kv.push(['Where', ev.loc]);
-  if (ev.rep) kv.push(['Repeats', repLabel(ev.rep, ev.d)]);
-  kv.push(['Kind', TYPE_LABEL[ev.type ?? 'other']]);
-  kv.push(['Importance', IMPORTANCE_LABEL[importanceOf(ev)]]);
-  if (project) kv.push(['Project', project.n]);
   const evGoal = goalOf('event', ev.id!);
-  if (evGoal) kv.push(['Goal', evGoal.t]);
   const edit = () => {
     setLinks(currentLinks('event', ev.id!));
-    setEditing(true);
+    setDraft({ ...ev });
+  };
+  const done = () => {
+    if (!draft) return;
+    if (!draft.t.trim()) return;
+    const before = ev;
+    const next: CalEvent = { ...draft, t: draft.t.trim(), loc: draft.loc?.trim() || undefined, note: draft.note?.trim() || undefined, tm: draft.allDay ? '' : draft.tm || '12:00' };
+    if (next.allDay || (next.end && next.end <= next.tm)) delete next.end;
+    saveEvent(next);
+    const undoLinks = applyLinks('event', ev.id!, links);
+    setDraft(null);
+    dataChanged();
+    notify('Event updated.', { undo: () => { saveEvent(before); undoLinks(); dataChanged(); } });
   };
   const del = (scope: 'one' | 'all') => {
     setFocus(null);
     removeEvent(notify, ev, d, scope);
   };
-  if (editing) {
-    return (
-      <div className="itab">
-        <EventForm
-          bare
-          initial={ev}
-          saveLabel="Done"
-          onCancel={() => setEditing(false)}
-          extra={<LinkFields value={links} onChange={setLinks} withGoal />}
-          onSave={(next) => {
-            const before = ev;
-            saveEvent(next);
-            const undoLinks = applyLinks('event', ev.id!, links);
-            setEditing(false);
-            dataChanged();
-            notify('Event updated.', { undo: () => { saveEvent(before); undoLinks(); dataChanged(); } });
-          }}
-        />
-      </div>
-    );
-  }
+  const rep = e.rep;
   return (
     <div className="itab">
-      <h2 className="itT">{ev.t}</h2>
+      {editing ? (
+        <input className="itIn itTIn" aria-label="Event name" value={e.t} onChange={(x) => set({ t: x.target.value })} />
+      ) : (
+        <h2 className="itT">{ev.t}</h2>
+      )}
       {d < today ? <p className="fmeta itSub">Past</p> : <div style={{ height: 8 }} />}
-      {ended ? (
+      {ended && !editing ? (
         <div className="itAttend">
           <AttendAsk ev={ev} day={d} onChange={() => setTick((n) => n + 1)} />
         </div>
       ) : null}
-      {kv.map(([k, v]) => (
-        <div key={k} className="frow itKV">
-          <span className="fmeta">{k}</span>
-          <span className="ft">{v}</span>
-        </div>
-      ))}
-      {ev.note ? (
+      <KV k={editing && ev.rep ? 'Series starts' : 'Date'} v={dayWord} edit={editing ? <DateIn label="Date" value={e.d} onChange={(v) => v && set({ d: v })} /> : undefined} />
+      <KV
+        k="All day"
+        v={ev.allDay || !ev.tm ? 'Yes' : 'No'}
+        edit={editing ? <Pick label="All day" value={e.allDay ? 'yes' : 'no'} options={[['no', 'No'], ['yes', 'Yes']]} onChange={(v) => set({ allDay: v === 'yes' || undefined })} /> : undefined}
+      />
+      {!(e.allDay || (!editing && !ev.tm)) ? (
         <>
-          <div className="flbl">Notes</div>
-          <p className="itNote">{ev.note}</p>
+          <KV k="Starts at" v={ev.tm ? fmtTime(ev.tm) : ''} edit={editing ? <TimeIn label="Start time" value={e.tm} onChange={(v) => set({ tm: v })} /> : undefined} />
+          <KV k="Ends at" v={ev.end ? fmtTime(ev.end) : ''} edit={editing ? <TimeIn label="End time" value={e.end ?? ''} onChange={(v) => set({ end: v || undefined })} /> : undefined} />
         </>
       ) : null}
-      <div className="itMae">
-        <span className="n">Mae</span>
-        <span>Want to prep for this? Ask me for talking points or what to bring.</span>
-        <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
-      </div>
-      <ItemActs onEdit={edit} onDelete={() => del('all')} onDeleteOne={ev.rep ? () => del('one') : undefined} />
+      <KV k="Where" v={ev.loc} edit={editing ? <TextIn label="Where" value={e.loc ?? ''} onChange={(v) => set({ loc: v })} /> : undefined} />
+      <KV
+        k="Repeats"
+        v={ev.rep ? repLabel(ev.rep, ev.d) : 'No'}
+        edit={
+          editing ? (
+            <Pick
+              label="Repeats"
+              value={rep?.f ?? 'none'}
+              options={[['none', 'No'], ['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']]}
+              onChange={(f) => set({ rep: f === 'none' ? undefined : { ...(rep ?? {}), f } })}
+            />
+          ) : undefined
+        }
+      />
+      {editing && rep?.f === 'weekly' ? (
+        <KV k="On" edit={<WeekDays days={rep.days && rep.days.length ? rep.days : [new Date(e.d + 'T12:00').getDay()]} onChange={(days) => set({ rep: { ...rep, days } })} />} />
+      ) : null}
+      {editing && rep ? <KV k="Until" edit={<DateIn label="Repeat until" value={rep.until ?? ''} onChange={(v) => set({ rep: { ...rep, until: v || undefined } })} />} /> : null}
+      <KV
+        k="Kind"
+        v={TYPE_LABEL[ev.type ?? 'other']}
+        edit={editing ? <Pick label="Kind" value={e.type ?? 'other'} options={EVENT_TYPES.map((t) => [t, TYPE_LABEL[t]] as [EventType, string])} onChange={(type) => set({ type })} /> : undefined}
+      />
+      <KV
+        k="Importance"
+        v={IMPORTANCE_LABEL[importanceOf(ev)]}
+        edit={editing ? <Pick label="Importance" value={importanceOf(e)} options={EVENT_IMPORTANCE.map((i) => [i, IMPORTANCE_LABEL[i]] as [EventImportance, string])} onChange={(imp) => set({ imp: imp === 'should' ? undefined : imp })} /> : undefined}
+      />
+      <LinkRows editing={editing} links={links} onLinks={setLinks} project={project?.n} goal={evGoal?.t} withGoal />
+      <div className="flbl">Notes</div>
+      {editing ? (
+        <textarea className="itIn itArea" rows={3} aria-label="Notes" placeholder="None" value={e.note ?? ''} onChange={(x) => set({ note: x.target.value })} />
+      ) : ev.note ? (
+        <p className="itNote">{ev.note}</p>
+      ) : (
+        <p className="itNote itNone">None</p>
+      )}
+      {editing ? null : (
+        <div className="itMae">
+          <span className="n">Mae</span>
+          <span>Want to prep for this? Ask me for talking points or what to bring.</span>
+          <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
+        </div>
+      )}
+      {editing ? <EditActs onDone={done} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={edit} onDelete={() => del('all')} onDeleteOne={ev.rep ? () => del('one') : undefined} />}
     </div>
   );
 }
 
 function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   const { notify } = useNav();
-  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Task | null>(null);
   const [links, setLinks] = useState<Links>({ project: '', goal: '' });
-  useEffect(() => setEditing(false), [focus.id]);
+  const [newStep, setNewStep] = useState('');
+  useEffect(() => setDraft(null), [focus.id]);
   const [, setTick] = useState(0);
   useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const refresh = () => setTick((n) => n + 1);
@@ -190,37 +222,52 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
       </div>
     );
   }
+  const editing = !!draft;
+  const e = draft ?? t;
+  const set = (p: Partial<Task>) => setDraft({ ...(draft ?? t), ...p });
   const today = new Date();
   const ymdOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const tY = ymdOf(today);
   const tm = new Date(today);
   tm.setDate(tm.getDate() + 1);
-  const when = t.due
-    ? (t.due === tY ? 'Today' : t.due === ymdOf(tm) ? 'Tomorrow' : fmtShort(t.due)) + (t.tm ? ', ' + fmtTime(t.tm) : '')
-    : 'Someday';
+  const dueWord = t.due ? (t.due === tY ? 'Today' : t.due === ymdOf(tm) ? 'Tomorrow' : fmtShort(t.due)) : 'Someday';
   const late = isOverdue(t);
   const project = projectOf('task', t.id);
   /* Its own goal first; else the goal of its project, as before. */
   const goalId = goalOf('task', t.id)?.id ?? (project ? linkedIds(project.id, 'goal')[0] : undefined);
   const goal = goalId ? getGoals().find((g) => g.id === goalId) : undefined;
-  const list = getLists().find((l) => l.id === (t.list ?? 'inbox'));
-  const subs = t.sub ?? [];
+  const lists = getLists();
+  const list = lists.find((l) => l.id === (t.list ?? 'inbox'));
+  const subs = e.sub ?? [];
   const firstOpen = subs.findIndex((s) => !s.d);
   const added = new Date(t.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-
-  const kv: [string, string, string?][] = [
-    ['When', when, late ? 'over' : undefined],
-    ['List', list?.n ?? 'Inbox'],
-  ];
-  if (project) kv.push(['Project', project.n]);
-  if (goal) kv.push(['Goal', goal.t]);
-  if (t.pr && t.pr !== 'none') kv.push(['Priority', t.pr[0].toUpperCase() + t.pr.slice(1)]);
-  if (t.est) kv.push(['Estimate', t.est >= 60 ? `${+(t.est / 60).toFixed(1)} h` : `${t.est} min`]);
-  if (t.rep && t.rep !== 'none') kv.push(['Repeats', t.rep[0].toUpperCase() + t.rep.slice(1)]);
+  const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
   const edit = () => {
     setLinks(currentLinks('task', t.id));
-    setEditing(true);
+    setNewStep('');
+    setDraft({ ...t, sub: (t.sub ?? []).map((s) => ({ ...s })) });
+  };
+  const done = () => {
+    if (!draft || !draft.t.trim()) return;
+    const before = t;
+    const sub = [...(draft.sub ?? []), ...(newStep.trim() ? [{ t: newStep.trim(), d: 0 as const }] : [])].map((s) => ({ ...s, t: s.t.trim() })).filter((s) => s.t);
+    const next: Task = { ...draft, t: draft.t.trim(), sub: sub.length ? sub : undefined };
+    if (!next.due) {
+      delete next.tm;
+      next.rep = 'none';
+      delete next.repDays;
+      delete next.repUntil;
+    }
+    if (!next.rep || next.rep === 'none') {
+      delete next.repDays;
+      delete next.repUntil;
+    }
+    saveTask(next);
+    const undoLinks = applyLinks('task', t.id, links);
+    setDraft(null);
+    dataChanged();
+    notify('Task saved.', { undo: () => { saveTask(before); undoLinks(); dataChanged(); } });
   };
   const del = () => {
     const snap = snapshotTasks();
@@ -228,81 +275,111 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
     setFocus(null);
     notify('Task deleted.', { undo: () => { restoreTasks(snap); setFocus({ k: 'task', id: t.id }); } });
   };
-
-  if (editing) {
-    return (
-      <div className="itab">
-        <TaskForm
-          bare
-          key={t.id}
-          task={t}
-          lists={getLists()}
-          saveLabel="Done"
-          onCancel={() => setEditing(false)}
-          extra={<LinkFields value={links} onChange={setLinks} withGoal />}
-          onSave={(next) => {
-            const before = t;
-            saveTask(next);
-            const undoLinks = applyLinks('task', t.id, links);
-            setEditing(false);
-            dataChanged();
-            notify('Task saved.', { undo: () => { saveTask(before); undoLinks(); dataChanged(); } });
-          }}
-        />
-      </div>
-    );
-  }
+  const estWord = t.est ? (t.est >= 60 ? `${+(t.est / 60).toFixed(1)} h` : `${t.est} min`) : '';
 
   return (
     <div className="itab">
-      <h2 className={'itT' + (t.d ? ' tlDone' : '')}>{t.t}</h2>
+      {editing ? (
+        <input className="itIn itTIn" aria-label="Task name" value={e.t} onChange={(x) => set({ t: x.target.value })} />
+      ) : (
+        <h2 className={'itT' + (t.d ? ' tlDone' : '')}>{t.t}</h2>
+      )}
       <p className="fmeta itSub">
         Added {added}
         {t.d ? ' · done' : ''}
       </p>
-      {kv.map(([k, v, cls]) => (
-        <div key={k} className="frow itKV">
-          <span className="fmeta">{k}</span>
-          <span className={'ft' + (cls ? ' ' + cls : '')}>{v}</span>
-        </div>
-      ))}
-      {subs.length ? (
+      <KV k="Due" v={dueWord} cls={late ? 'over' : undefined} edit={editing ? <DateIn label="Due date" value={e.due ?? ''} onChange={(v) => set({ due: v || undefined })} /> : undefined} />
+      <KV k="Time" v={t.due && t.tm ? fmtTime(t.tm) : ''} edit={editing ? <TimeIn label="Due time" value={e.tm ?? ''} disabled={!e.due} onChange={(v) => set({ tm: v || undefined })} /> : undefined} />
+      <KV
+        k="Priority"
+        v={t.pr && t.pr !== 'none' ? cap(t.pr) : ''}
+        edit={
+          editing ? (
+            <Pick label="Priority" value={e.pr ?? 'none'} options={[['none', 'None'], ['important', 'Important'], ['urgent', 'Urgent'], ['critical', 'Critical']]} onChange={(pr) => set({ pr })} />
+          ) : undefined
+        }
+      />
+      <KV
+        k="Repeats"
+        v={t.rep && t.rep !== 'none' ? cap(t.rep) : 'No'}
+        edit={
+          editing ? (
+            <Pick label="Repeats" value={e.rep ?? 'none'} options={[['none', 'No'], ['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']]} onChange={(rep) => set({ rep })} />
+          ) : undefined
+        }
+      />
+      {editing && e.rep === 'weekly' ? (
+        <KV k="On" edit={<WeekDays days={e.repDays && e.repDays.length ? e.repDays : e.due ? [new Date(e.due + 'T12:00').getDay()] : []} onChange={(repDays) => set({ repDays })} />} />
+      ) : null}
+      {editing && e.rep && e.rep !== 'none' ? <KV k="Until" edit={<DateIn label="Repeat until" value={e.repUntil ?? ''} onChange={(v) => set({ repUntil: v || undefined })} />} /> : null}
+      <KV k="Estimate" v={estWord} edit={editing ? <span className="itPair"><NumIn label="Estimate in minutes" value={e.est} onChange={(est) => set({ est })} /><span className="fmeta">min</span></span> : undefined} />
+      <KV k="List" v={list?.n ?? 'Inbox'} edit={editing ? <Pick label="List" value={e.list ?? 'inbox'} options={lists.map((l) => [l.id, l.n] as [string, string])} onChange={(list) => set({ list })} /> : undefined} />
+      <LinkRows editing={editing} links={links} onLinks={setLinks} project={project?.n} goal={goal?.t} withGoal />
+      {subs.length || editing ? (
         <>
           <div className="flbl">Steps</div>
-          {subs.map((s, i) => (
-            <div key={i} className={'frow itStep' + (i === firstOpen ? ' cur' : '')}>
-              <button
-                className={'itNum' + (s.d ? ' on' : '')}
-                aria-label={s.d ? `Reopen ${s.t}` : `Done: ${s.t}`}
-                onClick={() => {
-                  toggleSubtask(t.id, i);
-                  refresh();
+          {subs.map((s, i) =>
+            editing ? (
+              <div key={i} className="frow itStep">
+                <span className={'itNum' + (s.d ? ' on' : '')}>{s.d ? '✓' : i + 1}</span>
+                <input className="itIn itStepIn" aria-label={`Step ${i + 1}`} value={s.t} onChange={(x) => set({ sub: subs.map((y, j) => (j === i ? { ...y, t: x.target.value } : y)) })} />
+                <button className="fb gho" aria-label={`Remove step ${i + 1}`} onClick={() => set({ sub: subs.filter((_, j) => j !== i) })}>
+                  ×
+                </button>
+              </div>
+            ) : (
+              <div key={i} className={'frow itStep' + (i === firstOpen ? ' cur' : '')}>
+                <button
+                  className={'itNum' + (s.d ? ' on' : '')}
+                  aria-label={s.d ? `Reopen ${s.t}` : `Done: ${s.t}`}
+                  onClick={() => {
+                    toggleSubtask(t.id, i);
+                    refresh();
+                  }}
+                >
+                  {s.d ? '✓' : i + 1}
+                </button>
+                <span className="ft">{s.t}</span>
+              </div>
+            ),
+          )}
+          {editing ? (
+            <div className="frow itStep">
+              <span className="itNum">+</span>
+              <input
+                className="itIn itStepIn"
+                aria-label="Add a step"
+                placeholder="Add a step"
+                value={newStep}
+                onChange={(x) => setNewStep(x.target.value)}
+                onKeyDown={(x) => {
+                  if (x.key === 'Enter' && newStep.trim()) {
+                    set({ sub: [...subs, { t: newStep.trim(), d: 0 }] });
+                    setNewStep('');
+                  }
                 }}
-              >
-                {s.d ? '✓' : i + 1}
-              </button>
-              <span className="ft">{s.t}</span>
+              />
             </div>
-          ))}
+          ) : null}
         </>
       ) : null}
-      <div className="itMae">
-        <span className="n">Mae</span>
-        <span>Want help with this one? Ask me to break it into steps or plan when to do it.</span>
-        <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
-      </div>
-      <ItemActs onEdit={edit} onDelete={del} />
+      {editing ? null : (
+        <div className="itMae">
+          <span className="n">Mae</span>
+          <span>Want help with this one? Ask me to break it into steps or plan when to do it.</span>
+          <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
+        </div>
+      )}
+      {editing ? <EditActs onDone={done} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={edit} onDelete={del} />}
     </div>
   );
 }
 
-/* A goal, read-only: the aim and why, where it stands (counted), what's
-   next, the pieces that serve it, and the record of what moved it. */
 function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   const { notify } = useNav();
-  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Goal | null>(null);
   const [links, setLinks] = useState<Links>({ project: '', goal: '' });
-  useEffect(() => setEditing(false), [focus.id]);
+  useEffect(() => setDraft(null), [focus.id]);
   const [, setTick] = useState(0);
   useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const refresh = () => setTick((n) => n + 1);
@@ -344,16 +421,31 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
   const firstOpen = ms.findIndex((m) => !m.done);
   const last = new Date(g.upd ?? g.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
-  const kv: [string, string, string?][] = [];
-  kv.push(['Status', GOAL_STATUS_LABEL[g.st === 'not-started' ? 'in-progress' : g.st]]);
-  if (g.td) kv.push(['Target date', fmtShort(g.td) + (isActiveGoal(g) ? ' · ' + due.text.split(' · ').pop() : ''), due.red ? 'over' : undefined]);
-  if (g.pace) kv.push(['Pace', `${g.pace.n} a ${g.pace.per}`]);
-  if (project) kv.push(['Project', project.n]);
-  kv.push(['Last change', last]);
+  const editing = !!draft;
+  const e = draft ?? g;
+  const set = (p: Partial<Goal>) => setDraft({ ...(draft ?? g), ...p });
+  const statusOf = (x: Goal) => (x.st === 'not-started' ? 'in-progress' : x.st);
+  const measure = g.tgt ? `${g.tgt}${g.unit ? ' ' + g.unit : ''}` : '';
 
   const edit = () => {
     setLinks(currentLinks('goal', g.id));
-    setEditing(true);
+    setDraft({ ...g, ms: (g.ms ?? []).map((m) => ({ ...m })) });
+  };
+  const done = () => {
+    if (!draft || !draft.t.trim()) return;
+    const before = g;
+    const out: Goal = { ...draft, t: draft.t.trim().slice(0, 120), d: draft.d.trim(), unit: (draft.unit ?? '').trim() || undefined };
+    if (!out.tgt) {
+      delete out.tgt;
+      delete out.cur;
+      delete out.unit;
+    }
+    if (!out.pace || !out.pace.n) delete out.pace;
+    saveGoal(out);
+    const undoLinks = applyLinks('goal', g.id, links);
+    setDraft(null);
+    dataChanged();
+    notify('Goal saved.', { undo: () => { saveGoal(before); undoLinks(); dataChanged(); } });
   };
   const del = () => {
     const snap = snapshotGoals();
@@ -368,29 +460,6 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
       },
     });
   };
-  if (editing) {
-    return (
-      <div className="itab">
-        <GoalForm
-          bare
-          key={g.id}
-          goal={g}
-          isNew={false}
-          saveLabel="Done"
-          onCancel={() => setEditing(false)}
-          extra={<LinkFields value={links} onChange={setLinks} withGoal={false} />}
-          onSave={(next) => {
-            const before = g;
-            saveGoal(next);
-            const undoLinks = applyLinks('goal', g.id, links);
-            setEditing(false);
-            dataChanged();
-            notify('Goal saved.', { undo: () => { saveGoal(before); undoLinks(); dataChanged(); } });
-          }}
-        />
-      </div>
-    );
-  }
   const step = (d: number) => {
     const cur = Math.max(0, (g.cur ?? 0) + d);
     put({ ...g, cur }, `${cur} of ${g.tgt}${g.unit ? ' ' + g.unit : ''}.`);
@@ -398,8 +467,17 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
 
   return (
     <div className="itab">
-      <h2 className={'itT' + (g.st === 'completed' ? ' tlDone' : '')}>{g.t}</h2>
-      {g.d ? <p className="itNote itWhy">{g.d}</p> : <div style={{ height: 8 }} />}
+      {editing ? (
+        <>
+          <input className="itIn itTIn" aria-label="Goal" value={e.t} onChange={(x) => set({ t: x.target.value })} />
+          <textarea className="itIn itArea itWhyIn" rows={2} aria-label="Why it matters" placeholder="Why it matters" value={e.d} onChange={(x) => set({ d: x.target.value })} />
+        </>
+      ) : (
+        <>
+          <h2 className={'itT' + (g.st === 'completed' ? ' tlDone' : '')}>{g.t}</h2>
+          {g.d ? <p className="itNote itWhy">{g.d}</p> : <div style={{ height: 8 }} />}
+        </>
+      )}
       <span className="gBar itBar">
         <i style={{ width: `${pct}%` }} />
       </span>
@@ -407,7 +485,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         {pct}%{count ? ' · ' + count : ''}
         {pace === 'behind' ? <span className="over"> · Behind pace</span> : pace === 'on' ? ' · On track' : ''}
       </p>
-      {g.tgt && isActiveGoal(g) ? (
+      {g.tgt && isActiveGoal(g) && !editing ? (
         <div className="frow itKV">
           <span className="fmeta">So far</span>
           <span className="gStep">
@@ -424,12 +502,61 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
           </span>
         </div>
       ) : null}
-      {kv.map(([k, v, cls]) => (
-        <div key={k} className="frow itKV">
-          <span className="fmeta">{k}</span>
-          <span className={'ft' + (cls ? ' ' + cls : '')}>{v}</span>
-        </div>
-      ))}
+      <KV
+        k="Status"
+        v={GOAL_STATUS_LABEL[statusOf(g)]}
+        edit={
+          editing ? (
+            <Pick
+              label="Status"
+              value={statusOf(e)}
+              options={(['in-progress', 'completed', 'let-go'] as const).map((st) => [st, GOAL_STATUS_LABEL[st]] as [GoalStatus, string])}
+              onChange={(st) => set({ st })}
+            />
+          ) : undefined
+        }
+      />
+      <KV
+        k="Target date"
+        v={g.td ? fmtShort(g.td) + (isActiveGoal(g) ? ' · ' + due.text.split(' · ').pop() : '') : ''}
+        cls={due.red ? 'over' : undefined}
+        edit={editing ? <DateIn label="Target date" value={e.td} onChange={(td) => set({ td })} /> : undefined}
+      />
+      <KV
+        k="Measure"
+        v={measure}
+        edit={
+          editing ? (
+            <span className="itPair">
+              <NumIn label="Target number" value={e.tgt} onChange={(tgt) => set({ tgt })} />
+              <input className="itIn itUnit" aria-label="Unit" placeholder="clients" value={e.unit ?? ''} onChange={(x) => set({ unit: x.target.value.slice(0, 24) })} />
+            </span>
+          ) : undefined
+        }
+      />
+      <KV
+        k="Pace"
+        v={g.pace ? `${g.pace.n} a ${g.pace.per}` : ''}
+        edit={
+          editing ? (
+            <span className="itPair">
+              <NumIn label="Pace" value={e.pace?.n} onChange={(n) => set({ pace: n ? { n, per: e.pace?.per ?? 'week' } : undefined })} />
+              <span className="fmeta">a</span>
+              <Pick label="Per" value={e.pace?.per ?? 'week'} options={[['week', 'week'], ['month', 'month']]} onChange={(per) => set({ pace: { n: e.pace?.n ?? 0, per } })} />
+            </span>
+          ) : undefined
+        }
+      />
+      <LinkRows editing={editing} links={links} onLinks={setLinks} project={project?.n} withGoal={false} />
+      {editing ? null : <KV k="Last change" v={last} />}
+      {editing ? (
+        <>
+          <div className="flbl">Milestones</div>
+          <MilestonesEditor value={e.ms ?? []} onChange={(ms) => set({ ms })} />
+          <EditActs onDone={done} onCancel={() => setDraft(null)} />
+        </>
+      ) : (
+      <>
       <div className="flbl gOwnHd">
         <span>
           Steps <span className="fmeta">{open.length + evs.length + notes.length}</span>
@@ -514,6 +641,8 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
       </div>
       <ItemActs onEdit={edit} onDelete={del} />
+      </>
+      )}
     </div>
   );
 }

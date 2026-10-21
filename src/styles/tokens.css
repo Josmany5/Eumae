@@ -2182,3 +2182,24 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
    Delete is the red pill beside Edit. */
 .itForm{ padding:0; background:none; border:0; box-shadow:none; }
 .itActs > button.danger, .itActs > button.danger:hover{ color:var(--rd); }
+/* Office inline edit (his correction, Oct 21): the same rows, values become inputs in place. */
+.itNone{ color:var(--mut); }
+.itKVe{ padding:6px 0; }
+.itVal{ flex:none; max-width:65%; display:flex; justify-content:flex-end; }
+.itIn{ font:inherit; font-size:15px; color:var(--tx); background:var(--card); border:1px solid var(--hair); border-radius:8px;
+  padding:6px 10px; min-width:0; max-width:100%; text-align:right; color-scheme:dark; }
+[data-theme="light"] .itIn{ color-scheme:light; }
+.itIn:focus{ outline:none; border-color:var(--ac); }
+.itIn:disabled{ opacity:.45; }
+.itIn::placeholder{ color:var(--mut); }
+select.itIn{ text-align-last:right; padding-right:8px; }
+.itTIn{ display:block; width:100%; text-align:left; font-size:20px; font-weight:600; line-height:1.3; padding:6px 10px; }
+.itArea{ display:block; width:100%; text-align:left; line-height:1.5; resize:vertical; margin-top:4px; }
+.itWhyIn{ margin:8px 0 6px; }
+.itPair{ display:flex; align-items:center; gap:6px; }
+.itNum2{ width:72px; }
+.itUnit{ width:110px; }
+.itStepIn{ flex:1; text-align:left; }
+.itDays button{ width:30px; height:30px; }
+.itab .itActs{ margin-top:14px; }
+@media (min-width: 900px){ .itIn{ font-size:17px; } }

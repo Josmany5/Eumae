@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { getProjects, projectOf, linkItem, unlinkItem, snapshotProjects, restoreProjects, type LinkKind } from '../../projects';
 import { getGoals, goalOf, linkToGoal, unlinkFromGoal, isActiveGoal, snapshotGoals, restoreGoals, type GoalLinkKind } from '../../goals';
 
-/* Mae's office edits in place (LOCKED Oct 21, his call): the item opens
- * read-only; Edit turns the same tab into the item's full form, its button
- * reads Done. Project and Goal are fields there, not a ⋯ menu. Delete sits in
- * red beside Edit. Every change shows the Undo pill. */
+/* Mae's office edits in place (his call, Oct 21): the item opens read-only
+ * as clean rows; Edit turns each row's value into an input right there (see
+ * ItemFields.tsx), with no form swap. Done saves, Cancel reverts. Delete sits in red
+ * beside Edit. Every change shows the Undo pill. */
 
 export interface Links {
   project: string;
