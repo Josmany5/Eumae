@@ -577,13 +577,25 @@ function restartRecognizer(): void {
   }
 }
 
+/** The language the live recogniser was started in. A recogniser keeps its
+ *  language for life, so a change in Settings needs a fresh one (Oct 21: the mic
+ *  kept hearing the old language after a switch until the next read-aloud). */
+let recLang = '';
+
+/** Settings calls this when the voice language changes; a live mic is handed
+ *  over to a fresh recogniser in the new language straight away. */
+export function voiceLangChanged(): void {
+  if (recognizer && recLang !== storedVoiceLang().rec) restartRecognizer();
+}
+
 function startRec(voice: VoiceTyping): void {
   const Ctor = recognizerCtor();
   if (!Ctor || listener !== voice) return;
 
   const rec = new Ctor();
   recognizer = rec;
-  rec.lang = storedVoiceLang().rec;
+  recLang = storedVoiceLang().rec;
+  rec.lang = recLang;
   rec.continuous = true;
   rec.interimResults = true;
 
@@ -594,6 +606,12 @@ function startRec(voice: VoiceTyping): void {
        spoken is dropped. iOS delivers speech late, and keeping it is how text
        lands in the field from nowhere and gets stuck there, unable to send. */
     if (session !== 'listening') {
+      return;
+    }
+    /* Heard in a language that is no longer the setting: drop it and listen
+       again in the right one. */
+    if (recLang !== storedVoiceLang().rec) {
+      restartRecognizer();
       return;
     }
     /* Words arrived — the revive is not failing, so its backoff starts over. */

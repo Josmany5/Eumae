@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Icon } from '../shell/icons';
 import { LOG_AREAS, useLog, type LogArea } from '../../log';
 import { useMedia } from '../../useMedia';
-import { speak } from '../../voice';
+import { speak, voiceLangChanged } from '../../voice';
 import { DEFAULT_SPEED, DEFAULT_VOICE, SPEEDS, VOICES, voiceById } from '../../voices';
 import { DEFAULT_VOICE_LANG, VOICE_LANGS, voiceLangByCode } from '../../voiceLang';
 import { createAccount, emailLink, signIn, signOutUser, useAuth } from '../../auth';
@@ -746,7 +746,10 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
                 className="sinput"
                 aria-label="Voice language"
                 value={voiceLangByCode(voiceLang).code}
-                onChange={(e) => setVoiceLang(e.target.value)}
+                onChange={(e) => {
+                  setVoiceLang(e.target.value);
+                  voiceLangChanged();
+                }}
               >
                 {VOICE_LANGS.map((l) => (
                   <option key={l.code} value={l.code}>
