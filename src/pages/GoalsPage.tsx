@@ -28,7 +28,7 @@ import { GoalForm } from '../components/GoalForm';
 import { nextMilestone } from '../milestones';
 import { fmtShort } from '../quickadd';
 import { projectOf } from '../projects';
-import { setFocus, onDataChange, dataChanged } from '../focus';
+import { setFocus, onDataChange, dataChanged, openOfficeEdit } from '../focus';
 import { useGoalAdd } from '../components/GoalAdd';
 import type { PageProps } from './index';
 
@@ -194,7 +194,7 @@ export default function GoalsPage({ arg }: PageProps) {
               <span className="fmeta">{gr.goals.length}</span>
             </div>
             {gr.goals.map((g) => (
-              <GoalRow key={g.id} g={g} onOpen={() => open(g)} onEdit={() => setEdit(g)} onDelete={() => remove(g.id)} refresh={refresh} />
+              <GoalRow key={g.id} g={g} onOpen={() => open(g)} onEdit={() => { openOfficeEdit('goal', g.id); openPanel('item'); }} onDelete={() => remove(g.id)} refresh={refresh} />
             ))}
           </section>
         ))}

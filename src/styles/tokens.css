@@ -2203,3 +2203,18 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .itDays button{ width:30px; height:30px; }
 .itab .itActs{ margin-top:14px; }
 @media (min-width: 900px){ .itIn{ font-size:17px; } }
+/* Office item tab, condensed (his call, Oct 21): Edit/Delete sit beside the
+   title, rows sit close with no lines between them. */
+.itHead{ display:flex; align-items:flex-start; gap:10px; }
+.itHead > .itT, .itHead > .itTIn{ flex:1; min-width:0; }
+.itHead > .itActs{ flex:none; margin:0; flex-wrap:wrap; justify-content:flex-end; gap:6px; padding-top:2px; }
+.itHead > .itActs > button{ padding:4px 12px; font-size:13px; }
+.itab .itKV{ border-bottom:0; min-height:0; padding:3px 0; }
+.itab .itKVe{ padding:2px 0; }
+.itab .itStep{ border-bottom:0; min-height:0; padding:4px 0; }
+.itab .itSub{ margin:2px 0 6px; }
+.itab .flbl{ margin:12px 0 2px; }
+.itab .itMae{ margin:12px 0 8px; }
+.itab .itIn{ padding:3px 8px; }
+.itab .itTIn{ padding:4px 8px; }
+@media (min-width: 900px){ .itHead > .itActs > button{ font-size:14px; } }

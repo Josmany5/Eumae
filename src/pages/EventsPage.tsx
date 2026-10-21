@@ -19,7 +19,7 @@ import {
   type EventType,
 } from '../events';
 import { QuickAdd, EventForm, EventMenu, quickToEvent, removeEvent } from '../components/QuickAdd';
-import { setFocus } from '../focus';
+import { setFocus, openOfficeEdit } from '../focus';
 import { ProjectChip } from '../components/ItemMenu';
 import { fmtTime, repLabel } from '../quickadd';
 import type { PageProps } from './index';
@@ -145,7 +145,7 @@ export default function EventsPage({ arg }: PageProps) {
                     <EventMenu
                       ev={full}
                       onOpen={() => open(full)}
-                      onEdit={() => open(full)}
+                      onEdit={() => { if (full.id) { setForm(null); openOfficeEdit('event', full.id, e.d); openPanel('item'); } }}
                       onDelete={(scope) => removeEvent(notify, full, e.d, scope, refresh)}
                       onChange={refresh}
                     />

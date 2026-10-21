@@ -123,3 +123,24 @@ export function onAsk(f: () => void): () => void {
     askers.delete(f);
   };
 }
+
+/* "Edit" from a row's ⋯ menu: open the item in Mae's office already in edit
+   mode (his call, Oct 21). The item tab takes the request when it's up. */
+let pendingEdit: string | null = null;
+const officeEditSubs = new Set<() => void>();
+export function openOfficeEdit(k: 'task' | 'event' | 'goal', id: string, day?: string): void {
+  pendingEdit = k + ':' + id;
+  setFocus({ k, id, ...(day ? { day } : {}) });
+  officeEditSubs.forEach((f) => f());
+}
+export function takeOfficeEdit(k: string, id: string): boolean {
+  if (pendingEdit !== k + ':' + id) return false;
+  pendingEdit = null;
+  return true;
+}
+export function onOfficeEdit(f: () => void): () => void {
+  officeEditSubs.add(f);
+  return () => {
+    officeEditSubs.delete(f);
+  };
+}

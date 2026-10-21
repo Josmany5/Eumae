@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNav, type PanelView } from '../../nav';
 import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists, saveTask, type Task } from '../../tasks';
 import { projectOf, linkedIds } from '../../projects';
@@ -8,7 +8,7 @@ import { useGoalAdd } from '../GoalAdd';
 import { sortMilestones } from '../../milestones';
 import { dueLabel } from '../../pages/GoalsPage';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
-import { setFocus, onDataChange, dataChanged, type Focus } from '../../focus';
+import { setFocus, onDataChange, dataChanged, askMae, takeOfficeEdit, onOfficeEdit, type Focus } from '../../focus';
 import { getEvent, saveEvent, ymd, importanceOf, IMPORTANCE_LABEL, EVENT_IMPORTANCE, EVENT_TYPES, type CalEvent, type EventType, type EventImportance } from '../../events';
 import { removeEvent, TYPE_LABEL } from '../QuickAdd';
 import { MilestonesEditor } from '../Milestones';
@@ -19,6 +19,28 @@ import { itemsOn, minsToTm } from '../../pages/CalendarPage';
 import { evKind } from './Timeline';
 import { isOverdue, hasEnded } from '../../due';
 import { AttendAsk } from './Attend';
+
+/** "Edit" from a row's ⋯ menu opens this tab already in edit mode. */
+function useOfficeEdit(k: 'task' | 'event' | 'goal', id: string, start: () => void) {
+  const ref = useRef(start);
+  ref.current = start;
+  useEffect(() => {
+    const check = () => {
+      if (takeOfficeEdit(k, id)) ref.current();
+    };
+    check();
+    return onOfficeEdit(check);
+  }, [k, id]);
+}
+
+/** "Ask Mae" sends a ready question into the office's Mae chat (his call, Oct 21). */
+function useAsk(onView: (v: PanelView) => void, focus: Focus) {
+  return (q: string) => {
+    void focus;
+    askMae(q);
+    onView('mae');
+  };
+}
 
 /** The tapped item's own tab in Mae's office: what it is, its details, its
  *  steps, and the moves you'd make on it. Read-only first; Edit turns each
@@ -85,6 +107,13 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
   const [draft, setDraft] = useState<CalEvent | null>(null);
   const [links, setLinks] = useState<Links>({ project: '', goal: '' });
   useEffect(() => setDraft(null), [focus.id]);
+  useOfficeEdit('event', focus.id, () => {
+    const x = getEvent(focus.id);
+    if (!x) return;
+    setLinks(currentLinks('event', x.id!));
+    setDraft({ ...x });
+  });
+  const ask = useAsk(onView, focus);
   const [, setTick] = useState(0);
   useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const ev = getEvent(focus.id);
@@ -131,11 +160,14 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
   const rep = e.rep;
   return (
     <div className="itab">
-      {editing ? (
-        <input className="itIn itTIn" aria-label="Event name" value={e.t} onChange={(x) => set({ t: x.target.value })} />
-      ) : (
-        <h2 className="itT">{ev.t}</h2>
-      )}
+      <div className="itHead">
+        {editing ? (
+          <input className="itIn itTIn" aria-label="Event name" value={e.t} onChange={(x) => set({ t: x.target.value })} />
+        ) : (
+          <h2 className="itT">{ev.t}</h2>
+        )}
+        {editing ? <EditActs onDone={done} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={edit} onDelete={() => del('all')} onDeleteOne={ev.rep ? () => del('one') : undefined} />}
+      </div>
       {d < today ? <p className="fmeta itSub">Past</p> : <div style={{ height: 8 }} />}
       {ended && !editing ? (
         <div className="itAttend">
@@ -196,10 +228,9 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
         <div className="itMae">
           <span className="n">Mae</span>
           <span>Want to prep for this? Ask me for talking points or what to bring.</span>
-          <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
+          <button className="fact" onClick={() => ask(`Help me prep for "${ev.t}" (${dayWord}). Give me talking points and what to bring.`)}>Ask Mae</button>
         </div>
       )}
-      {editing ? <EditActs onDone={done} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={edit} onDelete={() => del('all')} onDeleteOne={ev.rep ? () => del('one') : undefined} />}
     </div>
   );
 }
@@ -210,6 +241,14 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
   const [links, setLinks] = useState<Links>({ project: '', goal: '' });
   const [newStep, setNewStep] = useState('');
   useEffect(() => setDraft(null), [focus.id]);
+  useOfficeEdit('task', focus.id, () => {
+    const x = getTask(focus.id);
+    if (!x) return;
+    setLinks(currentLinks('task', x.id));
+    setNewStep('');
+    setDraft({ ...x, sub: (x.sub ?? []).map((s) => ({ ...s })) });
+  });
+  const ask = useAsk(onView, focus);
   const [, setTick] = useState(0);
   useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const refresh = () => setTick((n) => n + 1);
@@ -279,11 +318,14 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
 
   return (
     <div className="itab">
-      {editing ? (
-        <input className="itIn itTIn" aria-label="Task name" value={e.t} onChange={(x) => set({ t: x.target.value })} />
-      ) : (
-        <h2 className={'itT' + (t.d ? ' tlDone' : '')}>{t.t}</h2>
-      )}
+      <div className="itHead">
+        {editing ? (
+          <input className="itIn itTIn" aria-label="Task name" value={e.t} onChange={(x) => set({ t: x.target.value })} />
+        ) : (
+          <h2 className={'itT' + (t.d ? ' tlDone' : '')}>{t.t}</h2>
+        )}
+        {editing ? <EditActs onDone={done} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={edit} onDelete={del} />}
+      </div>
       <p className="fmeta itSub">
         Added {added}
         {t.d ? ' · done' : ''}
@@ -367,10 +409,9 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         <div className="itMae">
           <span className="n">Mae</span>
           <span>Want help with this one? Ask me to break it into steps or plan when to do it.</span>
-          <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
+          <button className="fact" onClick={() => ask(`Help me with my task "${t.t}"${t.due ? ` (due ${dueWord}${t.tm ? ' ' + fmtTime(t.tm) : ''})` : ''}. Break it into steps or plan when to do it.`)}>Ask Mae</button>
         </div>
       )}
-      {editing ? <EditActs onDone={done} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={edit} onDelete={del} />}
     </div>
   );
 }
@@ -380,6 +421,13 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
   const [draft, setDraft] = useState<Goal | null>(null);
   const [links, setLinks] = useState<Links>({ project: '', goal: '' });
   useEffect(() => setDraft(null), [focus.id]);
+  useOfficeEdit('goal', focus.id, () => {
+    const x = getGoals().find((y) => y.id === focus.id);
+    if (!x) return;
+    setLinks(currentLinks('goal', x.id));
+    setDraft({ ...x, ms: (x.ms ?? []).map((m) => ({ ...m })) });
+  });
+  const ask = useAsk(onView, focus);
   const [, setTick] = useState(0);
   useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const refresh = () => setTick((n) => n + 1);
@@ -467,16 +515,20 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
 
   return (
     <div className="itab">
+      <div className="itHead">
+        {editing ? (
+          <input className="itIn itTIn" aria-label="Goal" value={e.t} onChange={(x) => set({ t: x.target.value })} />
+        ) : (
+          <h2 className={'itT' + (g.st === 'completed' ? ' tlDone' : '')}>{g.t}</h2>
+        )}
+        {editing ? <EditActs onDone={done} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={edit} onDelete={del} />}
+      </div>
       {editing ? (
         <>
-          <input className="itIn itTIn" aria-label="Goal" value={e.t} onChange={(x) => set({ t: x.target.value })} />
           <textarea className="itIn itArea itWhyIn" rows={2} aria-label="Why it matters" placeholder="Why it matters" value={e.d} onChange={(x) => set({ d: x.target.value })} />
         </>
       ) : (
-        <>
-          <h2 className={'itT' + (g.st === 'completed' ? ' tlDone' : '')}>{g.t}</h2>
-          {g.d ? <p className="itNote itWhy">{g.d}</p> : <div style={{ height: 8 }} />}
-        </>
+        <>{g.d ? <p className="itNote itWhy">{g.d}</p> : <div style={{ height: 8 }} />}</>
       )}
       <span className="gBar itBar">
         <i style={{ width: `${pct}%` }} />
@@ -553,7 +605,6 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         <>
           <div className="flbl">Milestones</div>
           <MilestonesEditor value={e.ms ?? []} onChange={(ms) => set({ ms })} />
-          <EditActs onDone={done} onCancel={() => setDraft(null)} />
         </>
       ) : (
       <>
@@ -638,9 +689,8 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
       <div className="itMae">
         <span className="n">Mae</span>
         <span>{!tasks.length && !evs.length && !ms.length ? 'Nothing serves this goal yet. Ask me for a first small step.' : 'Stuck or behind? Ask me for the next small step.'}</span>
-        <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
+        <button className="fact" onClick={() => ask(`Help me with my goal "${g.t}" (${pct}%${count ? ', ' + count : ''}${pace === 'behind' ? ', behind pace' : ''}). What's the next small step?`)}>Ask Mae</button>
       </div>
-      <ItemActs onEdit={edit} onDelete={del} />
       </>
       )}
     </div>

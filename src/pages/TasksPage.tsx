@@ -35,7 +35,7 @@ import { fmtShort, fmtTime, type Quick } from '../quickadd';
 import { ItemMenu, ProjectChip } from '../components/ItemMenu';
 import { projectOf, linkedIds } from '../projects';
 import { getGoals } from '../goals';
-import { setFocus, onEditTask, onDataChange } from '../focus';
+import { setFocus, onEditTask, onDataChange, openOfficeEdit } from '../focus';
 import { TaskForm } from '../components/TaskForm';
 import { isOverdue } from '../due';
 
@@ -323,7 +323,7 @@ export default function TasksPage({ arg }: PageProps) {
         </div>
       ) : null}
       {mode === 'matrix' ? (
-        <Matrix tasks={tasks} refresh={refresh} onEdit={(t) => setDraft(t)} onDelete={(t) => undoable('Task deleted.', () => deleteTask(t.id))} />
+        <Matrix tasks={tasks} refresh={refresh} onEdit={(t) => { openOfficeEdit('task', t.id); openPanel('item'); }} onDelete={(t) => undoable('Task deleted.', () => deleteTask(t.id))} />
       ) : (
         <div className="tkList">
           {groupTasks(tasks, mode).map((g) => (
@@ -348,7 +348,7 @@ export default function TasksPage({ arg }: PageProps) {
                     setExpanded((e) => (e === t.id ? null : t.id));
                     setNewSub('');
                   }}
-                  onEdit={() => setDraft(t)}
+                  onEdit={() => { openOfficeEdit('task', t.id); openPanel('item'); }}
                   onDelete={() => undoable('Task deleted.', () => deleteTask(t.id))}
                   onDeleteSub={(i) => undoable('Subtask deleted.', () => deleteSubtask(t.id, i))}
                   refresh={refresh}
