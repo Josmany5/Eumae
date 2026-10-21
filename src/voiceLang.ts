@@ -1,0 +1,106 @@
+/* Voice language — the one language the mic listens in, Mae answers in, and
+ * read-aloud speaks in.
+ *
+ * The list is Google's Chirp 3: HD locales (cloud.google.com/text-to-speech/docs/
+ * chirp3-hd, read 2026-10-20): 54 locales, 48 languages. Read-aloud is the
+ * narrowest of the three, so it decides what is offered. `rec` is the tag the
+ * browser's speech recogniser is given, which differs from the voice locale in
+ * three places (Arabic, Mandarin, Cantonese).
+ *
+ * The setting is stored by Settings through `useStored` under `eumae:voiceLang`,
+ * as JSON, and read here at the moment it is needed — no subscription, so a
+ * change lands on the next thing said. */
+
+export interface VoiceLang {
+  /** Google's TTS locale, and the stored value. */
+  code: string;
+  /** What the picker shows, in the language itself. */
+  label: string;
+  /** The English name Mae is told to answer in. */
+  english: string;
+  /** The tag the browser's recogniser listens with. */
+  rec: string;
+}
+
+const L = (code: string, label: string, english: string, rec = code): VoiceLang => ({ code, label, english, rec });
+
+export const VOICE_LANGS: VoiceLang[] = [
+  L('en-US', 'English (US)', 'English'),
+  L('en-GB', 'English (UK)', 'English'),
+  L('en-AU', 'English (Australia)', 'English'),
+  L('en-IN', 'English (India)', 'English'),
+  L('es-US', 'Español (EE. UU.)', 'Spanish'),
+  L('es-ES', 'Español (España)', 'Spanish'),
+  L('pt-BR', 'Português (Brasil)', 'Portuguese'),
+  L('fr-FR', 'Français (France)', 'French'),
+  L('fr-CA', 'Français (Canada)', 'French'),
+  L('it-IT', 'Italiano', 'Italian'),
+  L('de-DE', 'Deutsch', 'German'),
+  L('nl-NL', 'Nederlands', 'Dutch'),
+  L('nl-BE', 'Nederlands (België)', 'Dutch'),
+  L('cmn-CN', '中文（普通话）', 'Mandarin Chinese (Simplified)', 'zh-CN'),
+  L('yue-HK', '粵語（香港）', 'Cantonese (Traditional Chinese)', 'zh-HK'),
+  L('ja-JP', '日本語', 'Japanese'),
+  L('ko-KR', '한국어', 'Korean'),
+  L('ar-XA', 'العربية', 'Arabic', 'ar-SA'),
+  L('hi-IN', 'हिन्दी', 'Hindi'),
+  L('bn-IN', 'বাংলা', 'Bengali'),
+  L('ur-IN', 'اردو', 'Urdu'),
+  L('pa-IN', 'ਪੰਜਾਬੀ', 'Punjabi'),
+  L('gu-IN', 'ગુજરાતી', 'Gujarati'),
+  L('mr-IN', 'मराठी', 'Marathi'),
+  L('ta-IN', 'தமிழ்', 'Tamil'),
+  L('te-IN', 'తెలుగు', 'Telugu'),
+  L('kn-IN', 'ಕನ್ನಡ', 'Kannada'),
+  L('ml-IN', 'മലയാളം', 'Malayalam'),
+  L('ru-RU', 'Русский', 'Russian'),
+  L('uk-UA', 'Українська', 'Ukrainian'),
+  L('pl-PL', 'Polski', 'Polish'),
+  L('cs-CZ', 'Čeština', 'Czech'),
+  L('sk-SK', 'Slovenčina', 'Slovak'),
+  L('sl-SI', 'Slovenščina', 'Slovenian'),
+  L('hr-HR', 'Hrvatski', 'Croatian'),
+  L('sr-RS', 'Српски', 'Serbian (Cyrillic)'),
+  L('bg-BG', 'Български', 'Bulgarian'),
+  L('ro-RO', 'Română', 'Romanian'),
+  L('hu-HU', 'Magyar', 'Hungarian'),
+  L('el-GR', 'Ελληνικά', 'Greek'),
+  L('tr-TR', 'Türkçe', 'Turkish'),
+  L('he-IL', 'עברית', 'Hebrew'),
+  L('sv-SE', 'Svenska', 'Swedish'),
+  L('nb-NO', 'Norsk bokmål', 'Norwegian'),
+  L('da-DK', 'Dansk', 'Danish'),
+  L('fi-FI', 'Suomi', 'Finnish'),
+  L('et-EE', 'Eesti', 'Estonian'),
+  L('lv-LV', 'Latviešu', 'Latvian'),
+  L('lt-LT', 'Lietuvių', 'Lithuanian'),
+  L('id-ID', 'Bahasa Indonesia', 'Indonesian'),
+  L('vi-VN', 'Tiếng Việt', 'Vietnamese'),
+  L('th-TH', 'ไทย', 'Thai'),
+  L('sw-KE', 'Kiswahili', 'Swahili'),
+];
+
+export const DEFAULT_VOICE_LANG = VOICE_LANGS[0];
+
+const LANG_KEY = 'eumae:voiceLang';
+
+export function voiceLangByCode(code: unknown): VoiceLang {
+  return VOICE_LANGS.find((l) => l.code === code) ?? DEFAULT_VOICE_LANG;
+}
+
+/** The setting as it stands, or English (US). */
+export function storedVoiceLang(): VoiceLang {
+  try {
+    return voiceLangByCode(JSON.parse(localStorage.getItem(LANG_KEY) ?? 'null'));
+  } catch {
+    return DEFAULT_VOICE_LANG;
+  }
+}
+
+/** The line Mae's prompt gets. Nothing for English (US), so the default prompt
+ *  is exactly what it was. */
+export function replyLanguageLine(): string {
+  const l = storedVoiceLang();
+  if (l.code === DEFAULT_VOICE_LANG.code) return '';
+  return `\n\nLanguage: the user's language is ${l.english}. Answer in ${l.english}, unless they clearly write to you in another language; then answer in theirs.`;
+}

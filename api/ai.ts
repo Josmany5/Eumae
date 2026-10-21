@@ -1,6 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
+/* Google's Chirp 3: HD locales (cloud.google.com/text-to-speech/docs/chirp3-hd,
+   read 2026-10-20). The client's list is src/voiceLang.ts. */
+const CHIRP_LOCALES = new Set([
+  'ar-XA', 'bn-IN', 'bg-BG', 'yue-HK', 'hr-HR', 'cs-CZ', 'da-DK', 'nl-BE', 'nl-NL', 'en-AU', 'en-IN',
+  'en-GB', 'en-US', 'et-EE', 'fi-FI', 'fr-CA', 'fr-FR', 'de-DE', 'el-GR', 'gu-IN', 'he-IL', 'hi-IN',
+  'hu-HU', 'id-ID', 'it-IT', 'ja-JP', 'kn-IN', 'ko-KR', 'lv-LV', 'lt-LT', 'ml-IN', 'cmn-CN', 'mr-IN',
+  'nb-NO', 'pl-PL', 'pt-BR', 'pa-IN', 'ro-RO', 'ru-RU', 'sr-RS', 'sk-SK', 'sl-SI', 'es-ES', 'es-US',
+  'sw-KE', 'sv-SE', 'ta-IN', 'te-IN', 'th-TH', 'tr-TR', 'uk-UA', 'ur-IN', 'vi-VN',
+]);
+
 /* The two sentences a caller can be told when a provider fails. Neither is the
  * provider's own words: these end up in front of a person, and Google's error
  * body is written for whoever holds the key — it names endpoints and request
@@ -528,12 +538,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (action === 'speak') {
-      const { text, voice = 'female', voiceGender, rate } = data as {
+      const { text, voice = 'female', voiceGender, rate, lang } = data as {
         text: string;
         voice?: string;
         voiceGender?: string;
         rate?: string;
+        lang?: string;
       };
+      /* The voice language (src/voiceLang.ts): one of Google's Chirp 3: HD
+         locales, or US English. Anything else is US English. */
+      const locale = typeof lang === 'string' && CHIRP_LOCALES.has(lang) ? lang : 'en-US';
       let speakingRate = parseFloat(rate || '');
       if (!isFinite(speakingRate)) speakingRate = 1.0;
       speakingRate = Math.min(4.0, Math.max(0.25, speakingRate));
@@ -562,7 +576,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (voice === 'male') {
           voiceName = 'en-US-Chirp3-HD-Achird';
           ssmlGender = 'MALE';
-        } else if (!voice || voice === 'female' || (typeof voice === 'string' && !voice.startsWith('en-US-Chirp3-HD-'))) {
+        } else if (!voice || voice === 'female' || (typeof voice === 'string' && !/^[a-z]{2,3}-[A-Z]{2}-Chirp3-HD-[A-Za-z]+$/.test(voice))) {
           voiceName = 'en-US-Chirp3-HD-Achernar';
           ssmlGender = 'FEMALE';
         }
@@ -582,6 +596,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             : 'FEMALE';
         }
 
+        /* Same voice, the chosen language: Google names every Chirp 3: HD voice
+           <locale>-Chirp3-HD-<name>, and the thirty names exist in each locale. */
+        voiceName = `${locale}-Chirp3-HD-${(voiceName || '').replace(/^.*-Chirp3-HD-/, '')}`;
+
         const googleStart = Date.now();
         const ttsResponse = await fetch(
           `https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_CLOUD_TTS_KEY}`,
@@ -590,7 +608,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               input: { text: cleanedText },
-              voice: { languageCode: 'en-US', name: voiceName, ssmlGender },
+              voice: { languageCode: locale, name: voiceName, ssmlGender },
               audioConfig: { audioEncoding: 'MP3', speakingRate, pitch: 0.0 },
             }),
           }

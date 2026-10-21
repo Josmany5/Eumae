@@ -1,3 +1,4 @@
+import { replyLanguageLine } from './voiceLang';
 import type { Mode, Model, Ref, Turn } from './nav';
 import type { CustomRole } from './roles';
 
@@ -279,7 +280,7 @@ export function toApiBody(
   return {
     action: 'chatStream',
     data: {
-      systemPrompt: BASE_PROMPT + directives(req, customRole) + timeStamp(),
+      systemPrompt: BASE_PROMPT + directives(req, customRole) + timeStamp() + replyLanguageLine(),
       conversationHistory: historyOf(history),
       message: req.text + ctxBlock(req.refs),
       ...(attachments.length ? { attachments } : {}),

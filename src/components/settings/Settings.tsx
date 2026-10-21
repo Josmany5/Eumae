@@ -4,6 +4,7 @@ import { LOG_AREAS, useLog, type LogArea } from '../../log';
 import { useMedia } from '../../useMedia';
 import { speak } from '../../voice';
 import { DEFAULT_SPEED, DEFAULT_VOICE, SPEEDS, VOICES, voiceById } from '../../voices';
+import { DEFAULT_VOICE_LANG, VOICE_LANGS, voiceLangByCode } from '../../voiceLang';
 import { createAccount, emailLink, signIn, signOutUser, useAuth } from '../../auth';
 import { ItemMenu, ConfirmDialog } from '../ItemMenu';
 import type { NotifyOpts } from '../../nav';
@@ -183,6 +184,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
      default — so an install that chose one of the four old names reads as the
      default voice now, and never fails. */
   const [voice, setVoice] = useStored('voice', DEFAULT_VOICE.id);
+  const [voiceLang, setVoiceLang] = useStored('voiceLang', DEFAULT_VOICE_LANG.code);
   /* How fast a reply is read. The key has to be this one: `storedSpeed`
      (src/voices.ts) reads `eumae:voiceSpeed`, and `useStored` writes `eumae:`
      in front of whatever it is handed — so the row here and the request there
@@ -736,7 +738,27 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
               <div className="kv"><span className="m">Region</span><span>{LANG_FACTS.region}</span></div>
               <div className="kv"><span className="m">Date format</span><span>{LANG_FACTS.date}</span></div>
             </div>
-            <div className="s m">Read from your browser — there is nothing to change yet. More languages arrive with translations.</div>
+            <div className="card cardPad">
+              <div className="kv">
+                <span className="m">Voice language</span>
+              </div>
+              <select
+                className="sinput"
+                aria-label="Voice language"
+                value={voiceLangByCode(voiceLang).code}
+                onChange={(e) => setVoiceLang(e.target.value)}
+              >
+                {VOICE_LANGS.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="s m">
+              The mic listens in this language, Mae answers in it, and read aloud speaks it. The app&apos;s own
+              words stay in your browser&apos;s language for now.
+            </div>
           </>
         )}
 

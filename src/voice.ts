@@ -1,5 +1,6 @@
 import { accessToken } from './auth';
 import { storedSpeed, storedVoice, voiceName } from './voices';
+import { storedVoiceLang } from './voiceLang';
 
 /* The voice session — one variable, four states. Everything the mic and the
  * speaker do reads and writes this one place, so the two halves can never
@@ -275,6 +276,7 @@ async function fetchClip(piece: string, token: string | null): Promise<Clip> {
           text: piece,
           voice: speakVoice ?? voiceName(storedVoice()),
           rate: String(speakRate),
+          lang: storedVoiceLang().code,
         },
       }),
     });
@@ -581,7 +583,7 @@ function startRec(voice: VoiceTyping): void {
 
   const rec = new Ctor();
   recognizer = rec;
-  rec.lang = 'en-US';
+  rec.lang = storedVoiceLang().rec;
   rec.continuous = true;
   rec.interimResults = true;
 
@@ -647,7 +649,7 @@ function startRec(voice: VoiceTyping): void {
     } else if (reason === 'language-not-supported') {
       const v = listener;
       endMicSession();
-      if (v) v.say(`Microphone failed: ${reason}.`);
+      if (v) v.say(`This browser can't listen in ${storedVoiceLang().label} yet. Pick another voice language in Settings.`);
     } else if (reason === 'audio-capture') {
       /* Transient on iOS when the audio session has not been handed back yet
          after playback. Never fatal: onend follows and the revive brings a
