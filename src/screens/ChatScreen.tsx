@@ -3,7 +3,7 @@ import Composer from '../components/shell/Composer';
 import { Icon } from '../components/shell/icons';
 import { useNav } from '../nav';
 import { logEv } from '../log';
-import { endVoiceReply, feedVoiceReply, speak, startVoiceReply } from '../voice';
+import { endVoiceReply, feedVoiceReply, speak, startVoiceReply, stopListening } from '../voice';
 import { buildRequest, toApiBody } from '../request';
 import { findRole } from '../roles';
 import { getThread, saveThread, titleFor, type Msg } from '../threads';
@@ -371,8 +371,14 @@ export default function ChatScreen() {
   /* Thread switches swap the thread and re-pin the follow (a switch is a
      deliberate jump to the newest line). The floor pin itself lives in the
      layout effect below (before paint); this one only swaps + marks. */
+  /* The thread on screen right now, readable from a reply that started in an
+     earlier one (his call, Oct 20: a new chat is fresh, so the mic, the voice
+     and the old reply all stop at the switch). */
+  const threadNow = useRef(threadId);
+  threadNow.current = threadId;
   useEffect(() => {
     if (loadedId === threadId) return;
+    stopListening();
     setLoadedId(threadId);
     markAtBottom(true);
     setMsgs(messagesFor(threadId));
@@ -560,7 +566,10 @@ export default function ChatScreen() {
     };
     /* The card still waiting in this chat, if any: this turn adds to it. */
     const openMsg = [...(history ?? msgs)].reverse().find((m) => m.plan?.status === 'pending');
+    const sentIn = threadId;
+    const moved = () => threadNow.current !== sentIn;
     void runMaeTurn(body, 'Chat', (full) => {
+      if (moved()) return;
       /* The whole text so far, not the new piece: replacing what the bubble shows
          is the only way two pieces arriving out of order could not show up as a
          sentence in the wrong order. The dots go away with the first piece, which
@@ -569,6 +578,19 @@ export default function ChatScreen() {
       if (byVoice) feedVoiceReply(voiceId, full);
     }, openMsg?.plan).then((reply) => {
       streamDone();
+      /* You left for another chat while this was answering: the words are kept
+         in the chat they belong to, and nothing else happens (no voice, no
+         Sandbox, no office). */
+      if (moved()) {
+        if (sentIn) {
+          saveNow(
+            messagesFor(sentIn).map((x) =>
+              x.id === replyId ? { ...x, streaming: false, text: reply.text, note: reply.error ?? undefined } : x,
+            ),
+          );
+        }
+        return;
+      }
       /* A page in the reply goes to the Sandbox; the bubble keeps the words. */
       const pulled = reply.ok ? extractHtml(reply.text) : { html: null, rest: reply.text };
       let made: Msg['made'];
