@@ -6,6 +6,7 @@
  * Library's folder naming.
  */
 
+import { rowTap } from '../rowTap';
 import { useEffect, useState } from 'react';
 import { useNav } from '../nav';
 import {
@@ -419,7 +420,7 @@ function TaskRow({
   };
   return (
     <>
-      <div className={'frow top tkRow' + (leaving ? ' leaving' : '') + (selected ? ' sel' : '')} onClick={selecting ? onSelect : undefined}>
+      <div className={'frow top tkRow tapRow' + (leaving ? ' leaving' : '') + (selected ? ' sel' : '')} onClick={selecting ? onSelect : rowTap(onOpen)}>
         {selecting ? (
           <span className={'tkBox' + (selected ? ' on' : '')} role="checkbox" aria-checked={selected} aria-label={`Select ${task.t}`}>
             {selected ? '✓' : ''}

@@ -12,6 +12,7 @@
  * store, so the two always agree.
  */
 
+import { rowTap } from '../rowTap';
 import { useEffect, useMemo, useState } from 'react';
 import { useNav } from '../nav';
 import { dayEvents, getEvent, saveEvent, deleteEvent, ymd, mins, type CalEvent } from '../events';
@@ -465,7 +466,7 @@ export function HourDay({ day, today, items, onItem, onCheck, onAdd }: {
     const aw = it.kind === 'event' ? attendWord(it.ev, day) : null;
     const past = aw ? !aw.ask : day < today || (day === today && (it.end ?? it.start ?? 1440) < nowM);
     return (
-      <div key={it.key} className={'frow agRow2 hdItem c-' + it.color + (it.done || past ? ' past' : '')}>
+      <div key={it.key} className={'frow agRow2 hdItem tapRow c-' + it.color + (it.done || past ? ' past' : '')} onClick={rowTap(() => onItem(it))}>
         {it.kind === 'task' && it.task ? (
           <button className={'fchk' + (it.done ? ' on' : '')} aria-label={it.done ? `Reopen ${it.title}` : `Done: ${it.title}`} onClick={() => onCheck(it.task!)} />
         ) : (
@@ -549,7 +550,7 @@ function DaySection({ day, today, items, onItem, onCheck, onAdd }: {
           const aw = it.kind === 'event' ? attendWord(it.ev, day) : null;
           const past = aw ? !aw.ask : day < today || (day === today && it.end !== undefined && it.end < nowM);
           return (
-            <div key={it.key} className={'frow top agRow2 c-' + it.color + (it.done || past ? ' past' : '')}>
+            <div key={it.key} className={'frow top agRow2 tapRow c-' + it.color + (it.done || past ? ' past' : '')} onClick={rowTap(() => onItem(it))}>
               <span className="agT fmeta">
                 {it.start === undefined ? 'All day' : fmtTime(minsToTm(it.start))}
                 {it.end !== undefined && it.kind === 'event' ? <span className="agEnd">{fmtTime(minsToTm(it.end))}</span> : null}

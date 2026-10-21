@@ -6,6 +6,7 @@
  * one line ("Kung fu every Mon Wed 7-8:30pm"); More opens every field.
  */
 
+import { rowTap } from '../rowTap';
 import { useEffect, useMemo, useState } from 'react';
 import { useNav } from '../nav';
 import {
@@ -127,7 +128,7 @@ export default function EventsPage({ arg }: PageProps) {
               {g.rows.map((e) => {
                 const full = (e.id && getEvent(e.id)) || e;
                 return (
-                  <div key={(e.id ?? e.t) + e.d} className={'frow agRow2 c-' + (e.type ?? 'other')}>
+                  <div key={(e.id ?? e.t) + e.d} className={'frow agRow2 tapRow c-' + (e.type ?? 'other')} onClick={rowTap(() => open(full))}>
                     <i className="agBar" />
                     <div className="ft">
                       <button className="tlT" onClick={() => open(full)}>

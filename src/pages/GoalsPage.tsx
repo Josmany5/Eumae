@@ -6,6 +6,7 @@
  * (the Goal tab); Edit there opens the form.
  */
 
+import { rowTap } from '../rowTap';
 import { useEffect, useState } from 'react';
 import { useNav } from '../nav';
 import {
@@ -237,7 +238,7 @@ function GoalRow({ g, onOpen, onEdit, onDelete, refresh }: { g: Goal; onOpen: ()
   const goalAdd = useGoalAdd(g, refresh);
   const sub = [count, pace === 'behind' ? 'Behind pace' : pace === 'on' ? 'On track' : ''].filter(Boolean);
   return (
-    <div className={'frow top tkRow gRow' + (closed ? ' past' : '')}>
+    <div className={'frow top tkRow gRow tapRow' + (closed ? ' past' : '')} onClick={rowTap(onOpen)}>
       <button
         className={'fchk' + (g.st === 'completed' ? ' on' : '')}
         aria-label={g.st === 'completed' ? `Reopen ${g.t}` : `Done: ${g.t}`}

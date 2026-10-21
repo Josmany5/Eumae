@@ -1,3 +1,4 @@
+import { rowTap } from '../../rowTap';
 import { useEffect, useState } from 'react';
 import { useNav } from '../../nav';
 import { getTasks, getLists, toggleTask, saveTask, type Task } from '../../tasks';
@@ -130,7 +131,7 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
             ? `${i.task.est} min`
             : '';
     return (
-      <div key={i.key} className={`frow top tlRow${isDone || opts.past ? ' past' : ''}${isDone ? ' done' : ''}${i.kind === 'event' ? ' ev' : ''}`}>
+      <div key={i.key} className={`frow top tlRow tapRow${isDone || opts.past ? ' past' : ''}${isDone ? ' done' : ''}${i.kind === 'event' ? ' ev' : ''}`} onClick={rowTap(() => tap(i))}>
         {i.kind === 'task' ? (
           <button
             className="tlDot"

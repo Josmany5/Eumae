@@ -1,3 +1,4 @@
+import { rowTap } from '../../rowTap';
 import { useEffect, useRef, useState } from 'react';
 import { useNav, type PanelView } from '../../nav';
 import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists, saveTask, type Task } from '../../tasks';
@@ -64,7 +65,14 @@ function DayTab({ day }: { day: string }) {
       <h2 className="itT">{dt.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</h2>
       <p className="fmeta itSub">{items.length ? `${items.length} thing${items.length > 1 ? 's' : ''}` : 'Free'}</p>
       {items.map((it) => (
-        <div key={it.key} className={'frow top agRow2 c-' + it.color + (it.done ? ' past' : '')}>
+        <div
+          key={it.key}
+          className={'frow top agRow2 tapRow c-' + it.color + (it.done ? ' past' : '')}
+          onClick={(e) => {
+            const el = e.currentTarget;
+            rowTap(() => el.querySelector<HTMLButtonElement>('.tlT')?.click())(e);
+          }}
+        >
           <span className="agT fmeta">{it.start === undefined ? 'All day' : fmtTime(minsToTm(it.start))}</span>
           {it.kind === 'task' && it.task ? (
             <button
