@@ -1,17 +1,23 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Task, TaskPriority } from '../tasks';
 
 /* The full task form: used in place on the Tasks page and in the edit
    pop-up any page can open from Mae's office. */
-export function TaskForm({ task, lists, onSave, onCancel, onDelete }: {
+export function TaskForm({ task, lists, onSave, onCancel, onDelete, saveLabel, extra, bare }: {
   task: Task; lists: { id: string; n: string }[]; onSave: (t: Task) => void; onCancel: () => void; onDelete?: () => void;
+  /** Mae's office edits in place: its button reads Done. */
+  saveLabel?: string;
+  /** More fields before the buttons (the office adds Project and Goal). */
+  extra?: ReactNode;
+  /** No card box or heading (inside the office). */
+  bare?: boolean;
 }) {
   const [t, setT] = useState<Task>(task);
   const set = (p: Partial<Task>) => setT((x) => ({ ...x, ...p }));
   const days = t.repDays && t.repDays.length ? t.repDays : t.due ? [new Date(t.due + 'T12:00').getDay()] : [];
   return (
-    <div className="card evForm">
-      <b>{task.t === 'New task' && !task.due ? 'New task' : 'Task'}</b>
+    <div className={bare ? 'evForm itForm' : 'card evForm'}>
+      {bare ? null : <b>{task.t === 'New task' && !task.due ? 'New task' : 'Task'}</b>}
       <input className="sinput" value={t.t} onChange={(e) => set({ t: e.target.value })} aria-label="Task" autoFocus />
       <div className="evRow">
         <label>
@@ -79,8 +85,9 @@ export function TaskForm({ task, lists, onSave, onCancel, onDelete }: {
           </label>
         </div>
       ) : null}
+      {extra}
       <div className="btns">
-        <button className="pri" onClick={() => t.t.trim() && onSave({ ...t, t: t.t.trim() })}>Save task</button>
+        <button className="pri" onClick={() => t.t.trim() && onSave({ ...t, t: t.t.trim() })}>{saveLabel ?? 'Save task'}</button>
         <button className="gho" onClick={onCancel}>Cancel</button>
         {onDelete ? <button className="gho danger" onClick={onDelete}>Delete</button> : null}
       </div>

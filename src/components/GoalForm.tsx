@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { isActiveGoal, type Goal } from '../goals';
 import { MilestonesEditor } from './Milestones';
 
@@ -11,12 +11,18 @@ export function GoalForm({
   onSave,
   onDelete,
   onCancel,
+  saveLabel,
+  extra,
+  bare,
 }: {
   goal: Goal;
   isNew: boolean;
   onSave: (g: Goal) => void;
   onDelete?: () => void;
   onCancel: () => void;
+  saveLabel?: string;
+  extra?: ReactNode;
+  bare?: boolean;
 }) {
   const [g, setG] = useState<Goal>(goal);
   const set = (p: Partial<Goal>) => setG((x) => ({ ...x, ...p }));
@@ -37,8 +43,8 @@ export function GoalForm({
     onSave(out);
   };
   return (
-    <div className="card evForm">
-      <b>{isNew ? 'New goal' : 'Edit goal'}</b>
+    <div className={bare ? 'evForm itForm' : 'card evForm'}>
+      {bare ? null : <b>{isNew ? 'New goal' : 'Edit goal'}</b>}
       <input className="sinput" value={g.t} onChange={(e) => set({ t: e.target.value })} placeholder="Your goal, in your words" aria-label="Goal" autoFocus />
       <input className="sinput" placeholder="Why it matters" value={g.d} onChange={(e) => set({ d: e.target.value })} aria-label="Why it matters" />
       <div className="evRow">
@@ -115,9 +121,10 @@ export function GoalForm({
       </label>
       <span className="xs m">Milestones</span>
       <MilestonesEditor value={g.ms ?? []} onChange={(ms) => set({ ms })} />
+      {extra}
       <div className="btns">
         <button className="pri" onClick={save}>
-          {isNew ? 'Set goal' : 'Save'}
+          {saveLabel ?? (isNew ? 'Set goal' : 'Save')}
         </button>
         <button className="gho" onClick={onCancel}>
           Cancel

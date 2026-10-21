@@ -18,7 +18,7 @@
 
 import type { ObjectParam, Param } from './schema';
 import { getTasks, getTask, saveTask, createTask, deleteTask, getLists, addList, type Task, type TaskPriority } from '../tasks';
-import { getEvents, getEvent, saveEvent, deleteEvent, skipOccurrence, dayEvents, ymd, type CalEvent, type EventType } from '../events';
+import { getEvents, getEvent, saveEvent, deleteEvent, skipOccurrence, dayEvents, ymd, importanceOf, EVENT_IMPORTANCE, type CalEvent, type EventType } from '../events';
 import { isOverdue, toConfirm } from '../due';
 import { getGoals, saveGoal, createGoal, deleteGoal, goalPct, goalCount, isActiveGoal, goalOf, goalLinkedIds, linkToGoal, unlinkFromGoal, type Goal, type GoalStatus, type GoalLinkKind } from '../goals';
 import { getProjects, getProject, saveProject, createProject, deleteProject, linkItem, unlinkItem, projectOf, linkedIds, type LinkKind } from '../projects';
@@ -238,7 +238,7 @@ function milestones(v: unknown): Milestone[] | undefined {
 /* ───────────────────────── reads ───────────────────────── */
 
 const taskRow = (t: Task) => ({ id: t.id, title: t.t, done: !!t.d, due: t.due, time: t.tm, priority: t.pr, list: t.list, project: projectOf('task', t.id)?.n, goal: goalOf('task', t.id)?.t });
-const eventRow = (e: CalEvent) => ({ id: e.id, title: e.t, date: e.d, start: e.allDay ? undefined : e.tm, end: e.end, all_day: !!e.allDay, repeats: e.rep?.f, location: e.loc, goal: e.id ? goalOf('event', e.id)?.t : undefined });
+const eventRow = (e: CalEvent) => ({ id: e.id, title: e.t, date: e.d, start: e.allDay ? undefined : e.tm, end: e.end, all_day: !!e.allDay, repeats: e.rep?.f, location: e.loc, importance: importanceOf(e), goal: e.id ? goalOf('event', e.id)?.t : undefined });
 const goalRow = (g: Goal) => ({ id: g.id, title: g.t, status: g.st, percent: goalPct(g), progress: goalCount(g) || undefined, target_date: g.td || undefined, steps: GOAL_KINDS.reduce((n, k) => n + goalLinkedIds(g.id, k).length, 0) || undefined });
 
 const reads: Action[] = [
@@ -484,6 +484,7 @@ const eventFields: Record<string, Param> = {
   all_day: bool('True for an all-day event with no time.'),
   location: s('Where.', { max: 200 }),
   type: s('Kind of event.', { enum: EVENT_TYPES }),
+  importance: s('How much it matters: must (must go), should (default), optional. Only set it when they say so.', { enum: EVENT_IMPORTANCE }),
   repeat: s('Repeat.', { enum: REPEATS }),
   repeat_days: list('Weekly repeat only: days 0-6 (0 = Sunday).', num('Weekday.', { min: 0, max: 6, integer: true })),
   repeat_until: date('Last date it repeats.'),
@@ -600,6 +601,7 @@ const creates: Action[] = [
           ...(e.all_day ? { allDay: true } : {}),
           ...(e.location ? { loc: e.location } : {}),
           type: e.type ?? 'other',
+          ...(e.importance && e.importance !== 'should' ? { imp: e.importance } : {}),
           ...(repeatOf(e) ? { rep: repeatOf(e) } : {}),
           ...(e.notes ? { note: e.notes } : {}),
         });
@@ -759,6 +761,7 @@ const eventChange = obj(
     all_day: eventFields.all_day,
     location: s('Where, or "" to clear.', { max: 200 }),
     type: eventFields.type,
+    importance: eventFields.importance,
     repeat: eventFields.repeat,
     repeat_days: eventFields.repeat_days,
     repeat_until: date('Last repeat date, or "" to clear.'),
@@ -853,6 +856,7 @@ const changes: Action[] = [
       if (c.end !== undefined) c.end ? (next.end = c.end) : delete next.end;
       if (c.location !== undefined) c.location ? (next.loc = c.location) : delete next.loc;
       if (c.type !== undefined) next.type = c.type;
+      if (c.importance !== undefined) c.importance === 'should' ? delete next.imp : (next.imp = c.importance);
       if (c.notes !== undefined) c.notes ? (next.note = c.notes) : delete next.note;
       if (c.repeat !== undefined || c.repeat_days !== undefined || c.repeat_until !== undefined) {
         const f = c.repeat ?? e.rep?.f ?? 'none';

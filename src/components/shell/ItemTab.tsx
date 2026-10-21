@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNav, type PanelView } from '../../nav';
-import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists } from '../../tasks';
+import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists, saveTask } from '../../tasks';
 import { projectOf, linkedIds } from '../../projects';
 import { getGoals, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct, goalCount, goalPace, isActiveGoal, GOAL_STATUS_LABEL, goalLinkedIds, goalOf, linkToGoal, unlinkFromGoal, type Goal } from '../../goals';
 import { getNote, titleOf } from '../../notes';
@@ -8,9 +8,12 @@ import { useGoalAdd } from '../GoalAdd';
 import { sortMilestones } from '../../milestones';
 import { dueLabel } from '../../pages/GoalsPage';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
-import { setFocus, toggleEditModal, onDataChange, dataChanged, type Focus } from '../../focus';
-import { getEvent, ymd } from '../../events';
-import { removeEvent, TYPE_LABEL } from '../QuickAdd';
+import { setFocus, onDataChange, dataChanged, type Focus } from '../../focus';
+import { getEvent, saveEvent, ymd, importanceOf, IMPORTANCE_LABEL } from '../../events';
+import { removeEvent, TYPE_LABEL, EventForm } from '../QuickAdd';
+import { TaskForm } from '../TaskForm';
+import { GoalForm } from '../GoalForm';
+import { ItemActs, LinkFields, applyLinks, currentLinks, type Links } from './ItemEdit';
 import { ItemMenu } from '../ItemMenu';
 import { itemsOn, minsToTm } from '../../pages/CalendarPage';
 import { evKind } from './Timeline';
@@ -18,7 +21,8 @@ import { isOverdue, hasEnded } from '../../due';
 import { AttendAsk } from './Attend';
 
 /** The tapped item's own tab in Mae's office: what it is, its details, its
- *  steps, and the moves you'd make on it. Read-only; Edit opens the form. */
+ *  steps, and the moves you'd make on it. Read-only first; Edit turns this
+ *  tab into the item's form in place (LOCKED Oct 21), Delete sits beside it. */
 export function ItemTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   if (focus.k === 'day') return <DayTab day={focus.id} />;
   if (focus.k === 'goal') return <GoalTab focus={focus} onView={onView} />;
@@ -78,6 +82,9 @@ function DayTab({ day }: { day: string }) {
 
 function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   const { notify } = useNav();
+  const [editing, setEditing] = useState(false);
+  const [links, setLinks] = useState<Links>({ project: '', goal: '' });
+  useEffect(() => setEditing(false), [focus.id]);
   const [, setTick] = useState(0);
   useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const ev = getEvent(focus.id);
@@ -102,16 +109,39 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
   if (ev.loc) kv.push(['Where', ev.loc]);
   if (ev.rep) kv.push(['Repeats', repLabel(ev.rep, ev.d)]);
   kv.push(['Kind', TYPE_LABEL[ev.type ?? 'other']]);
+  kv.push(['Importance', IMPORTANCE_LABEL[importanceOf(ev)]]);
   if (project) kv.push(['Project', project.n]);
   const evGoal = goalOf('event', ev.id!);
   if (evGoal) kv.push(['Goal', evGoal.t]);
   const edit = () => {
-    toggleEditModal({ k: 'event', id: ev.id! });
+    setLinks(currentLinks('event', ev.id!));
+    setEditing(true);
   };
   const del = (scope: 'one' | 'all') => {
     setFocus(null);
     removeEvent(notify, ev, d, scope);
   };
+  if (editing) {
+    return (
+      <div className="itab">
+        <EventForm
+          bare
+          initial={ev}
+          saveLabel="Done"
+          onCancel={() => setEditing(false)}
+          extra={<LinkFields value={links} onChange={setLinks} withGoal />}
+          onSave={(next) => {
+            const before = ev;
+            saveEvent(next);
+            const undoLinks = applyLinks('event', ev.id!, links);
+            setEditing(false);
+            dataChanged();
+            notify('Event updated.', { undo: () => { saveEvent(before); undoLinks(); dataChanged(); } });
+          }}
+        />
+      </div>
+    );
+  }
   return (
     <div className="itab">
       <h2 className="itT">{ev.t}</h2>
@@ -138,24 +168,16 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
         <span>Want to prep for this? Ask me for talking points or what to bring.</span>
         <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
       </div>
-      <div className="itActs">
-        <button className="pri" onClick={edit}>Edit</button>
-        <ItemMenu
-          name={ev.t}
-          edit={edit}
-          link={{ k: 'event', id: ev.id! }}
-          onChange={() => setTick((n) => n + 1)}
-          extra={ev.rep ? [{ label: 'Delete this one', onClick: () => del('one'), danger: true }] : undefined}
-          deleteLabel={ev.rep ? 'Delete the series' : 'Delete'}
-          onDelete={() => del('all')}
-        />
-      </div>
+      <ItemActs onEdit={edit} onDelete={() => del('all')} onDeleteOne={ev.rep ? () => del('one') : undefined} />
     </div>
   );
 }
 
 function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   const { notify } = useNav();
+  const [editing, setEditing] = useState(false);
+  const [links, setLinks] = useState<Links>({ project: '', goal: '' });
+  useEffect(() => setEditing(false), [focus.id]);
   const [, setTick] = useState(0);
   useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const refresh = () => setTick((n) => n + 1);
@@ -197,8 +219,39 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
   if (t.rep && t.rep !== 'none') kv.push(['Repeats', t.rep[0].toUpperCase() + t.rep.slice(1)]);
 
   const edit = () => {
-    toggleEditModal({ k: 'task', id: t.id });
+    setLinks(currentLinks('task', t.id));
+    setEditing(true);
   };
+  const del = () => {
+    const snap = snapshotTasks();
+    deleteTask(t.id);
+    setFocus(null);
+    notify('Task deleted.', { undo: () => { restoreTasks(snap); setFocus({ k: 'task', id: t.id }); } });
+  };
+
+  if (editing) {
+    return (
+      <div className="itab">
+        <TaskForm
+          bare
+          key={t.id}
+          task={t}
+          lists={getLists()}
+          saveLabel="Done"
+          onCancel={() => setEditing(false)}
+          extra={<LinkFields value={links} onChange={setLinks} withGoal />}
+          onSave={(next) => {
+            const before = t;
+            saveTask(next);
+            const undoLinks = applyLinks('task', t.id, links);
+            setEditing(false);
+            dataChanged();
+            notify('Task saved.', { undo: () => { saveTask(before); undoLinks(); dataChanged(); } });
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="itab">
@@ -238,21 +291,7 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         <span>Want help with this one? Ask me to break it into steps or plan when to do it.</span>
         <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
       </div>
-      <div className="itActs">
-        <button className="pri" onClick={edit}>Edit</button>
-        <ItemMenu
-          name={t.t}
-          edit={edit}
-          link={{ k: 'task', id: t.id }}
-          onChange={refresh}
-          onDelete={() => {
-            const snap = snapshotTasks();
-            deleteTask(t.id);
-            setFocus(null);
-            notify('Task deleted.', { undo: () => { restoreTasks(snap); setFocus({ k: 'task', id: t.id }); } });
-          }}
-        />
-      </div>
+      <ItemActs onEdit={edit} onDelete={del} />
     </div>
   );
 }
@@ -261,6 +300,9 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
    next, the pieces that serve it, and the record of what moved it. */
 function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   const { notify } = useNav();
+  const [editing, setEditing] = useState(false);
+  const [links, setLinks] = useState<Links>({ project: '', goal: '' });
+  useEffect(() => setEditing(false), [focus.id]);
   const [, setTick] = useState(0);
   useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
   const refresh = () => setTick((n) => n + 1);
@@ -309,7 +351,46 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
   if (project) kv.push(['Project', project.n]);
   kv.push(['Last change', last]);
 
-  const edit = () => toggleEditModal({ k: 'goal', id: g.id });
+  const edit = () => {
+    setLinks(currentLinks('goal', g.id));
+    setEditing(true);
+  };
+  const del = () => {
+    const snap = snapshotGoals();
+    deleteGoal(g.id);
+    setFocus(null);
+    dataChanged();
+    notify('Goal deleted.', {
+      undo: () => {
+        restoreGoals(snap);
+        dataChanged();
+        setFocus({ k: 'goal', id: g.id });
+      },
+    });
+  };
+  if (editing) {
+    return (
+      <div className="itab">
+        <GoalForm
+          bare
+          key={g.id}
+          goal={g}
+          isNew={false}
+          saveLabel="Done"
+          onCancel={() => setEditing(false)}
+          extra={<LinkFields value={links} onChange={setLinks} withGoal={false} />}
+          onSave={(next) => {
+            const before = g;
+            saveGoal(next);
+            const undoLinks = applyLinks('goal', g.id, links);
+            setEditing(false);
+            dataChanged();
+            notify('Goal saved.', { undo: () => { saveGoal(before); undoLinks(); dataChanged(); } });
+          }}
+        />
+      </div>
+    );
+  }
   const step = (d: number) => {
     const cur = Math.max(0, (g.cur ?? 0) + d);
     put({ ...g, cur }, `${cur} of ${g.tgt}${g.unit ? ' ' + g.unit : ''}.`);
@@ -432,38 +513,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         <span>{!tasks.length && !evs.length && !ms.length ? 'Nothing serves this goal yet. Ask me for a first small step.' : 'Stuck or behind? Ask me for the next small step.'}</span>
         <button className="fact" onClick={() => onView('mae')}>Ask Mae</button>
       </div>
-      <div className="itActs">
-        <button className="pri" onClick={edit}>Edit</button>
-        <ItemMenu
-          name={g.t}
-          edit={edit}
-          extra={[...goalAdd.entries, ...(
-            g.st === 'let-go'
-              ? [{ label: 'Bring back', onClick: () => put({ ...g, st: 'in-progress' }, 'Goal is active again.') }]
-              : g.st === 'completed'
-                ? [{ label: 'Reopen', onClick: () => put({ ...g, st: 'in-progress' }, 'Goal reopened.') }]
-                : [
-                    { label: 'Mark done', onClick: () => put({ ...g, st: 'completed' }, 'Goal done. Nice work.') },
-                    { label: 'Let go', onClick: () => put({ ...g, st: 'let-go' }, 'Goal let go. It stays in your record.') },
-                  ]
-          )]}
-          link={{ k: 'goal', id: g.id }}
-          onChange={refresh}
-          onDelete={() => {
-            const snap = snapshotGoals();
-            deleteGoal(g.id);
-            setFocus(null);
-            dataChanged();
-            notify('Goal deleted.', {
-              undo: () => {
-                restoreGoals(snap);
-                dataChanged();
-                setFocus({ k: 'goal', id: g.id });
-              },
-            });
-          }}
-        />
-      </div>
+      <ItemActs onEdit={edit} onDelete={del} />
     </div>
   );
 }

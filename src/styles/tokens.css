@@ -2177,3 +2177,8 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
    Event tab's ask sits under the title. */
 .fmeta.ask, .fmeta .ask{ color:var(--ac); }
 .itAttend{ margin:4px 0 14px; }
+
+/* Office edit-in-place (Oct 21): the form sits flat in the tab, no card box;
+   Delete is the red pill beside Edit. */
+.itForm{ padding:0; background:none; border:0; box-shadow:none; }
+.itActs > button.danger, .itActs > button.danger:hover{ color:var(--rd); }

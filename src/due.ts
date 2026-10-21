@@ -7,7 +7,7 @@
  * An event that has ended is not assumed attended: it waits for "Did you
  * attend?" (Attended / Not attended), kept per occurrence in events.ts. */
 import type { Task } from './tasks';
-import { type CalEvent, attendanceOf, dayEvents, mins, ymd } from './events';
+import { type CalEvent, attendanceOf, dayEvents, importanceOf, mins, ymd } from './events';
 
 /** How far back the app still asks "Did you attend?". Older ones are left alone. */
 export const ASK_DAYS = 7;
@@ -40,7 +40,8 @@ export function hasEnded(e: Pick<CalEvent, 'tm' | 'end' | 'allDay'>, day: string
 
 /** Ended, unanswered occurrences from the last ASK_DAYS days, newest first.
  *  A repeating event asks only about its latest ended date, so a daily class
- *  is one row, not seven; once that date is answered, older dates stay quiet. Example seeds never ask. */
+ *  is one row, not seven; once that date is answered, older dates stay quiet.
+ *  Optional events never ask (Oct 21). Example seeds never ask. */
 export function toConfirm(now: Date = new Date()): { ev: CalEvent; day: string }[] {
   const out: { ev: CalEvent; day: string }[] = [];
   /* Series already judged on a newer date: answered or asked, older dates stay quiet. */
@@ -49,7 +50,7 @@ export function toConfirm(now: Date = new Date()): { ev: CalEvent; day: string }
     const d = new Date(now);
     d.setDate(now.getDate() - i);
     const day = ymd(d);
-    const evs = dayEvents(day).filter((e) => !e.example && e.id && hasEnded(e, day, now));
+    const evs = dayEvents(day).filter((e) => !e.example && e.id && importanceOf(e) !== 'optional' && hasEnded(e, day, now));
     for (const ev of evs.reverse()) {
       if (ev.rep) {
         if (seen.has(ev.id!)) continue;

@@ -62,9 +62,11 @@ const dent = M.saveEvent({ d: today, tm: '11:00', end: '12:00', t: 'Dentist' });
 const gym = M.saveEvent({ d: shift(-14), tm: '07:00', end: '08:00', t: 'Gym', rep: { f: 'daily' } });
 M.saveEvent({ d: today, tm: '09:00', t: 'Example', example: true });
 M.saveEvent({ d: shift(-20), tm: '09:00', t: 'Old one' });
+M.saveEvent({ d: today, tm: '10:00', end: '10:30', t: 'Optional meetup', imp: 'optional' });
 let asks = M.toConfirm(now);
 ok(asks.some((a) => a.ev.id === dent.id && a.day === today), 'an ended event asks "Did you attend?"');
 ok(!asks.some((a) => a.ev.t === 'Example'), 'example seeds never ask');
+ok(!asks.some((a) => a.ev.t === 'Optional meetup'), 'Optional events never ask');
 ok(!asks.some((a) => a.ev.t === 'Old one'), `nothing older than ${M.ASK_DAYS} days asks`);
 ok(asks.filter((a) => a.ev.id === gym.id).length === 1 && asks.find((a) => a.ev.id === gym.id).day === today, 'a daily event asks once, about its latest date');
 
@@ -81,12 +83,16 @@ ok(M.attendanceOf(M.getEvent(dent.id), today) === undefined, 'Undo clears the an
 
 // Reschedule
 const before = M.getEvents().length;
+const mustE = M.saveEvent({ d: shift(-1), tm: '09:00', end: '09:30', t: 'Court date', imp: 'must', rep: { f: 'weekly' } });
+const mcopy = M.rescheduleOccurrence(mustE.id, shift(3), '10:00');
+ok(mcopy.imp === 'must', 'a rescheduled copy keeps its importance');
+const before2 = M.getEvents().length;
 M.rescheduleOccurrence(dent.id, shift(2), '15:00');
 const d2 = M.getEvent(dent.id);
 ok(d2.d === shift(2) && d2.tm === '15:00' && d2.end === '16:00', 'a one-off moves and keeps its length');
-ok(M.getEvents().length === before, 'moving a one-off makes no copy');
+ok(M.getEvents().length === before2, 'moving a one-off makes no copy');
 const copy = M.rescheduleOccurrence(gym.id, shift(1), '18:00');
-ok(M.getEvents().length === before + 1 && !copy.rep && copy.t === 'Gym' && copy.end === '19:00', 'a series date becomes a one-off copy');
+ok(M.getEvents().length === before2 + 1 && !copy.rep && copy.t === 'Gym' && copy.end === '19:00', 'a series date becomes a one-off copy');
 ok(M.getEvent(gym.id).rep?.f === 'daily', 'the series keeps repeating');
 
 console.log(bad ? `\n${bad} failed` : '\ndue: all good');

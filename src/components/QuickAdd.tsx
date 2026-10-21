@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { parseQuick, fmtShort, fmtTime, repLabel, type Quick } from '../quickadd';
 import { Icon } from './shell/icons';
 import {
   EVENT_TYPES,
+  EVENT_IMPORTANCE,
+  IMPORTANCE_LABEL,
+  importanceOf,
+  type EventImportance,
   deleteEvent,
   skipOccurrence,
   snapshotEvents,
@@ -169,11 +173,17 @@ export function EventForm({
   onSave,
   onDelete,
   onCancel,
+  saveLabel,
+  extra,
+  bare,
 }: {
   initial: CalEvent;
   onSave: (e: CalEvent) => void;
   onDelete?: () => void;
   onCancel: () => void;
+  saveLabel?: string;
+  extra?: ReactNode;
+  bare?: boolean;
 }) {
   const [e, setE] = useState<CalEvent>(initial);
   const box = useRef<HTMLDivElement>(null);
@@ -187,8 +197,8 @@ export function EventForm({
   const editing = !!onDelete;
 
   return (
-    <div className="card evForm" ref={box}>
-      <b>{editing ? 'Edit event' : 'New event'}</b>
+    <div className={bare ? 'evForm itForm' : 'card evForm'} ref={box}>
+      {bare ? null : <b>{editing ? 'Edit event' : 'New event'}</b>}
       <input
         className="sinput"
         placeholder="Title"
@@ -231,6 +241,16 @@ export function EventForm({
             {TYPE_LABEL[t]}
           </button>
         ))}
+      </div>
+      <div className="evRow">
+        <label>
+          <span className="xs m">Importance</span>
+          <select className="sinput" value={importanceOf(e)} onChange={(x) => set({ imp: x.target.value === 'should' ? undefined : (x.target.value as EventImportance) })}>
+            {EVENT_IMPORTANCE.map((k) => (
+              <option key={k} value={k}>{IMPORTANCE_LABEL[k]}</option>
+            ))}
+          </select>
+        </label>
       </div>
       <input
         className="sinput"
@@ -297,12 +317,13 @@ export function EventForm({
         onChange={(x) => set({ note: x.target.value || undefined })}
         aria-label="Notes"
       />
+      {extra}
       <div className="btns">
         <button
           className="pri"
           onClick={() => e.t.trim() && onSave({ ...e, t: e.t.trim(), tm: e.allDay ? '' : e.tm || '12:00' })}
         >
-          {editing ? 'Save' : 'Add event'}
+          {saveLabel ?? (editing ? 'Save' : 'Add event')}
         </button>
         <button className="gho" onClick={onCancel}>
           Cancel

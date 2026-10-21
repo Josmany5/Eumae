@@ -37,9 +37,19 @@ export interface CalEvent {
    *  attended, 'no' not attended. Absent means not answered — never assumed
    *  (his call, Oct 21). */
   att?: Record<string, 'yes' | 'no'>;
+  /** Must go / Should go / Optional. Absent = Should go. */
+  imp?: EventImportance;
 }
 
 export type EventType = 'class' | 'meeting' | 'appointment' | 'other';
+
+/** How much it matters (his idea, Oct 21). Absent = 'should'. */
+export type EventImportance = 'must' | 'should' | 'optional';
+export const EVENT_IMPORTANCE: EventImportance[] = ['must', 'should', 'optional'];
+export const IMPORTANCE_LABEL: Record<EventImportance, string> = { must: 'Must go', should: 'Should go', optional: 'Optional' };
+export function importanceOf(e: Pick<CalEvent, 'imp'>): EventImportance {
+  return e.imp === 'must' || e.imp === 'optional' ? e.imp : 'should';
+}
 export const EVENT_TYPES: EventType[] = ['meeting', 'appointment', 'class', 'other'];
 
 export interface Repeat {
@@ -242,6 +252,6 @@ export function rescheduleOccurrence(id: string, newDay: string, newTm: string):
   const tm = newTm || e.tm;
   const end = len !== undefined && len > 0 && newTm ? hhmm(mins(newTm) + len) : newTm ? undefined : e.end;
   if (!e.rep) return saveEvent({ ...e, d: newDay, tm, end, allDay: newTm ? false : e.allDay });
-  const copy: CalEvent = { d: newDay, tm, t: e.t, end, loc: e.loc, type: e.type, note: e.note, allDay: newTm ? false : e.allDay };
+  const copy: CalEvent = { d: newDay, tm, t: e.t, end, loc: e.loc, type: e.type, note: e.note, imp: e.imp, allDay: newTm ? false : e.allDay };
   return saveEvent(copy);
 }

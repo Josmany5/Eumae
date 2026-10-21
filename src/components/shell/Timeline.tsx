@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNav } from '../../nav';
 import { getTasks, getLists, toggleTask, saveTask, type Task } from '../../tasks';
-import { dayEvents, ymd, mins, type CalEvent } from '../../events';
+import { dayEvents, ymd, mins, importanceOf, type CalEvent } from '../../events';
 import { isOverdue, toConfirm } from '../../due';
 import { AttendAsk } from './Attend';
 import { fmtTime } from '../../quickadd';
@@ -119,7 +119,7 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
   const listName = (id?: string) => (id && id !== 'inbox' ? getLists().find((l) => l.id === id)?.n : undefined);
   const row = (i: Item, opts: { over?: boolean; past?: boolean; actions?: boolean } = {}) => {
     const isDone = i.kind === 'task' && !!i.task.d;
-    const chip = i.kind === 'task' ? listName(i.task.list) : undefined;
+    const chip = i.kind === 'task' ? listName(i.task.list) : importanceOf(i.ev) === 'must' ? 'Must go' : undefined;
     const right = opts.over && i.kind === 'task'
       ? `Overdue · ${i.tm ? fmtTime(i.tm) : fmtDue(i.task.due!)}`
       : i.tm
@@ -319,6 +319,8 @@ export function WeekStrip() {
 }
 
 /** What an event is, as one word: its kind, or plain "Event". */
+/** The kind word on an event row; a Must go event says so first (Oct 21). */
 export function evKind(e: CalEvent): string {
-  return !e.type || e.type === 'other' ? 'Event' : TYPE_LABEL[e.type];
+  const kind = !e.type || e.type === 'other' ? 'Event' : TYPE_LABEL[e.type];
+  return importanceOf(e) === 'must' ? 'Must go · ' + kind : kind;
 }
