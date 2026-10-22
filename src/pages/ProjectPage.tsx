@@ -17,6 +17,8 @@ import {
   getPinnedProjectId,
   setPinnedProjectId,
   projectPercent,
+  projectProgress,
+  projectCountLabel,
   linkedIds,
   linkItem,
   unlinkItem,
@@ -234,7 +236,10 @@ export default function ProjectPage({ arg }: PageProps) {
           <div className="g">
             <b>Progress</b>
           </div>
-          <div className="s m">{pc}%</div>
+          <div className="s m">
+            {projectCountLabel(p)}
+            {projectProgress(p).total ? ` · ${pc}%` : ''}
+          </div>
         </div>
         <div className="bar">
           <i style={{ width: `${pc}%` }} />

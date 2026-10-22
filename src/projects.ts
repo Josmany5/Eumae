@@ -1,4 +1,5 @@
 import type { Milestone } from './milestones';
+import { getTasks } from './tasks';
 
 /* Projects: work with a shape. Fields follow the mockup's SEED
  * (`projs:[{id,n,d,ts,dn}]` — id, name, desc, total steps, done steps).
@@ -99,14 +100,35 @@ export function getProjects(): Project[] {
   return [...load()];
 }
 
-/* Status is derived, not stored — the mockup's pSt: done when every step
-   is done (and there is at least one), active otherwise. */
+/* Real progress (Oct 21): the project's own linked tasks plus its
+   milestones. The old `ts`/`dn` numbers were sample counts and are no longer
+   read. A link to a deleted task drops out because only live tasks count. */
+export function projectProgress(p: Project): { done: number; total: number } {
+  const ids = new Set((p.links ?? []).filter((l) => l.k === 'task').map((l) => l.id));
+  const tasks = getTasks().filter((t) => ids.has(t.id));
+  const ms = p.ms ?? [];
+  return {
+    done: tasks.filter((t) => t.d).length + ms.filter((m) => m.done).length,
+    total: tasks.length + ms.length,
+  };
+}
+
+/** "3 of 5 steps", or "No steps yet". */
+export function projectCountLabel(p: Project): string {
+  const { done, total } = projectProgress(p);
+  return total ? `${done} of ${total} step${total === 1 ? '' : 's'}` : 'No steps yet';
+}
+
+/* Status is derived, not stored: done when every step is done (and there
+   is at least one), active otherwise. */
 export function projectStatus(p: Project): 'active' | 'done' {
-  return p.ts > 0 && p.dn >= p.ts ? 'done' : 'active';
+  const { done, total } = projectProgress(p);
+  return total > 0 && done >= total ? 'done' : 'active';
 }
 
 export function projectPercent(p: Project): number {
-  return p.ts ? Math.round((p.dn / p.ts) * 100) : 0;
+  const { done, total } = projectProgress(p);
+  return total ? Math.round((done / total) * 100) : 0;
 }
 
 export function getProject(id: string): Project | undefined {

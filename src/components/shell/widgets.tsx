@@ -10,7 +10,7 @@
 import { getTasks, toggleTask } from '../../tasks';
 import { dayEvents } from '../../events';
 import { getGoals, goalPct, goalCount, isActiveGoal } from '../../goals';
-import { getPinnedProject, linkedIds, type Project } from '../../projects';
+import { getPinnedProject, linkedIds, projectPercent, projectCountLabel, type Project } from '../../projects';
 import { listUploads } from '../../uploads';
 import { getGuild } from '../../guild';
 import { useLog } from '../../log';
@@ -120,14 +120,14 @@ function pinnedTasks(p: Project) {
   const ids = new Set(linkedIds(p.id, 'task'));
   const mine = getTasks().filter((t) => ids.has(t.id));
   const done = mine.filter((t) => t.d).length;
-  const pc = mine.length ? Math.round((done / mine.length) * 100) : 0;
+  const pc = projectPercent(p);
   return { mine, done, pc };
 }
 
 function QuickPinned() {
   const p = getPinnedProject();
   if (!p) return <div className="s m">Pin one from Projects.</div>;
-  const { mine, done, pc } = pinnedTasks(p);
+  const { pc } = pinnedTasks(p);
   return (
     <>
       <div className="s">
@@ -137,7 +137,7 @@ function QuickPinned() {
         <i style={{ width: `${pc}%` }} />
       </div>
       <div className="xs m">
-        {mine.length ? `${done} of ${mine.length} done` : 'No tasks in this project yet.'}
+        {projectCountLabel(p)}
       </div>
     </>
   );
@@ -317,7 +317,7 @@ function FullBrief({ onBrief }: { onBrief: () => void }) {
 function FullPinned({ refresh }: { refresh: () => void }) {
   const p = getPinnedProject();
   if (!p) return <div className="s m">Pin one from Projects.</div>;
-  const { mine, done, pc } = pinnedTasks(p);
+  const { mine, pc } = pinnedTasks(p);
   return (
     <>
       <div className="s">
@@ -327,7 +327,7 @@ function FullPinned({ refresh }: { refresh: () => void }) {
         <i style={{ width: `${pc}%` }} />
       </div>
       <div className="xs m">
-        {mine.length ? `${done} of ${mine.length} done` : 'No tasks in this project yet.'}
+        {projectCountLabel(p)}
       </div>
       {mine.some((t) => !t.d) ? (
         <div className="s m" style={{ marginTop: 8 }}>

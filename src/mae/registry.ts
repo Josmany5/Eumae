@@ -21,7 +21,7 @@ import { getTasks, getTask, saveTask, createTask, deleteTask, getLists, addList,
 import { getEvents, getEvent, saveEvent, deleteEvent, skipOccurrence, dayEvents, ymd, importanceOf, EVENT_IMPORTANCE, type CalEvent, type EventType } from '../events';
 import { isOverdue, toConfirm } from '../due';
 import { getGoals, saveGoal, createGoal, deleteGoal, goalPct, goalCount, isActiveGoal, goalOf, goalLinkedIds, linkToGoal, unlinkFromGoal, type Goal, type GoalStatus, type GoalLinkKind } from '../goals';
-import { getProjects, getProject, saveProject, createProject, deleteProject, linkItem, unlinkItem, projectOf, linkedIds, type LinkKind } from '../projects';
+import { getProjects, getProject, saveProject, createProject, deleteProject, linkItem, unlinkItem, projectOf, linkedIds, projectCountLabel, type LinkKind } from '../projects';
 import { getNotes, getNote, saveNote, createNote, deleteNote, titleOf, noteText } from '../notes';
 import { newMilestone, type Milestone } from '../milestones';
 
@@ -268,7 +268,7 @@ const reads: Action[] = [
           tomorrow_events: dayEvents(tm).map(eventRow),
           undated_open_tasks: open.filter((x) => !x.due).length,
           active_goals: getGoals().filter(isActiveGoal).map(goalRow),
-          projects: getProjects().map((p) => ({ id: p.id, name: p.n, due: p.due, items: (p.links ?? []).length })),
+          projects: getProjects().map((p) => ({ id: p.id, name: p.n, due: p.due, items: (p.links ?? []).length, progress: projectCountLabel(p) })),
           task_lists: getLists().map((l) => ({ id: l.id, name: l.n })),
         },
       };

@@ -1,3 +1,4 @@
+import { projectCountLabel, type Project } from '../projects';
 import { useEffect, useMemo, useState } from 'react';
 import { useNav } from '../nav';
 import {
@@ -473,7 +474,7 @@ function ProjectsPane({ projects, matches, go }: {
         <button key={p.id} className="sr" onClick={() => go('project', p.id)}>
           <Icon name="fol" />
           <span className="g">{p.n}</span>
-          <span className="v">{p.dn} of {p.ts}</span>
+          <span className="v">{projectCountLabel(p as Project)}</span>
           <span className="ch">›</span>
         </button>
       ))}

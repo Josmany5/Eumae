@@ -15,6 +15,8 @@ import {
   setPinnedProjectId,
   projectStatus,
   projectPercent,
+  projectProgress,
+  projectCountLabel,
   deleteProject,
   snapshotProjects,
   restoreProjects,
@@ -78,7 +80,7 @@ export default function ProjectsPage(_props: PageProps) {
                 <span className="pjTop">
                   <b>{p.n}</b>
                   <span className="xs m">
-                    {p.dn}/{p.ts} · {pc}%
+                    {projectCountLabel(p)}{projectProgress(p).total ? ` · ${pc}%` : ''}
                   </span>
                 </span>
                 {p.d ? <span className="xs m pjDesc">{p.d}</span> : null}
