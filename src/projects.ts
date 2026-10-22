@@ -41,6 +41,9 @@ export const LINK_KINDS: LinkKind[] = ['task', 'file', 'note', 'event', 'goal'];
 export interface ProjectLink {
   k: LinkKind;
   id: string;
+  /** The milestone this item counts toward, by milestone id. Missing, or an
+   *  id whose milestone was removed, means it sits under no milestone. */
+  m?: string;
 }
 
 const KEY = 'eumae:projects';
@@ -176,12 +179,29 @@ export function linkedIds(projectId: string, k: LinkKind): string[] {
   return p ? cleanLinks(p.links).filter((l) => l.k === k).map((l) => l.id) : [];
 }
 
-export function linkItem(projectId: string, k: LinkKind, id: string): void {
+export function linkItem(projectId: string, k: LinkKind, id: string, m?: string): void {
   save(
     load().map((p) => {
       const rest = cleanLinks(p.links).filter((l) => !(l.k === k && l.id === id));
-      return p.id === projectId ? { ...p, links: [...rest, { k, id }] } : rest.length !== cleanLinks(p.links).length ? { ...p, links: rest } : p;
+      return p.id === projectId ? { ...p, links: [...rest, m ? { k, id, m } : { k, id }] } : rest.length !== cleanLinks(p.links).length ? { ...p, links: rest } : p;
     }),
+  );
+}
+
+/** The milestone an item in this project counts toward, if it still exists. */
+export function linkMilestone(p: Project, k: LinkKind, id: string): string | undefined {
+  const m = cleanLinks(p.links).find((l) => l.k === k && l.id === id)?.m;
+  return m && (p.ms ?? []).some((x) => x.id === m) ? m : undefined;
+}
+
+/** Put an item of this project under a milestone, or under none. */
+export function setLinkMilestone(projectId: string, k: LinkKind, id: string, m: string | null): void {
+  save(
+    load().map((p) =>
+      p.id !== projectId
+        ? p
+        : { ...p, links: cleanLinks(p.links).map((l) => (l.k === k && l.id === id ? (m ? { k, id, m } : { k, id }) : l)) },
+    ),
   );
 }
 

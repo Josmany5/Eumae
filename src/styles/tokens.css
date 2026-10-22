@@ -2221,13 +2221,36 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .tapRow{ cursor:pointer; }
 
 /* Project page, flat (Oct 21): facts on top, then rows like Tasks. */
-.pjTopInfo{ padding:6px 0 4px; }
-.pjFact{ min-height:0; padding:6px 0; }
-.pjFact .fmeta{ min-width:72px; }
-.pjMeter{ width:100%; margin:8px 0 6px; }
-.pjMsRow{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
-.pjMs{ display:inline-flex; align-items:center; gap:8px; background:none; color:var(--tx); cursor:pointer; }
-.pjMs .msDot{ width:10px; height:10px; }
-.pjMs.done{ color:var(--mut); }
-.pjView .tkH .pjAddBtn{ font-size:14px; }
+.pjFacts{ display:flex; gap:10px; margin:16px 0 12px; }
+.pjTile{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; background:var(--card); border:0; border-radius:14px; padding:10px 12px; color:var(--tx); cursor:pointer; font:inherit; }
+.pjTile .k{ font-size:12.5px; color:var(--mut); }
+.pjTile .v{ font-size:17px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.pjTile .v small{ font-size:13px; font-weight:400; color:var(--mut); }
+.pjTile .v.over, .pjTile .v.over small{ color:var(--rd); }
+.pjTile .v.none{ color:var(--ac); font-weight:500; font-size:15px; }
+.pjMeter{ width:100%; height:5px; margin:0 0 6px; }
+.pjMeter i{ height:5px; }
+.pjCount{ display:flex; justify-content:space-between; font-size:13px; color:var(--mut); }
+.pjTrail{ display:flex; margin:20px 0 4px; }
+.pjStop{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; font-size:12.5px; color:var(--mut); padding:0 4px; }
+.pjStop .msDot{ margin-bottom:4px; box-shadow:inset 0 0 0 2px var(--mut); }
+.pjStop.done .msDot{ background:var(--ac); box-shadow:none; }
+.pjStop.cur .msDot{ box-shadow:inset 0 0 0 2px var(--ac); }
+.pjStop .t{ overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.3; }
+.pjStop.cur .t, .pjStop.cur .d{ color:var(--tx); font-weight:600; }
+.pjMsEmpty{ margin:20px 0 0; }
+.pjMsEmpty .t{ font-size:17px; font-weight:650; }
+.pjMsEmpty p{ margin:4px 0 6px; color:var(--mut); font-size:14px; line-height:1.45; }
+.pjMsEmpty .lb{ padding:4px 0; font-size:15px; }
+.pjGroups .pjGroup{ margin-top:22px; }
+.pjGH{ display:flex; align-items:center; gap:10px; padding:4px 0 6px; }
+.pjGH .msDot{ cursor:pointer; box-shadow:inset 0 0 0 2px var(--ac); }
+.pjGH .msDot.on{ background:var(--ac); }
+.pjGH .t{ flex:1; min-width:0; font-size:17px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pjGH .m{ font-size:13px; color:var(--mut); white-space:nowrap; }
+.pjGH .m.cur{ color:var(--ac); font-weight:600; }
+.pjGroup.done .tkRow{ opacity:.6; }
+.pjKind{ flex:none; margin-top:2px; font-size:11px; font-weight:600; color:var(--mut); background:var(--card2); border-radius:6px; padding:1px 6px; }
+.pjAddRow{ padding:4px 0 0 30px; }
+.pjAddRow .pjAddBtn{ font-size:14px; color:var(--mut); background:none; width:auto; height:auto; padding:4px 0; }
 .pjEmb .screenT.tlT{ text-align:left; padding:0; background:none; }

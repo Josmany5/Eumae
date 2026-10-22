@@ -21,6 +21,8 @@ import {
   linkItem,
   unlinkItem,
   projectOf,
+  linkMilestone,
+  setLinkMilestone,
   snapshotProjects,
   restoreProjects,
   type LinkKind,
@@ -32,7 +34,7 @@ import { getEvents, saveEvent, ymd } from '../events';
 import { getGoals, createGoal, saveGoal, deleteGoal, snapshotGoals, restoreGoals } from '../goals';
 import { parseQuick, fmtShort, fmtTime } from '../quickadd';
 import { openOfficeEdit, setFocus, onDataChange, dataChanged } from '../focus';
-import { sortMilestones } from '../milestones';
+import { sortMilestones, nextMilestone, newMilestone } from '../milestones';
 import { daysLeft } from '../due';
 import { rowTap } from '../rowTap';
 import { snapshotDash, restoreDash, removePage, addProjectPage, projectPageIndex } from '../dash';
@@ -107,16 +109,22 @@ export default function ProjectPage({ arg }: PageProps) {
   return <ProjectView id={id} onDeleted={back} />;
 }
 
-/* The whole project in the flat look of Tasks and Goals (his call, Oct 21,
- * 11:43 PM): deadline, progress and milestones at the top; everything in
- * it below as flat rows, one section per kind. Edit opens the project's own
- * tab in Mae's office. Pin makes this whole view a Console page; the same
- * component renders there. */
+/* The whole project in the flat look of Tasks and Goals. HIS CALL (Oct 21,
+ * 11:51 PM, mockup 11-project-milestones.png): a milestone is a target date
+ * for a group of things. So the page is: deadline and next milestone on top,
+ * the progress meter, a trail of milestones, then one section per milestone
+ * holding its tasks, events, goals, notes and files, with a "+ Add to …"
+ * under each. Anything under no milestone sits at the bottom. Edit opens the
+ * project's own tab in Mae's office. Pin makes this whole view a Console
+ * page; the same component renders there. */
 export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted?: () => void; embedded?: boolean }) {
   const { notify, go, openPanel } = useNav();
   const [tick, setTick] = useState(0);
-  const [adding, setAdding] = useState<LinkKind | null>(null);
-  const [linking, setLinking] = useState<LinkKind | null>(null);
+  /* What "+ Add" is adding, and under which milestone ('' = none). */
+  const [adding, setAdding] = useState<{ k: LinkKind; m: string } | null>(null);
+  const [linking, setLinking] = useState<{ k: LinkKind; m: string } | null>(null);
+  const [moving, setMoving] = useState<{ k: LinkKind; id: string } | null>(null);
+  const [newMs, setNewMs] = useState(false);
   const refresh = () => setTick((t) => t + 1);
   void tick;
   useEffect(() => onDataChange(refresh), []);
@@ -127,6 +135,8 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
   const hasSteps = projectProgress(p).total > 0;
   const left = p.due ? daysLeft(p.due) : null;
   const ms = sortMilestones(p.ms ?? []);
+  const next = nextMilestone(ms);
+  const nextLeft = next?.d ? daysLeft(next.d) : null;
   const pinnedAt = projectPageIndex(p.id);
 
   const editInOffice = () => {
@@ -149,41 +159,36 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
     notify('Added to Console as its own page.', { undo: () => { restoreDash(snap); refresh(); } });
   };
 
-  const sections = ORDER.map((k) => {
+  /* Every linked item that still exists, with its kind and milestone. */
+  const items: GroupRow[] = ORDER.flatMap((k) => {
     const ids = linkedIds(p.id, k);
-    return { k, rows: rowsOf(k).filter((r) => ids.includes(r.id)) };
+    return rowsOf(k)
+      .filter((r) => ids.includes(r.id))
+      .map((r) => ({ ...r, k, m: linkMilestone(p, k, r.id) ?? '' }));
   });
-  const total = sections.reduce((n, s) => n + s.rows.length, 0);
+  const inMs = (mid: string) => items.filter((r) => r.m === mid);
+  const loose = inMs('');
+  /* Open milestones by date first, reached ones after. */
+  const groups = [...ms.filter((m) => !m.done), ...ms.filter((m) => m.done)];
 
-  /* Make one, already in this project. */
-  const create = (k: LinkKind, text: string) => {
+  /* Make one, already in this project (and under a milestone when given). */
+  const create = (k: LinkKind, text: string, mid: string) => {
     const name = text.trim();
     if (!name) return;
-    if (k === 'task') {
-      const q = parseQuick(name);
-      const t = createTask(q.title || name);
-      saveTask({ ...t, due: q.date, tm: q.time, est: q.mins });
-      linkItem(p.id, 'task', t.id);
-    } else if (k === 'file') {
-      const f = addFile(name.slice(0, 80), 'DOC');
-      linkItem(p.id, 'file', f.id);
-    } else if (k === 'note') {
-      const n = createNote(name.slice(0, 80));
-      const safe = name.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!);
-      saveNote({ ...n, body: `<div>${safe}</div>` });
-      linkItem(p.id, 'note', n.id);
-    } else if (k === 'event') {
-      const e = saveEvent(quickToEvent(parseQuick(name), ymd(new Date())));
-      linkItem(p.id, 'event', e.id!);
-    } else {
+    let nid: string | null = null;
+    if (k === 'file') nid = addFile(name.slice(0, 80), 'DOC').id;
+    else if (k === 'goal') {
       const q = parseQuick(name);
       const g = createGoal(q.title || name);
       if (q.date) saveGoal({ ...g, td: q.date });
-      linkItem(p.id, 'goal', g.id);
-    }
+      nid = g.id;
+    } else nid = createOfKind(k, name);
+    if (!nid) return;
+    linkItem(p.id, k, nid, mid || undefined);
     refresh();
     dataChanged();
-    notify(`${KIND_LABEL[k]} added to ${p.n}.`);
+    const where = ms.find((m) => m.id === mid);
+    notify(`${KIND_LABEL[k]} added to ${where ? where.t : p.n}.`);
   };
 
   /* Tasks, events and goals open in Mae's office like everywhere else;
@@ -207,20 +212,79 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
     }
   };
 
-  const tickMs = (mid: string) => {
+  const saveWithUndo = (next: typeof p, msg: string) => {
     const before = p;
-    const m = (p.ms ?? []).find((x) => x.id === mid);
-    saveProject({ ...p, ms: (p.ms ?? []).map((x) => (x.id === mid ? { ...x, done: !x.done } : x)) });
+    saveProject(next);
     refresh();
     dataChanged();
-    notify(m?.done ? 'Milestone reopened.' : 'Milestone done.', { undo: () => { saveProject(before); refresh(); dataChanged(); } });
+    notify(msg, { undo: () => { saveProject(before); refresh(); dataChanged(); } });
+  };
+  const tickMs = (mid: string) => {
+    const m = (p.ms ?? []).find((x) => x.id === mid);
+    saveWithUndo({ ...p, ms: (p.ms ?? []).map((x) => (x.id === mid ? { ...x, done: !x.done } : x)) }, m?.done ? 'Milestone reopened.' : 'Milestone reached.');
+  };
+  /* "Mockup approved Oct 30": the name, and the date read out of the line. */
+  const addMs = (text: string) => {
+    const q = parseQuick(text.trim());
+    const t = (q.title || text).trim().slice(0, 60);
+    if (!t) return;
+    saveWithUndo({ ...p, ms: [...(p.ms ?? []), newMilestone(t, q.date ?? '')] }, `Milestone added: ${t}.`);
+  };
+  const removeMs = (mid: string) => {
+    saveWithUndo({ ...p, ms: (p.ms ?? []).filter((x) => x.id !== mid) }, 'Milestone removed. Its items stay in the project.');
   };
 
   const headMenu: MenuEntry[] = [
-    { label: 'Edit', onClick: editInOffice },
+    { label: 'Add a milestone', onClick: () => setNewMs(true) },
     { label: 'Chat about this project', onClick: chat },
     { label: pinnedAt >= 0 ? 'Remove from Console' : 'Pin to Console', onClick: pin },
   ];
+
+  const row = (r: GroupRow) => (
+    <div key={r.k + r.id} className="frow top tkRow tapRow" onClick={rowTap(() => open(r.k, r.id))}>
+      {r.k === 'task' ? (
+        <button
+          className={'fchk' + (r.done ? ' on' : '')}
+          aria-label={r.done ? `Reopen ${r.label}` : `Done: ${r.label}`}
+          onClick={() => {
+            toggleTask(r.id);
+            refresh();
+            dataChanged();
+          }}
+        />
+      ) : (
+        <span className="pjKind">{KIND_LABEL[r.k]}</span>
+      )}
+      <div className="ft">
+        <button className="tlT" onClick={() => open(r.k, r.id)}>
+          <span className={r.done ? 'tlDone' : ''}>{r.label}</span>
+        </button>
+      </div>
+      {r.sub ? <span className="fmeta">{r.sub}</span> : null}
+      <ItemMenu
+        name={r.label}
+        open={() => open(r.k, r.id)}
+        extra={[
+          ...(ms.length ? [{ label: 'Move to milestone', onClick: () => setMoving({ k: r.k, id: r.id }) }] : []),
+          {
+            label: 'Unlink from this project',
+            onClick: () => {
+              const was = r.m;
+              unlinkItem(r.k, r.id);
+              refresh();
+              notify(`Unlinked from ${p.n}.`, {
+                undo: () => {
+                  linkItem(p.id, r.k, r.id, was || undefined);
+                  refresh();
+                },
+              });
+            },
+          },
+        ]}
+        onDelete={() => remove(r.k, r.id)}
+      />
+    </div>
+  );
 
   return (
     <div className={embedded ? 'pjView pjEmb' : 'pjView'}>
@@ -256,110 +320,131 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         />
       </div>
 
-      <div className="pjTopInfo">
-        <div className="frow pjFact">
-          <span className="fmeta">Deadline</span>
+      <div className="pjFacts">
+        <button className="pjTile" onClick={editInOffice}>
+          <span className="k">Deadline</span>
           {p.due ? (
-            <span className={'ft' + (left?.red ? ' over' : '')}>
-              {fmtShort(p.due)} · {left?.text}
+            <span className={'v' + (left?.red ? ' over' : '')}>
+              {md(p.due)} <small>· {left?.text.replace(' left', '')}</small>
             </span>
           ) : (
-            <button className="lb" onClick={editInOffice}>
-              + Add a deadline
-            </button>
+            <span className="v none">Set a deadline</span>
           )}
-        </div>
-        <span className="gBar pjMeter">
-          <i style={{ width: `${pc}%` }} />
-        </span>
-        <div className="fsub">
-          {projectCountLabel(p)}
-          {hasSteps ? ` · ${pc}%` : ''}
-        </div>
-        <div className="pjMsRow">
-          {ms.length ? (
-            ms.map((m) => (
-              <button key={m.id} className={'tkPill pjMs' + (m.done ? ' done' : '')} onClick={() => tickMs(m.id)} title={m.done ? 'Reopen' : 'Mark reached'}>
-                <span className={'msDot' + (m.done ? ' on' : '')} aria-hidden />
-                <span className={m.done ? 'tlDone' : ''}>{m.t}</span>
-                {m.d ? <span className="fmeta">{fmtShort(m.d)}</span> : null}
-              </button>
-            ))
+        </button>
+        <button className="pjTile" onClick={() => (next ? undefined : setNewMs(true))}>
+          <span className="k">Next milestone</span>
+          {next ? (
+            <span className={'v' + (nextLeft?.red ? ' over' : '')}>
+              {md(next.d)} <small>· {nextLeft?.text.replace(' left', '')}</small>
+            </span>
           ) : (
-            <button className="lb" onClick={editInOffice}>
-              + Add milestones
-            </button>
+            <span className="v none">{ms.some((m) => !m.done) ? 'No date yet' : 'Add one'}</span>
           )}
-        </div>
+        </button>
+      </div>
+      <span className="gBar pjMeter">
+        <i style={{ width: `${pc}%` }} />
+      </span>
+      <div className="pjCount">
+        <span>{projectCountLabel(p).replace('steps', 'done').replace('step', 'done')}</span>
+        {hasSteps ? <span>{pc}%</span> : null}
       </div>
 
-      <div className="tkList">
-        <div className="sdiv tkH">
-          <span>In this project</span>
-          <AddMenu onPick={(k) => setAdding(k)} />
-        </div>
-        {total === 0 ? <p className="oIntro">Nothing in here yet. Add a task, event, goal, note or file, or link one you already have.</p> : null}
-        {sections
-          .filter((s) => s.rows.length)
-          .map((s) => (
-            <section key={s.k} className="tkGroup">
-              <div className="sdiv tkH">
-                <span>{SECTION[s.k]}</span>
-                <span className="fmeta">{s.rows.length}</span>
-              </div>
-              {s.rows.map((r) => (
-                <div key={r.id} className="frow top tkRow tapRow" onClick={rowTap(() => open(s.k, r.id))}>
-                  {s.k === 'task' ? (
-                    <button
-                      className={'fchk' + (r.done ? ' on' : '')}
-                      aria-label={r.done ? `Reopen ${r.label}` : `Done: ${r.label}`}
-                      onClick={() => {
-                        toggleTask(r.id);
-                        refresh();
-                        dataChanged();
-                      }}
-                    />
-                  ) : null}
-                  <div className="ft">
-                    <button className="tlT" onClick={() => open(s.k, r.id)}>
-                      <span className={r.done ? 'tlDone' : ''}>{r.label}</span>
-                    </button>
-                  </div>
-                  {r.sub ? <span className="fmeta">{r.sub}</span> : null}
-                  <ItemMenu
-                    name={r.label}
-                    open={() => open(s.k, r.id)}
-                    extra={[
-                      {
-                        label: 'Unlink from this project',
-                        onClick: () => {
-                          unlinkItem(s.k, r.id);
-                          refresh();
-                          notify(`Unlinked from ${p.n}.`, {
-                            undo: () => {
-                              linkItem(p.id, s.k, r.id);
-                              refresh();
-                            },
-                          });
-                        },
-                      },
-                    ]}
-                    onDelete={() => remove(s.k, r.id)}
-                  />
-                </div>
-              ))}
-            </section>
+      {ms.length ? (
+        <div className="pjTrail" aria-label="Milestones">
+          {ms.map((m) => (
+            <div key={m.id} className={'pjStop' + (m.done ? ' done' : '') + (next?.id === m.id ? ' cur' : '')}>
+              <span className={'msDot' + (m.done ? ' on' : '')} aria-hidden />
+              <span className="t">{m.t}</span>
+              <span className="d">{m.d ? md(m.d) : 'No date'}</span>
+            </div>
           ))}
+        </div>
+      ) : (
+        <div className="pjMsEmpty">
+          <div className="t">Milestones</div>
+          <p>Target dates that group the work, like "Mockup approved by Oct 30". Each one collects its own tasks, events, notes and files.</p>
+          <button className="lb" onClick={() => setNewMs(true)}>
+            + Add a milestone
+          </button>
+        </div>
+      )}
+
+      <div className="tkList pjGroups">
+        {groups.map((m) => {
+          const rows = inMs(m.id);
+          const done = rows.filter((r) => r.done).length;
+          const dated = m.d ? (m.done ? 'Reached ' : '') + fmtShort(m.d) : m.done ? 'Reached' : 'No date';
+          return (
+            <section key={m.id} className={'tkGroup pjGroup' + (m.done ? ' done' : '')}>
+              <div className="pjGH">
+                <button
+                  className={'msDot' + (m.done ? ' on' : '')}
+                  aria-label={m.done ? `Reopen ${m.t}` : `Mark ${m.t} reached`}
+                  title={m.done ? 'Reopen' : 'Mark reached'}
+                  onClick={() => tickMs(m.id)}
+                />
+                <span className="t">{m.t}</span>
+                <span className={'m' + (next?.id === m.id ? ' cur' : '')}>
+                  {dated}
+                  {rows.length ? ` · ${done} of ${rows.length}` : ''}
+                </span>
+                <ItemMenu
+                  name={m.t}
+                  rename={{
+                    value: m.t,
+                    title: 'Rename milestone',
+                    save: (v) => saveProject({ ...p, ms: (p.ms ?? []).map((x) => (x.id === m.id ? { ...x, t: v.slice(0, 60) } : x)) }),
+                  }}
+                  extra={[
+                    { label: m.done ? 'Reopen' : 'Mark reached', onClick: () => tickMs(m.id) },
+                    { label: 'Change the date', onClick: editInOffice },
+                  ]}
+                  onChange={refresh}
+                  onDelete={() => removeMs(m.id)}
+                />
+              </div>
+              {rows.map(row)}
+              {m.done ? null : <AddMenu label={`+ Add to ${m.t}`} onPick={(k) => setAdding({ k, m: m.id })} />}
+            </section>
+          );
+        })}
+
+        <section className="tkGroup pjGroup">
+          <div className="pjGH plain">
+            <span className="t">{ms.length ? 'Not under a milestone' : 'In this project'}</span>
+            <span className="m">{loose.length || ''}</span>
+          </div>
+          {items.length === 0 && !ms.length ? (
+            <p className="oIntro">Nothing in here yet. Add a task, event, goal, note or file, or link one you already have.</p>
+          ) : null}
+          {loose.map(row)}
+          <AddMenu label="+ Add" onPick={(k) => setAdding({ k, m: '' })} />
+        </section>
       </div>
 
+      {newMs ? (
+        <PromptDialog
+          title={`New milestone in ${p.n}`}
+          value=""
+          ok="Add"
+          placeholder="Mockup approved Oct 30"
+          onCancel={() => setNewMs(false)}
+          onOk={(v) => {
+            setNewMs(false);
+            addMs(v);
+          }}
+        />
+      ) : null}
       {adding ? (
         <AddDialog
-          kind={adding}
-          projectName={p.n}
+          kind={adding.k}
+          projectName={ms.find((m) => m.id === adding.m)?.t ?? p.n}
           onCancel={() => setAdding(null)}
           onCreate={(text) => {
+            const a = adding;
             setAdding(null);
-            create(adding, text);
+            create(a.k, text, a.m);
           }}
           onLink={() => {
             setLinking(adding);
@@ -369,19 +454,19 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
       ) : null}
       {linking ? (
         <PickDialog
-          title={`Link a ${KIND_LABEL[linking].toLowerCase()}`}
-          empty={`No ${SECTION[linking].toLowerCase()} to link yet.`}
-          rows={rowsOf(linking)
-            .filter((r) => projectOf(linking, r.id)?.id !== p.id)
+          title={`Link a ${KIND_LABEL[linking.k].toLowerCase()}`}
+          empty={`No ${SECTION[linking.k].toLowerCase()} to link yet.`}
+          rows={rowsOf(linking.k)
+            .filter((r) => projectOf(linking.k, r.id)?.id !== p.id)
             .map((r) => {
-              const other = projectOf(linking, r.id);
+              const other = projectOf(linking.k, r.id);
               return { id: r.id, label: r.label, sub: [r.sub, other ? 'Now in ' + other.n : ''].filter(Boolean).join(' · ') };
             })}
           onCancel={() => setLinking(null)}
           onPick={(rid) => {
-            const k = linking;
+            const { k, m } = linking;
             setLinking(null);
-            linkItem(p.id, k, rid);
+            linkItem(p.id, k, rid, m || undefined);
             refresh();
             notify(`Linked to ${p.n}.`, {
               undo: () => {
@@ -392,20 +477,55 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
           }}
         />
       ) : null}
+      {moving ? (
+        <PickDialog
+          title="Move to milestone"
+          empty="No milestones yet."
+          rows={[...ms.map((m) => ({ id: m.id, label: m.t, sub: m.d ? fmtShort(m.d) : undefined })), { id: '', label: 'No milestone' }]}
+          onCancel={() => setMoving(null)}
+          onPick={(mid) => {
+            const { k, id: rid } = moving;
+            const was = linkMilestone(p, k, rid) ?? null;
+            setMoving(null);
+            setLinkMilestone(p.id, k, rid, mid || null);
+            refresh();
+            dataChanged();
+            notify(mid ? `Moved to ${ms.find((m) => m.id === mid)?.t}.` : 'Moved out of its milestone.', {
+              undo: () => {
+                setLinkMilestone(p.id, k, rid, was);
+                refresh();
+                dataChanged();
+              },
+            });
+          }}
+        />
+      ) : null}
     </div>
   );
 }
 
-/* "+ Add": pick a type first. Same popover as the ⋯ menu, opened from a
+/** "Nov 20": short enough for a tile or the trail. */
+function md(day: string): string {
+  return new Date(day + 'T12:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+interface GroupRow extends Row {
+  k: LinkKind;
+  m: string;
+}
+
+/* "+ Add …": pick a type first. Same popover as the ⋯ menu, opened from a
    labeled button. */
-function AddMenu({ onPick }: { onPick: (k: LinkKind) => void }) {
+function AddMenu({ onPick, label }: { onPick: (k: LinkKind) => void; label: string }) {
   return (
-    <ItemMenu
-      name="this project"
-      className="pjAddBtn"
-      extra={ORDER.map((k) => ({ label: KIND_LABEL[k], onClick: () => onPick(k) }))}
-      buttonLabel="+ Add"
-    />
+    <div className="pjAddRow">
+      <ItemMenu
+        name="this project"
+        className="pjAddBtn"
+        extra={ORDER.map((k) => ({ label: KIND_LABEL[k], onClick: () => onPick(k) }))}
+        buttonLabel={label}
+      />
+    </div>
   );
 }
 
