@@ -1812,7 +1812,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .wkRow .ft{ font-size:14px; }
 @media (max-width:899px){ .wkRow{ grid-template-columns:76px 1fr auto; } }
 /* Goals with meters */
-.wGoal{ padding:10px 0; border-bottom:1px solid var(--hair); }
+.wGoal{ padding:10px 0; }
 .wGoal .r{ display:flex; gap:12px; align-items:baseline; }
 .wGoal .bar{ display:block; height:3px; margin-top:8px; border-radius:2px; background:var(--card2); }
 .wGoal .bar i{ display:block; height:3px; border-radius:2px; background:var(--ac); }
