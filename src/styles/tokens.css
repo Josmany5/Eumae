@@ -2250,6 +2250,11 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .pjGH .t{ flex:1; min-width:0; font-size:17px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .pjGH .m{ font-size:14px; color:var(--mut); white-space:nowrap; }
 .pjGH .m.cur{ color:var(--ac); font-weight:600; }
+.pjGHtx{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.pjPh{ font-size:22px; font-weight:700; line-height:1.2; }
+.pjGHrow{ display:flex; align-items:baseline; gap:10px; min-width:0; }
+.pjGHrow .t{ flex:0 1 auto; font-size:16px; font-weight:600; }
+.pjGH .pjChev{ margin-left:auto; font-size:24px; }
 .pjPhBar{ display:flex; align-items:center; justify-content:space-between; margin-top:18px; font-size:14px; color:var(--mut); }
 .pjPhBar .lb{ font-size:15px; padding:4px 0; }
 .pjGroup.done .tkRow{ opacity:.6; }

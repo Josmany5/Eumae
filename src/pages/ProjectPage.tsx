@@ -415,15 +415,20 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
                 aria-expanded={!closed}
                 onClick={() => setShut(closed ? shut.filter((x) => x !== m.id) : [...shut, m.id])}
               >
+                {/* "Phase 1" big on its own line, the name with its date under it,
+                    the open/close arrow at the far right (his call, Oct 22). */}
+                <span className="pjGHtx">
+                  <span className="pjPh">Phase {ms.indexOf(m) + 1}</span>
+                  <span className="pjGHrow">
+                    <span className="t">{m.t}</span>
+                    <span className={'m' + (next?.id === m.id ? ' cur' : '')}>
+                      {dated}
+                      {rows.length ? ` · ${done} of ${rows.length}` : ''}
+                    </span>
+                  </span>
+                </span>
                 <span className={'pjChev' + (closed ? '' : ' open')} aria-hidden>
                   ›
-                </span>
-                <span className="t">
-                  Phase {ms.indexOf(m) + 1}: {m.t}
-                </span>
-                <span className={'m' + (next?.id === m.id ? ' cur' : '')}>
-                  {dated}
-                  {rows.length ? ` · ${done} of ${rows.length}` : ''}
                 </span>
               </button>
               {closed ? null : byKind(rows)}
