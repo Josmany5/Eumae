@@ -30,7 +30,7 @@ import {
 import { getTasks, toggleTask, createTask, saveTask, deleteTask, snapshotTasks, restoreTasks } from '../tasks';
 import { getFiles, addFile, trashFile, snapshotLibrary, restoreLibrary } from '../library';
 import { getNotes, createNote, saveNote, titleOf, deleteNote, snapshotNotes, restoreNotes } from '../notes';
-import { getEvents, saveEvent, ymd, mins } from '../events';
+import { getEvents, saveEvent, ymd, mins, attendanceOf } from '../events';
 import { getGoals, createGoal, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct } from '../goals';
 import { parseQuick, fmtShort, fmtTime } from '../quickadd';
 import { openOfficeEdit, openOfficeView, setFocus, onDataChange, dataChanged } from '../focus';
@@ -78,7 +78,7 @@ export function rowsOf(k: LinkKind): Row[] {
         .map((e) => ({
           id: e.id!,
           label: e.t,
-          sub: fmtShort(e.d) + (e.allDay || !e.tm ? '' : ' ' + fmtTime(e.tm)) + (e.rep ? ' · repeats' : ''),
+          sub: fmtShort(e.d) + (e.allDay || !e.tm ? '' : ', ' + fmtTime(e.tm)) + (e.rep ? ' · repeats' : ''),
         }));
     case 'goal':
       return getGoals().map((g) => ({ id: g.id, label: g.t, done: g.st === 'completed', sub: g.td ? 'By ' + fmtShort(g.td) : undefined }));
@@ -188,7 +188,12 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
     const ids = linkedIds(p.id, k);
     return rowsOf(k)
       .filter((r) => ids.includes(r.id))
-      .map((r) => ({ ...r, k, m: linkMilestone(p, k, r.id) ?? '' }));
+      .map((r) => {
+        /* An attended event reads as done (his yes, Oct 22). */
+        const ev = k === 'event' ? getEvents().find((e) => e.id === r.id) : undefined;
+        const att = ev ? attendanceOf(ev, eventDay(ev)) : undefined;
+        return { ...r, k, m: linkMilestone(p, k, r.id) ?? '', ...(ev ? { done: att === 'yes', skip: att === 'no' } : {}) };
+      });
   });
   const inMs = (mid: string) => items.filter((r) => r.m === mid);
   const loose = inMs('');
@@ -308,9 +313,9 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
     const key = r.id + day;
     const asking = att === 'ask' || held.includes(key);
     const when = t
-      ? t.due ? fmtShort(t.due) + (t.tm ? ' ' + fmtTime(t.tm) : '') : ''
+      ? t.due ? fmtShort(t.due) + (t.tm ? ', ' + fmtTime(t.tm) : '') : ''
       : e
-        ? fmtShort(day) + (e.allDay || !e.tm ? '' : ' ' + fmtTime(e.tm))
+        ? fmtShort(day) + (e.allDay || !e.tm ? '' : ', ' + fmtTime(e.tm))
         : '';
     return (
       <div key={r.k + r.id} className={'frow top tlRow tapRow' + (r.done ? ' done' : '') + (e ? ' ev' : '')} onClick={rowTap(() => open(r.k, r.id))}>
@@ -474,7 +479,20 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         </div>
         {goalRows.length ? (
           goalRows.map((g) => (
-            <div key={g.id} className="frow top tkRow gRow tapRow" onClick={rowTap(() => open('goal', g.id))}>
+            <div key={g.id} className={'frow top tkRow gRow tapRow' + (g.st === 'completed' ? ' past' : '')} onClick={rowTap(() => open('goal', g.id))}>
+              <button
+                className={'fchk' + (g.st === 'completed' ? ' on' : '')}
+                aria-label={g.st === 'completed' ? `Reopen ${g.t}` : `Done: ${g.t}`}
+                onClick={() => {
+                  /* Finish circle, same as Goals (his yes, Oct 22). */
+                  const before = g;
+                  const fin = g.st !== 'completed';
+                  saveGoal({ ...g, st: fin ? 'completed' : 'in-progress' });
+                  refresh();
+                  dataChanged();
+                  notify(fin ? 'Goal done. Nice work.' : 'Goal reopened.', { undo: () => { saveGoal(before); refresh(); dataChanged(); } });
+                }}
+              />
               <div className="ft">
                 <button className="tlT" onClick={() => open('goal', g.id)}>
                   <span className={g.st === 'completed' ? 'tlDone' : ''}>{g.t}</span>
@@ -510,7 +528,8 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         <div className="pjSpine">
           {ms.map((m, i) => {
             const rows = inMs(m.id).filter((x) => STEP_KINDS.includes(x.k));
-            const done = rows.filter((x) => x.done).length;
+            const counted = rows.filter((x) => !x.skip);
+            const done = counted.filter((x) => x.done).length;
             const closed = shut.includes(m.id);
             const dated = m.d ? (m.done ? 'Done ' : '') + fmtShort(m.d) : m.done ? 'Done' : 'No date';
             const cur = next?.id === m.id;
@@ -526,7 +545,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
                       <span className="t">{m.t}</span>
                       <span className={'m' + (cur ? ' cur' : '')}>
                         {dated}
-                        {rows.length ? ` · ${done} of ${rows.length}` : ''}
+                        {counted.length ? ` · ${done} of ${counted.length}` : ''}
                       </span>
                     </span>
                   </span>
@@ -657,6 +676,8 @@ function md(day: string): string {
 interface GroupRow extends Row {
   k: LinkKind;
   m: string;
+  /** An event marked Not attended: shown, but not counted. */
+  skip?: boolean;
 }
 
 /* "+ Add …": pick a type first. Same popover as the ⋯ menu, opened from a

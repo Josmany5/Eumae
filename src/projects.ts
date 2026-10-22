@@ -1,5 +1,8 @@
 import type { Milestone } from './milestones';
 import { getTasks } from './tasks';
+import { getGoals } from './goals';
+import { getEvents, attendanceOf } from './events';
+import { eventDay } from './due';
 
 /* Projects: work with a shape. Fields follow the mockup's SEED
  * (`projs:[{id,n,d,ts,dn}]` — id, name, desc, total steps, done steps).
@@ -107,12 +110,23 @@ export function getProjects(): Project[] {
    milestones. The old `ts`/`dn` numbers were sample counts and are no longer
    read. A link to a deleted task drops out because only live tasks count. */
 export function projectProgress(p: Project): { done: number; total: number } {
-  const ids = new Set((p.links ?? []).filter((l) => l.k === 'task').map((l) => l.id));
-  const tasks = getTasks().filter((t) => ids.has(t.id));
+  const of = (k: LinkKind) => new Set((p.links ?? []).filter((l) => l.k === k).map((l) => l.id));
+  const tIds = of('task');
+  const tasks = getTasks().filter((t) => tIds.has(t.id));
   const ms = p.ms ?? [];
+  /* Events count too (his yes, Oct 22): Attended is done, Not attended
+     drops out, anything else is still open. A series counts its current date. */
+  const eIds = of('event');
+  const evAns = getEvents()
+    .filter((e) => e.id && eIds.has(e.id))
+    .map((e) => attendanceOf(e, eventDay(e)))
+    .filter((a) => a !== 'no');
+  /* A finished goal is one step (his yes, Oct 22). */
+  const gIds = of('goal');
+  const goals = getGoals().filter((g) => gIds.has(g.id));
   return {
-    done: tasks.filter((t) => t.d).length + ms.filter((m) => m.done).length,
-    total: tasks.length + ms.length,
+    done: tasks.filter((t) => t.d).length + ms.filter((m) => m.done).length + evAns.filter((a) => a === 'yes').length + goals.filter((g) => g.st === 'completed').length,
+    total: tasks.length + ms.length + evAns.length + goals.length,
   };
 }
 
