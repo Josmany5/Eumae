@@ -31,7 +31,7 @@ import { nextMilestone } from '../milestones';
 import { openOfficeEdit, onDataChange } from '../focus';
 import type { PageProps } from './index';
 
-type ProjFilter = 'all' | 'active' | 'done';
+type ProjFilter = 'active' | 'done';
 
 export default function ProjectsPage(_props: PageProps) {
   void _props;
@@ -41,14 +41,14 @@ export default function ProjectsPage(_props: PageProps) {
     openPanel('item');
   };
 
-  const [filter, setFilter] = useState<ProjFilter>('all');
+  const [filter, setFilter] = useState<ProjFilter>('active');
   const [tick, setTick] = useState(0);
   const refresh = () => setTick((t) => t + 1);
   void tick;
   useEffect(() => onDataChange(refresh), []);
 
   const all = getProjects();
-  const list = all.filter((p) => filter === 'all' || projectStatus(p) === filter);
+  const list = all.filter((p) => projectStatus(p) === filter);
   const active = all.filter((p) => projectStatus(p) === 'active').length;
 
   const make = (q: Quick) => {
@@ -88,7 +88,7 @@ export default function ProjectsPage(_props: PageProps) {
       />
       <div className="tkBar">
         <div className="calSeg" role="tablist" aria-label="Show">
-          {(['all', 'active', 'done'] as ProjFilter[]).map((f) => (
+          {(['active', 'done'] as ProjFilter[]).map((f) => (
             <button key={f} role="tab" aria-selected={filter === f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
               {f[0].toUpperCase() + f.slice(1)}
             </button>

@@ -275,7 +275,7 @@ function GoalRow({ g, onOpen, onEdit, onDelete, refresh }: { g: Goal; onOpen: ()
         rename={{ value: g.t, save: (v) => saveGoal({ ...g, t: v.slice(0, 120) }) }}
         extra={
           g.st === 'let-go'
-            ? [{ label: 'Bring back', onClick: () => setSt('in-progress', 'Goal is active again.') }]
+            ? [{ label: 'Unarchive', onClick: () => setSt('in-progress', 'Goal unarchived.') }]
             : closed
               ? undefined
               : [...goalAdd.entries, { label: 'Archive', onClick: () => setSt('let-go', 'Goal archived.') }]

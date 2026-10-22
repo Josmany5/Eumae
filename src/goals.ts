@@ -1,4 +1,7 @@
 import type { Milestone } from './milestones';
+import { getTasks } from './tasks';
+import { getEvents, attendanceOf } from './events';
+import { eventDay } from './due';
 
 /* Goals: the long game. Fields follow the mockup's Goals page
  * (`{id,t,d,st,td}` — title, detail, status, target date). Example seeds are
@@ -146,15 +149,39 @@ export function goalPct(g: Goal): number {
   if (g.st === 'completed') return 100;
   /* Past the target shows the real number (120%); bars clamp their own width. */
   if (g.tgt && g.tgt > 0) return Math.max(0, Math.round(((g.cur ?? 0) / g.tgt) * 100));
+  const { done, total } = goalSteps(g);
+  return total ? Math.round((done / total) * 100) : 0;
+}
+
+/** With no measure, a goal moves by its steps (his call, Oct 22): milestones,
+ *  linked tasks (done) and linked events (Attended is done, Not attended drops
+ *  out, unanswered stays open), the same rule projects use. */
+export function goalSteps(g: Goal): { done: number; total: number; ms: number; tasks: number; events: number } {
   const ms = g.ms ?? [];
-  return ms.length ? Math.round((ms.filter((m) => m.done).length / ms.length) * 100) : 0;
+  const links = cleanGoalLinks(g.links);
+  const tIds = new Set(links.filter((l) => l.k === 'task').map((l) => l.id));
+  const eIds = new Set(links.filter((l) => l.k === 'event').map((l) => l.id));
+  const tasks = getTasks().filter((t) => tIds.has(t.id));
+  const evAns = getEvents()
+    .filter((e) => e.id && eIds.has(e.id))
+    .map((e) => attendanceOf(e, eventDay(e)))
+    .filter((a) => a !== 'no');
+  return {
+    done: ms.filter((m) => m.done).length + tasks.filter((t) => t.d).length + evAns.filter((a) => a === 'yes').length,
+    total: ms.length + tasks.length + evAns.length,
+    ms: ms.length,
+    tasks: tasks.length,
+    events: evAns.length,
+  };
 }
 
 /** "3 of 5 clients" / "2 of 4 milestones", or '' with neither. */
 export function goalCount(g: Goal): string {
   if (g.tgt && g.tgt > 0) return `${fmtNum(g.cur ?? 0)} of ${fmtNum(g.tgt)}${g.unit ? ' ' + g.unit : ''}`;
-  const ms = g.ms ?? [];
-  return ms.length ? `${ms.filter((m) => m.done).length} of ${ms.length} milestones` : '';
+  const st = goalSteps(g);
+  if (!st.total) return '';
+  const word = st.total === st.ms ? 'milestone' : 'step';
+  return `${st.done} of ${st.total} ${word}${st.total === 1 ? '' : 's'}`;
 }
 
 function fmtNum(n: number): string {
