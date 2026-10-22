@@ -805,7 +805,12 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
         </div>
       ) : null;
     });
-  const loose = items.filter((x) => !x.m || !(p.ms ?? []).some((m) => m.id === x.m));
+  /* Same layout as the project page (his call, Oct 22): goals on top,
+     phases hold tasks and events, notes and files under Reference. */
+  const isStep = (x: (typeof items)[number]) => x.k === 'task' || x.k === 'event';
+  const loose = items.filter((x) => isStep(x) && (!x.m || !(p.ms ?? []).some((m) => m.id === x.m)));
+  const pGoals = items.filter((x) => x.k === 'goal');
+  const pRefs = items.filter((x) => x.k === 'note' || x.k === 'file');
   const added = new Date(p.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
   const save = () => {
@@ -865,6 +870,12 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
       />
       {editing ? null : <KV k="Next phase" v={next ? `${next.t} · ${nextLeft?.text}` : ''} cls={nextLeft?.red ? 'over' : undefined} />}
       {editing ? null : <KV k="In it" v={counts.map((c) => `${c.n} ${c.n === 1 ? c.label.slice(0, -1).toLowerCase() : c.label.toLowerCase()}`).join(' · ')} />}
+      {!editing && pGoals.length ? (
+        <>
+          <div className="flbl">Goals</div>
+          {pGoals.map(itemRow)}
+        </>
+      ) : null}
       {ms.length || editing ? (
         <>
           <div className="flbl">Phases</div>
@@ -887,7 +898,7 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
                   <span className={'ft' + (m.done ? ' tlDone' : '')}>{m.t}</span>
                   {m.d ? <span className="fmeta">{fmtShort(m.d)}</span> : null}
                 </div>
-                {byKind(items.filter((x) => x.m === m.id))}
+                {byKind(items.filter((x) => x.m === m.id && (x.k === 'task' || x.k === 'event')))}
               </div>
             ),
           )}
@@ -914,8 +925,14 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
       ) : null}
       {!editing && loose.length ? (
         <>
-          <div className="flbl">{ms.length ? 'Not in a phase' : 'In this project'}</div>
+          <div className="flbl">{ms.length ? 'Not in a phase' : 'Tasks and events'}</div>
           {byKind(loose)}
+        </>
+      ) : null}
+      {!editing && pRefs.length ? (
+        <>
+          <div className="flbl">Reference</div>
+          {byKind(pRefs)}
         </>
       ) : null}
       {editing ? null : (

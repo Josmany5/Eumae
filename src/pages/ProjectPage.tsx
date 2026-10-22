@@ -31,7 +31,7 @@ import { getTasks, toggleTask, createTask, saveTask, deleteTask, snapshotTasks, 
 import { getFiles, addFile, trashFile, snapshotLibrary, restoreLibrary } from '../library';
 import { getNotes, createNote, saveNote, titleOf, deleteNote, snapshotNotes, restoreNotes } from '../notes';
 import { getEvents, saveEvent, ymd } from '../events';
-import { getGoals, createGoal, saveGoal, deleteGoal, snapshotGoals, restoreGoals } from '../goals';
+import { getGoals, createGoal, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct } from '../goals';
 import { parseQuick, fmtShort, fmtTime } from '../quickadd';
 import { openOfficeEdit, openOfficeView, setFocus, onDataChange, dataChanged } from '../focus';
 import { sortMilestones, nextMilestone, newMilestone } from '../milestones';
@@ -46,6 +46,8 @@ import type { PageProps } from './index';
 export const KIND_LABEL: Record<LinkKind, string> = { task: 'Task', file: 'File', note: 'Note', event: 'Event', goal: 'Goal' };
 const SECTION: Record<LinkKind, string> = { task: 'Tasks', file: 'Files', note: 'Notes', event: 'Events', goal: 'Goals' };
 const ORDER: LinkKind[] = ['task', 'event', 'goal', 'note', 'file'];
+const STEP_KINDS: LinkKind[] = ['task', 'event'];
+const REF_KINDS: LinkKind[] = ['note', 'file'];
 
 interface Row {
   id: string;
@@ -187,8 +189,12 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
   });
   const inMs = (mid: string) => items.filter((r) => r.m === mid);
   const loose = inMs('');
-  /* Open milestones by date first, reached ones after. */
-  const groups = [...ms.filter((m) => !m.done), ...ms.filter((m) => m.done)];
+  /* Phases hold only tasks and events; goals sit on top, notes and files
+     at the bottom, whatever phase they were filed under before. */
+  const looseSteps = loose.filter((x) => STEP_KINDS.includes(x.k));
+  const refRows = items.filter((x) => REF_KINDS.includes(x.k));
+  const goalIds = items.filter((x) => x.k === 'goal').map((x) => x.id);
+  const goalRows = getGoals().filter((g) => goalIds.includes(g.id));
 
   /* Make one, already in this project (and under a milestone when given). */
   const create = (k: LinkKind, text: string, mid: string) => {
@@ -274,6 +280,31 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
       ) : null;
     });
 
+  const menuFor = (r: GroupRow) => (
+    <ItemMenu
+      name={r.label}
+      open={() => open(r.k, r.id)}
+      extra={[
+        ...(ms.length && STEP_KINDS.includes(r.k) ? [{ label: 'Move to phase', onClick: () => setMoving({ k: r.k, id: r.id }) }] : []),
+        {
+          label: 'Unlink from this project',
+          onClick: () => {
+            const was = r.m;
+            unlinkItem(r.k, r.id);
+            refresh();
+            notify(`Unlinked from ${p.n}.`, {
+              undo: () => {
+                linkItem(p.id, r.k, r.id, was || undefined);
+                refresh();
+              },
+            });
+          },
+        },
+      ]}
+      onDelete={() => remove(r.k, r.id)}
+    />
+  );
+
   const row = (r: GroupRow) => (
     <div key={r.k + r.id} className="frow top tkRow tapRow" onClick={rowTap(() => open(r.k, r.id))}>
       {r.k === 'task' ? (
@@ -295,28 +326,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         </button>
       </div>
       {r.sub ? <span className="fmeta">{r.sub}</span> : null}
-      <ItemMenu
-        name={r.label}
-        open={() => open(r.k, r.id)}
-        extra={[
-          ...(ms.length ? [{ label: 'Move to phase', onClick: () => setMoving({ k: r.k, id: r.id }) }] : []),
-          {
-            label: 'Unlink from this project',
-            onClick: () => {
-              const was = r.m;
-              unlinkItem(r.k, r.id);
-              refresh();
-              notify(`Unlinked from ${p.n}.`, {
-                undo: () => {
-                  linkItem(p.id, r.k, r.id, was || undefined);
-                  refresh();
-                },
-              });
-            },
-          },
-        ]}
-        onDelete={() => remove(r.k, r.id)}
-      />
+      {menuFor(r)}
     </div>
   );
 
@@ -382,73 +392,111 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         {hasSteps ? <span>{pc}%</span> : null}
       </div>
 
-      {ms.length ? null : (
-        <div className="pjMsEmpty">
-          <div className="t">Phases</div>
-          <p>Stages of the work with a target date, like "Mockup approved by Oct 30". Each one collects its own tasks, events, notes and files.</p>
-          <button className="lb" onClick={() => setNewMs(true)}>
-            + Add a phase
+      {/* HIS LAYOUT (Oct 22, 2:52 AM): goals on top as the scoreboard, then
+          the phases as a spine like Today's Timeline holding only tasks and
+          events, then Reference at the bottom for notes and files. */}
+      <section className="pjSec">
+        <div className="pjSecH">
+          <span className="t">Goals</span>
+          <button className="lb" onClick={() => setAdding({ k: 'goal', m: '' })}>
+            + Add a goal
           </button>
         </div>
-      )}
+        {goalRows.length ? (
+          goalRows.map((g) => (
+            <div key={g.id} className="frow top tkRow gRow tapRow" onClick={rowTap(() => open('goal', g.id))}>
+              <div className="ft">
+                <button className="tlT" onClick={() => open('goal', g.id)}>
+                  <span className={g.st === 'completed' ? 'tlDone' : ''}>{g.t}</span>
+                  <span className="gPct">{goalPct(g)}%</span>
+                </button>
+                <span className="gBar">
+                  <i style={{ width: `${goalPct(g)}%` }} />
+                </span>
+              </div>
+              {g.td ? <span className="fmeta">By {fmtShort(g.td)}</span> : null}
+              {menuFor({ k: 'goal', id: g.id, label: g.t, m: linkMilestone(p, 'goal', g.id) ?? '' })}
+            </div>
+          ))
+        ) : (
+          <p className="oIntro">The results this project is for, like "Sign 3 restaurant clients". One to three is plenty.</p>
+        )}
+      </section>
 
-      {ms.length ? (
-        <div className="pjPhBar">
-          <span>
-            {ms.length} phase{ms.length === 1 ? '' : 's'}
-          </span>
-          <button className="lb" onClick={() => setShut(shut.length >= ms.length ? [] : ms.map((m) => m.id))}>
-            {shut.length >= ms.length ? 'Open all' : 'Close all'}
-          </button>
+      <section className="pjSec">
+        <div className="pjSecH">
+          <span className="t">Phases</span>
+          {ms.length ? (
+            <button className="lb" onClick={() => setShut(shut.length >= ms.length ? [] : ms.map((m) => m.id))}>
+              {shut.length >= ms.length ? 'Open all' : 'Close all'}
+            </button>
+          ) : (
+            <button className="lb" onClick={() => setNewMs(true)}>
+              + Add a phase
+            </button>
+          )}
         </div>
-      ) : null}
-      <div className="tkList pjGroups">
-        {groups.map((m) => {
-          const rows = inMs(m.id);
-          const done = rows.filter((r) => r.done).length;
-          const closed = shut.includes(m.id);
-          const dated = m.d ? (m.done ? 'Done ' : '') + fmtShort(m.d) : m.done ? 'Done' : 'No date';
-          return (
-            <section key={m.id} className={'tkGroup pjGroup' + (m.done ? ' done' : '')}>
-              <button
-                className="pjGH"
-                aria-expanded={!closed}
-                onClick={() => setShut(closed ? shut.filter((x) => x !== m.id) : [...shut, m.id])}
-              >
-                {/* "Phase 1" big on its own line, the name with its date under it,
-                    the open/close arrow at the far right (his call, Oct 22). */}
-                <span className="pjGHtx">
-                  <span className="pjPh">Phase {ms.indexOf(m) + 1}</span>
-                  <span className="pjGHrow">
-                    <span className="t">{m.t}</span>
-                    <span className={'m' + (next?.id === m.id ? ' cur' : '')}>
-                      {dated}
-                      {rows.length ? ` · ${done} of ${rows.length}` : ''}
+        {ms.length ? null : <p className="oIntro">Stages of the work with a target date, like "Mockup approved by Oct 30". Each holds its own tasks and events.</p>}
+        <div className="pjSpine">
+          {ms.map((m, i) => {
+            const rows = inMs(m.id).filter((x) => STEP_KINDS.includes(x.k));
+            const done = rows.filter((x) => x.done).length;
+            const closed = shut.includes(m.id);
+            const dated = m.d ? (m.done ? 'Done ' : '') + fmtShort(m.d) : m.done ? 'Done' : 'No date';
+            const cur = next?.id === m.id;
+            return (
+              <section key={m.id} className={'pjNode' + (m.done ? ' done' : '') + (cur ? ' cur' : '')}>
+                <span className="pjNum" aria-hidden>
+                  {m.done ? '\u2713' : i + 1}
+                </span>
+                <button className="pjGH" aria-expanded={!closed} onClick={() => setShut(closed ? shut.filter((x) => x !== m.id) : [...shut, m.id])}>
+                  <span className="pjGHtx">
+                    <span className="pjPh">Phase {i + 1}</span>
+                    <span className="pjGHrow">
+                      <span className="t">{m.t}</span>
+                      <span className={'m' + (cur ? ' cur' : '')}>
+                        {dated}
+                        {rows.length ? ` · ${done} of ${rows.length}` : ''}
+                      </span>
                     </span>
                   </span>
+                  <span className={'pjChev' + (closed ? '' : ' open')} aria-hidden>
+                    ›
+                  </span>
+                </button>
+                {closed ? null : (
+                  <>
+                    {byKind(rows)}
+                    {m.done ? null : <AddMenu label={`+ Add to Phase ${i + 1}`} kinds={STEP_KINDS} onPick={(k) => setAdding({ k, m: m.id })} />}
+                  </>
+                )}
+              </section>
+            );
+          })}
+          {ms.length === 0 || looseSteps.length ? (
+            <section className="pjNode loose">
+              <span className="pjNum" aria-hidden />
+              <div className="pjGH plain">
+                <span className="pjGHtx">
+                  <span className="pjGHrow">
+                    <span className="t">{ms.length ? 'Not in a phase' : 'Tasks and events'}</span>
+                  </span>
                 </span>
-                <span className={'pjChev' + (closed ? '' : ' open')} aria-hidden>
-                  ›
-                </span>
-              </button>
-              {closed ? null : byKind(rows)}
-              {closed || m.done ? null : <AddMenu label={`+ Add to ${m.t}`} onPick={(k) => setAdding({ k, m: m.id })} />}
+              </div>
+              {byKind(looseSteps)}
+              <AddMenu label="+ Add" kinds={STEP_KINDS} onPick={(k) => setAdding({ k, m: '' })} />
             </section>
-          );
-        })}
-
-        <section className="tkGroup pjGroup">
-          <div className="pjGH plain">
-            <span className="t">{ms.length ? 'Not in a phase' : 'In this project'}</span>
-            <span className="m">{loose.length || ''}</span>
-          </div>
-          {items.length === 0 && !ms.length ? (
-            <p className="oIntro">Nothing in here yet. Add a task, event, goal, note or file, or link one you already have.</p>
           ) : null}
-          {byKind(loose)}
-          <AddMenu label="+ Add" onPick={(k) => setAdding({ k, m: '' })} />
-        </section>
-      </div>
+        </div>
+      </section>
+
+      <section className="pjSec">
+        <div className="pjSecH">
+          <span className="t">Reference</span>
+          <AddMenu label="+ Add" kinds={REF_KINDS} onPick={(k) => setAdding({ k, m: '' })} />
+        </div>
+        {refRows.length ? byKind(refRows) : <p className="oIntro">Notes and files for this project.</p>}
+      </section>
 
       {newMs ? (
         <PromptDialog
@@ -543,13 +591,13 @@ interface GroupRow extends Row {
 
 /* "+ Add …": pick a type first. Same popover as the ⋯ menu, opened from a
    labeled button. */
-function AddMenu({ onPick, label }: { onPick: (k: LinkKind) => void; label: string }) {
+function AddMenu({ onPick, label, kinds = ORDER }: { onPick: (k: LinkKind) => void; label: string; kinds?: LinkKind[] }) {
   return (
     <div className="pjAddRow">
       <ItemMenu
         name="this project"
         className="pjAddBtn"
-        extra={ORDER.map((k) => ({ label: KIND_LABEL[k], onClick: () => onPick(k) }))}
+        extra={kinds.map((k) => ({ label: KIND_LABEL[k], onClick: () => onPick(k) }))}
         buttonLabel={label}
       />
     </div>
