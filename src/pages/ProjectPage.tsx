@@ -33,7 +33,7 @@ import { getNotes, createNote, saveNote, titleOf, deleteNote, snapshotNotes, res
 import { getEvents, saveEvent, ymd } from '../events';
 import { getGoals, createGoal, saveGoal, deleteGoal, snapshotGoals, restoreGoals } from '../goals';
 import { parseQuick, fmtShort, fmtTime } from '../quickadd';
-import { openOfficeEdit, setFocus, onDataChange, dataChanged } from '../focus';
+import { openOfficeEdit, openOfficeView, setFocus, onDataChange, dataChanged } from '../focus';
 import { sortMilestones, nextMilestone, newMilestone } from '../milestones';
 import { daysLeft } from '../due';
 import { rowTap } from '../rowTap';
@@ -248,6 +248,11 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
   };
 
 
+  /* Open = this project's tab in Mae's office, read-only (his call, Oct 22). */
+  const openInOffice = () => {
+    openOfficeView('project', p.id);
+    openPanel('item');
+  };
   const headMenu: MenuEntry[] = [
     { label: 'Add a phase', onClick: () => setNewMs(true) },
     { label: 'Chat about this project', onClick: chat },
@@ -330,6 +335,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         </div>
         <ItemMenu
           name={p.n}
+          open={openInOffice}
           edit={editInOffice}
           extra={headMenu}
           onChange={refresh}
