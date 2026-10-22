@@ -754,9 +754,10 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
   const { done: nDone, total } = projectProgress(p);
   const ms = editing ? (e.ms ?? []) : sortMilestones(p.ms ?? []);
   const firstOpen = ms.findIndex((m) => !m.done);
-  const next = sortMilestones(p.ms ?? []).find((m) => !m.done && m.d);
+  const next = sortMilestones(p.ms ?? []).find((m) => !m.done);
+  const allDone = !!p.ms?.length && !next;
   const left = p.due ? daysLeft(p.due) : null;
-  const nextLeft = next ? daysLeft(next.d) : null;
+  const nextLeft = next?.d ? daysLeft(next.d) : null;
   const counts = PJ_KINDS.map(([k, label]) => ({ k, label, n: linkedIds(p.id, k).length })).filter((c) => c.n);
   /* Everything in the project, so the tab holds all of it (his ask, Oct 22):
      each phase lists its own items, the rest sit under "Not in a phase".
@@ -868,7 +869,7 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
         cls={left?.red ? 'over' : undefined}
         edit={editing ? <DateIn label="Deadline" value={e.due ?? ''} onChange={(due) => set({ due })} /> : undefined}
       />
-      {editing ? null : <KV k="Current phase" v={next ? `${next.t} · ${nextLeft?.text}` : ''} cls={nextLeft?.red ? 'over' : undefined} />}
+      {editing ? null : <KV k="Current phase" v={next ? (nextLeft ? `${next.t} · ${nextLeft.text}` : next.t) : allDone ? 'All done' : ''} cls={nextLeft?.red ? 'over' : undefined} />}
       {editing ? null : <KV k="In it" v={counts.map((c) => `${c.n} ${c.n === 1 ? c.label.slice(0, -1).toLowerCase() : c.label.toLowerCase()}`).join(' · ')} />}
       {!editing && pGoals.length ? (
         <>

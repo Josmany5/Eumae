@@ -29,3 +29,9 @@ export function sortMilestones(ms: Milestone[]): Milestone[] {
 export function nextMilestone(ms: Milestone[] | undefined): Milestone | undefined {
   return sortMilestones(ms ?? []).find((m) => !m.done && m.d);
 }
+
+/** The phase you're on: the first unfinished one in the order the page shows
+   (dated first, then undated), dated or not. */
+export function currentPhase(ms: Milestone[] | undefined): Milestone | undefined {
+  return sortMilestones(ms ?? []).find((m) => !m.done);
+}

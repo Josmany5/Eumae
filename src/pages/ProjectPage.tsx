@@ -34,7 +34,7 @@ import { getEvents, saveEvent, ymd, mins, attendanceOf } from '../events';
 import { getGoals, createGoal, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct } from '../goals';
 import { parseQuick, fmtShort, fmtTime } from '../quickadd';
 import { openOfficeEdit, openOfficeView, setFocus, onDataChange, dataChanged } from '../focus';
-import { sortMilestones, nextMilestone, newMilestone } from '../milestones';
+import { sortMilestones, currentPhase, newMilestone } from '../milestones';
 import { daysLeft, isOverdue, attendState, attendLabel, eventDay } from '../due';
 import { AttendAsk } from '../components/shell/Attend';
 import { rowTap } from '../rowTap';
@@ -159,7 +159,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
   const hasSteps = projectProgress(p).total > 0;
   const left = p.due ? daysLeft(p.due) : null;
   const ms = sortMilestones(p.ms ?? []);
-  const next = nextMilestone(ms);
+  const next = currentPhase(ms);
   const nextLeft = next?.d ? daysLeft(next.d) : null;
   const pinnedAt = projectPageIndex(p.id);
 
@@ -451,8 +451,11 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
           <span className="k">Current phase</span>
           {next ? (
             <span className={'v' + (nextLeft?.red ? ' over' : '')}>
-              {md(next.d)} <small>· {nextLeft?.text.replace(' left', '')}</small>
+              {next.t}
+              {next.d ? <small> · {md(next.d)} · {nextLeft?.text.replace(' left', '')}</small> : null}
             </span>
+          ) : ms.length ? (
+            <span className="v">All done</span>
           ) : (
             <span className="v none">None</span>
           )}

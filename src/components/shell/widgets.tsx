@@ -241,7 +241,7 @@ function FullToday({ refresh }: { refresh: () => void }) {
   );
 }
 
-function FullGoals({ onOpen }: { onOpen: () => void }) {
+function FullGoals() {
   const goals = getGoals().filter(isActiveGoal);
   return (
     <>
@@ -262,17 +262,6 @@ function FullGoals({ onOpen }: { onOpen: () => void }) {
         );
       })}
       {goals.length === 0 ? <div className="s m">No goals yet.</div> : null}
-      <div className="btns">
-        <button
-          className="fb"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpen();
-          }}
-        >
-          Open Goals
-        </button>
-      </div>
     </>
   );
 }
@@ -486,7 +475,7 @@ function WidgetFull({
     case 'today8':
       return <FullToday refresh={onRefresh} />;
     case 'goals8':
-      return <FullGoals onOpen={onNavigate} />;
+      return <FullGoals />;
     case 'brief8':
       return <FullBrief onBrief={onBrief} />;
     case 'pj8':
