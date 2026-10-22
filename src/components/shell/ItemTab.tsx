@@ -16,7 +16,7 @@ import { MilestonesEditor } from '../Milestones';
 import { ItemActs, applyLinks, currentLinks, type Links } from './ItemEdit';
 import { KV, TextIn, DateIn, TimeIn, NumIn, Pick, LinkRows, WeekDays, EditActs } from './ItemFields';
 import { ItemMenu } from '../ItemMenu';
-import { rowsOf, KIND_LABEL } from '../../pages/ProjectPage';
+import { rowsOf } from '../../pages/ProjectPage';
 import { itemsOn, minsToTm } from '../../pages/CalendarPage';
 import { evKind } from './Timeline';
 import { isOverdue, hasEnded, daysLeft } from '../../due';
@@ -781,10 +781,22 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
         <span className="pjLead" aria-hidden />
       )}
       <span className={'ft' + (x.done ? ' tlDone' : '')}>{x.label}</span>
-      {x.k === 'task' ? null : <span className="tkPill">{KIND_LABEL[x.k]}</span>}
       {x.sub ? <span className="fmeta">{x.sub}</span> : null}
     </div>
   );
+  /* One list per kind under its own heading, inside each phase. */
+  const byKind = (rows: typeof items) =>
+    PJ_KINDS.map(([k, label]) => {
+      const rs = rows.filter((x) => x.k === k);
+      return rs.length ? (
+        <div key={k} className="pjKindList">
+          <div className="pjKindH pjOffH">
+            {label} <span>{rs.length}</span>
+          </div>
+          {rs.map(itemRow)}
+        </div>
+      ) : null;
+    });
   const loose = items.filter((x) => !x.m || !(p.ms ?? []).some((m) => m.id === x.m));
   const added = new Date(p.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
@@ -867,7 +879,7 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
                   <span className={'ft' + (m.done ? ' tlDone' : '')}>{m.t}</span>
                   {m.d ? <span className="fmeta">{fmtShort(m.d)}</span> : null}
                 </div>
-                {items.filter((x) => x.m === m.id).map(itemRow)}
+                {byKind(items.filter((x) => x.m === m.id))}
               </div>
             ),
           )}
@@ -895,7 +907,7 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
       {!editing && loose.length ? (
         <>
           <div className="flbl">{ms.length ? 'Not in a phase' : 'In this project'}</div>
-          {loose.map(itemRow)}
+          {byKind(loose)}
         </>
       ) : null}
       {editing ? null : (

@@ -2254,7 +2254,10 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .pjLead{ flex:none; width:18px; }
 .pjOffRow{ padding-left:32px; cursor:pointer; }
 .pjOffRow .ft{ flex:1; min-width:0; }
-.pjOffRow .tkPill{ font-size:12.5px; padding:1px 8px; }
+.pjKindList{ margin-top:6px; }
+.pjKindH{ padding:8px 0 2px 30px; font-size:14px; font-weight:600; color:var(--mut); }
+.pjKindH span{ font-weight:400; margin-left:4px; }
+.pjOffH{ padding-left:32px; }
 .pjAddRow{ padding:4px 0 0 30px; }
 .pjAddRow .pjAddBtn{ font-size:14px; color:var(--mut); background:none; width:auto; height:auto; padding:4px 0; }
 .pjEmb .screenT.tlT{ text-align:left; padding:0; background:none; }

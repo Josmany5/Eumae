@@ -241,6 +241,21 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
     { label: pinnedAt >= 0 ? 'Remove from Console' : 'Pin to Console', onClick: pin },
   ];
 
+  /* One list per kind, each under its own heading (his call, Oct 22): never
+     one mixed list with a label or pill on each row. */
+  const byKind = (rows: GroupRow[]) =>
+    ORDER.map((k) => {
+      const rs = rows.filter((x) => x.k === k);
+      return rs.length ? (
+        <div key={k} className="pjKindList">
+          <div className="pjKindH">
+            {SECTION[k]} <span>{rs.length}</span>
+          </div>
+          {rs.map(row)}
+        </div>
+      ) : null;
+    });
+
   const row = (r: GroupRow) => (
     <div key={r.k + r.id} className="frow top tkRow tapRow" onClick={rowTap(() => open(r.k, r.id))}>
       {r.k === 'task' ? (
@@ -261,8 +276,6 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
           <span className={r.done ? 'tlDone' : ''}>{r.label}</span>
         </button>
       </div>
-      {/* The kind is a pill beside the date, never a label in front (his call, Oct 22). */}
-      {r.k === 'task' ? null : <span className="tkPill">{KIND_LABEL[r.k]}</span>}
       {r.sub ? <span className="fmeta">{r.sub}</span> : null}
       <ItemMenu
         name={r.label}
@@ -392,7 +405,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
                   {rows.length ? ` · ${done} of ${rows.length}` : ''}
                 </span>
               </div>
-              {rows.map(row)}
+              {byKind(rows)}
               {m.done ? null : <AddMenu label={`+ Add to ${m.t}`} onPick={(k) => setAdding({ k, m: m.id })} />}
             </section>
           );
@@ -406,7 +419,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
           {items.length === 0 && !ms.length ? (
             <p className="oIntro">Nothing in here yet. Add a task, event, goal, note or file, or link one you already have.</p>
           ) : null}
-          {loose.map(row)}
+          {byKind(loose)}
           <AddMenu label="+ Add" onPick={(k) => setAdding({ k, m: '' })} />
         </section>
       </div>
