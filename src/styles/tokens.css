@@ -2200,6 +2200,7 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .itNum2{ width:72px; }
 .itUnit{ width:110px; }
 .itStepIn{ flex:1; text-align:left; }
+.itStep input[type="date"]{ flex:none; width:136px; }
 .itDays button{ width:30px; height:30px; }
 .itab .itActs{ margin-top:14px; }
 @media (min-width: 900px){ .itIn{ font-size:17px; } }
@@ -2222,12 +2223,12 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 
 /* Project page, flat (Oct 21): facts on top, then rows like Tasks. */
 .pjFacts{ display:flex; gap:10px; margin:16px 0 12px; }
-.pjTile{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; background:var(--card); border:0; border-radius:14px; padding:10px 12px; color:var(--tx); cursor:pointer; font:inherit; }
+.pjTile{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:2px; background:var(--card); border-radius:14px; padding:10px 12px; }
 .pjTile .k{ font-size:12.5px; color:var(--mut); }
 .pjTile .v{ font-size:17px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .pjTile .v small{ font-size:13px; font-weight:400; color:var(--mut); }
 .pjTile .v.over, .pjTile .v.over small{ color:var(--rd); }
-.pjTile .v.none{ color:var(--ac); font-weight:500; font-size:15px; }
+.pjTile .v.none{ color:var(--mut); font-weight:500; }
 .pjMeter{ width:100%; height:5px; margin:0 0 6px; }
 .pjMeter i{ height:5px; }
 .pjCount{ display:flex; justify-content:space-between; font-size:13px; color:var(--mut); }

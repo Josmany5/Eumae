@@ -6,7 +6,7 @@ import { projectOf, linkedIds, getProject, saveProject, deleteProject, snapshotP
 import { getGoals, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct, goalCount, goalPace, isActiveGoal, GOAL_STATUS_LABEL, goalLinkedIds, goalOf, linkToGoal, unlinkFromGoal, type Goal, type GoalStatus } from '../../goals';
 import { getNote, titleOf } from '../../notes';
 import { useGoalAdd } from '../GoalAdd';
-import { sortMilestones } from '../../milestones';
+import { sortMilestones, newMilestone } from '../../milestones';
 import { dueLabel } from '../../pages/GoalsPage';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
 import { setFocus, onDataChange, dataChanged, askMae, takeOfficeEdit, onOfficeEdit, type Focus } from '../../focus';
@@ -706,18 +706,24 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
   );
 }
 
-/* A project's office tab: its own details, the clean way Goals and Tasks
-   show theirs (his call, Oct 21, 11:31 PM). The project's full page keeps
-   everything in it; this tab is where you read and edit the project itself:
-   name, description, deadline, milestones. */
+/* A project's office tab, built row for row like the Task, Goal and Event
+   tabs (his call, Oct 22, 12:08 AM): title with Edit · Delete, then plain
+   label · value rows, then Milestones as numbered rows the way a task shows
+   Steps. Edit turns each row into its input in place; milestones get a name
+   input, a date and ×, plus an "Add a milestone" row, like task steps. */
 const PJ_KINDS: [LinkKind, string][] = [['task', 'Tasks'], ['event', 'Events'], ['goal', 'Goals'], ['note', 'Notes'], ['file', 'Files']];
 function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
-  const { notify, go } = useNav();
+  const { notify } = useNav();
   const [draft, setDraft] = useState<Project | null>(null);
+  const [newMs, setNewMs] = useState({ t: '', d: '' });
   useEffect(() => setDraft(null), [focus.id]);
+  const startEdit = (x: Project) => {
+    setNewMs({ t: '', d: '' });
+    setDraft({ ...x, ms: (x.ms ?? []).map((m) => ({ ...m })) });
+  };
   useOfficeEdit('project', focus.id, () => {
     const x = getProject(focus.id);
-    if (x) setDraft({ ...x, ms: (x.ms ?? []).map((m) => ({ ...m })) });
+    if (x) startEdit(x);
   });
   const ask = useAsk(onView, focus);
   const [, setTick] = useState(0);
@@ -736,17 +742,21 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
   const e = draft ?? p;
   const set = (x: Partial<Project>) => setDraft({ ...(draft ?? p), ...x });
   const pct = projectPercent(p);
-  const hasSteps = projectProgress(p).total > 0;
-  const ms = sortMilestones(p.ms ?? []);
+  const { done: nDone, total } = projectProgress(p);
+  const ms = editing ? (e.ms ?? []) : sortMilestones(p.ms ?? []);
   const firstOpen = ms.findIndex((m) => !m.done);
+  const next = sortMilestones(p.ms ?? []).find((m) => !m.done && m.d);
   const left = p.due ? daysLeft(p.due) : null;
+  const nextLeft = next ? daysLeft(next.d) : null;
   const counts = PJ_KINDS.map(([k, label]) => ({ k, label, n: linkedIds(p.id, k).length })).filter((c) => c.n);
+  const added = new Date(p.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
-  const edit = () => setDraft({ ...p, ms: (p.ms ?? []).map((m) => ({ ...m })) });
-  const done = () => {
+  const save = () => {
     if (!draft || !draft.n.trim()) return;
     const before = p;
-    saveProject({ ...(getProject(p.id) ?? p), n: draft.n.trim().slice(0, 48), d: draft.d.trim().slice(0, 280), due: draft.due || undefined, ms: draft.ms });
+    const extra = newMs.t.trim() ? [newMilestone(newMs.t.trim().slice(0, 60), newMs.d)] : [];
+    const out = [...(draft.ms ?? []), ...extra].map((m) => ({ ...m, t: m.t.trim() })).filter((m) => m.t);
+    saveProject({ ...(getProject(p.id) ?? p), n: draft.n.trim().slice(0, 48), d: draft.d.trim().slice(0, 280), due: draft.due || undefined, ms: out });
     setDraft(null);
     refresh();
     dataChanged();
@@ -771,70 +781,83 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
     saveProject({ ...p, ms: (p.ms ?? []).map((x) => (x.id === id ? { ...x, done: !x.done } : x)) });
     refresh();
     dataChanged();
-    notify(m?.done ? 'Milestone reopened.' : 'Milestone done.', { undo: () => { saveProject(before); refresh(); dataChanged(); } });
+    notify(m?.done ? 'Milestone reopened.' : 'Milestone reached.', { undo: () => { saveProject(before); refresh(); dataChanged(); } });
   };
+  const patchMs = (id: string, x: Partial<{ t: string; d: string }>) => set({ ms: (e.ms ?? []).map((m) => (m.id === id ? { ...m, ...x } : m)) });
 
   return (
     <div className="itab">
       <div className="itHead">
         {editing ? (
-          <input className="itIn itTIn" aria-label="Project" value={e.n} onChange={(x) => set({ n: x.target.value })} />
+          <input className="itIn itTIn" aria-label="Project name" value={e.n} onChange={(x) => set({ n: x.target.value })} />
         ) : (
           <h2 className="itT">{p.n}</h2>
         )}
-        {editing ? <EditActs onDone={done} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={edit} onDelete={del} />}
+        {editing ? <EditActs onDone={save} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={() => startEdit(p)} onDelete={del} />}
       </div>
-      {editing ? (
-        <textarea className="itIn itArea itWhyIn" rows={2} aria-label="Description" placeholder="What this project is for" value={e.d} onChange={(x) => set({ d: x.target.value })} />
-      ) : (
-        <>{p.d ? <p className="itNote itWhy">{p.d}</p> : <div style={{ height: 8 }} />}</>
-      )}
-      <span className="gBar itBar">
-        <i style={{ width: `${pct}%` }} />
-      </span>
       <p className="fmeta itSub">
-        {projectCountLabel(p)}
-        {hasSteps ? ` · ${pct}%` : ''}
+        Added {added}
+        {total ? ` · ${nDone} of ${total} done · ${pct}%` : ''}
       </p>
+      <KV k="About" v={p.d} edit={editing ? <TextIn label="What this project is for" placeholder="What it's for" value={e.d} onChange={(d) => set({ d })} /> : undefined} />
       <KV
         k="Deadline"
         v={p.due ? fmtShort(p.due) + (left ? ' · ' + left.text : '') : ''}
         cls={left?.red ? 'over' : undefined}
         edit={editing ? <DateIn label="Deadline" value={e.due ?? ''} onChange={(due) => set({ due })} /> : undefined}
       />
-      {editing ? null : (
-        <KV k="In it" v={counts.map((c) => `${c.n} ${c.n === 1 ? c.label.slice(0, -1).toLowerCase() : c.label.toLowerCase()}`).join(' · ')} />
-      )}
-      {editing ? (
+      {editing ? null : <KV k="Next milestone" v={next ? `${next.t} · ${nextLeft?.text}` : ''} cls={nextLeft?.red ? 'over' : undefined} />}
+      {editing ? null : <KV k="In it" v={counts.map((c) => `${c.n} ${c.n === 1 ? c.label.slice(0, -1).toLowerCase() : c.label.toLowerCase()}`).join(' · ')} />}
+      {ms.length || editing ? (
         <>
           <div className="flbl">Milestones</div>
-          <MilestonesEditor value={e.ms ?? []} onChange={(m) => set({ ms: m })} />
-          <p className="fmeta itSub">The deadline and every dated milestone show on your calendar.</p>
-        </>
-      ) : (
-        <>
-          <div className="flbl">Milestones</div>
-          {!ms.length ? <p className="fmeta itSub">No milestones yet. Tap Edit to add one.</p> : null}
-          {ms.map((m, i) => (
-            <div key={m.id} className={'frow itStep' + (i === firstOpen ? ' cur' : '')}>
-              <button className={'itNum' + (m.done ? ' on' : '')} aria-label={m.done ? `Reopen ${m.t}` : `Done: ${m.t}`} onClick={() => tick(m.id)}>
-                {m.done ? '\u2713' : i + 1}
-              </button>
-              <span className="ft">{m.t}</span>
-              {m.d ? <span className="fmeta">{fmtShort(m.d)}</span> : null}
+          {ms.map((m, i) =>
+            editing ? (
+              <div key={m.id} className="frow itStep">
+                <span className={'itNum' + (m.done ? ' on' : '')}>{m.done ? '\u2713' : i + 1}</span>
+                <input className="itIn itStepIn" aria-label={`Milestone ${i + 1}`} value={m.t} onChange={(x) => patchMs(m.id, { t: x.target.value })} />
+                <DateIn label={`Milestone ${i + 1} date`} value={m.d} onChange={(d) => patchMs(m.id, { d })} />
+                <button className="fb gho" aria-label={`Remove ${m.t}`} onClick={() => set({ ms: (e.ms ?? []).filter((x) => x.id !== m.id) })}>
+                  ×
+                </button>
+              </div>
+            ) : (
+              <div key={m.id} className={'frow itStep' + (i === firstOpen ? ' cur' : '')}>
+                <button className={'itNum' + (m.done ? ' on' : '')} aria-label={m.done ? `Reopen ${m.t}` : `Reached: ${m.t}`} onClick={() => tick(m.id)}>
+                  {m.done ? '\u2713' : i + 1}
+                </button>
+                <span className={'ft' + (m.done ? ' tlDone' : '')}>{m.t}</span>
+                {m.d ? <span className="fmeta">{fmtShort(m.d)}</span> : null}
+              </div>
+            ),
+          )}
+          {editing ? (
+            <div className="frow itStep">
+              <span className="itNum">+</span>
+              <input
+                className="itIn itStepIn"
+                aria-label="Add a milestone"
+                placeholder="Add a milestone"
+                value={newMs.t}
+                onChange={(x) => setNewMs({ ...newMs, t: x.target.value })}
+                onKeyDown={(x) => {
+                  if (x.key === 'Enter' && newMs.t.trim()) {
+                    set({ ms: [...(e.ms ?? []), newMilestone(newMs.t.trim().slice(0, 60), newMs.d)] });
+                    setNewMs({ t: '', d: '' });
+                  }
+                }}
+              />
+              <DateIn label="New milestone date" value={newMs.d} onChange={(d) => setNewMs({ ...newMs, d })} />
             </div>
-          ))}
-          <div className="frow itKV">
-            <button className="ft tlT" onClick={() => go('project', p.id)}>
-              Open the project page
-            </button>
-          </div>
-          <div className="itMae">
-            <span className="n">Mae</span>
-            <span>{hasSteps ? 'Want the next step, or a plan to the deadline?' : 'Nothing in here yet. Ask me to break it into steps.'}</span>
-            <button className="fact" onClick={() => ask(`Help me with my project "${p.n}" (${projectCountLabel(p)}${p.due ? ', deadline ' + p.due : ''}). What should I do next?`)}>Ask Mae</button>
-          </div>
+          ) : null}
         </>
+      ) : null}
+      {editing ? null : (
+        <div className="itMae">
+          <span className="n">Mae</span>
+          <span>{total ? 'Want the next step, or a plan to the deadline?' : 'Nothing in here yet. Ask me to break it into milestones and steps.'}</span>
+          <button className="fact" onClick={() => ask(`Help me with my project "${p.n}" (${projectCountLabel(p)}${p.due ? ', deadline ' + p.due : ''}). What should I do next?`)}>Ask Mae</button>
+        </div>
       )}
     </div>
   );

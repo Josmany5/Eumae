@@ -230,9 +230,6 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
     if (!t) return;
     saveWithUndo({ ...p, ms: [...(p.ms ?? []), newMilestone(t, q.date ?? '')] }, `Milestone added: ${t}.`);
   };
-  const removeMs = (mid: string) => {
-    saveWithUndo({ ...p, ms: (p.ms ?? []).filter((x) => x.id !== mid) }, 'Milestone removed. Its items stay in the project.');
-  };
 
   const headMenu: MenuEntry[] = [
     { label: 'Add a milestone', onClick: () => setNewMs(true) },
@@ -299,12 +296,9 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
           )}
           {p.d ? <div className="fsub">{p.d}</div> : null}
         </div>
-        <button className="lb" onClick={editInOffice}>
-          Edit
-        </button>
         <ItemMenu
           name={p.n}
-          rename={{ value: p.n, title: 'Rename project', save: (v) => saveProject({ ...p, n: v.slice(0, 48) }) }}
+          edit={editInOffice}
           extra={headMenu}
           onChange={refresh}
           onDelete={() => {
@@ -321,26 +315,26 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
       </div>
 
       <div className="pjFacts">
-        <button className="pjTile" onClick={editInOffice}>
+        <div className="pjTile">
           <span className="k">Deadline</span>
           {p.due ? (
             <span className={'v' + (left?.red ? ' over' : '')}>
               {md(p.due)} <small>· {left?.text.replace(' left', '')}</small>
             </span>
           ) : (
-            <span className="v none">Set a deadline</span>
+            <span className="v none">None</span>
           )}
-        </button>
-        <button className="pjTile" onClick={() => (next ? undefined : setNewMs(true))}>
+        </div>
+        <div className="pjTile">
           <span className="k">Next milestone</span>
           {next ? (
             <span className={'v' + (nextLeft?.red ? ' over' : '')}>
               {md(next.d)} <small>· {nextLeft?.text.replace(' left', '')}</small>
             </span>
           ) : (
-            <span className="v none">{ms.some((m) => !m.done) ? 'No date yet' : 'Add one'}</span>
+            <span className="v none">None</span>
           )}
-        </button>
+        </div>
       </div>
       <span className="gBar pjMeter">
         <i style={{ width: `${pc}%` }} />
@@ -389,20 +383,6 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
                   {dated}
                   {rows.length ? ` · ${done} of ${rows.length}` : ''}
                 </span>
-                <ItemMenu
-                  name={m.t}
-                  rename={{
-                    value: m.t,
-                    title: 'Rename milestone',
-                    save: (v) => saveProject({ ...p, ms: (p.ms ?? []).map((x) => (x.id === m.id ? { ...x, t: v.slice(0, 60) } : x)) }),
-                  }}
-                  extra={[
-                    { label: m.done ? 'Reopen' : 'Mark reached', onClick: () => tickMs(m.id) },
-                    { label: 'Change the date', onClick: editInOffice },
-                  ]}
-                  onChange={refresh}
-                  onDelete={() => removeMs(m.id)}
-                />
               </div>
               {rows.map(row)}
               {m.done ? null : <AddMenu label={`+ Add to ${m.t}`} onPick={(k) => setAdding({ k, m: m.id })} />}
