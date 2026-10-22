@@ -448,7 +448,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
           )}
         </div>
         <div className="pjTile">
-          <span className="k">Next phase</span>
+          <span className="k">Current phase</span>
           {next ? (
             <span className={'v' + (nextLeft?.red ? ' over' : '')}>
               {md(next.d)} <small>· {nextLeft?.text.replace(' left', '')}</small>

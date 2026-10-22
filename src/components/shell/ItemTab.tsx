@@ -868,7 +868,7 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
         cls={left?.red ? 'over' : undefined}
         edit={editing ? <DateIn label="Deadline" value={e.due ?? ''} onChange={(due) => set({ due })} /> : undefined}
       />
-      {editing ? null : <KV k="Next phase" v={next ? `${next.t} · ${nextLeft?.text}` : ''} cls={nextLeft?.red ? 'over' : undefined} />}
+      {editing ? null : <KV k="Current phase" v={next ? `${next.t} · ${nextLeft?.text}` : ''} cls={nextLeft?.red ? 'over' : undefined} />}
       {editing ? null : <KV k="In it" v={counts.map((c) => `${c.n} ${c.n === 1 ? c.label.slice(0, -1).toLowerCase() : c.label.toLowerCase()}`).join(' · ')} />}
       {!editing && pGoals.length ? (
         <>
