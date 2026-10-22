@@ -46,6 +46,7 @@ export function PagedDash({
   onChange,
   notify,
   renderCard,
+  renderPage,
   headSlot,
   onRearrange,
 }: {
@@ -58,6 +59,8 @@ export function PagedDash({
   onChange: () => void;
   notify: (m: string, opts?: NotifyOpts) => void;
   renderCard: (id: string, page: number, idx: number, pageLen: number) => ReactNode;
+  /** A page that is not a widget grid (a pinned project): its whole body. */
+  renderPage?: (page: number) => ReactNode;
   /** The screen header's spot for the Edit / Done button. */
   headSlot?: HTMLElement | null;
   /** Turn the wiggle (rearrange) mode on or off. */
@@ -385,6 +388,7 @@ export function PagedDash({
                 if (picked && editing && (widgets.length === 0 || picked.page !== pi)) moveTo({ page: pi, idx: widgets.length });
               }}
             >
+              {renderPage?.(pi) ?? (
               <div className="pgrid">
                 {widgets.map((w, wi) => {
                   const isPicked = picked && picked.page === pi && picked.idx === wi;
@@ -453,7 +457,8 @@ export function PagedDash({
                   );
                 })}
               </div>
-              {editing && widgets.length === 0 ? <div className="pdEmpty">Empty page. Drop or add widgets here.</div> : null}
+              )}
+              {editing && widgets.length === 0 && !renderPage?.(pi) ? <div className="pdEmpty">Empty page. Drop or add widgets here.</div> : null}
             </div>
           ))}
         </div>

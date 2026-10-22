@@ -17,9 +17,11 @@ import {
   WIDGET_TITLES,
   type Dashboard,
   type WidgetId,
+  projectOnPage,
 } from '../dash';
 import { WidgetCard, WIDGET_NAV } from '../components/shell/widgets';
 import { getPinnedProject } from '../projects';
+import { ProjectView } from '../pages/ProjectPage';
 
 /* The Console — the mockup's widget dashboard (second rCon layer), rebuilt
  * as React on tokens.
@@ -120,6 +122,10 @@ export default function ConsoleScreen() {
           snapshot: snapshotDash,
           restore: (x) => restoreDash(x as Dashboard),
           rename: renameConsolePage,
+        }}
+        renderPage={(pi) => {
+          const pid = projectOnPage(pi);
+          return pid ? <ProjectView id={pid} embedded onDeleted={refresh} /> : null;
         }}
         renderCard={(w, pi, wi, len) => (
           <>

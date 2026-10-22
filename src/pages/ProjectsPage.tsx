@@ -5,14 +5,12 @@
  * pins a project to the Console.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNav } from '../nav';
 import {
   getProjects,
   createProject,
   saveProject,
-  getPinnedProjectId,
-  setPinnedProjectId,
   projectStatus,
   projectPercent,
   projectProgress,
@@ -23,11 +21,14 @@ import {
 } from '../projects';
 import { ItemMenu } from '../components/ItemMenu';
 import { undoable } from '../undo';
+import { snapshotDash, restoreDash, removePage, addProjectPage, projectPageIndex } from '../dash';
+import { daysLeft } from '../due';
+import { rowTap } from '../rowTap';
 import { QuickAdd } from '../components/QuickAdd';
-import { Icon } from '../components/shell/icons';
+import type { Quick } from '../quickadd';
 import { fmtShort } from '../quickadd';
 import { nextMilestone } from '../milestones';
-import { openOfficeEdit } from '../focus';
+import { openOfficeEdit, onDataChange } from '../focus';
 import type { PageProps } from './index';
 
 type ProjFilter = 'all' | 'active' | 'done';
@@ -43,11 +44,30 @@ export default function ProjectsPage(_props: PageProps) {
   const [tick, setTick] = useState(0);
   const refresh = () => setTick((t) => t + 1);
   void tick;
+  useEffect(() => onDataChange(refresh), []);
 
   const all = getProjects();
   const list = all.filter((p) => filter === 'all' || projectStatus(p) === filter);
   const active = all.filter((p) => projectStatus(p) === 'active').length;
-  const pin = getPinnedProjectId() ?? 'w1';
+
+  const make = (q: Quick) => {
+    const p = createProject(q.title.slice(0, 48));
+    if (q.date) saveProject({ ...p, due: q.date });
+    refresh();
+    notify('Project created.');
+    return p;
+  };
+  const pin = (id: string, name: string) => {
+    const at = projectPageIndex(id);
+    if (at >= 0) {
+      undoable(notify, 'Removed from Console.', snapshotDash, restoreDash, () => removePage(at), refresh);
+      return;
+    }
+    const snap = snapshotDash();
+    addProjectPage(id, name);
+    refresh();
+    notify('Added to Console as its own page.', { undo: () => { restoreDash(snap); refresh(); } });
+  };
 
   return (
     <div className="qaPage">
@@ -55,14 +75,13 @@ export default function ProjectsPage(_props: PageProps) {
         kind="project"
         placeholder="New project"
         hint="Name the outcome, add a deadline if there is one: “Launch the Saggio site by Nov 20”"
-        onAdd={(q) => {
-          const p = createProject(q.title.slice(0, 48));
-          if (q.date) saveProject({ ...p, due: q.date });
-          refresh();
-          notify('Project created.');
+        onAdd={(q) => go('project', make(q).id)}
+        /* More: make it, then open its office tab ready to edit, for the
+           description, deadline and milestones (his ask, Oct 21). */
+        onMore={(q) => {
+          if (!q.title.trim()) return;
+          const p = make(q);
           go('project', p.id);
-          /* A new project opens its office tab ready to edit, so the deadline
-             and milestones go in right away (his call, Oct 21). */
           editInOffice(p.id);
         }}
       />
@@ -78,71 +97,57 @@ export default function ProjectsPage(_props: PageProps) {
           {all.length} project{all.length === 1 ? '' : 's'} · {active} active
         </span>
       </div>
-      <div className="card cardPad">
-        {list.map((p) => {
-          const pc = projectPercent(p);
-          const pinned = pin === p.id;
-          return (
-            <div key={p.id} className="pjRow">
-              <button className="pjMain" onClick={() => go('project', p.id)}>
-                <span className="pjTop">
-                  <b>{p.n}</b>
-                  <span className="xs m">
-                    {projectCountLabel(p)}{projectProgress(p).total ? ` · ${pc}%` : ''}
+      <div className="tkList">
+        <section className="tkGroup">
+          {list.map((p) => {
+            const pc = projectPercent(p);
+            const pinned = projectPageIndex(p.id) >= 0;
+            const left = p.due ? daysLeft(p.due) : null;
+            const next = nextMilestone(p.ms);
+            const done = projectStatus(p) === 'done';
+            return (
+              <div key={p.id} className={'frow top tkRow gRow tapRow' + (done ? ' past' : '')} onClick={rowTap(() => go('project', p.id))}>
+                <div className="ft">
+                  <button className="tlT" onClick={() => go('project', p.id)}>
+                    <span>{p.n}</span>
+                    {projectProgress(p).total ? <span className="gPct">{pc}%</span> : null}
+                  </button>
+                  <div className="fsub">
+                    {projectCountLabel(p)}
+                    {p.d ? ' · ' + p.d : ''}
+                  </div>
+                  <span className="gBar">
+                    <i style={{ width: `${pc}%` }} />
                   </span>
+                </div>
+                {pinned ? <span className="tkPill">Console</span> : null}
+                <span className="fmeta gSide">
+                  {p.due ? <span className={left?.red ? 'over' : ''}>{fmtShort(p.due)} · {left?.text}</span> : <span>No deadline</span>}
+                  {next ? <span className="gNext">Next: {next.t}</span> : null}
                 </span>
-                {p.d ? <span className="xs m pjDesc">{p.d}</span> : null}
-                {p.due || nextMilestone(p.ms) ? (
-                  <span className="xs pjDates">
-                    {p.due ? <span className="m">Due {fmtShort(p.due)}</span> : null}
-                    {nextMilestone(p.ms) ? (
-                      <span className="msNext">
-                        ◆ {nextMilestone(p.ms)!.t} · {fmtShort(nextMilestone(p.ms)!.d)}
-                      </span>
-                    ) : null}
-                  </span>
-                ) : null}
-                <span className={'pjBar' + (pc >= 100 ? ' done' : '')}>
-                  <i style={{ width: `${pc}%` }} />
-                </span>
-              </button>
-              <button
-                className={'pjPin' + (pinned ? ' on' : '')}
-                aria-pressed={pinned}
-                aria-label={pinned ? 'Pinned to Console' : 'Pin to Console'}
-                title={pinned ? 'Pinned to Console' : 'Pin to Console'}
-                onClick={() => {
-                  setPinnedProjectId(p.id);
-                  refresh();
-                  notify('Pinned to Console.');
-                }}
-              >
-                <Icon name="str" />
-              </button>
-              <ItemMenu
-                name={p.n}
-                open={() => go('project', p.id)}
-                edit={() => editInOffice(p.id)}
-                rename={{ value: p.n, title: 'Rename project', save: (v) => saveProject({ ...p, n: v.slice(0, 48) }) }}
-                extra={[
-                  {
-                    label: pinned ? 'Pinned to Console' : 'Pin to Console',
-                    onClick: () => {
-                      setPinnedProjectId(p.id);
-                      refresh();
-                      notify('Pinned to Console.');
-                    },
-                  },
-                ]}
-                onChange={refresh}
-                onDelete={() => undoable(notify, `Deleted ${p.n}.`, snapshotProjects, restoreProjects, () => deleteProject(p.id), refresh)}
-              />
-            </div>
-          );
-        })}
-        {list.length === 0 ? <div className="s m">No projects here.</div> : null}
+                <ItemMenu
+                  name={p.n}
+                  open={() => go('project', p.id)}
+                  edit={() => editInOffice(p.id)}
+                  rename={{ value: p.n, title: 'Rename project', save: (v) => saveProject({ ...p, n: v.slice(0, 48) }) }}
+                  extra={[{ label: pinned ? 'Remove from Console' : 'Pin to Console', onClick: () => pin(p.id, p.n) }]}
+                  onChange={refresh}
+                  onDelete={() => {
+                    const snapP = snapshotProjects();
+                    const snapD = snapshotDash();
+                    const at = projectPageIndex(p.id);
+                    deleteProject(p.id);
+                    if (at >= 0) removePage(at);
+                    refresh();
+                    notify(`Deleted ${p.n}.`, { undo: () => { restoreProjects(snapP); restoreDash(snapD); refresh(); } });
+                  }}
+                />
+              </div>
+            );
+          })}
+          {list.length === 0 ? <p className="oIntro">No projects here.</p> : null}
+        </section>
       </div>
-      <div className="xs m calFoot">The star pins one project to your Console.</div>
     </div>
   );
 }

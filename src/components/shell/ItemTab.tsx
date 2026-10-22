@@ -18,7 +18,7 @@ import { KV, TextIn, DateIn, TimeIn, NumIn, Pick, LinkRows, WeekDays, EditActs }
 import { ItemMenu } from '../ItemMenu';
 import { itemsOn, minsToTm } from '../../pages/CalendarPage';
 import { evKind } from './Timeline';
-import { isOverdue, hasEnded } from '../../due';
+import { isOverdue, hasEnded, daysLeft } from '../../due';
 import { AttendAsk } from './Attend';
 
 /** "Edit" from a row's ⋯ menu opens this tab already in edit mode. */
@@ -711,13 +711,6 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
    everything in it; this tab is where you read and edit the project itself:
    name, description, deadline, milestones. */
 const PJ_KINDS: [LinkKind, string][] = [['task', 'Tasks'], ['event', 'Events'], ['goal', 'Goals'], ['note', 'Notes'], ['file', 'Files']];
-function daysLeft(d: string): { text: string; red: boolean } {
-  const today = ymd(new Date());
-  const n = Math.round((new Date(d + 'T00:00').getTime() - new Date(today + 'T00:00').getTime()) / 86400000);
-  if (n === 0) return { text: 'Today', red: false };
-  if (n < 0) return { text: `${-n} day${n === -1 ? '' : 's'} late`, red: true };
-  return { text: `${n} day${n === 1 ? '' : 's'} left`, red: false };
-}
 function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   const { notify, go } = useNav();
   const [draft, setDraft] = useState<Project | null>(null);

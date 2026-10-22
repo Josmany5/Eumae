@@ -8,14 +8,12 @@
  * pin and delete sit in the header's ⋯ like every other item.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNav } from '../nav';
 import {
   getProject,
   saveProject,
   deleteProject,
-  getPinnedProjectId,
-  setPinnedProjectId,
   projectPercent,
   projectProgress,
   projectCountLabel,
@@ -33,9 +31,11 @@ import { getNotes, createNote, saveNote, titleOf, deleteNote, snapshotNotes, res
 import { getEvents, saveEvent, ymd } from '../events';
 import { getGoals, createGoal, saveGoal, deleteGoal, snapshotGoals, restoreGoals } from '../goals';
 import { parseQuick, fmtShort, fmtTime } from '../quickadd';
-import { queueBrief } from '../studio';
-import { openOfficeEdit } from '../focus';
-import { nextMilestone } from '../milestones';
+import { openOfficeEdit, setFocus, onDataChange, dataChanged } from '../focus';
+import { sortMilestones } from '../milestones';
+import { daysLeft } from '../due';
+import { rowTap } from '../rowTap';
+import { snapshotDash, restoreDash, removePage, addProjectPage, projectPageIndex } from '../dash';
 import { ItemMenu, PromptDialog, PickDialog, type MenuEntry } from '../components/ItemMenu';
 import { quickToEvent, removeEvent } from '../components/QuickAdd';
 import { undoable } from '../undo';
@@ -102,23 +102,52 @@ export function createOfKind(k: 'task' | 'event' | 'note', text: string): string
 }
 
 export default function ProjectPage({ arg }: PageProps) {
-  const { notify, go, goTab, back, openPanel } = useNav();
-  const editInOffice = () => {
-    openOfficeEdit('project', p!.id);
-    openPanel('item');
-  };
+  const { back } = useNav();
+  const id = typeof arg === 'string' ? arg : '';
+  return <ProjectView id={id} onDeleted={back} />;
+}
+
+/* The whole project in the flat look of Tasks and Goals (his call, Oct 21,
+ * 11:43 PM): deadline, progress and milestones at the top; everything in
+ * it below as flat rows, one section per kind. Edit opens the project's own
+ * tab in Mae's office. Pin makes this whole view a Console page; the same
+ * component renders there. */
+export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted?: () => void; embedded?: boolean }) {
+  const { notify, go, openPanel } = useNav();
   const [tick, setTick] = useState(0);
-  const [dialog, setDialog] = useState<'desc' | null>(null);
   const [adding, setAdding] = useState<LinkKind | null>(null);
   const [linking, setLinking] = useState<LinkKind | null>(null);
   const refresh = () => setTick((t) => t + 1);
   void tick;
+  useEffect(() => onDataChange(refresh), []);
 
-  const id = typeof arg === 'string' ? arg : '';
   const p = getProject(id);
   if (!p) return <div className="empty">This project isn't here any more.</div>;
   const pc = projectPercent(p);
-  const pin = getPinnedProjectId() ?? 'w1';
+  const hasSteps = projectProgress(p).total > 0;
+  const left = p.due ? daysLeft(p.due) : null;
+  const ms = sortMilestones(p.ms ?? []);
+  const pinnedAt = projectPageIndex(p.id);
+
+  const editInOffice = () => {
+    openOfficeEdit('project', p.id);
+    openPanel('item');
+  };
+  /* Chat about it: Mae's office opens on this project, so she already has it. */
+  const chat = () => {
+    setFocus({ k: 'project', id: p.id });
+    openPanel('mae');
+  };
+  const pin = () => {
+    if (pinnedAt >= 0) {
+      undoable(notify, 'Removed from Console.', snapshotDash, (x) => restoreDash(x), () => removePage(pinnedAt), refresh);
+      return;
+    }
+    const snap = snapshotDash();
+    addProjectPage(p.id, p.n);
+    refresh();
+    notify('Added to Console as its own page.', { undo: () => { restoreDash(snap); refresh(); } });
+  };
 
   const sections = ORDER.map((k) => {
     const ids = linkedIds(p.id, k);
@@ -153,15 +182,18 @@ export default function ProjectPage({ arg }: PageProps) {
       linkItem(p.id, 'goal', g.id);
     }
     refresh();
+    dataChanged();
     notify(`${KIND_LABEL[k]} added to ${p.n}.`);
   };
 
+  /* Tasks, events and goals open in Mae's office like everywhere else;
+     notes and files open their own pages. */
   const open = (k: LinkKind, rid: string) => {
-    if (k === 'task') go('tasks', rid);
-    else if (k === 'file') go('view', rid);
-    else if (k === 'note') go('note', rid);
-    else if (k === 'event') go('events', rid);
-    else go('goals', rid);
+    if (k === 'note') return go('note', rid);
+    if (k === 'file') return go('view', rid);
+    const ev = k === 'event' ? getEvents().find((e) => e.id === rid) : undefined;
+    setFocus({ k, id: rid, ...(ev ? { day: ev.d } : {}) });
+    openPanel('item');
   };
 
   const remove = (k: LinkKind, rid: string) => {
@@ -175,151 +207,125 @@ export default function ProjectPage({ arg }: PageProps) {
     }
   };
 
+  const tickMs = (mid: string) => {
+    const before = p;
+    const m = (p.ms ?? []).find((x) => x.id === mid);
+    saveProject({ ...p, ms: (p.ms ?? []).map((x) => (x.id === mid ? { ...x, done: !x.done } : x)) });
+    refresh();
+    dataChanged();
+    notify(m?.done ? 'Milestone reopened.' : 'Milestone done.', { undo: () => { saveProject(before); refresh(); dataChanged(); } });
+  };
+
   const headMenu: MenuEntry[] = [
     { label: 'Edit', onClick: editInOffice },
-    { label: p.d ? 'Edit description' : 'Add a description', onClick: () => setDialog('desc') },
-    {
-      label: pin === p.id ? 'Pinned to Console' : 'Pin to Console',
-      onClick: () => {
-        setPinnedProjectId(p.id);
-        refresh();
-        notify('Pinned to Console.');
-      },
-    },
-    {
-      label: 'Chat in this project',
-      onClick: () => {
-        queueBrief(`Working in project ${p.n}: `);
-        goTab('chat');
-      },
-    },
+    { label: 'Chat about this project', onClick: chat },
+    { label: pinnedAt >= 0 ? 'Remove from Console' : 'Pin to Console', onClick: pin },
   ];
 
   return (
-    <div>
+    <div className={embedded ? 'pjView pjEmb' : 'pjView'}>
       <div className="itemHead">
         <div className="g">
-          <div className="screenT">{p.n}</div>
-          {p.d ? (
-            <button className="pjDescBtn" onClick={() => setDialog('desc')} title="Edit description">
-              {p.d}
+          {embedded ? (
+            <button className="screenT tlT" onClick={() => go('project', p.id)}>
+              {p.n}
             </button>
           ) : (
-            <button className="lb" onClick={() => setDialog('desc')}>
-              + Add a description
-            </button>
+            <div className="screenT">{p.n}</div>
           )}
+          {p.d ? <div className="fsub">{p.d}</div> : null}
         </div>
+        <button className="lb" onClick={editInOffice}>
+          Edit
+        </button>
         <ItemMenu
           name={p.n}
           rename={{ value: p.n, title: 'Rename project', save: (v) => saveProject({ ...p, n: v.slice(0, 48) }) }}
           extra={headMenu}
           onChange={refresh}
           onDelete={() => {
-            back();
-            undoable(notify, `Deleted ${p.n}.`, snapshotProjects, restoreProjects, () => deleteProject(p.id));
+            /* A pinned project's Console page goes with it; Undo brings both back. */
+            const snapP = snapshotProjects();
+            const snapD = snapshotDash();
+            deleteProject(p.id);
+            if (pinnedAt >= 0) removePage(pinnedAt);
+            onDeleted?.();
+            dataChanged();
+            notify(`Deleted ${p.n}.`, { undo: () => { restoreProjects(snapP); restoreDash(snapD); dataChanged(); } });
           }}
         />
       </div>
-      {dialog === 'desc' ? (
-        <PromptDialog
-          title="Description"
-          value={p.d}
-          ok="Save"
-          multiline
-          placeholder="What this project is for"
-          onCancel={() => setDialog(null)}
-          onOk={(v) => {
-            setDialog(null);
-            saveProject({ ...p, d: v.trim().slice(0, 280) });
-            refresh();
-            notify('Description saved.');
-          }}
-        />
-      ) : null}
-      <div className="card">
-        <div className="row">
-          <div className="g">
-            <b>Progress</b>
-          </div>
-          <div className="s m">
-            {projectCountLabel(p)}
-            {projectProgress(p).total ? ` · ${pc}%` : ''}
-          </div>
+
+      <div className="pjTopInfo">
+        <div className="frow pjFact">
+          <span className="fmeta">Deadline</span>
+          {p.due ? (
+            <span className={'ft' + (left?.red ? ' over' : '')}>
+              {fmtShort(p.due)} · {left?.text}
+            </span>
+          ) : (
+            <button className="lb" onClick={editInOffice}>
+              + Add a deadline
+            </button>
+          )}
         </div>
-        <div className="bar">
+        <span className="gBar pjMeter">
           <i style={{ width: `${pc}%` }} />
+        </span>
+        <div className="fsub">
+          {projectCountLabel(p)}
+          {hasSteps ? ` · ${pc}%` : ''}
         </div>
-        {p.due || nextMilestone(p.ms) ? (
-          <span className="xs pjDates">
-            {p.due ? <span className="m">Due {fmtShort(p.due)}</span> : null}
-            {nextMilestone(p.ms) ? (
-              <span className="msNext">
-                ◆ {nextMilestone(p.ms)!.t} · {fmtShort(nextMilestone(p.ms)!.d)}
-              </span>
-            ) : null}
-          </span>
-        ) : (
-          <button className="lb" onClick={editInOffice}>
-            + Add a deadline or milestones
-          </button>
-        )}
-        <div className="btns">
-          <button
-            className="pri"
-            onClick={() => {
-              setPinnedProjectId(p.id);
-              refresh();
-              notify('Pinned to Console.');
-            }}
-          >
-            {pin === p.id ? 'Pinned to Console' : 'Pin to Console'}
-          </button>
-          <button
-            className="gho"
-            onClick={() => {
-              queueBrief(`Working in project ${p.n}: `);
-              goTab('chat');
-            }}
-          >
-            Chat in this project
-          </button>
+        <div className="pjMsRow">
+          {ms.length ? (
+            ms.map((m) => (
+              <button key={m.id} className={'tkPill pjMs' + (m.done ? ' done' : '')} onClick={() => tickMs(m.id)} title={m.done ? 'Reopen' : 'Mark reached'}>
+                <span className={'msDot' + (m.done ? ' on' : '')} aria-hidden />
+                <span className={m.done ? 'tlDone' : ''}>{m.t}</span>
+                {m.d ? <span className="fmeta">{fmtShort(m.d)}</span> : null}
+              </button>
+            ))
+          ) : (
+            <button className="lb" onClick={editInOffice}>
+              + Add milestones
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="row" style={{ marginTop: 22 }}>
-        <h3 className="sec g" style={{ margin: 0 }}>
-          In this project
-        </h3>
-        <AddMenu onPick={(k) => setAdding(k)} />
-      </div>
-      {total === 0 ? (
-        <div className="card s m">
-          Nothing in here yet. Use + Add to make a task, file, note, event or goal for this project, or link one you already have.
+      <div className="tkList">
+        <div className="sdiv tkH">
+          <span>In this project</span>
+          <AddMenu onPick={(k) => setAdding(k)} />
         </div>
-      ) : null}
-      {sections
-        .filter((s) => s.rows.length)
-        .map((s) => (
-          <div key={s.k}>
-            <h3 className="sec">{SECTION[s.k]}</h3>
-            <div className="card cardPad">
+        {total === 0 ? <p className="oIntro">Nothing in here yet. Add a task, event, goal, note or file, or link one you already have.</p> : null}
+        {sections
+          .filter((s) => s.rows.length)
+          .map((s) => (
+            <section key={s.k} className="tkGroup">
+              <div className="sdiv tkH">
+                <span>{SECTION[s.k]}</span>
+                <span className="fmeta">{s.rows.length}</span>
+              </div>
               {s.rows.map((r) => (
-                <div key={r.id} className="task">
+                <div key={r.id} className="frow top tkRow tapRow" onClick={rowTap(() => open(s.k, r.id))}>
                   {s.k === 'task' ? (
                     <button
-                      className={'ck' + (r.done ? ' d' : '')}
+                      className={'fchk' + (r.done ? ' on' : '')}
                       aria-label={r.done ? `Reopen ${r.label}` : `Done: ${r.label}`}
                       onClick={() => {
                         toggleTask(r.id);
                         refresh();
+                        dataChanged();
                       }}
                     />
                   ) : null}
-                  <button className="g tkTitle pjItem" onClick={() => open(s.k, r.id)}>
-                    {r.done ? <s className="m">{r.label}</s> : r.label}
-                    {r.sub ? <span className="pjItemSub">{r.sub}</span> : null}
-                  </button>
+                  <div className="ft">
+                    <button className="tlT" onClick={() => open(s.k, r.id)}>
+                      <span className={r.done ? 'tlDone' : ''}>{r.label}</span>
+                    </button>
+                  </div>
+                  {r.sub ? <span className="fmeta">{r.sub}</span> : null}
                   <ItemMenu
                     name={r.label}
                     open={() => open(s.k, r.id)}
@@ -342,9 +348,9 @@ export default function ProjectPage({ arg }: PageProps) {
                   />
                 </div>
               ))}
-            </div>
-          </div>
-        ))}
+            </section>
+          ))}
+      </div>
 
       {adding ? (
         <AddDialog

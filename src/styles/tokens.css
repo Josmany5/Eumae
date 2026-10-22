@@ -2219,3 +2219,15 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .itab .itTIn{ padding:4px 8px; }
 @media (min-width: 900px){ .itHead > .itActs > button{ font-size:14px; } }
 .tapRow{ cursor:pointer; }
+
+/* Project page, flat (Oct 21): facts on top, then rows like Tasks. */
+.pjTopInfo{ padding:6px 0 4px; }
+.pjFact{ min-height:0; padding:6px 0; }
+.pjFact .fmeta{ min-width:72px; }
+.pjMeter{ width:100%; margin:8px 0 6px; }
+.pjMsRow{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.pjMs{ display:inline-flex; align-items:center; gap:8px; background:none; color:var(--tx); cursor:pointer; }
+.pjMs .msDot{ width:10px; height:10px; }
+.pjMs.done{ color:var(--mut); }
+.pjView .tkH .pjAddBtn{ font-size:14px; }
+.pjEmb .screenT.tlT{ text-align:left; padding:0; background:none; }

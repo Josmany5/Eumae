@@ -61,3 +61,11 @@ export function toConfirm(now: Date = new Date()): { ev: CalEvent; day: string }
   }
   return out;
 }
+
+/** "11 days left", "Today", "3 days late" for a YYYY-MM-DD deadline. */
+export function daysLeft(d: string, now = new Date()): { text: string; red: boolean } {
+  const n = Math.round((new Date(d + 'T00:00').getTime() - new Date(ymd(now) + 'T00:00').getTime()) / 86400000);
+  if (n === 0) return { text: 'Today', red: false };
+  if (n < 0) return { text: `${-n} day${n === -1 ? '' : 's'} late`, red: true };
+  return { text: `${n} day${n === 1 ? '' : 's'} left`, red: false };
+}

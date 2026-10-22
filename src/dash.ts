@@ -54,6 +54,9 @@ export interface Dashboard {
   sizes: Partial<Record<WidgetId, WidgetSize>>;
   /** User-chosen page names, by index. Missing = the default name. */
   names?: string[];
+  /** A pinned project's id per page index ('' for a widget page). That page
+   *  shows the whole project, not widgets (his call, Oct 21). */
+  proj?: string[];
 }
 
 const KEY = 'eumae:dash';
@@ -99,7 +102,7 @@ function migrate(d: Dashboard): Dashboard {
   if (d.pages.some((p) => p.includes('tl8'))) return d;
   const placed = new Set<WidgetId>(SEED_PAGES.flat());
   const extra = d.pages.slice(2).map((p) => p.filter((w) => !placed.has(w)));
-  const next: Dashboard = { pages: [...SEED_PAGES.map((p) => [...p]), ...extra], sizes: d.sizes ?? {}, names: d.names };
+  const next: Dashboard = { pages: [...SEED_PAGES.map((p) => [...p]), ...extra], sizes: d.sizes ?? {}, names: d.names, proj: d.proj };
   try {
     localStorage.setItem(KEY, JSON.stringify(next));
   } catch {
@@ -141,7 +144,7 @@ function isDashboard(d: unknown): d is Dashboard {
 
 export function getDashboard(): Dashboard {
   const d = load();
-  return { pages: d.pages.map((p) => [...p]), sizes: { ...d.sizes }, names: d.names ? [...d.names] : undefined };
+  return { pages: d.pages.map((p) => [...p]), sizes: { ...d.sizes }, names: d.names ? [...d.names] : undefined, proj: d.proj ? [...d.proj] : undefined };
 }
 
 export function sizeOf(dash: Dashboard, id: WidgetId): WidgetSize {
@@ -150,7 +153,7 @@ export function sizeOf(dash: Dashboard, id: WidgetId): WidgetSize {
 
 export function setSize(id: WidgetId, size: WidgetSize): void {
   const d = load();
-  save({ pages: d.pages, sizes: { ...d.sizes, [id]: size }, names: d.names });
+  save({ pages: d.pages, sizes: { ...d.sizes, [id]: size }, names: d.names, proj: d.proj });
 }
 
 /* Remove a widget from its page. Empty pages stay (dots keep their place)
@@ -160,7 +163,7 @@ export function removeWidget(page: number, id: WidgetId): void {
   const pages = d.pages.map((p) => [...p]);
   if (!pages[page]) return;
   pages[page] = pages[page].filter((w) => w !== id);
-  save({ pages, sizes: { ...d.sizes }, names: d.names });
+  save({ pages, sizes: { ...d.sizes }, names: d.names, proj: d.proj });
 }
 
 /* Add a widget to a page (no duplicates anywhere — one home per widget). */
@@ -170,7 +173,7 @@ export function addWidget(page: number, id: WidgetId): void {
   if (pages.flat().includes(id)) return;
   while (pages.length <= page) pages.push([]);
   pages[page] = [...pages[page], id];
-  save({ pages, sizes: { ...d.sizes }, names: d.names });
+  save({ pages, sizes: { ...d.sizes }, names: d.names, proj: d.proj });
 }
 
 /* Move a widget: within a page (reorder) or across pages. The mockup has no
@@ -183,13 +186,13 @@ export function moveWidget(fromPage: number, fromIdx: number, toPage: number, to
   const [w] = pages[fromPage].splice(fromIdx, 1);
   const clamped = Math.max(0, Math.min(toIdx, pages[toPage].length));
   pages[toPage].splice(clamped, 0, w);
-  save({ pages, sizes: { ...d.sizes }, names: d.names });
+  save({ pages, sizes: { ...d.sizes }, names: d.names, proj: d.proj });
 }
 
 export function addPage(): number {
   const d = load();
   const pages = [...d.pages.map((p) => [...p]), []];
-  save({ pages, sizes: { ...d.sizes }, names: d.names });
+  save({ pages, sizes: { ...d.sizes }, names: d.names, proj: d.proj });
   return pages.length - 1;
 }
 
@@ -200,7 +203,9 @@ export function removePage(page: number): void {
   pages.splice(page, 1);
   const names = d.names ? [...d.names] : undefined;
   names?.splice(page, 1);
-  save({ pages, sizes: { ...d.sizes }, names });
+  const proj = d.proj ? [...d.proj] : undefined;
+  proj?.splice(page, 1);
+  save({ pages, sizes: { ...d.sizes }, names, proj });
 }
 
 /** Page names as shown: the user's name, else the seeded default, else
@@ -214,7 +219,7 @@ export function renameConsolePage(page: number, name: string): void {
   const d = load();
   const names = d.pages.map((_, i) => d.names?.[i] ?? '');
   names[page] = name.trim().slice(0, 24);
-  save({ pages: d.pages.map((p) => [...p]), sizes: { ...d.sizes }, names });
+  save({ pages: d.pages.map((p) => [...p]), sizes: { ...d.sizes }, names, proj: d.proj });
 }
 
 /* Undo: a deep copy of the store taken before a delete; the toast's Undo
@@ -225,4 +230,30 @@ export function snapshotDash(): Dashboard {
 
 export function restoreDash(s: Dashboard): void {
   save(s);
+}
+
+/** The Console page index that shows this project, or -1. */
+export function projectPageIndex(id: string): number {
+  const d = load();
+  return (d.proj ?? []).findIndex((p, i) => p === id && i < d.pages.length);
+}
+
+/** Pin a project: the whole project becomes its own Console page, named
+ *  after it. Returns its page index. */
+export function addProjectPage(id: string, name: string): number {
+  const at = projectPageIndex(id);
+  if (at >= 0) return at;
+  const d = load();
+  const pages = [...d.pages.map((p) => [...p]), []];
+  const names = pages.map((_, i) => d.names?.[i] ?? '');
+  names[pages.length - 1] = name.trim().slice(0, 24);
+  const proj = pages.map((_, i) => d.proj?.[i] ?? '');
+  proj[pages.length - 1] = id;
+  save({ pages, sizes: { ...d.sizes }, names, proj });
+  return pages.length - 1;
+}
+
+/** The project shown on a Console page, if that page is a project page. */
+export function projectOnPage(page: number): string {
+  return load().proj?.[page] ?? '';
 }
