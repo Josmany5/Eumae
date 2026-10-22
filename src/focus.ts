@@ -133,6 +133,21 @@ export function openOfficeEdit(k: 'task' | 'event' | 'goal' | 'project', id: str
   setFocus({ k, id, ...(day ? { day } : {}) });
   officeEditSubs.forEach((f) => f());
 }
+/* "Open in Mae's office": open it READ-ONLY (his call, Oct 22). Drops any
+   edit request still waiting from an earlier tap, and tells an open tab in
+   edit mode to leave it. */
+let pendingView: string | null = null;
+export function openOfficeView(k: 'task' | 'event' | 'goal' | 'project', id: string): void {
+  pendingEdit = null;
+  pendingView = k + ':' + id;
+  setFocus({ k, id });
+  officeEditSubs.forEach((f) => f());
+}
+export function takeOfficeView(k: string, id: string): boolean {
+  if (pendingView !== k + ':' + id) return false;
+  pendingView = null;
+  return true;
+}
 export function takeOfficeEdit(k: string, id: string): boolean {
   if (pendingEdit !== k + ':' + id) return false;
   pendingEdit = null;

@@ -247,10 +247,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
     saveWithUndo({ ...p, ms: [...(p.ms ?? []), newMilestone(t, q.date ?? '')] }, `Phase added: ${t}.`);
   };
 
-  const openInOffice = () => {
-    setFocus({ k: 'project', id: p.id });
-    openPanel('item');
-  };
+
   const headMenu: MenuEntry[] = [
     { label: 'Add a phase', onClick: () => setNewMs(true) },
     { label: 'Chat about this project', onClick: chat },
@@ -333,8 +330,6 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         </div>
         <ItemMenu
           name={p.n}
-          open={openInOffice}
-          openLabel="Open in Mae's office"
           edit={editInOffice}
           extra={headMenu}
           onChange={refresh}

@@ -28,7 +28,7 @@ import { QuickAdd } from '../components/QuickAdd';
 import type { Quick } from '../quickadd';
 import { fmtShort } from '../quickadd';
 import { nextMilestone } from '../milestones';
-import { openOfficeEdit, onDataChange, setFocus } from '../focus';
+import { openOfficeEdit, openOfficeView, onDataChange } from '../focus';
 import type { PageProps } from './index';
 
 type ProjFilter = 'all' | 'active' | 'done';
@@ -41,7 +41,7 @@ export default function ProjectsPage(_props: PageProps) {
     openPanel('item');
   };
   const openInOffice = (id: string) => {
-    setFocus({ k: 'project', id });
+    openOfficeView('project', id);
     openPanel('item');
   };
   const [filter, setFilter] = useState<ProjFilter>('all');
@@ -134,7 +134,6 @@ export default function ProjectsPage(_props: PageProps) {
                   /* Tapping the row already opens the project, so the ⋯ opens
                      its tab in Mae's office instead (his call, Oct 22). */
                   open={() => openInOffice(p.id)}
-                  openLabel="Open in Mae's office"
                   edit={() => editInOffice(p.id)}
                   extra={[{ label: pinned ? 'Remove from Console' : 'Pin to Console', onClick: () => pin(p.id, p.n) }]}
                   onChange={refresh}

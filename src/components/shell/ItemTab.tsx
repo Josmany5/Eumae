@@ -9,7 +9,7 @@ import { useGoalAdd } from '../GoalAdd';
 import { sortMilestones, newMilestone } from '../../milestones';
 import { dueLabel } from '../../pages/GoalsPage';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
-import { setFocus, onDataChange, dataChanged, askMae, takeOfficeEdit, onOfficeEdit, type Focus } from '../../focus';
+import { setFocus, onDataChange, dataChanged, askMae, takeOfficeEdit, takeOfficeView, onOfficeEdit, type Focus } from '../../focus';
 import { getEvent, saveEvent, ymd, importanceOf, IMPORTANCE_LABEL, EVENT_IMPORTANCE, EVENT_TYPES, type CalEvent, type EventType, type EventImportance } from '../../events';
 import { removeEvent, TYPE_LABEL } from '../QuickAdd';
 import { MilestonesEditor } from '../Milestones';
@@ -23,11 +23,14 @@ import { isOverdue, hasEnded, daysLeft } from '../../due';
 import { AttendAsk } from './Attend';
 
 /** "Edit" from a row's ⋯ menu opens this tab already in edit mode. */
-function useOfficeEdit(k: 'task' | 'event' | 'goal' | 'project', id: string, start: () => void) {
+function useOfficeEdit(k: 'task' | 'event' | 'goal' | 'project', id: string, start: () => void, view?: () => void) {
   const ref = useRef(start);
   ref.current = start;
+  const vref = useRef(view);
+  vref.current = view;
   useEffect(() => {
     const check = () => {
+      if (takeOfficeView(k, id)) vref.current?.();
       if (takeOfficeEdit(k, id)) ref.current();
     };
     check();
@@ -722,10 +725,15 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
     setNewMs({ t: '', d: '' });
     setDraft({ ...x, ms: (x.ms ?? []).map((m) => ({ ...m })) });
   };
-  useOfficeEdit('project', focus.id, () => {
-    const x = getProject(focus.id);
-    if (x) startEdit(x);
-  });
+  useOfficeEdit(
+    'project',
+    focus.id,
+    () => {
+      const x = getProject(focus.id);
+      if (x) startEdit(x);
+    },
+    () => setDraft(null),
+  );
   const ask = useAsk(onView, focus);
   const [, setTick] = useState(0);
   useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
