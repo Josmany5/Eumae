@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 /** The item you tapped, shown in Mae's office as its own tab (Task, Event,
  *  Goal…). One at a time, in memory only: a reload lands back on the page's
  *  normal tabs. */
-export type FocusKind = 'task' | 'event' | 'day' | 'goal';
+export type FocusKind = 'task' | 'event' | 'day' | 'goal' | 'project';
 export interface Focus {
   k: FocusKind;
   id: string;
@@ -36,7 +36,7 @@ export function useFocus(): Focus | null {
   );
 }
 
-export const FOCUS_LABEL: Record<FocusKind, string> = { task: 'Task', event: 'Event', day: 'Day', goal: 'Goal' };
+export const FOCUS_LABEL: Record<FocusKind, string> = { task: 'Task', event: 'Event', day: 'Day', goal: 'Goal', project: 'Project' };
 
 /* "Edit" from the office: the Tasks page, when it's on screen, opens its form
    in place; otherwise the caller navigates there. */
@@ -128,7 +128,7 @@ export function onAsk(f: () => void): () => void {
    mode (his call, Oct 21). The item tab takes the request when it's up. */
 let pendingEdit: string | null = null;
 const officeEditSubs = new Set<() => void>();
-export function openOfficeEdit(k: 'task' | 'event' | 'goal', id: string, day?: string): void {
+export function openOfficeEdit(k: 'task' | 'event' | 'goal' | 'project', id: string, day?: string): void {
   pendingEdit = k + ':' + id;
   setFocus({ k, id, ...(day ? { day } : {}) });
   officeEditSubs.forEach((f) => f());

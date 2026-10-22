@@ -34,7 +34,8 @@ import { getEvents, saveEvent, ymd } from '../events';
 import { getGoals, createGoal, saveGoal, deleteGoal, snapshotGoals, restoreGoals } from '../goals';
 import { parseQuick, fmtShort, fmtTime } from '../quickadd';
 import { queueBrief } from '../studio';
-import { MilestonesEditor } from '../components/Milestones';
+import { openOfficeEdit } from '../focus';
+import { nextMilestone } from '../milestones';
 import { ItemMenu, PromptDialog, PickDialog, type MenuEntry } from '../components/ItemMenu';
 import { quickToEvent, removeEvent } from '../components/QuickAdd';
 import { undoable } from '../undo';
@@ -101,7 +102,11 @@ export function createOfKind(k: 'task' | 'event' | 'note', text: string): string
 }
 
 export default function ProjectPage({ arg }: PageProps) {
-  const { notify, go, goTab, back } = useNav();
+  const { notify, go, goTab, back, openPanel } = useNav();
+  const editInOffice = () => {
+    openOfficeEdit('project', p!.id);
+    openPanel('item');
+  };
   const [tick, setTick] = useState(0);
   const [dialog, setDialog] = useState<'desc' | null>(null);
   const [adding, setAdding] = useState<LinkKind | null>(null);
@@ -171,6 +176,7 @@ export default function ProjectPage({ arg }: PageProps) {
   };
 
   const headMenu: MenuEntry[] = [
+    { label: 'Edit', onClick: editInOffice },
     { label: p.d ? 'Edit description' : 'Add a description', onClick: () => setDialog('desc') },
     {
       label: pin === p.id ? 'Pinned to Console' : 'Pin to Console',
@@ -244,6 +250,20 @@ export default function ProjectPage({ arg }: PageProps) {
         <div className="bar">
           <i style={{ width: `${pc}%` }} />
         </div>
+        {p.due || nextMilestone(p.ms) ? (
+          <span className="xs pjDates">
+            {p.due ? <span className="m">Due {fmtShort(p.due)}</span> : null}
+            {nextMilestone(p.ms) ? (
+              <span className="msNext">
+                ◆ {nextMilestone(p.ms)!.t} · {fmtShort(nextMilestone(p.ms)!.d)}
+              </span>
+            ) : null}
+          </span>
+        ) : (
+          <button className="lb" onClick={editInOffice}>
+            + Add a deadline or milestones
+          </button>
+        )}
         <div className="btns">
           <button
             className="pri"
@@ -325,33 +345,6 @@ export default function ProjectPage({ arg }: PageProps) {
             </div>
           </div>
         ))}
-
-      <h3 className="sec">Deadline and milestones</h3>
-      <div className="card evForm">
-        <div className="evRow">
-          <label>
-            <span className="s m">Deadline</span>
-            <input
-              className="sinput"
-              type="date"
-              value={p.due ?? ''}
-              onChange={(e) => {
-                saveProject({ ...p, due: e.target.value });
-                refresh();
-              }}
-            />
-          </label>
-        </div>
-        <span className="s m">Milestones</span>
-        <MilestonesEditor
-          value={p.ms ?? []}
-          onChange={(ms) => {
-            saveProject({ ...(getProject(p.id) ?? p), ms });
-            refresh();
-          }}
-        />
-        <span className="s m">The deadline and every dated milestone show on your calendar.</span>
-      </div>
 
       {adding ? (
         <AddDialog

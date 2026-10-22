@@ -27,13 +27,18 @@ import { QuickAdd } from '../components/QuickAdd';
 import { Icon } from '../components/shell/icons';
 import { fmtShort } from '../quickadd';
 import { nextMilestone } from '../milestones';
+import { openOfficeEdit } from '../focus';
 import type { PageProps } from './index';
 
 type ProjFilter = 'all' | 'active' | 'done';
 
 export default function ProjectsPage(_props: PageProps) {
   void _props;
-  const { notify, go } = useNav();
+  const { notify, go, openPanel } = useNav();
+  const editInOffice = (id: string) => {
+    openOfficeEdit('project', id);
+    openPanel('item');
+  };
   const [filter, setFilter] = useState<ProjFilter>('all');
   const [tick, setTick] = useState(0);
   const refresh = () => setTick((t) => t + 1);
@@ -56,6 +61,9 @@ export default function ProjectsPage(_props: PageProps) {
           refresh();
           notify('Project created.');
           go('project', p.id);
+          /* A new project opens its office tab ready to edit, so the deadline
+             and milestones go in right away (his call, Oct 21). */
+          editInOffice(p.id);
         }}
       />
       <div className="tkBar">
@@ -114,6 +122,7 @@ export default function ProjectsPage(_props: PageProps) {
               <ItemMenu
                 name={p.n}
                 open={() => go('project', p.id)}
+                edit={() => editInOffice(p.id)}
                 rename={{ value: p.n, title: 'Rename project', save: (v) => saveProject({ ...p, n: v.slice(0, 48) }) }}
                 extra={[
                   {

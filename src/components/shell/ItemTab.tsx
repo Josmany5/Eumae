@@ -2,7 +2,7 @@ import { rowTap } from '../../rowTap';
 import { useEffect, useRef, useState } from 'react';
 import { useNav, type PanelView } from '../../nav';
 import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists, saveTask, type Task } from '../../tasks';
-import { projectOf, linkedIds } from '../../projects';
+import { projectOf, linkedIds, getProject, saveProject, deleteProject, snapshotProjects, restoreProjects, projectPercent, projectCountLabel, projectProgress, type Project, type LinkKind } from '../../projects';
 import { getGoals, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct, goalCount, goalPace, isActiveGoal, GOAL_STATUS_LABEL, goalLinkedIds, goalOf, linkToGoal, unlinkFromGoal, type Goal, type GoalStatus } from '../../goals';
 import { getNote, titleOf } from '../../notes';
 import { useGoalAdd } from '../GoalAdd';
@@ -22,7 +22,7 @@ import { isOverdue, hasEnded } from '../../due';
 import { AttendAsk } from './Attend';
 
 /** "Edit" from a row's ⋯ menu opens this tab already in edit mode. */
-function useOfficeEdit(k: 'task' | 'event' | 'goal', id: string, start: () => void) {
+function useOfficeEdit(k: 'task' | 'event' | 'goal' | 'project', id: string, start: () => void) {
   const ref = useRef(start);
   ref.current = start;
   useEffect(() => {
@@ -49,6 +49,7 @@ function useAsk(onView: (v: PanelView) => void, focus: Focus) {
 export function ItemTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
   if (focus.k === 'day') return <DayTab day={focus.id} />;
   if (focus.k === 'goal') return <GoalTab focus={focus} onView={onView} />;
+  if (focus.k === 'project') return <ProjectTab focus={focus} onView={onView} />;
   return focus.k === 'event' ? <EventTab focus={focus} onView={onView} /> : <TaskTab focus={focus} onView={onView} />;
 }
 
@@ -700,6 +701,147 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         <button className="fact" onClick={() => ask(`Help me with my goal "${g.t}" (${pct}%${count ? ', ' + count : ''}${pace === 'behind' ? ', behind pace' : ''}). What's the next small step?`)}>Ask Mae</button>
       </div>
       </>
+      )}
+    </div>
+  );
+}
+
+/* A project's office tab: its own details, the clean way Goals and Tasks
+   show theirs (his call, Oct 21, 11:31 PM). The project's full page keeps
+   everything in it; this tab is where you read and edit the project itself:
+   name, description, deadline, milestones. */
+const PJ_KINDS: [LinkKind, string][] = [['task', 'Tasks'], ['event', 'Events'], ['goal', 'Goals'], ['note', 'Notes'], ['file', 'Files']];
+function daysLeft(d: string): { text: string; red: boolean } {
+  const today = ymd(new Date());
+  const n = Math.round((new Date(d + 'T00:00').getTime() - new Date(today + 'T00:00').getTime()) / 86400000);
+  if (n === 0) return { text: 'Today', red: false };
+  if (n < 0) return { text: `${-n} day${n === -1 ? '' : 's'} late`, red: true };
+  return { text: `${n} day${n === 1 ? '' : 's'} left`, red: false };
+}
+function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
+  const { notify, go } = useNav();
+  const [draft, setDraft] = useState<Project | null>(null);
+  useEffect(() => setDraft(null), [focus.id]);
+  useOfficeEdit('project', focus.id, () => {
+    const x = getProject(focus.id);
+    if (x) setDraft({ ...x, ms: (x.ms ?? []).map((m) => ({ ...m })) });
+  });
+  const ask = useAsk(onView, focus);
+  const [, setTick] = useState(0);
+  useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
+  const refresh = () => setTick((n) => n + 1);
+  const p = getProject(focus.id);
+  if (!p) {
+    return (
+      <div className="oEmpty">
+        <span className="ft">That project is gone</span>
+        <p className="oIntro">It was deleted. Pick another one.</p>
+      </div>
+    );
+  }
+  const editing = !!draft;
+  const e = draft ?? p;
+  const set = (x: Partial<Project>) => setDraft({ ...(draft ?? p), ...x });
+  const pct = projectPercent(p);
+  const hasSteps = projectProgress(p).total > 0;
+  const ms = sortMilestones(p.ms ?? []);
+  const firstOpen = ms.findIndex((m) => !m.done);
+  const left = p.due ? daysLeft(p.due) : null;
+  const counts = PJ_KINDS.map(([k, label]) => ({ k, label, n: linkedIds(p.id, k).length })).filter((c) => c.n);
+
+  const edit = () => setDraft({ ...p, ms: (p.ms ?? []).map((m) => ({ ...m })) });
+  const done = () => {
+    if (!draft || !draft.n.trim()) return;
+    const before = p;
+    saveProject({ ...(getProject(p.id) ?? p), n: draft.n.trim().slice(0, 48), d: draft.d.trim().slice(0, 280), due: draft.due || undefined, ms: draft.ms });
+    setDraft(null);
+    refresh();
+    dataChanged();
+    notify('Project saved.', { undo: () => { saveProject(before); refresh(); dataChanged(); } });
+  };
+  const del = () => {
+    const snap = snapshotProjects();
+    deleteProject(p.id);
+    setFocus(null);
+    dataChanged();
+    notify(`Deleted ${p.n}.`, {
+      undo: () => {
+        restoreProjects(snap);
+        dataChanged();
+        setFocus({ k: 'project', id: p.id });
+      },
+    });
+  };
+  const tick = (id: string) => {
+    const before = p;
+    const m = (p.ms ?? []).find((x) => x.id === id);
+    saveProject({ ...p, ms: (p.ms ?? []).map((x) => (x.id === id ? { ...x, done: !x.done } : x)) });
+    refresh();
+    dataChanged();
+    notify(m?.done ? 'Milestone reopened.' : 'Milestone done.', { undo: () => { saveProject(before); refresh(); dataChanged(); } });
+  };
+
+  return (
+    <div className="itab">
+      <div className="itHead">
+        {editing ? (
+          <input className="itIn itTIn" aria-label="Project" value={e.n} onChange={(x) => set({ n: x.target.value })} />
+        ) : (
+          <h2 className="itT">{p.n}</h2>
+        )}
+        {editing ? <EditActs onDone={done} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={edit} onDelete={del} />}
+      </div>
+      {editing ? (
+        <textarea className="itIn itArea itWhyIn" rows={2} aria-label="Description" placeholder="What this project is for" value={e.d} onChange={(x) => set({ d: x.target.value })} />
+      ) : (
+        <>{p.d ? <p className="itNote itWhy">{p.d}</p> : <div style={{ height: 8 }} />}</>
+      )}
+      <span className="gBar itBar">
+        <i style={{ width: `${pct}%` }} />
+      </span>
+      <p className="fmeta itSub">
+        {projectCountLabel(p)}
+        {hasSteps ? ` · ${pct}%` : ''}
+      </p>
+      <KV
+        k="Deadline"
+        v={p.due ? fmtShort(p.due) + (left ? ' · ' + left.text : '') : ''}
+        cls={left?.red ? 'over' : undefined}
+        edit={editing ? <DateIn label="Deadline" value={e.due ?? ''} onChange={(due) => set({ due })} /> : undefined}
+      />
+      {editing ? null : (
+        <KV k="In it" v={counts.map((c) => `${c.n} ${c.n === 1 ? c.label.slice(0, -1).toLowerCase() : c.label.toLowerCase()}`).join(' · ')} />
+      )}
+      {editing ? (
+        <>
+          <div className="flbl">Milestones</div>
+          <MilestonesEditor value={e.ms ?? []} onChange={(m) => set({ ms: m })} />
+          <p className="fmeta itSub">The deadline and every dated milestone show on your calendar.</p>
+        </>
+      ) : (
+        <>
+          <div className="flbl">Milestones</div>
+          {!ms.length ? <p className="fmeta itSub">No milestones yet. Tap Edit to add one.</p> : null}
+          {ms.map((m, i) => (
+            <div key={m.id} className={'frow itStep' + (i === firstOpen ? ' cur' : '')}>
+              <button className={'itNum' + (m.done ? ' on' : '')} aria-label={m.done ? `Reopen ${m.t}` : `Done: ${m.t}`} onClick={() => tick(m.id)}>
+                {m.done ? '\u2713' : i + 1}
+              </button>
+              <span className="ft">{m.t}</span>
+              {m.d ? <span className="fmeta">{fmtShort(m.d)}</span> : null}
+            </div>
+          ))}
+          <div className="frow itKV">
+            <button className="ft tlT" onClick={() => go('project', p.id)}>
+              Open the project page
+            </button>
+          </div>
+          <div className="itMae">
+            <span className="n">Mae</span>
+            <span>{hasSteps ? 'Want the next step, or a plan to the deadline?' : 'Nothing in here yet. Ask me to break it into steps.'}</span>
+            <button className="fact" onClick={() => ask(`Help me with my project "${p.n}" (${projectCountLabel(p)}${p.due ? ', deadline ' + p.due : ''}). What should I do next?`)}>Ask Mae</button>
+          </div>
+        </>
       )}
     </div>
   );

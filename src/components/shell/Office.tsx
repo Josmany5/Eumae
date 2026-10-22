@@ -17,7 +17,7 @@ import { timeLabels } from '../../stamp';
 import { getTask } from '../../tasks';
 import { getEvent, getEvents } from '../../events';
 import { getNotes, titleOf, noteText } from '../../notes';
-import { getProjects, linkedIds } from '../../projects';
+import { getProjects, linkedIds, getProject, projectCountLabel } from '../../projects';
 import { getFiles } from '../../library';
 import type { Ref } from '../../nav';
 import { useFocus, setFocus, getFocus, FOCUS_LABEL, takeAsk, onAsk } from '../../focus';
@@ -189,6 +189,10 @@ function focusContext(): string {
     return g
       ? `\n\nThe person has this goal open: ${g.t}${g.d ? ' (why: ' + g.d + ')' : ''}, ${goalPct(g)}% done${goalCount(g) ? ' (' + goalCount(g) + ')' : ''}${g.td ? ', target ' + g.td : ''}.`
       : '';
+  }
+  if (f.k === 'project') {
+    const p = getProject(f.id);
+    return p ? `\n\nThe person has this project open: ${p.n}${p.d ? ' (' + p.d + ')' : ''}, ${projectCountLabel(p)}${p.due ? ', deadline ' + p.due : ''}.` : '';
   }
   return f.k === 'day' ? `\n\nThe person is looking at ${f.id}.` : '';
 }
