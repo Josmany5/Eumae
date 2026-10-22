@@ -544,7 +544,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         <>{g.d ? <p className="itNote itWhy">{g.d}</p> : <div style={{ height: 8 }} />}</>
       )}
       <span className="gBar itBar">
-        <i style={{ width: `${pct}%` }} />
+        <i style={{ width: `${Math.min(100, pct)}%` }} />
       </span>
       <p className="fmeta itSub">
         {pct}%{count ? ' · ' + count : ''}

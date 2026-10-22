@@ -34,6 +34,9 @@ export interface Project {
    *  it). Links to an item that was deleted are skipped on read, so Undo of
    *  that delete brings the item back still in its project. */
   links?: ProjectLink[];
+  /** When he marked it complete (ms). Only this makes a project done;
+   *  100% of steps does not (his call, Oct 22). */
+  fin?: number;
   /** ms since epoch. */
   createdAt: number;
 }
@@ -139,8 +142,17 @@ export function projectCountLabel(p: Project): string {
 /* Status is derived, not stored: done when every step is done (and there
    is at least one), active otherwise. */
 export function projectStatus(p: Project): 'active' | 'done' {
-  const { done, total } = projectProgress(p);
-  return total > 0 && done >= total ? 'done' : 'active';
+  return p.fin ? 'done' : 'active';
+}
+
+/** Mark complete, or reopen. */
+export function setProjectDone(id: string, done: boolean): void {
+  const p = getProject(id);
+  if (!p) return;
+  const next = { ...p };
+  if (done) next.fin = Date.now();
+  else delete next.fin;
+  saveProject(next);
 }
 
 export function projectPercent(p: Project): number {

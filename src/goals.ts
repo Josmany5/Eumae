@@ -144,7 +144,8 @@ export function isActiveGoal(g: Goal): boolean {
  *  else finished milestones. */
 export function goalPct(g: Goal): number {
   if (g.st === 'completed') return 100;
-  if (g.tgt && g.tgt > 0) return Math.max(0, Math.min(100, Math.round(((g.cur ?? 0) / g.tgt) * 100)));
+  /* Past the target shows the real number (120%); bars clamp their own width. */
+  if (g.tgt && g.tgt > 0) return Math.max(0, Math.round(((g.cur ?? 0) / g.tgt) * 100));
   const ms = g.ms ?? [];
   return ms.length ? Math.round((ms.filter((m) => m.done).length / ms.length) * 100) : 0;
 }
@@ -183,7 +184,7 @@ export const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
   'not-started': 'Not started',
   'in-progress': 'Active',
   completed: 'Done',
-  'let-go': 'Let go',
+  'let-go': 'Archived',
 };
 
 /* ───────────── What a goal owns ───────────── */

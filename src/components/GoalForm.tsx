@@ -116,7 +116,7 @@ export function GoalForm({
         >
           <option value="active">Active</option>
           <option value="completed">Done</option>
-          <option value="let-go">Let go</option>
+          <option value="let-go">Archived</option>
         </select>
       </label>
       <span className="xs m">Milestones</span>

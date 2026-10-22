@@ -15,7 +15,6 @@ import {
   saveProject,
   deleteProject,
   projectPercent,
-  projectProgress,
   projectCountLabel,
   linkedIds,
   linkItem,
@@ -26,6 +25,7 @@ import {
   snapshotProjects,
   restoreProjects,
   type LinkKind,
+  setProjectDone,
 } from '../projects';
 import { getTasks, toggleTask, createTask, saveTask, deleteTask, snapshotTasks, restoreTasks } from '../tasks';
 import { getFiles, addFile, trashFile, snapshotLibrary, restoreLibrary } from '../library';
@@ -156,7 +156,6 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
   const p = getProject(id);
   if (!p) return <div className="empty">This project isn't here any more.</div>;
   const pc = projectPercent(p);
-  const hasSteps = projectProgress(p).total > 0;
   const left = p.due ? daysLeft(p.due) : null;
   const ms = sortMilestones(p.ms ?? []);
   const next = currentPhase(ms);
@@ -270,6 +269,15 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
   const headMenu: MenuEntry[] = [
     { label: 'Chat about this project', onClick: chat },
     { label: pinnedAt >= 0 ? 'Remove from Console' : 'Pin to Console', onClick: pin },
+    {
+      label: p.fin ? 'Reopen project' : 'Mark complete',
+      onClick: () => {
+        const was = !!p.fin;
+        setProjectDone(p.id, !was);
+        dataChanged();
+        notify(was ? 'Project reopened.' : `${p.n} is complete.`, { undo: () => { setProjectDone(p.id, was); dataChanged(); } });
+      },
+    },
   ];
 
   /* One list per kind, each under its own heading (his call, Oct 22): never
@@ -466,7 +474,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
       </span>
       <div className="pjCount">
         <span>{projectCountLabel(p).replace('steps', 'done').replace('step', 'done')}</span>
-        {hasSteps ? <span>{pc}%</span> : null}
+        <span>{pc}%</span>
       </div>
 
       {/* HIS LAYOUT (Oct 22, 2:52 AM): goals on top as the scoreboard, then
@@ -501,7 +509,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
                   <span className="gPct">{goalPct(g)}%</span>
                 </button>
                 <span className="gBar">
-                  <i style={{ width: `${goalPct(g)}%` }} />
+                  <i style={{ width: `${Math.min(100, goalPct(g))}%` }} />
                 </span>
               </div>
               {g.td ? <span className="fmeta">By {fmtShort(g.td)}</span> : null}

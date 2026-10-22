@@ -13,11 +13,11 @@ import {
   saveProject,
   projectStatus,
   projectPercent,
-  projectProgress,
   projectCountLabel,
   deleteProject,
   snapshotProjects,
   restoreProjects,
+  setProjectDone,
 } from '../projects';
 import { ItemMenu } from '../components/ItemMenu';
 import { undoable } from '../undo';
@@ -111,7 +111,7 @@ export default function ProjectsPage(_props: PageProps) {
                 <div className="ft">
                   <button className="tlT" onClick={() => go('project', p.id)}>
                     <span>{p.n}</span>
-                    {projectProgress(p).total ? <span className="gPct">{pc}%</span> : null}
+                    <span className="gPct">{pc}%</span>
                   </button>
                   <div className="fsub">
                     {projectCountLabel(p)}
@@ -130,7 +130,17 @@ export default function ProjectsPage(_props: PageProps) {
                   name={p.n}
                   /* No Open here: tapping the row opens the project (his call, Oct 22). */
                   edit={() => editInOffice(p.id)}
-                  extra={[{ label: pinned ? 'Remove from Console' : 'Pin to Console', onClick: () => pin(p.id, p.n) }]}
+                  extra={[
+                    { label: pinned ? 'Remove from Console' : 'Pin to Console', onClick: () => pin(p.id, p.n) },
+                    {
+                      label: done ? 'Reopen project' : 'Mark complete',
+                      onClick: () => {
+                        setProjectDone(p.id, !done);
+                        refresh();
+                        notify(done ? 'Project reopened.' : `${p.n} is complete.`, { undo: () => { setProjectDone(p.id, done); refresh(); } });
+                      },
+                    },
+                  ]}
                   onChange={refresh}
                   onDelete={() => {
                     const snapP = snapshotProjects();

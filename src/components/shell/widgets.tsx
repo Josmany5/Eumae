@@ -256,7 +256,7 @@ function FullGoals() {
               </span>
             </div>
             <span className="bar">
-              <i style={{ width: `${pct}%` }} />
+              <i style={{ width: `${Math.min(100, pct)}%` }} />
             </span>
           </div>
         );

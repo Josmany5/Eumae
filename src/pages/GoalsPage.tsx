@@ -38,7 +38,7 @@ const MODES: { id: Mode; label: string }[] = [
   { id: 'active', label: 'Active' },
   { id: 'project', label: 'By project' },
   { id: 'done', label: 'Done' },
-  { id: 'letgo', label: 'Let go' },
+  { id: 'letgo', label: 'Archived' },
 ];
 
 export function daysLeft(td: string): number {
@@ -69,7 +69,7 @@ function groupGoals(all: Goal[], mode: Mode): Group[] {
   if (mode === 'done' || mode === 'letgo') {
     const st = mode === 'done' ? 'completed' : 'let-go';
     const gs = all.filter((g) => g.st === st).sort((a, b) => (b.upd ?? b.createdAt) - (a.upd ?? a.createdAt));
-    return gs.length ? [{ label: mode === 'done' ? 'Done' : 'Let go', goals: gs }] : [];
+    return gs.length ? [{ label: mode === 'done' ? 'Done' : 'Archived', goals: gs }] : [];
   }
   const act = all.filter(isActiveGoal).sort((a, b) => (a.td || '9999').localeCompare(b.td || '9999'));
   const out: Group[] = [];
@@ -204,7 +204,7 @@ export default function GoalsPage({ arg }: PageProps) {
             {mode === 'done'
               ? 'No finished goals yet.'
               : mode === 'letgo'
-                ? 'Nothing let go. When a goal stops fitting your life, set it to Let go and it waits here, no shame.'
+                ? 'Nothing archived. When a goal stops fitting your life, archive it and it waits here.'
                 : 'No goals yet. A goal is the long game: say it in your words, add why, and how you\'ll know you got there.'}
           </p>
         ) : null}
@@ -260,7 +260,7 @@ function GoalRow({ g, onOpen, onEdit, onDelete, refresh }: { g: Goal; onOpen: ()
           </div>
         ) : null}
         <span className="gBar">
-          <i style={{ width: `${pct}%` }} />
+          <i style={{ width: `${Math.min(100, pct)}%` }} />
         </span>
       </div>
       {project ? <span className="tkPill">{project.n}</span> : null}
@@ -278,7 +278,7 @@ function GoalRow({ g, onOpen, onEdit, onDelete, refresh }: { g: Goal; onOpen: ()
             ? [{ label: 'Bring back', onClick: () => setSt('in-progress', 'Goal is active again.') }]
             : closed
               ? undefined
-              : [...goalAdd.entries, { label: 'Let go', onClick: () => setSt('let-go', 'Goal let go. It stays in your record.') }]
+              : [...goalAdd.entries, { label: 'Archive', onClick: () => setSt('let-go', 'Goal archived.') }]
         }
         link={{ k: 'goal', id: g.id }}
         onChange={refresh}
