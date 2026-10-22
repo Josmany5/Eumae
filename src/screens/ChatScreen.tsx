@@ -471,10 +471,21 @@ export default function ChatScreen() {
      read, the stream stops pulling and the down-button appears instead. New
      sends and thread switches re-pin (both are deliberate jumps to the
      newest line). */
+  /* His call (Oct 21, same as the office chat): once Mae's reply starts, the
+     view holds her first line at the top so you read from the start, and it
+     never chases the end of the message as it grows. Short replies still sit
+     at the floor. Scrolling up by hand stops all of it. */
   useEffect(() => {
     if (!atBottomRef.current) return;
     const el = scroller.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    const bottom = el.scrollHeight - el.clientHeight;
+    const last = msgs[msgs.length - 1];
+    if (!last || last.role === 'you') { el.scrollTop = bottom; return; }
+    const node = el.querySelector<HTMLElement>(`[data-mid="${last.id}"]`);
+    if (!node) { el.scrollTop = bottom; return; }
+    const top = node.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 8;
+    el.scrollTop = Math.min(bottom, Math.max(el.scrollTop, top));
   }, [msgs]);
 
   /* The edit box fits what it holds, capped the way the composer is and for the
@@ -769,7 +780,7 @@ export default function ChatScreen() {
             {visible.rows.map((row, ri) => (
                 <Fragment key={row.msg.id}>
                 {stamps[ri] ? <div className="imTime xs m">{stamps[ri]}</div> : null}
-                <div className={`msg ${row.msg.role}`}>
+                <div className={`msg ${row.msg.role}`} data-mid={row.msg.id}>
                   {(() => {
                     const m = row.msg;
                     return (
