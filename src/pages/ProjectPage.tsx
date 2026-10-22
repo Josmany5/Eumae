@@ -268,7 +268,6 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
     openPanel('item');
   };
   const headMenu: MenuEntry[] = [
-    { label: 'Add a phase', onClick: () => setNewMs(true) },
     { label: 'Chat about this project', onClick: chat },
     { label: pinnedAt >= 0 ? 'Remove from Console' : 'Pin to Console', onClick: pin },
   ];
@@ -562,6 +561,14 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
               </section>
             );
           })}
+          {ms.length ? (
+            /* Under the last phase, like Goals' "+ Add a goal" (his ask, Oct 22); off the ⋯ menu. */
+            <div className="pjAddRow pjAddPh">
+              <button className="lb" onClick={() => setNewMs(true)}>
+                + Add a phase
+              </button>
+            </div>
+          ) : null}
           {ms.length === 0 || looseSteps.length ? (
             <section className="pjNode loose">
               <span className="pjNum" aria-hidden />
