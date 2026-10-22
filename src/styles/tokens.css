@@ -1814,8 +1814,8 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 /* Goals with meters */
 .wGoal{ padding:10px 0; }
 .wGoal .r{ display:flex; gap:12px; align-items:baseline; }
-.wGoal .bar{ display:block; height:3px; margin-top:8px; border-radius:2px; background:var(--card2); }
-.wGoal .bar i{ display:block; height:3px; border-radius:2px; background:var(--ac); }
+.wGoal .bar{ display:block; height:6px; margin-top:8px; border-radius:99px; background:var(--card3); overflow:hidden; }
+.wGoal .bar i{ display:block; height:100%; border-radius:99px; background:var(--ac); }
 
 /* ── Tasks (step 4): flat grouped rows, the 02-console-tasks look ─────── */
 .tkBar{ align-items:center; }
@@ -2061,8 +2061,8 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 /* ── Goals (step 6): flat rows like Tasks, percent + thin meter ───────── */
 .gRow .tlT{ display:inline; }
 .gPct{ margin-left:8px; font-size:13px; color:var(--mut); font-weight:400; }
-.gBar{ display:block; height:3px; width:min(220px, 100%); margin-top:8px; border-radius:2px; background:var(--card2); overflow:hidden; }
-.gBar i{ display:block; height:3px; border-radius:2px; background:var(--ac); }
+.gBar{ display:block; height:6px; width:min(220px, 100%); margin-top:8px; border-radius:99px; background:var(--card3); overflow:hidden; }
+.gBar i{ display:block; height:100%; border-radius:99px; background:var(--ac); }
 .gRow.past .gBar i{ background:var(--mut); }
 .gSide{ display:flex; flex-direction:column; align-items:flex-end; gap:2px; text-align:right; }
 .gNext{ color:var(--tx2, var(--tx)); }
