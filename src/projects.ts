@@ -113,8 +113,8 @@ export function projectProgress(p: Project): { done: number; total: number } {
   const of = (k: LinkKind) => new Set((p.links ?? []).filter((l) => l.k === k).map((l) => l.id));
   const tIds = of('task');
   const tasks = getTasks().filter((t) => tIds.has(t.id));
-  const ms = p.ms ?? [];
-  /* Events count too (his yes, Oct 22): Attended is done, Not attended
+  /* Phases do not count (his call, Oct 22): they only group the steps.
+     Events count too (his yes, Oct 22): Attended is done, Not attended
      drops out, anything else is still open. A series counts its current date. */
   const eIds = of('event');
   const evAns = getEvents()
@@ -125,8 +125,8 @@ export function projectProgress(p: Project): { done: number; total: number } {
   const gIds = of('goal');
   const goals = getGoals().filter((g) => gIds.has(g.id));
   return {
-    done: tasks.filter((t) => t.d).length + ms.filter((m) => m.done).length + evAns.filter((a) => a === 'yes').length + goals.filter((g) => g.st === 'completed').length,
-    total: tasks.length + ms.length + evAns.length + goals.length,
+    done: tasks.filter((t) => t.d).length + evAns.filter((a) => a === 'yes').length + goals.filter((g) => g.st === 'completed').length,
+    total: tasks.length + evAns.length + goals.length,
   };
 }
 
