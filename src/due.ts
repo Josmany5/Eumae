@@ -7,7 +7,7 @@
  * An event that has ended is not assumed attended: it waits for "Did you
  * attend?" (Attended / Not attended), kept per occurrence in events.ts. */
 import type { Task } from './tasks';
-import { type CalEvent, attendanceOf, dayEvents, importanceOf, mins, ymd } from './events';
+import { type CalEvent, attendanceOf, dayEvents, importanceOf, mins, occursOn, ymd } from './events';
 
 /** How far back the app still asks "Did you attend?". Older ones are left alone. */
 export const ASK_DAYS = 7;
@@ -68,4 +68,41 @@ export function daysLeft(d: string, now = new Date()): { text: string; red: bool
   if (n === 0) return { text: 'Today', red: false };
   if (n < 0) return { text: `${-n} day${n === -1 ? '' : 's'} late`, red: true };
   return { text: `${n} day${n === 1 ? '' : 's'} left`, red: false };
+}
+
+/** An occurrence's attendance, for any row that shows an event (Oct 22, his
+ *  ask: everywhere, not just Today). Null before it ends; 'ask' once it has
+ *  ended with no answer; then his answer. Example seeds and optional events
+ *  never ask (same as toConfirm). */
+export function attendState(ev: CalEvent | undefined, day: string, now: Date = new Date()): 'ask' | 'yes' | 'no' | null {
+  if (!ev || ev.example || !ev.id || importanceOf(ev) === 'optional' || !hasEnded(ev, day, now)) return null;
+  return attendanceOf(ev, day) ?? 'ask';
+}
+
+/** The word a row shows for it: "Did you attend?", "Attended", "Not attended". */
+export function attendLabel(s: 'ask' | 'yes' | 'no' | null): string {
+  return s === 'ask' ? 'Did you attend?' : s === 'yes' ? 'Attended' : s === 'no' ? 'Not attended' : '';
+}
+
+/** Which date a list should show for a stored event: a one-off is its own
+ *  date; a series is its newest ended, unanswered date from the last
+ *  ASK_DAYS, else its next date in the coming 60 days, else its start. */
+export function eventDay(ev: CalEvent, now: Date = new Date()): string {
+  if (!ev.rep) return ev.d;
+  for (let i = 0; i < ASK_DAYS; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const day = ymd(d);
+    if (occursOn(ev, day) && hasEnded(ev, day, now)) {
+      if (!attendanceOf(ev, day)) return day;
+      break;
+    }
+  }
+  for (let i = 0; i < 60; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + i);
+    const day = ymd(d);
+    if (occursOn(ev, day) && !hasEnded(ev, day, now)) return day;
+  }
+  return ev.d;
 }

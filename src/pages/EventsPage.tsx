@@ -23,6 +23,8 @@ import { QuickAdd, EventForm, EventMenu, quickToEvent, removeEvent } from '../co
 import { setFocus, openOfficeEdit } from '../focus';
 import { ProjectChip } from '../components/ItemMenu';
 import { fmtTime, repLabel } from '../quickadd';
+import { toConfirm, attendState, attendLabel } from '../due';
+import { AttendAsk } from '../components/shell/Attend';
 import type { PageProps } from './index';
 
 type Filter = 'all' | EventType;
@@ -39,6 +41,8 @@ export default function EventsPage({ arg }: PageProps) {
   const [filter, setFilter] = useState<Filter>('all');
   const [tick, setTick] = useState(0);
   const [form, setForm] = useState<{ ev: CalEvent; editing: boolean } | null>(null);
+  /* An event just marked Not attended stays while it offers Reschedule?. */
+  const [held, setHeld] = useState<{ ev: CalEvent; day: string }[]>([]);
   /* A tapped event opens in Mae's office (his call, Oct 21), never a card. */
   const open = (e: CalEvent) => {
     if (!e.id) return;
@@ -61,7 +65,7 @@ export default function EventsPage({ arg }: PageProps) {
     const tomorrow = shift(today, 1);
     const weekEnd = shift(today, 7 - new Date(today + 'T12:00').getDay());
     const g: { title: string; rows: CalEvent[] }[] = [
-      { title: 'Today', rows: all.filter((e) => e.d === today) },
+      { title: 'Today', rows: all.filter((e) => e.d === today && attendState(e, e.d) !== 'ask') },
       { title: 'Tomorrow', rows: all.filter((e) => e.d === tomorrow) },
       { title: 'This week', rows: all.filter((e) => e.d > tomorrow && e.d < weekEnd) },
       /* Later: one-off events only, so a daily standup doesn't bury them. */
@@ -120,6 +124,40 @@ export default function EventsPage({ arg }: PageProps) {
           </button>
         ))}
       </div>
+      {(() => {
+        /* Ended events wait for an answer here too (his ask, Oct 22): the
+           same "Did you attend?" Today shows, never assumed. */
+        void tick;
+        const asks = [...held, ...toConfirm().filter((a) => !held.some((h) => h.ev.id === a.ev.id && h.day === a.day))].filter(
+          (a) => filter === 'all' || (a.ev.type ?? 'other') === filter,
+        );
+        return asks.length ? (
+          <div>
+            <h3 className="sec">Did you attend?</h3>
+            {asks.map((a) => (
+              <div key={'a' + a.ev.id + a.day} className={'frow agRow2 tapRow c-' + (a.ev.type ?? 'other')} onClick={rowTap(() => open({ ...a.ev, d: a.day }))}>
+                <i className="agBar" />
+                <div className="ft">
+                  <button className="tlT" onClick={() => open({ ...a.ev, d: a.day })}>
+                    {a.ev.t}
+                  </button>
+                  <AttendAsk
+                    ev={a.ev}
+                    day={a.day}
+                    onChange={refresh}
+                    onMark={(v) => { if (v === 'no') setHeld((h) => [...h.filter((x) => !(x.ev.id === a.ev.id && x.day === a.day)), a]); }}
+                    onSettled={() => setHeld((h) => h.filter((x) => !(x.ev.id === a.ev.id && x.day === a.day)))}
+                  />
+                </div>
+                <span className="fmeta">
+                  {a.day === today ? 'Today' : dayLabel(a.day)}
+                  {a.ev.allDay || !a.ev.tm ? '' : ' · ' + fmtTime(a.ev.tm)}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null;
+      })()}
       {groups.length ? (
         groups.map((g) => (
           <div key={g.title}>
@@ -139,6 +177,10 @@ export default function EventsPage({ arg }: PageProps) {
                       ) : null}
                       {e.id ? <ProjectChip k="event" id={e.id} /> : null}
                     </div>
+                    {(() => {
+                      const st = g.title === 'Repeating' ? null : attendState(full, e.d);
+                      return st === 'yes' || st === 'no' ? <span className={'fmeta' + (st === 'no' ? ' over' : '')}>{attendLabel(st)}</span> : null;
+                    })()}
                     <span className="fmeta">
                       {g.title === 'Today' || g.title === 'Tomorrow' ? '' : (g.title === 'Repeating' ? 'Next ' : '') + dayLabel(e.d) + ' · '}
                       {e.allDay || !e.tm ? 'All day' : fmtTime(e.tm) + (e.end ? ' – ' + fmtTime(e.end) : '')}

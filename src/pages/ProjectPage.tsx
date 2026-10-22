@@ -30,12 +30,13 @@ import {
 import { getTasks, toggleTask, createTask, saveTask, deleteTask, snapshotTasks, restoreTasks } from '../tasks';
 import { getFiles, addFile, trashFile, snapshotLibrary, restoreLibrary } from '../library';
 import { getNotes, createNote, saveNote, titleOf, deleteNote, snapshotNotes, restoreNotes } from '../notes';
-import { getEvents, saveEvent, ymd } from '../events';
+import { getEvents, saveEvent, ymd, mins } from '../events';
 import { getGoals, createGoal, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct } from '../goals';
 import { parseQuick, fmtShort, fmtTime } from '../quickadd';
 import { openOfficeEdit, openOfficeView, setFocus, onDataChange, dataChanged } from '../focus';
 import { sortMilestones, nextMilestone, newMilestone } from '../milestones';
-import { daysLeft } from '../due';
+import { daysLeft, isOverdue, attendState, attendLabel, eventDay } from '../due';
+import { AttendAsk } from '../components/shell/Attend';
 import { rowTap } from '../rowTap';
 import { snapshotDash, restoreDash, removePage, addProjectPage, projectPageIndex } from '../dash';
 import { ItemMenu, PromptDialog, PickDialog, type MenuEntry } from '../components/ItemMenu';
@@ -127,6 +128,8 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
   const [linking, setLinking] = useState<{ k: LinkKind; m: string } | null>(null);
   const [moving, setMoving] = useState<{ k: LinkKind; id: string } | null>(null);
   const [newMs, setNewMs] = useState(false);
+  /* An event just marked Not attended keeps its Reschedule? offer open. */
+  const [held, setHeld] = useState<string[]>([]);
   /* Closed phases (his ask, Oct 22): each phase opens and closes, plus one
      control for all of them. Remembered per project on this device. */
   const shutKey = 'eumae:pjShut:' + id;
@@ -279,6 +282,73 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         </div>
       ) : null;
     });
+
+  /* Phase rows in Today's timeline look (his ask, Oct 22): one spine, in
+     date order, a task's dot is its checkbox, an event is a ring on the line,
+     a late task says Overdue, an ended event asks "Did you attend?". */
+  const now = new Date();
+  const taskById = new Map(getTasks().map((t) => [t.id, t]));
+  const evById = new Map(getEvents().filter((e) => e.id).map((e) => [e.id!, e]));
+  const whenOf = (r: GroupRow): string => {
+    if (r.k === 'task') {
+      const t = taskById.get(r.id);
+      return t?.due ? t.due + ' ' + String(mins(t.tm)).padStart(5, '0') : '~';
+    }
+    const e = evById.get(r.id);
+    return e ? eventDay(e, now) + ' ' + String(e.allDay ? 0 : mins(e.tm)).padStart(5, '0') : '~';
+  };
+  const stepRows = (rows: GroupRow[]) =>
+    [...rows].sort((a, b) => (whenOf(a) < whenOf(b) ? -1 : whenOf(a) > whenOf(b) ? 1 : 0)).map(stepRow);
+  const stepRow = (r: GroupRow) => {
+    const t = r.k === 'task' ? taskById.get(r.id) : undefined;
+    const e = r.k === 'event' ? evById.get(r.id) : undefined;
+    const day = e ? eventDay(e, now) : '';
+    const late = !!t && isOverdue(t, now);
+    const att = e ? attendState(e, day, now) : null;
+    const key = r.id + day;
+    const asking = att === 'ask' || held.includes(key);
+    const when = t
+      ? t.due ? fmtShort(t.due) + (t.tm ? ' ' + fmtTime(t.tm) : '') : ''
+      : e
+        ? fmtShort(day) + (e.allDay || !e.tm ? '' : ' ' + fmtTime(e.tm))
+        : '';
+    return (
+      <div key={r.k + r.id} className={'frow top tlRow tapRow' + (r.done ? ' done' : '') + (e ? ' ev' : '')} onClick={rowTap(() => open(r.k, r.id))}>
+        {t ? (
+          <button
+            className="tlDot"
+            aria-label={r.done ? `Mark ${r.label} not done` : `Mark ${r.label} done`}
+            onClick={() => {
+              toggleTask(r.id);
+              if (!r.done) notify('Done.', { undo: () => { toggleTask(r.id); refresh(); dataChanged(); } });
+              refresh();
+              dataChanged();
+            }}
+          />
+        ) : null}
+        <div className="ft">
+          <button className="tlT" onClick={() => open(r.k, r.id)}>
+            <span className={r.done ? 'tlDone' : ''}>{r.label}</span>
+          </button>
+          {e && (e.loc || e.rep) ? <div className="fsub">{[e.loc, e.rep ? '↻ repeats' : ''].filter(Boolean).join(' · ')}</div> : null}
+          {e && asking ? (
+            <AttendAsk
+              ev={e}
+              day={day}
+              onChange={refresh}
+              onMark={(v) => { if (v === 'no') setHeld((h) => [...h.filter((x) => x !== key), key]); }}
+              onSettled={() => setHeld((h) => h.filter((x) => x !== key))}
+            />
+          ) : null}
+        </div>
+        <span className="tlR">
+          {when || late ? <span className={'fmeta' + (late ? ' over' : '')}>{late ? 'Overdue · ' + when : when}</span> : null}
+          {att === 'yes' || att === 'no' ? <span className={'fmeta' + (att === 'no' ? ' over' : '')}>{attendLabel(att)}</span> : null}
+          {menuFor(r)}
+        </span>
+      </div>
+    );
+  };
 
   const menuFor = (r: GroupRow) => (
     <ItemMenu
@@ -466,7 +536,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
                 </button>
                 {closed ? null : (
                   <>
-                    {byKind(rows)}
+                    {stepRows(rows)}
                     {m.done ? null : <AddMenu label={`+ Add to Phase ${i + 1}`} kinds={STEP_KINDS} onPick={(k) => setAdding({ k, m: m.id })} />}
                   </>
                 )}
@@ -483,7 +553,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
                   </span>
                 </span>
               </div>
-              {byKind(looseSteps)}
+              {stepRows(looseSteps)}
               <AddMenu label="+ Add" kinds={STEP_KINDS} onPick={(k) => setAdding({ k, m: '' })} />
             </section>
           ) : null}

@@ -2283,3 +2283,11 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .pjAddRow{ padding:4px 0 0 30px; }
 .pjAddRow .pjAddBtn{ font-size:14px; color:var(--mut); background:none; width:auto; height:auto; padding:4px 0; }
 .pjEmb .screenT.tlT{ text-align:left; padding:0; background:none; }
+
+/* Project phases in Today's timeline look (Oct 22): rows sit on the phase
+   line itself. A task's dot is its checkbox; an event is a ring. */
+.pjSpine .tlRow{ position:relative; border-bottom:0; align-items:flex-start; gap:12px; padding:10px 0; }
+.pjSpine .tlRow .tlDot{ left:-33px; }
+.pjSpine .tlRow.ev::before{ content:""; position:absolute; left:-30.5px; top:17px; width:10px; height:10px; box-sizing:border-box;
+  border-radius:50%; border:1.5px solid var(--ac); background:var(--bg); }
+.pjNode.done .tlRow{ opacity:.6; }

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNav } from '../../nav';
 import { getTasks, getLists, toggleTask, saveTask, type Task } from '../../tasks';
 import { dayEvents, ymd, mins, importanceOf, type CalEvent } from '../../events';
-import { isOverdue, toConfirm } from '../../due';
+import { isOverdue, toConfirm, attendState, attendLabel } from '../../due';
 import { AttendAsk } from './Attend';
 import { fmtTime } from '../../quickadd';
 import { setFocus, onDataChange, askMae } from '../../focus';
@@ -201,6 +201,11 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
         <span className="tlR">
           {chip ? <span className="tlChip">{chip}</span> : null}
           {right ? <span className={`fmeta${opts.over ? ' over' : ''}`}>{right}</span> : null}
+          {(() => {
+            /* An ended event says how it went (Oct 22): Attended / Not attended. */
+            const st = i.kind === 'event' ? attendState(i.ev, today, now) : null;
+            return st === 'yes' || st === 'no' ? <span className={'fmeta' + (st === 'no' ? ' over' : '')}>{attendLabel(st)}</span> : null;
+          })()}
         </span>
       </div>
     );
