@@ -1,3 +1,4 @@
+import { setDraftsOpen } from './studio';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import Header from './components/shell/Header';
 import TabBar, { type TabId } from './components/shell/TabBar';
@@ -408,6 +409,13 @@ export default function App() {
         go('libf', libView);
         return;
       }
+      /* Studio's rail rows: both live on the Studio root (Drafts opens its
+         section). */
+      if (label === 'Published' || label === 'Drafts') {
+        if (label === 'Drafts') setDraftsOpen(true);
+        goTab('studio');
+        return;
+      }
       if (label === 'Sources') {
         notify('Sources comes soon: the pages and links Eumae reads for you will collect here.');
         return;
@@ -495,7 +503,6 @@ export default function App() {
           threads={threads}
           currentThreadId={currentThreadId}
           onThreadPick={switchThread}
-          onNewChat={newChat}
           onThreadDelete={removeThread}
           onThreadRename={renameThread}
         />

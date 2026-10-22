@@ -50,8 +50,12 @@ export const PAGE_MENU: Record<TabId, MenuSection[]> = {
     },
   ],
   studio: [
-    { heading: 'Published', items: [], empty: 'Nothing published yet' },
-    { heading: 'Drafts', items: [], empty: 'Nothing in draft yet' },
+    {
+      items: [
+        { label: 'Published', icon: 'globe' },
+        { label: 'Drafts', icon: 'ed' },
+      ],
+    },
     {
       heading: 'People',
       items: [

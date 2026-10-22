@@ -15,7 +15,6 @@ interface SidebarProps {
   threads: Thread[];
   currentThreadId: string | null;
   onThreadPick: (id: string) => void;
-  onNewChat: () => void;
   onThreadDelete: (id: string) => void;
   onThreadRename: (id: string, title: string) => void;
 }
@@ -36,7 +35,6 @@ export default function Sidebar({
   threads,
   currentThreadId,
   onThreadPick,
-  onNewChat,
   onThreadDelete,
   onThreadRename,
 }: SidebarProps) {
@@ -79,14 +77,10 @@ export default function Sidebar({
             {/* Recent chats is live threads, not menu rows: same data as the
                 phone drawer's swipe list. Each row carries the same ⋯ as
                 the drawer (Rename, Export, Delete with Undo), shown on hover,
-                focus and the open chat. New chat opens a fresh thread; a row
-                switches to it. */}
+                focus and the open chat. A row switches to it; New chat is the
+                page menu's own row above (one New chat, his call). */}
             {s.heading === 'Recent chats' && active === 'chat' ? (
               <>
-                <button className="sbItem" onClick={onNewChat} title="New chat">
-                  <Icon name="pls" />
-                  <span className="g">New chat</span>
-                </button>
                 {threads.length === 0 ? (
                   <div className="sbEmpty">No chats yet</div>
                 ) : (

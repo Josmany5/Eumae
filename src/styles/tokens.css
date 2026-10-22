@@ -398,8 +398,12 @@ input[type=checkbox]{ accent-color:var(--ac); }
      labels and the page menu step aside until you expand again. */
   #app.railCollapsed{ grid-template-columns:64px 1fr; }
   #app.railCollapsed .sb{ padding:12px 8px calc(12px + env(safe-area-inset-bottom)); }
+  /* His call (Oct 22): the page's own menu stays as icons too (hover for the
+     name); headings, empty lines and chat times step aside. */
   #app.railCollapsed .sbMark, #app.railCollapsed .sbSect, #app.railCollapsed .sbSearchIc,
-  #app.railCollapsed .sbPanel, #app.railCollapsed .sbItem .g{ display:none; }
+  #app.railCollapsed .sbEmpty, #app.railCollapsed .thMeta,
+  #app.railCollapsed .sbItem .g{ display:none; }
+  #app.railCollapsed .sbThread:nth-of-type(n+9){ display:none; }
   #app.railCollapsed .sbHead{ padding:6px 0 12px; justify-content:center; }
   #app.railCollapsed .sbItem{ justify-content:center; padding:9px 0; }
 
@@ -409,7 +413,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
      No global measure cap: each surface owns its width. Dashboards fill the
      column with a real grid; text screens cap for line length. */
   #mn > :not(.chat):not(.pageWrap){ margin:0; width:100%; max-width:none;
-    padding:12px 28px calc(20px + env(safe-area-inset-bottom)); }
+    padding:12px max(28px, calc((100% - 1100px) / 2)) calc(20px + env(safe-area-inset-bottom)); }
   #mn > .dashWide{ max-width:none; }
   /* Desktop scale: cards + heroes + pills join the 14px block. */
   .wc{ border-radius:16px; padding:12px 14px; }
@@ -1765,7 +1769,8 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 @media (min-width:900px){
   /* Full-width scroller so the scrollbar sits at the screen edge, content
      flush left with room, capped near 900px for line length. */
-  #mn > .dashWide.con{ max-width:none; margin:0; padding:24px max(48px, calc(100% - 948px)) 32px 48px; }
+  /* Centered in whatever space is left, like Chat (his call, Oct 22). */
+  #mn > .dashWide.con{ max-width:none; margin:0; padding:24px max(48px, calc((100% - 900px) / 2)) 32px; }
 }
 /* Timeline */
 .tl{ display:block; }
@@ -1883,7 +1888,8 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   .tlNext, .tlAdd input{ font-size:17px; }
   .frow{ min-height:50px; padding:12px 0; }
   .tkPill{ font-size:14px; }
-  .pageBody{ padding:16px 48px 32px; }
+  .pageBody{ padding:16px max(48px, calc((100% - 900px) / 2)) 32px; }
+  .backbar{ padding:16px max(20px, calc((100% - 948px) / 2)) 4px; }
   .pageBody > .qaPage{ max-width:900px; }
   /* Quiet scrollbars: thin, no track, only the thumb. */
   #mn *, .oBody{ scrollbar-width:thin; scrollbar-color:var(--hair) transparent; }
