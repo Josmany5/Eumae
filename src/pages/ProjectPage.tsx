@@ -125,6 +125,25 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
   const [linking, setLinking] = useState<{ k: LinkKind; m: string } | null>(null);
   const [moving, setMoving] = useState<{ k: LinkKind; id: string } | null>(null);
   const [newMs, setNewMs] = useState(false);
+  /* Closed phases (his ask, Oct 22): each phase opens and closes, plus one
+     control for all of them. Remembered per project on this device. */
+  const shutKey = 'eumae:pjShut:' + id;
+  const [shut, setShutState] = useState<string[]>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(shutKey) ?? '[]');
+      return Array.isArray(v) ? v : [];
+    } catch {
+      return [];
+    }
+  });
+  const setShut = (v: string[]) => {
+    setShutState(v);
+    try {
+      localStorage.setItem(shutKey, JSON.stringify(v));
+    } catch {
+      /* Non-fatal. */
+    }
+  };
   const refresh = () => setTick((t) => t + 1);
   void tick;
   useEffect(() => onDataChange(refresh), []);
@@ -219,10 +238,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
     dataChanged();
     notify(msg, { undo: () => { saveProject(before); refresh(); dataChanged(); } });
   };
-  const tickMs = (mid: string) => {
-    const m = (p.ms ?? []).find((x) => x.id === mid);
-    saveWithUndo({ ...p, ms: (p.ms ?? []).map((x) => (x.id === mid ? { ...x, done: !x.done } : x)) }, m?.done ? 'Phase reopened.' : 'Phase done.');
-  };
+
   /* "Mockup approved Oct 30": the name, and the date read out of the line. */
   const addMs = (text: string) => {
     const q = parseQuick(text.trim());
@@ -365,17 +381,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         {hasSteps ? <span>{pc}%</span> : null}
       </div>
 
-      {ms.length ? (
-        <div className="pjTrail" aria-label="Phases">
-          {ms.map((m) => (
-            <div key={m.id} className={'pjStop' + (m.done ? ' done' : '') + (next?.id === m.id ? ' cur' : '')}>
-              <span className={'msDot' + (m.done ? ' on' : '')} aria-hidden />
-              <span className="t">{m.t}</span>
-              <span className="d">{m.d ? md(m.d) : 'No date'}</span>
-            </div>
-          ))}
-        </div>
-      ) : (
+      {ms.length ? null : (
         <div className="pjMsEmpty">
           <div className="t">Phases</div>
           <p>Stages of the work with a target date, like "Mockup approved by Oct 30". Each one collects its own tasks, events, notes and files.</p>
@@ -385,28 +391,42 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         </div>
       )}
 
+      {ms.length ? (
+        <div className="pjPhBar">
+          <span>
+            {ms.length} phase{ms.length === 1 ? '' : 's'}
+          </span>
+          <button className="lb" onClick={() => setShut(shut.length >= ms.length ? [] : ms.map((m) => m.id))}>
+            {shut.length >= ms.length ? 'Open all' : 'Close all'}
+          </button>
+        </div>
+      ) : null}
       <div className="tkList pjGroups">
         {groups.map((m) => {
           const rows = inMs(m.id);
           const done = rows.filter((r) => r.done).length;
+          const closed = shut.includes(m.id);
           const dated = m.d ? (m.done ? 'Done ' : '') + fmtShort(m.d) : m.done ? 'Done' : 'No date';
           return (
             <section key={m.id} className={'tkGroup pjGroup' + (m.done ? ' done' : '')}>
-              <div className="pjGH">
-                <button
-                  className={'msDot' + (m.done ? ' on' : '')}
-                  aria-label={m.done ? `Reopen ${m.t}` : `Mark ${m.t} done`}
-                  title={m.done ? 'Reopen' : 'Mark done'}
-                  onClick={() => tickMs(m.id)}
-                />
-                <span className="t">{m.t}</span>
+              <button
+                className="pjGH"
+                aria-expanded={!closed}
+                onClick={() => setShut(closed ? shut.filter((x) => x !== m.id) : [...shut, m.id])}
+              >
+                <span className={'pjChev' + (closed ? '' : ' open')} aria-hidden>
+                  ›
+                </span>
+                <span className="t">
+                  Phase {ms.indexOf(m) + 1}: {m.t}
+                </span>
                 <span className={'m' + (next?.id === m.id ? ' cur' : '')}>
                   {dated}
                   {rows.length ? ` · ${done} of ${rows.length}` : ''}
                 </span>
-              </div>
-              {byKind(rows)}
-              {m.done ? null : <AddMenu label={`+ Add to ${m.t}`} onPick={(k) => setAdding({ k, m: m.id })} />}
+              </button>
+              {closed ? null : byKind(rows)}
+              {closed || m.done ? null : <AddMenu label={`+ Add to ${m.t}`} onPick={(k) => setAdding({ k, m: m.id })} />}
             </section>
           );
         })}
