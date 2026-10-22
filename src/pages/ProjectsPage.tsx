@@ -28,7 +28,7 @@ import { QuickAdd } from '../components/QuickAdd';
 import type { Quick } from '../quickadd';
 import { fmtShort } from '../quickadd';
 import { nextMilestone } from '../milestones';
-import { openOfficeEdit, onDataChange } from '../focus';
+import { openOfficeEdit, onDataChange, setFocus } from '../focus';
 import type { PageProps } from './index';
 
 type ProjFilter = 'all' | 'active' | 'done';
@@ -38,6 +38,10 @@ export default function ProjectsPage(_props: PageProps) {
   const { notify, go, openPanel } = useNav();
   const editInOffice = (id: string) => {
     openOfficeEdit('project', id);
+    openPanel('item');
+  };
+  const openInOffice = (id: string) => {
+    setFocus({ k: 'project', id });
     openPanel('item');
   };
   const [filter, setFilter] = useState<ProjFilter>('all');
@@ -127,9 +131,11 @@ export default function ProjectsPage(_props: PageProps) {
                 </span>
                 <ItemMenu
                   name={p.n}
-                  open={() => go('project', p.id)}
+                  /* Tapping the row already opens the project, so the ⋯ opens
+                     its tab in Mae's office instead (his call, Oct 22). */
+                  open={() => openInOffice(p.id)}
+                  openLabel="Open in Mae's office"
                   edit={() => editInOffice(p.id)}
-                  rename={{ value: p.n, title: 'Rename project', save: (v) => saveProject({ ...p, n: v.slice(0, 48) }) }}
                   extra={[{ label: pinned ? 'Remove from Console' : 'Pin to Console', onClick: () => pin(p.id, p.n) }]}
                   onChange={refresh}
                   onDelete={() => {

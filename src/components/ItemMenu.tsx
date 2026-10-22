@@ -33,6 +33,8 @@ export interface ItemMenuProps {
   /** The item's name, for the button's label ("More for Call Marcus"). */
   name: string;
   open?: () => void;
+  /** Words for the Open entry ("Open in Mae's office"). */
+  openLabel?: string;
   edit?: () => void;
   rename?: { value: string; save: (v: string) => void; title?: string };
   /** Project membership: shows Add to project / Move / Unlink. */
@@ -57,7 +59,7 @@ export function ItemMenu(props: ItemMenuProps) {
 
   const linked = props.link ? projectOf(props.link.k, props.link.id) : undefined;
   const entries: MenuEntry[] = [];
-  if (props.open) entries.push({ label: 'Open', onClick: props.open });
+  if (props.open) entries.push({ label: props.openLabel ?? 'Open', onClick: props.open });
   if (props.edit) entries.push({ label: 'Edit', onClick: props.edit });
   if (props.rename) entries.push({ label: 'Rename', onClick: () => setDialog('rename') });
   /* Extras sit after Rename; a red extra ("Delete this one") sits with Delete

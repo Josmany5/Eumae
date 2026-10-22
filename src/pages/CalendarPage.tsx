@@ -570,7 +570,7 @@ function DaySection({ day, today, items, onItem, onCheck, onAdd }: {
                   </div>
                 ) : null}
               </div>
-              <span className={'fmeta' + (aw?.ask ? ' ask' : '')}>{aw ? aw.text : it.kind === 'event' && it.ev ? evKind(it.ev) : it.kind === 'task' ? 'Task' : it.kind === 'milestone' ? 'Milestone' : it.kind === 'goal' ? 'Goal' : 'Project'}</span>
+              <span className={'fmeta' + (aw?.ask ? ' ask' : '')}>{aw ? aw.text : it.kind === 'event' && it.ev ? evKind(it.ev) : it.kind === 'task' ? 'Task' : it.kind === 'milestone' ? (it.key.startsWith('pm') ? 'Phase' : 'Milestone') : it.kind === 'goal' ? 'Goal' : 'Project'}</span>
             </div>
           );
         })

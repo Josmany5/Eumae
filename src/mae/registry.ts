@@ -32,7 +32,7 @@ const LINKABLE: readonly LinkKind[] = ['task', 'event', 'goal', 'note'];
 
 /** One line on the plan card: what kind of thing, what happens to it. */
 export interface PlanLine {
-  kind: 'Task' | 'Event' | 'Goal' | 'Project' | 'Note' | 'List' | 'Subtask' | 'Milestone' | 'Link';
+  kind: 'Task' | 'Event' | 'Goal' | 'Project' | 'Note' | 'List' | 'Subtask' | 'Milestone' | 'Phase' | 'Link';
   verb: 'Create' | 'Edit' | 'Complete' | 'Reopen' | 'Move' | 'Add' | 'Log' | 'Link' | 'Unlink' | 'Delete' | 'Skip';
   text: string;
   detail?: string;
@@ -681,7 +681,7 @@ const creates: Action[] = [
       if (new Set(refs).size !== refs.length) return 'Two projects share a ref. Give each its own.';
       return null;
     },
-    preview: (a) => a.projects.map((p: Args) => ({ kind: 'Project', verb: 'Create', text: p.name.trim(), detail: join(p.due && `due ${fmtDate(p.due)}`, p.milestones?.length && plural(p.milestones.length, 'milestone'), p.description) || undefined })),
+    preview: (a) => a.projects.map((p: Args) => ({ kind: 'Project', verb: 'Create', text: p.name.trim(), detail: join(p.due && `due ${fmtDate(p.due)}`, p.milestones?.length && plural(p.milestones.length, 'phase'), p.description) || undefined })),
     run: (a, ctx) => {
       const touched: Result['touched'] = [];
       for (const p of a.projects as Args[]) {
@@ -1059,7 +1059,7 @@ const changes: Action[] = [
     description: 'Add dated checkpoints to a goal or a project.',
     params: obj({ kind: s('Goal or project.', { enum: ['goal', 'project'] }), id: s('Goal or project id.'), milestones: list('Milestones.', milestoneItem, { minItems: 1, maxItems: 30 }) }, ['kind', 'id', 'milestones']),
     verify: (a) => (exists(a.kind, a.id) ? null : missing(a.kind, a.id)),
-    preview: (a) => a.milestones.map((m: Args) => ({ kind: 'Milestone', verb: 'Add', text: m.title.trim(), detail: join(m.date && fmtDate(m.date), `on ${titleOfKind(a.kind, a.id) ?? a.id}`) })),
+    preview: (a) => a.milestones.map((m: Args) => ({ kind: a.kind === 'project' ? 'Phase' : 'Milestone', verb: 'Add', text: m.title.trim(), detail: join(m.date && fmtDate(m.date), `on ${titleOfKind(a.kind, a.id) ?? a.id}`) })),
     run: (a) => {
       const add = milestones(a.milestones) ?? [];
       if (a.kind === 'goal') {
@@ -1070,7 +1070,7 @@ const changes: Action[] = [
         saveProject({ ...p, ms: [...(p.ms ?? []), ...add] });
       }
       const title = titleOfKind(a.kind, a.id) ?? a.id;
-      return { ok: true, summary: `Added ${plural(add.length, 'milestone')} to "${title}"`, touched: [{ kind: a.kind, id: a.id, title }] };
+      return { ok: true, summary: `Added ${plural(add.length, a.kind === 'project' ? 'phase' : 'milestone')} to "${title}"`, touched: [{ kind: a.kind, id: a.id, title }] };
     },
   },
   {

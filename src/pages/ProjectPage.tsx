@@ -221,18 +221,22 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
   };
   const tickMs = (mid: string) => {
     const m = (p.ms ?? []).find((x) => x.id === mid);
-    saveWithUndo({ ...p, ms: (p.ms ?? []).map((x) => (x.id === mid ? { ...x, done: !x.done } : x)) }, m?.done ? 'Milestone reopened.' : 'Milestone reached.');
+    saveWithUndo({ ...p, ms: (p.ms ?? []).map((x) => (x.id === mid ? { ...x, done: !x.done } : x)) }, m?.done ? 'Phase reopened.' : 'Phase done.');
   };
   /* "Mockup approved Oct 30": the name, and the date read out of the line. */
   const addMs = (text: string) => {
     const q = parseQuick(text.trim());
     const t = (q.title || text).trim().slice(0, 60);
     if (!t) return;
-    saveWithUndo({ ...p, ms: [...(p.ms ?? []), newMilestone(t, q.date ?? '')] }, `Milestone added: ${t}.`);
+    saveWithUndo({ ...p, ms: [...(p.ms ?? []), newMilestone(t, q.date ?? '')] }, `Phase added: ${t}.`);
   };
 
+  const openInOffice = () => {
+    setFocus({ k: 'project', id: p.id });
+    openPanel('item');
+  };
   const headMenu: MenuEntry[] = [
-    { label: 'Add a milestone', onClick: () => setNewMs(true) },
+    { label: 'Add a phase', onClick: () => setNewMs(true) },
     { label: 'Chat about this project', onClick: chat },
     { label: pinnedAt >= 0 ? 'Remove from Console' : 'Pin to Console', onClick: pin },
   ];
@@ -250,19 +254,21 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
           }}
         />
       ) : (
-        <span className="pjKind">{KIND_LABEL[r.k]}</span>
+        <span className="pjLead" aria-hidden />
       )}
       <div className="ft">
         <button className="tlT" onClick={() => open(r.k, r.id)}>
           <span className={r.done ? 'tlDone' : ''}>{r.label}</span>
         </button>
       </div>
+      {/* The kind is a pill beside the date, never a label in front (his call, Oct 22). */}
+      {r.k === 'task' ? null : <span className="tkPill">{KIND_LABEL[r.k]}</span>}
       {r.sub ? <span className="fmeta">{r.sub}</span> : null}
       <ItemMenu
         name={r.label}
         open={() => open(r.k, r.id)}
         extra={[
-          ...(ms.length ? [{ label: 'Move to milestone', onClick: () => setMoving({ k: r.k, id: r.id }) }] : []),
+          ...(ms.length ? [{ label: 'Move to phase', onClick: () => setMoving({ k: r.k, id: r.id }) }] : []),
           {
             label: 'Unlink from this project',
             onClick: () => {
@@ -298,6 +304,8 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         </div>
         <ItemMenu
           name={p.n}
+          open={openInOffice}
+          openLabel="Open in Mae's office"
           edit={editInOffice}
           extra={headMenu}
           onChange={refresh}
@@ -326,7 +334,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
           )}
         </div>
         <div className="pjTile">
-          <span className="k">Next milestone</span>
+          <span className="k">Next phase</span>
           {next ? (
             <span className={'v' + (nextLeft?.red ? ' over' : '')}>
               {md(next.d)} <small>· {nextLeft?.text.replace(' left', '')}</small>
@@ -345,7 +353,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
       </div>
 
       {ms.length ? (
-        <div className="pjTrail" aria-label="Milestones">
+        <div className="pjTrail" aria-label="Phases">
           {ms.map((m) => (
             <div key={m.id} className={'pjStop' + (m.done ? ' done' : '') + (next?.id === m.id ? ' cur' : '')}>
               <span className={'msDot' + (m.done ? ' on' : '')} aria-hidden />
@@ -356,10 +364,10 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         </div>
       ) : (
         <div className="pjMsEmpty">
-          <div className="t">Milestones</div>
-          <p>Target dates that group the work, like "Mockup approved by Oct 30". Each one collects its own tasks, events, notes and files.</p>
+          <div className="t">Phases</div>
+          <p>Stages of the work with a target date, like "Mockup approved by Oct 30". Each one collects its own tasks, events, notes and files.</p>
           <button className="lb" onClick={() => setNewMs(true)}>
-            + Add a milestone
+            + Add a phase
           </button>
         </div>
       )}
@@ -368,14 +376,14 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
         {groups.map((m) => {
           const rows = inMs(m.id);
           const done = rows.filter((r) => r.done).length;
-          const dated = m.d ? (m.done ? 'Reached ' : '') + fmtShort(m.d) : m.done ? 'Reached' : 'No date';
+          const dated = m.d ? (m.done ? 'Done ' : '') + fmtShort(m.d) : m.done ? 'Done' : 'No date';
           return (
             <section key={m.id} className={'tkGroup pjGroup' + (m.done ? ' done' : '')}>
               <div className="pjGH">
                 <button
                   className={'msDot' + (m.done ? ' on' : '')}
-                  aria-label={m.done ? `Reopen ${m.t}` : `Mark ${m.t} reached`}
-                  title={m.done ? 'Reopen' : 'Mark reached'}
+                  aria-label={m.done ? `Reopen ${m.t}` : `Mark ${m.t} done`}
+                  title={m.done ? 'Reopen' : 'Mark done'}
                   onClick={() => tickMs(m.id)}
                 />
                 <span className="t">{m.t}</span>
@@ -392,7 +400,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
 
         <section className="tkGroup pjGroup">
           <div className="pjGH plain">
-            <span className="t">{ms.length ? 'Not under a milestone' : 'In this project'}</span>
+            <span className="t">{ms.length ? 'Not in a phase' : 'In this project'}</span>
             <span className="m">{loose.length || ''}</span>
           </div>
           {items.length === 0 && !ms.length ? (
@@ -405,7 +413,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
 
       {newMs ? (
         <PromptDialog
-          title={`New milestone in ${p.n}`}
+          title={`New phase in ${p.n}`}
           value=""
           ok="Add"
           placeholder="Mockup approved Oct 30"
@@ -459,9 +467,9 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
       ) : null}
       {moving ? (
         <PickDialog
-          title="Move to milestone"
-          empty="No milestones yet."
-          rows={[...ms.map((m) => ({ id: m.id, label: m.t, sub: m.d ? fmtShort(m.d) : undefined })), { id: '', label: 'No milestone' }]}
+          title="Move to phase"
+          empty="No phases yet."
+          rows={[...ms.map((m) => ({ id: m.id, label: m.t, sub: m.d ? fmtShort(m.d) : undefined })), { id: '', label: 'No phase' }]}
           onCancel={() => setMoving(null)}
           onPick={(mid) => {
             const { k, id: rid } = moving;
@@ -470,7 +478,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
             setLinkMilestone(p.id, k, rid, mid || null);
             refresh();
             dataChanged();
-            notify(mid ? `Moved to ${ms.find((m) => m.id === mid)?.t}.` : 'Moved out of its milestone.', {
+            notify(mid ? `Moved to ${ms.find((m) => m.id === mid)?.t}.` : 'Moved out of its phase.', {
               undo: () => {
                 setLinkMilestone(p.id, k, rid, was);
                 refresh();
