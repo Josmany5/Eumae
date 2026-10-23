@@ -108,13 +108,10 @@ new), 109 lines to `ChatScreen.tsx` (99 → 208, the send and the thread it draw
 
 ### Branches
 
-- **Default branch: `rebuild/0-foundation`**, switched on 2026-10-08 on the
-  owner's instruction, in GitHub's own repo settings (`PATCH /repos/Josmany5/Eumae`
-  over the REST API — this machine has no `gh` and no `vercel` CLI). There is **no
-  `main`** in this repo. The owner thinks of the default branch as "main", so when
-  he asks for work to land on main, he means whichever branch is current here.
-  Push to the default branch and nowhere else. (`feat/web-shell` was the only other
-  branch ever pushed; it mirrored the default and was retired on 2026-10-06.)
+- **Default branch: `main`** (as of Oct 2026; the only remote branch). Push to
+  `main`; Vercel deploys it to https://eumae.vercel.app. The history below about
+  `rebuild/0-foundation` and `stage/0-foundation` is kept for context only; those
+  names are retired.
 - **One line, two names — settled 2026-10-08.** There used to be a second line
   here, pushed from a clone that is not on this machine: `src/ai.ts` plus
   `ChatMarkdown.tsx`, and then sign-in removed (`12ebf0b` dropped the gate,
@@ -182,7 +179,9 @@ new), 109 lines to `ChatScreen.tsx` (99 → 208, the send and the thread it draw
   unused import is a build failure. React 19.
 - `npm run build` = `tsc --noEmit && vite build`. Types gate the build.
 - `npm run dev` does **not** serve `api/ai.ts`; that needs `vercel dev` or Vercel.
-- No test runner, no ESLint/Prettier, no CI. Verification is manual today (§5),
+- CI exists (`.github/workflows/ci.yml`): every push to `main` runs typecheck,
+  build and most `check:*` scripts. Still no test runner and no ESLint/Prettier.
+  The note below is older (pre-CI), kept for history: verification was manual (§5),
   with three exceptions that are real files: `.env.example` names the keys the
   server reads, and three selftests are committed checks that need no key, no
   network and no browser — `check:models:selftest`, `check:voice:selftest` (§5

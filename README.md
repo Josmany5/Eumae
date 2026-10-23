@@ -6,11 +6,15 @@ Product truth — what this is, how it works, what we build — lives in
 One window, six views — **Chat, Console, Studio, Library, Classroom, Guild** — plus Settings, a
 right-hand panel, and a desktop rail that carries each tab's own menu.
 
-**Status: pre-alpha (0.1).** The shell, the navigation, Settings, the composer's
-`+` window and the activity log are real and verified. The AI, accounts and storage
-are not wired yet: sending a message appends a local bubble, and the only thing that
-survives a reload is what Settings writes to `localStorage`. There is no test suite,
-no linter and no CI — see *What's missing* at the bottom.
+**Status: pre-alpha (0.1), updated 2026-10-23.** Real today: the shell and
+navigation, Settings, the composer and `+` window, the activity log, theming, chat
+with streamed replies through `/api/ai`, voice typing and read aloud, Supabase
+sign-in, and the manual side of Console (Today, Tasks, Calendar, Goals with
+milestones, Projects, Notes) with create/view/edit/delete, Undo and the office
+panel. Mae can act through tools (`src/mae/`). Data lives on the device: threads
+and items in `localStorage`, uploads in IndexedDB. Not real yet: cloud sync,
+memory beyond the chat window, Studio artifacts, the marketplace, a native app.
+CI runs the build and checks on every push to `main` (`.github/workflows/ci.yml`).
 
 ## Quick start
 
@@ -23,6 +27,9 @@ npm run build      # tsc --noEmit && vite build  ->  dist/
 npm run preview    # serve the built dist/
 npm run typecheck  # types only
 npm run check:models:selftest   # the model IDs in api/ai.ts — no key, no network
+npm run check:<name>            # ~25 checks: chat, voice, lang, due, tasks, events,
+                                # goals dash (gdash), library, studio, classroom,
+                                # roles, quickadd, notes, mae, and more (package.json)
 ```
 
 `build` gates on types: `tsc --noEmit` runs first, so a type error fails the build
@@ -68,7 +75,11 @@ src/voice.ts               the voice layer — voice typing in, read aloud out, 
 src/auth.ts                who is signed in, and the token /api/ai checks (Supabase)
 src/vite-env.d.ts          the two VITE_SUPABASE_* variables, typed
 src/useMedia.ts            the (min-width:900px) hook Settings and the `+` window share
-src/store/store.tsx        state skeleton (EumaeState is still empty)
+src/mae/                   Mae's tool layer: registry, schema, dispatcher, loop, prompt
+src/{tasks,events,goals,milestones,projects,notes,flows,...}.ts
+                           one local store per item type
+src/focus.ts, src/undo.ts  which item the office shows; the Undo pill
+src/store/store.tsx        state skeleton
 src/store/types.ts         Actor / ActionStamp / SavedItem
 src/screens/               one component per tab; index.tsx maps TabId -> screen
 src/pages/                 sub-pages pushed onto a tab; index.tsx maps name -> page
@@ -77,6 +88,7 @@ src/components/shell/      Header, TabBar, Sidebar (desktop rail), Drawer (phone
                            Toast, icons
 src/components/settings/   Settings.tsx — the whole overlay
 src/styles/tokens.css      design tokens + every component's styles
+checks/*.mjs               ~25 checks; CI runs most of them (models.mjs needs a key)
 checks/models.mjs          are the model IDs still served? (asks Google; needs a key)
 checks/models.selftest.mjs nine cases over that check, no key
 checks/voice.mjs           do the voice's two pure functions still behave? no key
@@ -134,7 +146,7 @@ IDEAS.md                   the owner's idea queue — tracked, not committed
   chip shows, because the server treats an unknown key as a silent default rather
   than an error. `Auto` sends no key. Each message keeps the body it was sent
   with — built at send, so changing your mind later cannot rewrite how an earlier
-  message was asked. Nothing posts it yet; that is Phase 6.
+  message was asked. Chat sends it and streams the reply back.
 - **One voice layer, two halves.** `src/voice.ts` is the mockup's voice in both
   directions: the mic types what you say into the field (continuous recognition,
   half a second of quiet sends it — mockup 1763-1779), and read aloud asks your
@@ -148,8 +160,7 @@ IDEAS.md                   the owner's idea queue — tracked, not committed
   emailed link. The pane is the screen — no new rail row — and both account cards
   show the address Supabase holds. What it turns on: read aloud sends the token
   with every request, so a signed-in person hears Google's voice instead of the
-  browser's. What it does not: chat still does not post, so no reply is behind any
-  of this yet. A deployment needs the `VITE_SUPABASE_*` pair as its own variables,
+  browser's. Chat posts to `/api/ai` and streams the reply. A deployment needs the `VITE_SUPABASE_*` pair as its own variables,
   or the screen says the build has no sign-in configured (`AGENTS.md` §3, §7).
 - **Honesty rule.** Where the mockup invents data — a password, active sessions, a
   spend figure, fake log rows — this codebase shows the real state and names the
@@ -176,40 +187,27 @@ several times and only the *last* definition is live. `AGENTS.md` explains.
 4. ✅ Panel rebuilt — Context · Activity · Studio readings; the clock button opens Activity
 5. ✅ The `+` window — its five choices in a pop-up shaped like Settings, with a rail
    row carrying each live value, and a chip row that shows everything that is set
-6. ⬜ Sandbox, Studio artifacts, and `/api/ai` wired to the thread (+ the log's second layer)
-   — the **voice layer** (mic + read aloud) and the **sign-in screen** have landed inside this
-   item; what the thread still needs is the sender. `AGENTS.md` §3, §6, §7.
-7. ⬜ The Logs lens — a drill-down and a search in Settings → Logs, over one filter
+6. ✅ `/api/ai` wired to the thread — streamed chat, voice, sign-in, Mae tools
+7. ⬜ Sandbox v2 and Studio artifacts
+8. ⬜ The Logs lens — a drill-down and a search in Settings → Logs, over one filter
 
 Items 5-7 come from the owner's own list in **`IDEAS.md`**, which says where each
 idea stands and which phase it landed in.
 
 ## What's missing
 
-What stands between this and something you could hand to a paying user. None of it
-is exotic, and all of it is explained in `AGENTS.md` §8.
+What stands between this and something you could hand to a paying user:
 
-- **A CI robot.** Nothing runs the build on push today. About 15 lines of YAML.
-- **Tests.** Nearly every check so far was a throwaway script; the ones worth
-  keeping are named in `AGENTS.md` §5, and two are no longer throwaways:
-  `npm run check:models:selftest` (nine cases) and `npm run check:voice` with
-  `check:voice:selftest` — nine verdicts over the real voice functions, and eleven
-  cases proving the check can fail. The last two need no key, no network and no
-  browser.
-- **A linter / formatter** (ESLint + Prettier), so style stops being something
-  anyone thinks about.
-- **Persistence.** Messages and the activity log both live in memory: a reload
-  forgets them, and neither is in an export.
-- **The POST.** `src/request.ts` defines the body `/api/ai` will receive, and
-  every message already builds and keeps its own — but nothing sends one yet. What
-  is left of Phase 6 is the sender: the `fetch`, the streaming reader for
-  `chatStream`, and the assistant turn it produces. Read aloud already posts with a
-  real token, so the endpoint is no longer the wall it was — sign in, then
-  Settings → Voice → **Play sample** is the one place the cloud path runs today.
-- **`.nvmrc`.** `.env.example` and errors that name a missing key landed with the AI
-  layer, and so did `vercel.json`; this list is down to the one file.
-- **An error boundary**, so a crash is a message and not a white screen.
-- **No `main` branch** — the default branch is `stage/0-foundation`.
+- **Cloud persistence and sync.** Everything lives on one device; clearing the
+  browser loses it. Supabase handles sign-in only.
+- **Memory beyond the chat window.** Mae sees the recent turns, not a long-term record.
+- **Studio artifacts and Sandbox v2.**
+- **A linter / formatter** (ESLint + Prettier) and a real test runner. Today's
+  safety net is the `check:*` scripts that CI runs.
+- **Dependency audit.** `npm audit` flags issues via `@vercel/node`.
+
+Already done (and once listed here): CI, an error boundary (`ErrorBoundary.tsx`),
+`.nvmrc`, `.env.example`, and the chat POST. The default branch is `main`.
 
 ## Working on this repo
 
