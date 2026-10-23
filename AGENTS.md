@@ -27,10 +27,15 @@ dependency for accounts.
   via `/api/ai`), voice typing + read aloud, sign-in via Supabase, thread
   persistence in `localStorage`, uploads to IndexedDB with a Library list, and
   notes with list + detail pages.
-- **Not real:** Studio artifacts, Console / Classroom / Guild content (stubs
-  rendering `Empty`), cloud persistence (everything local except auth + AI),
-  the harness (no tools run yet), memory beyond the 24-turn window, any test
-  runner, any linter, any CI. `src/store/store.tsx`'s `EumaeState` is still an
+- **Also real now (Oct 2026):** all six tab screens are real files (Console 151
+  lines, Studio 401, Library 697, Classroom 385, Guild 127); Console's manual side
+  (Today, Tasks, Calendar, Goals with milestones, Projects, Notes, Flows) with
+  create/view/edit/delete, the shared ⋯ menu and Undo; the office panel
+  (`Office.tsx`: Mae · page tab · Desk · Logbook); Mae's tools (`src/mae/`); CI
+  (`.github/workflows/ci.yml`).
+- **Not real:** Studio artifacts, cloud persistence (everything local except
+  auth + AI), the full harness (router, plan gate, verify), memory beyond the
+  24-turn window, any test runner, any linter. `src/store/store.tsx`'s `EumaeState` is still an
   empty interface — see §4.14, it will not be filled.
 
 ### The culture of this codebase — match it
@@ -57,54 +62,49 @@ dependency for accounts.
 
 ## 2. Ground truth
 
-### Code map (7722 lines across src/ + api/)
+### Code map (30,928 lines across src/ + api/, counted 2026-10-23)
 
-That number is `find src api -type f | xargs wc -l | tail -1` — every TS, TSX and
-CSS line under the two directories, counted rather than remembered. It was 5014
-before the wire, which added `src/chat.ts` (237, new) and `src/voices.ts` (114,
-new), 109 lines to `ChatScreen.tsx` (99 → 208, the send and the thread it draws),
-12 to `api/ai.ts` (581 → 593, the voices it was mis-naming), 21 to `Settings.tsx`
-(844 → 865, the real voice list), and smaller amounts to `src/voice.ts` (516 →
-529), the composer (183 → 188), the icon registry (73 → 79) and `tokens.css`.
-`checks/` is not counted here and never has been: the map is the app.
+That number is `find src api -type f | xargs wc -l | tail -1`: every TS, TSX and
+CSS line under the two directories, counted rather than remembered. Recount it
+when you touch this section; `checks/` is not counted. The 30 largest files:
 
-| File | Lines | Role |
-| --- | --- | --- |
-| `src/components/settings/Settings.tsx` | 865 | the whole Settings overlay; also owns `useStored`, export/wipe, the sign-in pane |
-| `api/ai.ts` | 593 | the only server code; Vercel handler |
-| `src/voice.ts` | 556 | the voice layer: voice typing in, read aloud out (from the mockup) |
-| `src/components/shell/AddSheet.tsx` | 323 | the composer's `+` window — the five turn settings, rail + pane |
-| `src/App.tsx` | 279 | the shell: tab + page stack + panel + drawers + file input |
-| `src/auth.ts` | 242 | who is signed in, and the token `/api/ai` checks |
-| `src/chat.ts` | 237 | the sender: the post to `/api/ai`, and the reader for its frames |
-| `src/request.ts` | 221 | the request `/api/ai` is handed — the turn as prose, the model as a key |
-| `src/components/shell/RightPanel.tsx` | 218 | the right panel (Context / Activity / Studio) |
-| `src/screens/ChatScreen.tsx` | 208 | the only real tab screen; sends the turn, streams the reply, draws the thread |
-| `src/useMedia.ts` | 21 | the `(min-width:900px)` hook both overlays read |
-| `src/vite-env.d.ts` | 13 | the two `VITE_SUPABASE_*` variables, typed |
-| `src/nav.ts` | 143 | `NavContext`: go/back, goTab, panel, `turn`, `refs`, pickFile, `notify` |
-| `src/components/shell/Composer.tsx` | 209 | input row, the chip pills, `+`, paperclip, mic (live), send |
-| `src/components/shell/pageMenu.ts` | 128 | `PAGE_MENU` — each tab's rail rows |
-| `src/components/shell/Sidebar.tsx` | 89 | desktop rail |
-| `src/log.ts` | 78 | the activity log: `LOG_AREAS`, the one writer, the read |
-| `src/voices.ts` | 114 | the six voices the app offers — Google's names, gender and origin |
-| `src/pages/SearchPage.tsx` | 70 | the only real sub-page |
-| `src/components/shell/icons.tsx` | 79 | the icon registry |
-| `src/components/shell/Drawer.tsx` | 65 | phone drawer |
-| `src/components/shell/Header.tsx` | 37 | title, hamburger, activity, back |
-| `src/components/shell/TabBar.tsx` | 33 | phone tab bar + `TABS` |
-| `src/screens/index.tsx` | 28 | `SCREENS` + `LABELS`: TabId → screen |
-| `src/pages/index.tsx` | 24 | `PAGES`: name → page + title |
-| `src/store/store.tsx` | 23 | context skeleton; `EumaeState` is empty |
-| `src/main.tsx` | 17 | mount |
-| `src/components/shell/Toast.tsx` | 16 | transient message |
-| `src/screens/Empty.tsx` | 15 | shared empty-state block |
-| `src/store/types.ts` | 15 | `Actor`, `ActionStamp`, `SavedItem` |
-| `src/screens/{Console,Studio,Library,Classroom,Guild}Screen.tsx` | 11 each | stubs rendering `Empty` |
-| `src/styles/tokens.css` | — | tokens + all component styles |
-| `AGENTS.md` | — | the handoff: state, locked decisions, gotchas, the next steps |
-| `IDEAS.md` | — | the owner's idea queue — tracked here, committed nowhere |
-| `src/pages/index.tsx`, `src/screens/index.tsx` | — | the two maps that make a new screen/page one row |
+| File | Lines |
+| --- | --- |
+| `src/mae/registry.ts` | 1224 |
+| `src/screens/ChatScreen.tsx` | 973 |
+| `src/components/settings/Settings.tsx` | 963 |
+| `src/components/shell/ItemTab.tsx` | 948 |
+| `src/components/shell/Office.tsx` | 810 |
+| `src/voice.ts` | 798 |
+| `src/pages/ProjectPage.tsx` | 752 |
+| `src/pages/TasksPage.tsx` | 747 |
+| `api/ai.ts` | 725 |
+| `src/screens/LibraryScreen.tsx` | 697 |
+| `src/components/shell/guildWidgets.tsx` | 612 |
+| `src/App.tsx` | 593 |
+| `src/pages/CalendarPage.tsx` | 582 |
+| `src/guild.ts` | 573 |
+| `src/components/shell/widgets.tsx` | 489 |
+| `src/components/shell/PagedDash.tsx` | 474 |
+| `src/components/QuickAdd.tsx` | 466 |
+| `src/library.ts` | 445 |
+| `src/components/ItemMenu.tsx` | 433 |
+| `src/screens/StudioScreen.tsx` | 401 |
+| `src/pages/NoteViewPage.tsx` | 391 |
+| `src/screens/ClassroomScreen.tsx` | 385 |
+| `src/mae/dispatcher.ts` | 360 |
+| `src/components/shell/AddSheet.tsx` | 344 |
+| `src/studio.ts` | 340 |
+| `src/components/shell/Timeline.tsx` | 332 |
+| `src/tasks.ts` | 302 |
+| `src/threads.ts` | 297 |
+| `src/request.ts` | 291 |
+| `src/pages/GoalsPage.tsx` | 290 |
+
+Also: `src/styles/tokens.css` (all tokens and component styles), `src/pages/`
+(about 30 sub-pages, mapped in `src/pages/index.tsx`), `src/screens/index.tsx`
+(TabId → screen). The older per-file table that lived here described the
+7,722-line app of early October and was retired.
 
 ### Branches
 
@@ -244,14 +244,18 @@ reading now, and its `aria-label` in `Header.tsx` changed from "Context" to
   with — `buildRequest(turn, refs, text)`, from `src/request.ts` — composed after
   the mode moved, so the turn, the attachments and the text are frozen together
   at the moment of sending.
-- Console / Studio / Library / Classroom / Guild are 11-line stubs rendering
-  `Empty` (eyebrow / title / note). Placeholders, not designs.
+- Console / Studio / Library / Classroom / Guild are real screens now (151 / 401 /
+  697 / 385 / 127 lines as of 2026-10-23). `Empty.tsx` is only the shared
+  empty-state block. (The note above about `ChatScreen.tsx` is early history;
+  it is 973 lines and streams real replies.)
 - `index.tsx` holds `SCREENS` and `LABELS` — the only place a tab learns what it
   renders.
 
 ### Pages — `src/pages/`
 
-- `PAGES` has exactly one entry: `search`. `pageTitle()` derives the header title.
+- `PAGES` now has about 30 entries (Tasks, Calendar, Goals, Projects, Notes,
+  Flows, Person, Course, Lesson and more; see `src/pages/index.tsx`). It began
+  with one: `search`. `pageTitle()` derives the header title.
 - The page stack, the desktop back bar and the mobile back button are real and
   working — there is just nothing much to navigate to yet.
 - `SearchPage.tsx` (70) searches the app's **genuine** destinations (the six tabs
@@ -578,7 +582,13 @@ owner's real name and email used to be hardcoded here; they were removed once th
 repo turned out to be **public** and the app deployed. Never write a real name or
 address into this file again.
 
-### Right panel — `src/components/shell/RightPanel.tsx` (181)
+### Right panel — now `src/components/shell/Office.tsx` (810)
+
+**Current (locked Oct 18):** `RightPanel.tsx` was replaced by `Office.tsx`. Every
+page's office has the same shape: Mae, the page's own tab, the Desk (the only
+source of suggestions) and the Logbook (Activity · Memory · Permissions). Chat's
+office is Context · Sandbox · Desk · Logbook. The history below describes the
+old RightPanel and is kept for context only.
 
 One panel, three readings — Context / Activity / Studio — behind a `TABS` row in
 `.pHead`, a body per reading, a corner `.pHandle` button when closed and a
@@ -1026,7 +1036,7 @@ not, and `src/auth.ts` reads it while the module is still evaluating.
 
 ---
 
-## 6. The plan — seven phases, five done
+## 6. The plan — seven phases (history; current status in README's Roadmap)
 
 Locked with the owner. The order matters: each phase removes a lie before the next
 one adds a feature. Phases 1-5 are landed. Phases 6-7 come from the owner's own
@@ -1306,8 +1316,8 @@ against wove-branch, desktop + mobile together.
   To make them real,
   `MenuItem` needs something like `{ page?: string; action?: string; filter?: string }`
   and every row a target; the mockup's last `pD` says which rows belong to which tab.
-- **Five tab screens are 11-line stubs** — their real structure has to come from
-  the mockup.
+- ~~Five tab screens are 11-line stubs~~ — resolved: all six screens are real
+  (Oct 2026).
 - **A page open is not logged.** Removed in Phase 2 rather than patched: the only
   page in `PAGES` is `search`, which the shell opens, so filing it under the current
   tab wrote "Guild · Opened Search" about a tab with no features. It comes back when

@@ -13,9 +13,10 @@ Three sources, three jobs:
   (520px), dark/light tokens, bottom tabbar, drawer, composer. Steal feel
   (colors, radius, spacing, tone), not layout. Desktop reuses the same kit
   in three columns. Never revert repo to match mockup.
-- **Repo = truth.** `~/Desktop/eumae` (~7,871 lines). Six tabs: Chat,
-  Console, Studio, Library, Classroom, Guild. Chat + Library + Notes are
-  half-real. Console / Studio / Classroom / Guild render `Empty` today.
+- **Repo = truth.** `~/Desktop/eumae` (~30,928 lines in src/ + api/,
+  2026-10-23). Six tabs: Chat, Console, Studio, Library, Classroom, Guild, all
+  real screens. Chat streams replies; Console's manual side (tasks, calendar,
+  goals, projects, notes) works; Studio artifacts and cloud sync do not yet.
   If VISION says it and repo does not do it, repo wins and VISION is ahead.
 - **Docs = history.** The four big docs (master MVP 8,386 lines, full
   build, build phases 316 lines, blueprint 24) are aspirational and partly

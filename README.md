@@ -191,7 +191,7 @@ several times and only the *last* definition is live. `AGENTS.md` explains.
 7. ⬜ Sandbox v2 and Studio artifacts
 8. ⬜ The Logs lens — a drill-down and a search in Settings → Logs, over one filter
 
-Items 5-7 come from the owner's own list in **`IDEAS.md`**, which says where each
+Items 5-8 come from the owner's own list in **`IDEAS.md`**, which says where each
 idea stands and which phase it landed in.
 
 ## What's missing
