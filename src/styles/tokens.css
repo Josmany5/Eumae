@@ -1179,7 +1179,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 /* Dashboard page tabs: the mockup's .pn — quiet pills, active is filled. */
 .pn{ display:flex; gap:6px; margin:4px 0 12px; align-items:center; flex-wrap:wrap; }
 .pn button{ background:var(--card2); border-radius:99px; padding:6px 12px;
-  font-size:13px; font-weight:600; color:var(--mut); }
+  font-size:14px; font-weight:600; color:var(--mut); }
 .pn button.on{ background:var(--ac); color:var(--acink); }
 /* Page arrows: desktop only — phones swipe. */
 .pn .pnArrow{ display:none; align-items:center; justify-content:center; width:32px; height:32px;
