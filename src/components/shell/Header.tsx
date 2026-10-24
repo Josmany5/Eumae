@@ -1,7 +1,7 @@
 import { Icon } from './icons';
 
 interface HeaderProps {
-  onMenu: () => void;
+  onMenu?: () => void;
   onActivity: () => void;
   title: string;
   /** Set while a sub-page is pushed: the menu button becomes a back button. */
@@ -33,10 +33,12 @@ export default function Header({ onMenu, onActivity, title, onBack }: HeaderProp
         <button className="hb" onClick={onBack} aria-label="Back">
           <Icon name="bk" />
         </button>
-      ) : (
+      ) : onMenu ? (
         <button className="hb" onClick={onMenu} aria-label="Menu">
           <MenuIcon />
         </button>
+      ) : (
+        <span className="hb" aria-hidden="true" />
       )}
       <div className="t">{title}</div>
       <button className="hb hbEumae" onClick={onActivity} aria-label="Eumae's office" title="Eumae's office">

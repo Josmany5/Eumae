@@ -30,6 +30,7 @@ import { logEv } from './log';
 import { saveUpload, uploadData } from './uploads';
 import HomeScreen, { type HomeDest } from './screens/HomeScreen';
 import { homeOn, isPhone, HOME_EVENT } from './home';
+import { HomeHandle, AppSwitcher } from './components/shell/AppSwitch';
 
 const CON_PAGES: { label: string; page: string | null }[] = [
   { label: 'Today', page: null },
@@ -41,6 +42,14 @@ const CON_PAGES: { label: string; page: string | null }[] = [
   { label: 'Notes', page: 'notes' },
   { label: 'Flows', page: 'flows' },
 ];
+
+/* Home mode (phone): each app's own pages as pills along the top, in place
+   of the side menu. Console uses CON_PAGES above; these are the others whose
+   menu rows open real pages. */
+const APP_PILLS: Partial<Record<TabId, string[]>> = {
+  library: ['Favorites', 'Recent', 'Trash'],
+  guild: ['Contacts', 'Messages', 'Requests', 'Assigned work', 'Activity', 'Shared work', 'Marketplace'],
+};
 
 /** A sub-page pushed on top of the current tab — the mockup's pageSt entry. */
 interface Pushed {
@@ -476,8 +485,55 @@ export default function App() {
     [go, goTab, notify, pickFile, newChat, tab],
   );
 
+  /* Apps left open behind Home, newest first: where you were in each. */
+  const [curApp, setCurApp] = useState<string | null>(null);
+  const [openApps, setOpenApps] = useState<{ key: string; title: string; tab: TabId; stack: Pushed[] }[]>([]);
+  const [switcher, setSwitcher] = useState(false);
+  const [pillSel, setPillSel] = useState<string | null>(null);
+  const saveCur = useCallback(() => {
+    if (!curApp) return;
+    const t = stack.length ? pageTitle(stack[stack.length - 1].page) : LABELS[tab];
+    setOpenApps((l) => [{ key: curApp, title: t, tab, stack }, ...l.filter((a) => a.key !== curApp)]);
+  }, [curApp, stack, tab]);
+  const goHome = useCallback(() => {
+    saveCur();
+    setPanelOpen(false);
+    setSwitcher(false);
+    setShowHome(true);
+  }, [saveCur]);
+  const openSwitcher = useCallback(() => {
+    saveCur();
+    setSwitcher(true);
+  }, [saveCur]);
+  const resumeApp = useCallback(
+    (key: string) => {
+      const a = openApps.find((x) => x.key === key);
+      if (!a) return false;
+      setTab(a.tab);
+      setStack(a.stack);
+      setCurApp(key);
+      setPanelOpen(false);
+      setSwitcher(false);
+      setShowHome(false);
+      return true;
+    },
+    [openApps],
+  );
+  const closeApp = useCallback(
+    (key: string) => {
+      setOpenApps((l) => l.filter((a) => a.key !== key));
+      if (key === curApp) setCurApp(null);
+    },
+    [curApp],
+  );
+  const dismissSwitcher = useCallback(() => {
+    setSwitcher(false);
+    if (!curApp) setShowHome(true);
+  }, [curApp]);
+
   const openFromHome = useCallback(
-    (d: HomeDest) => {
+    (d: HomeDest, name?: string) => {
+      if (name && 'tab' in d && resumeApp(name)) return;
       if ('soon' in d) {
         notify(`${d.soon} is coming soon.`);
         return;
@@ -487,6 +543,7 @@ export default function App() {
         return;
       }
       setShowHome(false);
+      setCurApp('office' in d ? null : name ?? null);
       if ('office' in d) {
         goTab('console');
         openPanel(d.office);
@@ -495,7 +552,7 @@ export default function App() {
       goTab(d.tab);
       if (d.page) go(d.page, d.arg);
     },
-    [go, goTab, notify, openPanel],
+    [go, goTab, notify, openPanel, resumeApp],
   );
 
   /* Persist where you are on every change, so a reload restores it. One small
@@ -519,6 +576,8 @@ export default function App() {
 
 
   const kbdOpen = useKeyboardOpen();
+  const appMode = homeEnabled && !showHome && isPhone();
+  const pillPage = !!top && stack.length === 1 && (CON_PAGES.some((c) => c.page === top.page) || !!APP_PILLS[tab]);
 
   const appClass = [
     railCollapsed ? 'railCollapsed' : '',
@@ -526,6 +585,7 @@ export default function App() {
     booting ? 'booting' : '',
     kbdOpen ? 'kbd-open' : '',
     showHome ? 'homeOn' : '',
+    appMode ? 'appMode' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -559,10 +619,31 @@ export default function App() {
           <>
           <Header
             title={top ? pageTitle(top.page) : LABELS[tab]}
-            onMenu={() => setDrawerOpen(true)}
+            onMenu={appMode && tab !== 'chat' ? undefined : () => setDrawerOpen(true)}
             onActivity={() => openPanel()}
-            onBack={top ? back : homeEnabled && isPhone() ? () => setShowHome(true) : undefined}
+            onBack={top && !(appMode && pillPage) ? back : !appMode && homeEnabled && isPhone() ? () => setShowHome(true) : undefined}
           />
+          {appMode && APP_PILLS[tab] ? (
+            <nav className="conBar" aria-label={LABELS[tab] + ' pages'}>
+              {[LABELS[tab], ...APP_PILLS[tab]!].map((label, i) => {
+                const on = i === 0 ? !top : !!top && pillSel === label;
+                return (
+                  <button
+                    key={label}
+                    className={on ? 'on' : ''}
+                    aria-current={on ? 'page' : undefined}
+                    onClick={() => {
+                      setStack([]);
+                      setPillSel(i === 0 ? null : label);
+                      if (i > 0) pickMenu(label);
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </nav>
+          ) : null}
           {tab === 'console' && (!top || CON_PAGES.some((c) => c.page === top.page)) ? (
             /* Phone: Console's sub-pages as one scrolling row under the
                header. A shortcut; the Drawer keeps the full list. */
@@ -605,9 +686,19 @@ export default function App() {
               <Screen />
             )}
           </main>
-          <TabBar active={tab} onChange={goTab} />
+          {appMode ? <HomeHandle onHome={goHome} onSwitch={openSwitcher} /> : <TabBar active={tab} onChange={goTab} />}
           </>
           )}
+          {showHome && homeEnabled ? <HomeHandle onHome={openSwitcher} onSwitch={openSwitcher} /> : null}
+          {switcher ? (
+            <AppSwitcher
+              apps={openApps.map((a) => ({ key: a.key, title: a.title }))}
+              onPick={(k) => resumeApp(k)}
+              onCloseApp={closeApp}
+              onHome={goHome}
+              onDismiss={dismissSwitcher}
+            />
+          ) : null}
         </div>
 
         <EditModal />

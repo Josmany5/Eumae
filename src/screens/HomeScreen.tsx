@@ -12,7 +12,7 @@ export type HomeDest =
   | { settings: true }
   | { soon: string };
 
-interface Tile {
+export interface Tile {
   n: string;
   icon?: string;
   /** Shows today's date in the tile instead of an icon (Calendar). */
@@ -21,23 +21,15 @@ interface Tile {
   badge?: number;
 }
 
-interface Section {
+export interface Section {
   n: string;
   /** The space whose accent colors the section (existing palette only). */
   sp: 'chat' | 'console' | 'studio' | 'library' | 'classroom' | 'guild' | 'grey';
   tiles: Tile[];
 }
 
-function greeting(now: Date): string {
-  const h = now.getHours();
-  return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-}
-
-export default function HomeScreen({ onOpen, onSearch }: { onOpen: (d: HomeDest) => void; onSearch: () => void }) {
-  const now = new Date();
-  const overdue = getTasks().filter((t) => !t.d && isOverdue(t, now)).length;
-
-  const sections: Section[] = [
+export function homeSections(overdue = 0): Section[] {
+  return [
     {
       n: 'Intelligence',
       sp: 'chat',
@@ -81,14 +73,31 @@ export default function HomeScreen({ onOpen, onSearch }: { onOpen: (d: HomeDest)
       ],
     },
   ];
+}
 
   /* Each tile takes its own space's color where it has one (Library green,
      Classroom teal…), else its section's. */
-  const tileSpace = (t: Tile, s: Section): string => {
+export function tileSpace(t: Tile, s: Section): string {
     if ('tab' in t.to && t.to.tab !== 'console') return t.to.tab;
     if ('settings' in t.to) return 'grey';
     return s.sp;
-  };
+}
+
+
+export function TileIcon({ t }: { t: Tile }) {
+  return t.date ? <b className="hmDate">{new Date().getDate()}</b> : t.icon === 'eumae' ? <EumaeIcon /> : <Icon name={t.icon!} />;
+}
+
+function greeting(now: Date): string {
+  const h = now.getHours();
+  return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
+export default function HomeScreen({ onOpen, onSearch }: { onOpen: (d: HomeDest, name: string) => void; onSearch: () => void }) {
+  const now = new Date();
+  const overdue = getTasks().filter((t) => !t.d && isOverdue(t, now)).length;
+
+  const sections = homeSections(overdue);
 
   return (
     <div className="hm">
@@ -111,9 +120,9 @@ export default function HomeScreen({ onOpen, onSearch }: { onOpen: (d: HomeDest)
             {s.tiles.map((t) => {
               const soon = 'soon' in t.to;
               return (
-                <button key={t.n} className={'hmTile' + (soon ? ' soon' : '')} onClick={() => onOpen(t.to)}>
+                <button key={t.n} className={'hmTile' + (soon ? ' soon' : '')} onClick={() => onOpen(t.to, t.n)}>
                   <span className={'hmIc sp-' + tileSpace(t, s)}>
-                    {t.date ? <b className="hmDate">{now.getDate()}</b> : t.icon === 'eumae' ? <EumaeIcon /> : <Icon name={t.icon!} />}
+                    <TileIcon t={t} />
                     {t.badge ? <em className="hmBadge">{t.badge}</em> : null}
                   </span>
                   <span className="hmN">{t.n}</span>

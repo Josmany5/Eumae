@@ -2359,3 +2359,26 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .sp-classroom{ background:#3fbfbf; color:#0b0b0c; }
 .sp-guild{ background:#e0708f; color:#fff; }
 .sp-grey{ background:var(--card3); color:var(--tx); }
+
+/* Home mode inside an app (Oct 24): no drawer, no bottom toolbar; the home
+   handle sits just above iPhone's own bottom swipe. */
+#app.appMode .col{ padding-bottom:calc(24px + env(safe-area-inset-bottom)); }
+.hmHandle{ position:fixed; left:0; right:0; bottom:env(safe-area-inset-bottom); height:24px; z-index:40;
+  display:flex; align-items:center; justify-content:center; touch-action:none; }
+.hmHandle i{ width:120px; height:5px; border-radius:3px; background:var(--tx); opacity:.55; }
+.swOv{ position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.55); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  display:flex; flex-direction:column; justify-content:center; }
+.swRow{ display:flex; gap:16px; overflow-x:auto; scroll-snap-type:x mandatory; padding:0 15vw; scrollbar-width:none; }
+.swRow::-webkit-scrollbar{ display:none; }
+.swCard{ flex:none; width:70vw; height:58vh; scroll-snap-align:center; background:var(--card); border:1px solid var(--hair);
+  border-radius:22px; padding:14px; display:flex; flex-direction:column; gap:14px; touch-action:pan-x; transition:transform .15s, opacity .15s; }
+.swTop{ display:flex; align-items:center; gap:10px; font-size:16px; }
+.swTop b{ flex:1; }
+.swIc{ width:36px; height:36px; border-radius:10px; }
+.swIc svg{ width:20px; height:20px; }
+.swIc .hmDate{ font-size:16px; }
+.swX{ width:30px; height:30px; border-radius:50%; border:0; background:var(--card3); color:var(--tx); display:flex; align-items:center; justify-content:center; }
+.swX svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; }
+.swBody{ flex:1; border-radius:14px; background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:15px; color:var(--mut); padding:12px; text-align:center; }
+.swEmpty{ text-align:center; color:#fff; font-size:16px; opacity:.8; }
+.swHome{ align-self:center; margin-top:22px; padding:10px 26px; border-radius:20px; border:0; background:var(--card3); color:var(--tx); font-size:15px; }
