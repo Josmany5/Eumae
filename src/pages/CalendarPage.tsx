@@ -126,7 +126,7 @@ export default function CalendarPage({ arg }: PageProps) {
   /* Week view: the strip's first day; `day` is the one picked in it. */
   const [wk, setWk] = useState(() => todayStr());
   const [tick, setTick] = useState(0);
-  /* Opened with an event id (Edit from Mae's office): land on its form. */
+  /* Opened with an event id (Edit from Eumae's office): land on its form. */
   const [form, setForm] = useState<{ ev: CalEvent; editing: boolean } | null>(() => {
     const e = typeof arg === 'string' ? getEvent(arg) : undefined;
     return e ? { ev: e, editing: true } : null;
@@ -187,7 +187,7 @@ export default function CalendarPage({ arg }: PageProps) {
     });
   };
 
-  /* Tap: events and tasks open read-only in Mae's office; goals and
+  /* Tap: events and tasks open read-only in Eumae's office; goals and
      projects go to their page. */
   const openItem = (it: Item) => {
     if (it.link) {
@@ -302,7 +302,7 @@ export default function CalendarPage({ arg }: PageProps) {
             compact={desktop && panelOpen}
             onDay={(d) => {
               setDay(d);
-              /* Desktop: the day opens in Mae's office, where you'll see it. */
+              /* Desktop: the day opens in Eumae's office, where you'll see it. */
               if (desktop) {
                 setFocus({ k: 'day', id: d });
                 openPanel('item');

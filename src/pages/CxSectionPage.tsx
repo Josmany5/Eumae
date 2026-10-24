@@ -53,7 +53,7 @@ export default function CxSectionPage({ arg }: PageProps) {
       {name === 'Digest' ? (
         /* Distill used to print three canned bullets ("Main argument in one
            line") no matter what was pasted, which is invented data. Now it
-           hands the real link to Chat, where Mae actually reads it. */
+           hands the real link to Chat, where Eumae actually reads it. */
         <div className="card">
           <input
             className="sinput"

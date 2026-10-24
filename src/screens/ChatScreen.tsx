@@ -13,15 +13,15 @@ import { uploadData, listUploads } from '../uploads';
 import { getNotes } from '../notes';
 import { renderMd } from '../md';
 import { timeLabels } from '../stamp';
-import { runMaeTurn } from '../mae/loop';
-import { planNote, detachFresh, type Plan } from '../mae/dispatcher';
-import { PlanCard, MaeSteps } from '../components/PlanCard';
+import { runEumaeTurn } from '../eumae/loop';
+import { planNote, detachFresh, type Plan } from '../eumae/dispatcher';
+import { PlanCard, EumaeSteps } from '../components/PlanCard';
 import { setFocus } from '../focus';
 import { extractHtml, hideHtmlWhileStreaming, addFromReply, sandboxContext, openSbx, wantsAThing, thingHint, saidNoHint } from '../sandbox';
 import { SbxRow } from '../components/SandboxView';
 import { useMedia } from '../useMedia';
 
-/** History as Mae should read it: each reply that carried a plan says what
+/** History as Eumae should read it: each reply that carried a plan says what
  *  became of it, so she never guesses whether something was made. */
 function withPlanNotes(msgs: Msg[]): Msg[] {
   return msgs.map((m) => (m.plan ? { ...m, text: `${m.text}\n\n${planNote(m.plan)}` } : m));
@@ -471,7 +471,7 @@ export default function ChatScreen() {
      read, the stream stops pulling and the down-button appears instead. New
      sends and thread switches re-pin (both are deliberate jumps to the
      newest line). */
-  /* His call (Oct 21, same as the office chat): once Mae's reply starts, the
+  /* His call (Oct 21, same as the office chat): once Eumae's reply starts, the
      view holds her first line at the top so you read from the start, and it
      never chases the end of the message as it grows. Short replies still sit
      at the floor. Scrolling up by hand stops all of it. */
@@ -511,7 +511,7 @@ export default function ChatScreen() {
   const send = (text: string, byVoice = false, history?: Msg[]) => {
     /* Mode changes only when the person taps it (his call, Oct 19). The old
        word trigger flipped "make me a task" into Build, whose html-block order
-       beat Mae's tools, and the switch stuck for the rest of the chat. */
+       beat Eumae's tools, and the switch stuck for the rest of the chat. */
 
     const custom = findRole(turn.role) ?? null;
     const body = toApiBody(
@@ -579,7 +579,7 @@ export default function ChatScreen() {
     const openMsg = [...(history ?? msgs)].reverse().find((m) => m.plan?.status === 'pending');
     const sentIn = threadId;
     const moved = () => threadNow.current !== sentIn;
-    void runMaeTurn(body, 'Chat', (full) => {
+    void runEumaeTurn(body, 'Chat', (full) => {
       if (moved()) return;
       /* The whole text so far, not the new piece: replacing what the bubble shows
          is the only way two pieces arriving out of order could not show up as a
@@ -617,7 +617,7 @@ export default function ChatScreen() {
       setMsgs((m) => {
         /* One open card per chat. A reply that changed the waiting card moves it
            down to this reply; if the person approved or cancelled the old card
-           while Mae was answering, only what this turn added becomes a new card. */
+           while Eumae was answering, only what this turn added becomes a new card. */
         let plan = reply.plan;
         const oldNow = openMsg ? m.find((x) => x.id === openMsg.id)?.plan : undefined;
         const carried = !!plan && !!openMsg?.plan && plan.id === openMsg.plan.id;
@@ -880,7 +880,7 @@ export default function ChatScreen() {
                           ) : null}
                         </div>
                       ) : null}
-                      {m.role === 'eumae' && !m.streaming ? <MaeSteps steps={m.steps} plan={m.plan} /> : null}
+                      {m.role === 'eumae' && !m.streaming ? <EumaeSteps steps={m.steps} plan={m.plan} /> : null}
                       {m.plan ? <PlanCard plan={m.plan} notify={notify} onChange={(p) => setPlan(m.id, p)} /> : null}
                       {m.made ? <SbxRow made={m.made} /> : null}
                     </>

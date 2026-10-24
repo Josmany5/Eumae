@@ -75,7 +75,7 @@ export default function TasksPage({ arg }: PageProps) {
   const refresh = () => setTick((t) => t + 1);
   useEffect(() => onDataChange(refresh), []);
   void tick;
-  /* Edit from Mae's office opens the form right here. */
+  /* Edit from Eumae's office opens the form right here. */
   useEffect(
     () =>
       onEditTask((id) => {
@@ -85,7 +85,7 @@ export default function TasksPage({ arg }: PageProps) {
       }),
     [],
   );
-  /* Tap a task: it opens read-only in Mae's office (the sheet on a phone). */
+  /* Tap a task: it opens read-only in Eumae's office (the sheet on a phone). */
   const openItem = (t: Task) => {
     setFocus({ k: 'task', id: t.id });
     openPanel('item');

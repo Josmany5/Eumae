@@ -3,7 +3,7 @@ import { getProjects, type LinkKind } from '../../projects';
 import { getGoals, isActiveGoal } from '../../goals';
 import type { Links } from './ItemEdit';
 
-/* Mae's office edits INLINE (his correction, Oct 21, 4:22 PM): the tab
+/* Eumae's office edits INLINE (his correction, Oct 21, 4:22 PM): the tab
  * always lists every field as a clean row, empty ones too. Edit turns each
  * row's value into an input in the same spot, with no form swap and no new window.
  * Done saves (Undo pill), Cancel puts it back. */

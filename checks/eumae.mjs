@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-/* Mae tools check: the registry, the schema checker and the dispatcher,
+/* Eumae tools check: the registry, the schema checker and the dispatcher,
  * run for real against the real stores with an in-memory localStorage.
  *
- * Every case here is a way Mae went wrong before (Wove), or a promise the
+ * Every case here is a way Eumae went wrong before (Wove), or a promise the
  * plan card makes: nothing runs before Approve, a plan lands whole or not at
  * all, Undo puts everything back.
  *
@@ -26,7 +26,7 @@ globalThis.localStorage = {
 
 const out = buildSync({
   stdin: {
-    contents: `export * from './src/mae/dispatcher'; export { REGISTRY, humanTimes } from './src/mae/registry'; export { resolveDate, resolveTime } from './src/mae/when'; export { guessesIn } from './src/mae/guess'; export { check, toGemini } from './src/mae/schema';
+    contents: `export * from './src/eumae/dispatcher'; export { REGISTRY, humanTimes } from './src/eumae/registry'; export { resolveDate, resolveTime } from './src/eumae/when'; export { guessesIn } from './src/eumae/guess'; export { check, toGemini } from './src/eumae/schema';
       export { getTasks, getTask } from './src/tasks'; export { getEvents, saveEvent, ymd } from './src/events'; export { getGoals, goalOf, goalLinkedIds } from './src/goals';
       export { getProjects, linkedIds } from './src/projects'; export { getNotes, titleOf } from './src/notes'; export { parseEvent } from './src/chat';`,
     resolveDir: new URL('..', import.meta.url).pathname,
@@ -39,7 +39,7 @@ const out = buildSync({
   logLevel: 'silent',
   define: { 'import.meta.env': '{}' },
 });
-const tmp = join(mkdtempSync(join(tmpdir(), 'mae-')), 'bundle.mjs');
+const tmp = join(mkdtempSync(join(tmpdir(), 'eumae-')), 'bundle.mjs');
 writeFileSync(tmp, out.outputFiles[0].text);
 const M = await import(pathToFileURL(tmp).href);
 
@@ -261,7 +261,7 @@ const stage = (calls, heard = "") => {
   check('stage-refuses-ambiguous', !stage([{ name: 'create_tasks', args: { tasks: [{ title: 'x', time: '7' }] } }]).res[0].ok);
 }
 
-// Guess detector: details the person never said go back to Mae to name.
+// Guess detector: details the person never said go back to Eumae to name.
 {
   const G = M.guessesIn;
   const t = { tasks: [{ title: 'Write for 1 hour on the book', estimate: 60, priority: 'high' }] };
@@ -279,4 +279,4 @@ if (failures.length) {
   console.log(`\nmae: ${failures.length} failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log('\nmae: all checks pass');
+console.log('\neumae: all checks pass');

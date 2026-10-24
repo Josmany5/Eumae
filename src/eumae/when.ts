@@ -1,9 +1,9 @@
 /* Dates and times in the person's own words, worked out by code (his call,
- * Oct 19, 10 PM). Mae said "tomorrow" on a Monday and staged Wednesday: models
+ * Oct 19, 10 PM). Eumae said "tomorrow" on a Monday and staged Wednesday: models
  * slip at calendar maths. So date fields take a phrase ("tomorrow", "in 3
  * weeks", "next Friday", "Nov 14", "the second Friday of November") and this
  * file turns it into YYYY-MM-DD against the device's own clock. A phrase that
- * could mean two days comes back with both, so Mae asks which one; a phrase it
+ * could mean two days comes back with both, so Eumae asks which one; a phrase it
  * can't read comes back so she asks the person instead of guessing.
  *
  * Times the same: "7 pm", "7:30am", "noon", "midnight". A bare "7" could be
@@ -231,7 +231,7 @@ export function resolveTime(raw: string): When {
 
 /** Walks a call's arguments against its form and swaps every date or time
  *  phrase for the real value. Returns the first phrase it couldn't settle,
- *  named by where it sits, so Mae can ask about exactly that. */
+ *  named by where it sits, so Eumae can ask about exactly that. */
 export function resolveWhen(p: Param, v: unknown, where = 'args', now: Date = new Date()): { value: unknown; error: string | null } {
   if (v === undefined || v === null) return { value: v, error: null };
   if (p.type === 'string' && (p.format === 'date' || p.format === 'time') && typeof v === 'string' && v.trim() !== '') {

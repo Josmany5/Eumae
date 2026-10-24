@@ -1,4 +1,4 @@
-/* One Mae turn, with tools.
+/* One Eumae turn, with tools.
  *
  *  send → the model answers with words and/or tool calls → the dispatcher
  *  runs the reads and stages the writes → the answers go back to the model →
@@ -10,29 +10,29 @@ import { humanTimes } from './registry';
 import { streamChat, type Reply } from '../chat';
 import { BASE_PROMPT, type ApiChatBody } from '../request';
 import { continuePlan, declarations, dispatch, newPlan, type Plan } from './dispatcher';
-import { MAE_PROMPT, currentState } from './prompt';
+import { EUMAE_PROMPT, currentState } from './prompt';
 import { THING_TURN } from '../sandbox';
 import { languageLast } from '../voiceLang';
 import type { Opened } from './registry';
 
 const MAX_ROUNDS = 6;
 
-export interface MaeStep {
+export interface EumaeStep {
   label: string;
   ok: boolean;
 }
 
-export interface MaeReply extends Reply {
+export interface EumaeReply extends Reply {
   /** Present only when the turn staged at least one change. */
   plan?: Plan;
-  steps: MaeStep[];
+  steps: EumaeStep[];
   /** The last open_item the model asked for. */
   open?: Opened;
 }
 
 type Part = Record<string, unknown>;
 
-/** Swap the old "I can't touch the app" opening for Mae's real prompt, and
+/** Swap the old "I can't touch the app" opening for Eumae's real prompt, and
  *  add the fresh state block. Directives and the timestamp stay as they were. */
 /** Last word in every prompt: mode, role and skill set tone and depth only.
  *  Without this, Build's "return one html code block" outranked the tools. */
@@ -43,7 +43,7 @@ const TOOLS_WIN =
   'calculator, tracker or other thing to use, write the page (one html block); never make a project, ' +
   'task or note for it.';
 
-export function withMae(body: ApiChatBody, where: string): ApiChatBody {
+export function withEumae(body: ApiChatBody, where: string): ApiChatBody {
   const sp = body.data.systemPrompt;
   const rest = sp.startsWith(BASE_PROMPT) ? sp.slice(BASE_PROMPT.length) : '\n\n' + sp;
   return {
@@ -52,7 +52,7 @@ export function withMae(body: ApiChatBody, where: string): ApiChatBody {
        brief came back as a Create project card (Oct 20). */
     data: {
       ...body.data,
-      systemPrompt: languageLast(MAE_PROMPT + currentState(where) + rest + TOOLS_WIN),
+      systemPrompt: languageLast(EUMAE_PROMPT + currentState(where) + rest + TOOLS_WIN),
       functionDeclarations: rest.includes(THING_TURN) ? [] : declarations(),
     },
   };
@@ -60,12 +60,12 @@ export function withMae(body: ApiChatBody, where: string): ApiChatBody {
 
 /** `open0` is the card still waiting in this thread, if any: this turn adds to
  *  it (or drops lines from it) instead of starting a new one (his call, Oct 19). */
-export async function runMaeTurn(body: ApiChatBody, where: string, onText: (full: string) => void, open0?: Plan): Promise<MaeReply> {
-  const base = withMae(body, where);
+export async function runEumaeTurn(body: ApiChatBody, where: string, onText: (full: string) => void, open0?: Plan): Promise<EumaeReply> {
+  const base = withEumae(body, where);
   const heard = [...body.data.conversationHistory.filter((m) => m.role === 'user').map((m) => m.content), body.data.message].join('\n');
   const plan = open0 && open0.status === 'pending' ? continuePlan(open0) : newPlan();
   const before = JSON.stringify(plan.steps);
-  const steps: MaeStep[] = [];
+  const steps: EumaeStep[] = [];
   const tail: { role: 'model' | 'user'; parts: Part[] }[] = [];
   const said: string[] = [];
   let sources: Reply['sources'] = [];
@@ -105,7 +105,7 @@ export async function runMaeTurn(body: ApiChatBody, where: string, onText: (full
   );
 }
 
-function finish(reply: Reply, said: string[], sources: Reply['sources'], plan: Plan, steps: MaeStep[], open: Opened | undefined, changed: boolean): MaeReply {
+function finish(reply: Reply, said: string[], sources: Reply['sources'], plan: Plan, steps: EumaeStep[], open: Opened | undefined, changed: boolean): EumaeReply {
   let text = humanTimes(said.join('\n\n'));
   /* Only a card this turn changed rides the reply; an untouched open card stays where it is. */
   const staged = changed;

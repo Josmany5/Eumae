@@ -228,7 +228,7 @@ export interface ApiChatBody {
     attachments?: Attachment[];
     model?: string;
     functionDeclarations?: unknown[];
-    /** This turn's tool exchange so far (Mae's calls and the app's answers). */
+    /** This turn's tool exchange so far (Eumae's calls and the app's answers). */
     tail?: unknown[];
   };
 }

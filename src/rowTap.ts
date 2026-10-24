@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react';
 
-/* The whole row opens the item in Mae's office, not just its title (his call,
+/* The whole row opens the item in Eumae's office, not just its title (his call,
    Oct 21). Taps on the row's own controls (checkbox, ⋯, chips, inputs) keep
    doing their own job. */
 export function rowTap(open: (() => void) | undefined) {

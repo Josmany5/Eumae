@@ -7,9 +7,9 @@ import { getRoles } from '../../roles';
 import { getTasks } from '../../tasks';
 import { eventsBetween, ymd } from '../../events';
 import { isOverdue } from '../../due';
-import { runMaeTurn } from '../../mae/loop';
-import { planNote, detachFresh, type Plan } from '../../mae/dispatcher';
-import { PlanCard, MaeSteps } from '../PlanCard';
+import { runEumaeTurn } from '../../eumae/loop';
+import { planNote, detachFresh, type Plan } from '../../eumae/dispatcher';
+import { PlanCard, EumaeSteps } from '../PlanCard';
 import { buildRequest, toApiBody } from '../../request';
 import { createThread, getThread, saveThread, threadsChanged, type Msg, type Thread } from '../../threads';
 import { msgId } from '../../boot';
@@ -26,16 +26,16 @@ import { SandboxView, useSbx } from '../SandboxView';
 import { getOpenSbx, getSbx, latestForThread, wantsAThing, thingHint, extractHtml, hideHtmlWhileStreaming, addFromReply, openSbx, saidNoHint } from '../../sandbox';
 import { SbxRow } from '../SandboxView';
 import { getCurrentThreadId } from '../../threads';
-import { MaeIcon } from './Header';
+import { EumaeIcon } from './Header';
 import { getGoals, goalPct, goalCount } from '../../goals';
 
-/** Mae's office: the right panel on desktop, a peek bar and a sheet on a phone.
+/** Eumae's office: the right panel on desktop, a peek bar and a sheet on a phone.
  *
- *  Every page's office is the same shape: Mae, the page's own tab, the Desk and
- *  the Logbook (eumae-right-panel.md, locked Oct 18). Chat has no Mae tab
- *  because the chat *is* Mae; Guild's Mae lives inside each huddle.
+ *  Every page's office is the same shape: Eumae, the page's own tab, the Desk and
+ *  the Logbook (eumae-right-panel.md, locked Oct 18). Chat has no Eumae tab
+ *  because the chat *is* Eumae; Guild's Eumae lives inside each huddle.
  *
- *  Nothing here pretends. The Desk stays empty until Mae can really notice and
+ *  Nothing here pretends. The Desk stays empty until Eumae can really notice and
  *  propose; the Logbook reads the app's one log, the memories you saved, and
  *  the permission rules from Settings. */
 
@@ -49,24 +49,24 @@ const OFFICE: Record<TabId, OTab[]> = {
     { id: 'logbook', label: 'Logbook' },
   ],
   console: [
-    { id: 'mae', label: 'Eumae' },
+    { id: 'eumae', label: 'Eumae' },
     { id: 'desk', label: 'Desk' },
     { id: 'logbook', label: 'Logbook' },
   ],
   studio: [
-    { id: 'mae', label: 'Eumae' },
+    { id: 'eumae', label: 'Eumae' },
     { id: 'build', label: 'Build' },
     { id: 'desk', label: 'Desk' },
     { id: 'logbook', label: 'Logbook' },
   ],
   library: [
-    { id: 'mae', label: 'Eumae' },
+    { id: 'eumae', label: 'Eumae' },
     { id: 'details', label: 'Details' },
     { id: 'desk', label: 'Desk' },
     { id: 'logbook', label: 'Logbook' },
   ],
   classroom: [
-    { id: 'mae', label: 'Eumae' },
+    { id: 'eumae', label: 'Eumae' },
     { id: 'notes', label: 'My notes' },
     { id: 'desk', label: 'Desk' },
     { id: 'logbook', label: 'Logbook' },
@@ -90,7 +90,7 @@ const AREA: Record<TabId, LogFiled> = {
   chat: 'Chat', console: 'Console', studio: 'Studio', library: 'Library', classroom: 'Classroom', guild: 'Guild',
 };
 
-/** Who Mae is on each page. Sent with every question asked from the office. */
+/** Who Eumae is on each page. Sent with every question asked from the office. */
 const ROLE: Partial<Record<TabId, { name: string; intro: string; prompt: string; hint: string }>> = {
   console: {
     name: 'Planner',
@@ -118,7 +118,7 @@ const ROLE: Partial<Record<TabId, { name: string; intro: string; prompt: string;
   },
 };
 
-/* Mae's office threads: one per page, saved as real chat threads (marked
+/* Eumae's office threads: one per page, saved as real chat threads (marked
    "<Page> office") so they show in the Chat list. The office keeps going on
    the same thread until it has been quiet for an hour; then it opens fresh
    and the old one stays in Chat. */
@@ -172,7 +172,7 @@ function newOffice(tab: TabId) {
   }
   bump();
 }
-/** The item open in the office, as a line Mae can read. */
+/** The item open in the office, as a line Eumae can read. */
 function focusContext(): string {
   const f = getFocus();
   if (!f) return '';
@@ -220,7 +220,7 @@ function consoleContext(): string {
   return `\n\nOpen tasks:\n${open.join('\n') || '- none'}\n\nNext 7 days:\n${evs.join('\n') || '- nothing scheduled'}`;
 }
 
-/** A page Mae made from the office: Open takes you to its chat with the Sandbox up. */
+/** A page Eumae made from the office: Open takes you to its chat with the Sandbox up. */
 function OfficeMade({ made, threadId }: { made: NonNullable<Msg['made']>; threadId: string }) {
   const { switchThread, goTab } = useNav();
   return (
@@ -235,7 +235,7 @@ function OfficeMade({ made, threadId }: { made: NonNullable<Msg['made']>; thread
   );
 }
 
-function MaeTab({ tab }: { tab: TabId }) {
+function EumaeTab({ tab }: { tab: TabId }) {
   const role = ROLE[tab]!;
   const { turn, switchThread, goTab, notify } = useNav();
   const thread = useOfficeThread(tab);
@@ -246,7 +246,7 @@ function MaeTab({ tab }: { tab: TabId }) {
   const box = useRef<HTMLTextAreaElement>(null);
   const [atBottom, setAtBottom] = useState(true);
   const atBottomRef = useRef(true);
-  /* Follow the thread until Mae's reply starts; then hold her first line at
+  /* Follow the thread until Eumae's reply starts; then hold her first line at
      the top so you read from the start (his call, Oct 21). Scrolling by hand
      stops the follow; reaching the bottom again resumes it. */
   const followRef = useRef(true);
@@ -319,7 +319,7 @@ function MaeTab({ tab }: { tab: TabId }) {
     setBusy(true);
     /* One open card per thread: this turn adds to the one still waiting. */
     const openMsg = [...history].reverse().find((m) => m.plan?.status === 'pending');
-    void runMaeTurn(body, `${officeName(tab)} office`, (full) => {
+    void runEumaeTurn(body, `${officeName(tab)} office`, (full) => {
       const h = hideHtmlWhileStreaming(full);
       put(h.text || (h.making ? 'Making it…' : ''), true);
     }, openMsg?.plan).then((reply) => {
@@ -360,7 +360,7 @@ function MaeTab({ tab }: { tab: TabId }) {
     });
   };
 
-  /* A row's "Ask Mae" left a question: send it as soon as this tab is up. */
+  /* A row's "Ask Eumae" left a question: send it as soon as this tab is up. */
   const sendRef = useRef(send);
   sendRef.current = send;
   useEffect(() => {
@@ -380,11 +380,11 @@ function MaeTab({ tab }: { tab: TabId }) {
   };
 
   return (
-    <div className="oMae">
-      <div className="oMaeHead">
+    <div className="oEumae">
+      <div className="oEumaeHead">
         <div className="flbl">Eumae · {role.name}</div>
         {thread ? (
-          <div className="oMaeActs">
+          <div className="oEumaeActs">
             <button
               className="fb"
               onClick={() => {
@@ -408,10 +408,10 @@ function MaeTab({ tab }: { tab: TabId }) {
             {m.role === 'you' ? (
               <div className="oMe">{m.text}</div>
             ) : (
-              <div className="oMae1" data-mid={m.id}>
+              <div className="oEumae1" data-mid={m.id}>
                 <div className="n">Eumae</div>
                 {m.text || <span className="fsub">Thinking…</span>}
-                {!m.streaming ? <MaeSteps steps={m.steps} plan={m.plan} /> : null}
+                {!m.streaming ? <EumaeSteps steps={m.steps} plan={m.plan} /> : null}
                 {m.made && thread ? <OfficeMade made={m.made} threadId={thread.id} /> : null}
                 {m.plan ? <PlanCard plan={m.plan} notify={notify} area={AREA[tab]} onChange={(p) => setPlan(m.id, p)} /> : null}
               </div>
@@ -467,7 +467,7 @@ function Seg<T extends string>({ value, options, onPick }: { value: T; options: 
 }
 
 /* Context › Add from: pick a project, note, Library file, event or task and
-   it rides with your next message as text Mae reads. */
+   it rides with your next message as text Eumae reads. */
 type SrcKind = 'Projects' | 'Notes' | 'Library' | 'Calendar' | 'Tasks';
 const SRC: SrcKind[] = ['Projects', 'Notes', 'Library', 'Calendar', 'Tasks'];
 function sourceItems(k: SrcKind): Ref[] {
@@ -748,7 +748,7 @@ export default function Office({ tab, open, view, onView, onClose, onToggle }: O
       <div className={`pscrim${open ? ' open' : ''}`} onClick={onClose} />
       {!open ? (
         <button className="pHandle" onClick={onToggle} aria-label="Open Eumae's office" title="Eumae's office">
-          <MaeIcon />
+          <EumaeIcon />
         </button>
       ) : null}
 
@@ -781,11 +781,11 @@ export default function Office({ tab, open, view, onView, onClose, onToggle }: O
             </button>
           ))}
         </div>
-        <div className={'pBody oBody' + (v === 'mae' ? ' oBodyMae' : '')}>
+        <div className={'pBody oBody' + (v === 'eumae' ? ' oBodyEumae' : '')}>
           {v === 'item' && item ? (
             <ItemTab focus={item} onView={onView} />
-          ) : v === 'mae' ? (
-            <MaeTab tab={tab} />
+          ) : v === 'eumae' ? (
+            <EumaeTab tab={tab} />
           ) : v === 'context' ? (
             <ContextTab />
           ) : v === 'sandbox' ? (

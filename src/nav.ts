@@ -11,11 +11,11 @@ import type { TabId } from './components/shell/TabBar';
  *  readings — two tabs holding two versions of nothing, with no artifact
  *  between them. */
 export type PanelView =
-  | 'mae' | 'context' | 'sandbox' | 'build' | 'details' | 'notes' | 'huddles'
+  | 'eumae' | 'context' | 'sandbox' | 'build' | 'details' | 'notes' | 'huddles'
   | 'desk' | 'logbook' | 'item';
 
 export const PANEL_VIEWS: PanelView[] = [
-  'mae', 'context', 'sandbox', 'build', 'details', 'notes', 'huddles', 'desk', 'logbook', 'item',
+  'eumae', 'context', 'sandbox', 'build', 'details', 'notes', 'huddles', 'desk', 'logbook', 'item',
 ];
 
 /** A reference attached to this conversation — the mockup's `S.refs` entry. It
@@ -38,7 +38,7 @@ export interface Ref {
    *  strips it before the thread is written, and old threads carrying `url`
    *  still render (ChatScreen reads either). */
   url?: string;
-  /** Text Mae reads with the next message: an item added from the office's
+  /** Text Eumae reads with the next message: an item added from the office's
    *  Context tab (a note, task, event, project or Library file). */
   ctx?: string;
 }

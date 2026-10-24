@@ -33,7 +33,7 @@ export interface ItemMenuProps {
   /** The item's name, for the button's label ("More for Call Marcus"). */
   name: string;
   open?: () => void;
-  /** Words for the Open entry ("Open in Mae's office"). */
+  /** Words for the Open entry ("Open in Eumae's office"). */
   openLabel?: string;
   edit?: () => void;
   rename?: { value: string; save: (v: string) => void; title?: string };

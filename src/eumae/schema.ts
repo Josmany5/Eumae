@@ -1,4 +1,4 @@
-/* Mae's tool forms: one tiny schema language, used three ways.
+/* Eumae's tool forms: one tiny schema language, used three ways.
  *
  *  1. Sent to Gemini as each tool's `parameters` (the OpenAPI subset Gemini
  *     reads: type, description, enum, items, properties, required).
@@ -6,7 +6,7 @@
  *     of five tasks is five checked tasks, not one checked list. Wove's
  *     checker stopped at the top level, which is how bad rows got through.
  *  3. Shown to the person: nothing here is, but every rule that fails turns
- *     into a plain sentence Mae gets back and can fix.
+ *     into a plain sentence Eumae gets back and can fix.
  *
  *  Formats are ours, not Gemini's: `date` is YYYY-MM-DD and must be a real
  *  calendar day, `time` is HH:MM on a 24-hour clock. */

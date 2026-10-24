@@ -6,7 +6,7 @@ import { dayEvents, ymd, mins, importanceOf, type CalEvent } from '../../events'
 import { isOverdue, toConfirm, attendState, attendLabel } from '../../due';
 import { AttendAsk } from './Attend';
 import { fmtTime } from '../../quickadd';
-import { setFocus, onDataChange, askMae } from '../../focus';
+import { setFocus, onDataChange, askEumae } from '../../focus';
 import { TYPE_LABEL } from '../QuickAdd';
 
 /* Console › Timeline widget (Oct 18, his call: Today = Option A as a widget,
@@ -184,12 +184,12 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
                 <button
                   onClick={() => {
                     setFocus({ k: 'task', id: i.task.id });
-                    askMae(
+                    askEumae(
                       opts.over && i.task.due
                         ? `Help me with "${i.t}". It was due ${fmtDue(i.task.due)} and it's overdue. What should I do?`
                         : `Help me with "${i.t}". What should I do?`,
                     );
-                    openPanel('mae');
+                    openPanel('eumae');
                   }}
                 >
                   Ask Eumae

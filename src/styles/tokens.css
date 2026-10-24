@@ -1647,7 +1647,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 
 /* ── Flat rows (Oct 18 redesign, step 1) ─────────────────────────────────
    The shared pieces every redesigned page uses: a flat row on a hairline, a
-   small gray label (no caps), the time spine with its Now marker, Mae's
+   small gray label (no caps), the time spine with its Now marker, Eumae's
    footprint under a row she touched, a receipt with View/Undo, and the thin
    outline that only Needs you and Proposed get. Text stays full size:
    22 titles, 15 rows, 13 meta. Colors come from the tokens above. */
@@ -1684,7 +1684,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .oseg button{ flex:1; padding:5px 8px; border-radius:7px; font-size:13px; color:var(--mut); white-space:nowrap; }
 .oseg button.on{ background:var(--card3); color:var(--tx); font-weight:600; }
 
-/* ── Mae's office (step 2) ──────────────────────────────────────────────
+/* ── Eumae's office (step 2) ──────────────────────────────────────────────
    Replaces the old Context/Activity/Studio panel. Desktop: the third column.
    Phone: a peek bar above the tabs that opens the office as a bottom sheet. */
 .oHead{ flex:none; display:flex; align-items:center; gap:8px;
@@ -1707,14 +1707,14 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   padding:9px 0; border-bottom:1px solid var(--hair); }
 .oPick .oseg{ flex:none; }
 .oPick .selIn{ font-size:14px; padding:6px 10px; }
-/* Mae tab: the thread scrolls on its own and the box stays pinned under it. */
-.oBody.oBodyMae{ display:flex; flex-direction:column; overflow:hidden; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
+/* Eumae tab: the thread scrolls on its own and the box stays pinned under it. */
+.oBody.oBodyEumae{ display:flex; flex-direction:column; overflow:hidden; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
 /* Side padding moves inside so the thread's scrollbar sits on the panel's right edge. */
-.oBody.oBodyMae{ padding-left:0; padding-right:0; }
-.oBodyMae .oMaeHead, .oBodyMae .oThread, .oBodyMae .oAsk{ padding-left:16px; padding-right:16px; }
-.oMae{ display:flex; flex-direction:column; flex:1; min-height:0; }
-.oMaeHead{ display:flex; align-items:center; gap:8px; flex:none; }
-.oMaeActs{ margin-left:auto; display:flex; gap:6px; }
+.oBody.oBodyEumae{ padding-left:0; padding-right:0; }
+.oBodyEumae .oEumaeHead, .oBodyEumae .oThread, .oBodyEumae .oAsk{ padding-left:16px; padding-right:16px; }
+.oEumae{ display:flex; flex-direction:column; flex:1; min-height:0; }
+.oEumaeHead{ display:flex; align-items:center; gap:8px; flex:none; }
+.oEumaeActs{ margin-left:auto; display:flex; gap:6px; }
 .oThread{ flex:1; min-height:0; overflow-y:auto; padding-bottom:10px; scrollbar-width:thin; scrollbar-color:var(--hair) transparent; }
 .oThread .imTime{ margin:14px 0 0; }
 .oAsk .chatDown{ top:-46px; }
@@ -1722,8 +1722,8 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .oAsk .oSend{ width:40px; height:40px; margin:0; }
 .oMe{ margin:12px 0 0 auto; max-width:85%; width:fit-content; background:var(--ac); color:var(--acink);
   border-radius:16px; padding:8px 13px; font-size:15px; line-height:1.45; }
-.oMae1{ margin:12px 0 0; font-size:15px; line-height:1.5; white-space:pre-wrap; }
-.oMae1 .n{ color:var(--ac); font-size:13px; font-weight:600; margin-bottom:2px; }
+.oEumae1{ margin:12px 0 0; font-size:15px; line-height:1.5; white-space:pre-wrap; }
+.oEumae1 .n{ color:var(--ac); font-size:13px; font-weight:600; margin-bottom:2px; }
 .oAsk{ position:relative; flex:none; display:flex; gap:8px; align-items:flex-end; padding:12px 0 0;
   background:var(--card); }
 .oAsk .sinput{ padding:10px 12px; font-size:15px; margin:0; flex:1; min-width:0; }
@@ -1861,10 +1861,10 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   color:var(--mut); font-size:12px; display:grid; place-items:center; padding:0; }
 .itStep.cur .itNum{ border-color:var(--ac); color:var(--ac); }
 .itNum.on{ background:var(--ac); border-color:var(--ac); color:var(--acink); }
-.itMae{ display:flex; flex-direction:column; gap:4px; margin:18px 0 12px; padding:12px 14px; border-radius:14px;
+.itEumae{ display:flex; flex-direction:column; gap:4px; margin:18px 0 12px; padding:12px 14px; border-radius:14px;
   background:var(--card); font-size:15px; line-height:1.45; }
-.itMae .n{ color:var(--ac); font-size:13px; font-weight:600; }
-.itMae .fact{ align-self:flex-start; margin:4px 0 0; padding:0; }
+.itEumae .n{ color:var(--ac); font-size:13px; font-weight:600; }
+.itEumae .fact{ align-self:flex-start; margin:4px 0 0; padding:0; }
 .itActs{ display:flex; gap:8px; align-items:center; }
 .itActs > button{ padding:7px 16px; border-radius:99px; border:1px solid var(--hair); background:none; color:var(--tx);
   font-size:14px; font-weight:600; }
@@ -1877,7 +1877,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .conBar button{ flex:none; padding:6px 0 7px; font-size:16px; color:var(--mut); background:none; border:0;
   border-bottom:2px solid transparent; }
 .conBar button.on{ color:var(--tx); font-weight:600; border-bottom-color:var(--ac); }
-.hbMae{ color:var(--ac); }
+.hbEumae{ color:var(--ac); }
 @media (min-width:900px){ .conBar{ display:none; } }
 
 /* ── Desktop scale-up for the flat-row style (his call, Oct 18) ───────── */
@@ -2082,24 +2082,24 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .tlDot:focus-visible{ box-shadow:0 0 0 2px var(--acsoft); }
 .tlRow.done .tlDot{ background:var(--ac); border-color:var(--ac); }
 
-/* Mae's tool steps and plan card (flat rows, existing tokens only). */
-.maeSteps{ margin:4px 0 6px; display:flex; flex-direction:column; gap:2px; }
-.maeStep{ color:var(--mut); font-size:13px; }
-.maeStep::before{ content:"· "; }
-.maeStep.bad{ color:var(--rd); }
-.maePlan{ margin:8px 0; }
-.maePlan .flbl{ margin-bottom:4px; }
-.maeLine{ display:flex; gap:12px; align-items:baseline; padding:7px 0; }
-.maeKind{ flex:none; min-width:96px; color:var(--ac); font-size:13px; font-weight:600; }
-.maeKind.danger{ color:var(--rd); }
-.maeTxt{ flex:1; min-width:0; font-size:15px; color:var(--tx); overflow-wrap:anywhere; }
-.maeTxt .fp{ display:block; }
-.maeDone{ padding:3px 0; color:var(--tx); }
-.maeOpen{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-.maeUndo{ margin-top:6px; padding:6px 0; font-weight:600; }
+/* Eumae's tool steps and plan card (flat rows, existing tokens only). */
+.eumaeSteps{ margin:4px 0 6px; display:flex; flex-direction:column; gap:2px; }
+.eumaeStep{ color:var(--mut); font-size:13px; }
+.eumaeStep::before{ content:"· "; }
+.eumaeStep.bad{ color:var(--rd); }
+.eumaePlan{ margin:8px 0; }
+.eumaePlan .flbl{ margin-bottom:4px; }
+.eumaeLine{ display:flex; gap:12px; align-items:baseline; padding:7px 0; }
+.eumaeKind{ flex:none; min-width:96px; color:var(--ac); font-size:13px; font-weight:600; }
+.eumaeKind.danger{ color:var(--rd); }
+.eumaeTxt{ flex:1; min-width:0; font-size:15px; color:var(--tx); overflow-wrap:anywhere; }
+.eumaeTxt .fp{ display:block; }
+.eumaeDone{ padding:3px 0; color:var(--tx); }
+.eumaeOpen{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.eumaeUndo{ margin-top:6px; padding:6px 0; font-weight:600; }
 .gOwnHd{ display:flex; align-items:center; justify-content:space-between; }
-.maeNew{ color:var(--ac); font-weight:600; }
-.maeGuess{ font-style:italic; }
+.eumaeNew{ color:var(--ac); font-weight:600; }
+.eumaeGuess{ font-style:italic; }
 /* Phone task rows (his screenshot IMG_5093, Oct 19): the title gets the full
    width and reads as a sentence; priority, project and date drop to a second
    line under it instead of squeezing the title into a narrow column. */
@@ -2154,7 +2154,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .tlMove .tlField .sinput{ flex:1; min-width:0; -webkit-appearance:none; appearance:none; min-height:40px; color:var(--tx); text-align:left; }
 .tlMove .tlField .sinput::-webkit-date-and-time-value{ text-align:left; }
 
-/* The Sandbox (src/sandbox.ts): a page Mae made, in a locked frame. The frame
+/* The Sandbox (src/sandbox.ts): a page Eumae made, in a locked frame. The frame
    is white because a made page brings its own colours. */
 .sbx{ display:flex; flex-direction:column; gap:4px; }
 .sbxHead{ display:flex; align-items:flex-start; gap:10px; }
@@ -2221,7 +2221,7 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .itab .itStep{ border-bottom:0; min-height:0; padding:4px 0; }
 .itab .itSub{ margin:2px 0 6px; }
 .itab .flbl{ margin:12px 0 2px; }
-.itab .itMae{ margin:12px 0 8px; }
+.itab .itEumae{ margin:12px 0 8px; }
 .itab .itIn{ padding:3px 8px; }
 .itab .itTIn{ padding:4px 8px; }
 @media (min-width: 900px){ .itHead > .itActs > button{ font-size:14px; } }

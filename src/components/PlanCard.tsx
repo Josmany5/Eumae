@@ -1,4 +1,4 @@
-/* Mae's plan card: what she'll make or change, waiting for the person's tap.
+/* Eumae's plan card: what she'll make or change, waiting for the person's tap.
  *
  *  Pending: one flat row per change (kind · what · details), Approve and
  *  Cancel. Nothing has happened yet, and the card says so.
@@ -6,12 +6,12 @@
  *  which puts every store back to before the plan ran.
  *  Failed: why, and that nothing changed (a plan never lands half-done). */
 
-import { executePlan, undoPlan, type Plan } from '../mae/dispatcher';
-import type { MaeStep } from '../mae/loop';
+import { executePlan, undoPlan, type Plan } from '../eumae/dispatcher';
+import type { EumaeStep } from '../eumae/loop';
 import { dataChanged, setFocus } from '../focus';
 import { logEv } from '../log';
 import { useNav, type NotifyOpts } from '../nav';
-import type { ItemKind } from '../mae/registry';
+import type { ItemKind } from '../eumae/registry';
 
 type Notify = (message: string, opts?: NotifyOpts) => void;
 
@@ -46,10 +46,10 @@ export function madeLine(plan: Plan): string {
   return counts.size ? `${created ? 'Created' : 'Done'}: ${countLine(counts)}` : (plan.receipt ?? []).map((r) => r.summary).join(' · ') || 'Done';
 }
 
-/** What Mae did this turn, folded into one quiet line (his call, Oct 19):
+/** What Eumae did this turn, folded into one quiet line (his call, Oct 19):
  *  reads once each, then one "Planned 3 tasks, 2 events" instead of a row per
  *  call. A step that failed still gets its own row, because that one matters. */
-export function MaeSteps({ steps, plan }: { steps?: MaeStep[]; plan?: Plan }) {
+export function EumaeSteps({ steps, plan }: { steps?: EumaeStep[]; plan?: Plan }) {
   if (!steps || !steps.length) return null;
   const reads = [...new Set(steps.filter((s) => s.ok && !s.label.startsWith('Planned') && !s.label.startsWith('Took ')).map((s) => s.label))];
   const bad = steps.filter((s) => !s.ok);
@@ -64,10 +64,10 @@ export function MaeSteps({ steps, plan }: { steps?: MaeStep[]; plan?: Plan }) {
   }
   if (!parts.length && !bad.length) return null;
   return (
-    <div className="maeSteps">
-      {parts.length ? <div className="maeStep">{parts.join(' · ')}</div> : null}
+    <div className="eumaeSteps">
+      {parts.length ? <div className="eumaeStep">{parts.join(' · ')}</div> : null}
       {bad.map((s, i) => (
-        <div key={i} className="maeStep bad">
+        <div key={i} className="eumaeStep bad">
           {s.label}
         </div>
       ))}
@@ -106,17 +106,17 @@ export function PlanCard({ plan, onChange, notify, area = 'Chat' }: { plan: Plan
 
   if (plan.status === 'pending') {
     return (
-      <div className="needs maePlan">
+      <div className="needs eumaePlan">
         <div className="flbl">Plan · {count} {count === 1 ? 'change' : 'changes'}</div>
         {lines.map((l, i) => (
-          <div key={i} className="maeLine">
-            <span className={`maeKind${l.verb === 'Delete' || l.verb === 'Skip' ? ' danger' : ''}`}>
+          <div key={i} className="eumaeLine">
+            <span className={`eumaeKind${l.verb === 'Delete' || l.verb === 'Skip' ? ' danger' : ''}`}>
               {l.verb} {l.kind.toLowerCase()}
             </span>
-            <span className="maeTxt">
+            <span className="eumaeTxt">
               {l.text}
               {l.detail ? <span className="fp">{l.detail}</span> : null}
-              {mixed && l.fresh ? <span className="fp maeNew">New</span> : null}
+              {mixed && l.fresh ? <span className="fp eumaeNew">New</span> : null}
             </span>
           </div>
         ))}
@@ -160,10 +160,10 @@ export function PlanCard({ plan, onChange, notify, area = 'Chat' }: { plan: Plan
     };
     const groups = [...byKind.entries()].filter(([k]) => page[k]).sort((a, b) => KIND_ORDER.indexOf(a[0]) - KIND_ORDER.indexOf(b[0]));
     return (
-      <div className="rcpt maePlan">
-        <div className="maeDone">{line}</div>
+      <div className="rcpt eumaePlan">
+        <div className="eumaeDone">{line}</div>
         {groups.length ? (
-          <div className="maeOpen">
+          <div className="eumaeOpen">
             {groups.map(([k, items]) => (
               <button key={k} className="chip" onClick={() => view(k, items)}>
                 {groups.length === 1 && items.length === 1 ? `View ${items[0].title}` : groups.length === 1 ? `View ${NOUN[k][1]}` : `View ${countLine(new Map([[k as string, items.length]]))}`}
@@ -179,7 +179,7 @@ export function PlanCard({ plan, onChange, notify, area = 'Chat' }: { plan: Plan
   if (plan.status === 'cancelled' || plan.status === 'undone') return null;
 
   return (
-    <div className="rcpt maePlan">
+    <div className="rcpt eumaePlan">
       <div className={plan.status === 'failed' ? 'danger' : 'fsub'}>
         {plan.status === 'failed' ? plan.error : 'Working…'}
       </div>

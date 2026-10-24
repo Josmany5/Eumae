@@ -2,7 +2,7 @@
  *
  * Each row: done circle, the aim with its percent and a thin meter, the
  * count and pace underneath, the project chip, and on the right the date
- * and the next milestone. Tap a goal and it opens read-only in Mae's office
+ * and the next milestone. Tap a goal and it opens read-only in Eumae's office
  * (the Goal tab); Edit there opens the form.
  */
 

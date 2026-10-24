@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { getProjects, projectOf, linkItem, unlinkItem, snapshotProjects, restoreProjects, type LinkKind } from '../../projects';
 import { getGoals, goalOf, linkToGoal, unlinkFromGoal, isActiveGoal, snapshotGoals, restoreGoals, type GoalLinkKind } from '../../goals';
 
-/* Mae's office edits in place (his call, Oct 21): the item opens read-only
+/* Eumae's office edits in place (his call, Oct 21): the item opens read-only
  * as clean rows; Edit turns each row's value into an input right there (see
  * ItemFields.tsx), with no form swap. Done saves, Cancel reverts. Delete sits in red
  * beside Edit. Every change shows the Undo pill. */

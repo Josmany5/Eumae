@@ -136,7 +136,7 @@ async function resolveSourceUri(uri: string): Promise<string> {
   }
 }
 
-/* The turn's own tool exchange: Mae's function calls and the app's answers,
+/* The turn's own tool exchange: Eumae's function calls and the app's answers,
    sent back so the model can keep going (read, then plan). Only the four part
    shapes Gemini needs travel, and only in the two roles it accepts; anything
    else is dropped rather than relayed. `thoughtSignature` must ride back on

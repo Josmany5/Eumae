@@ -9,7 +9,7 @@ import { setFocus } from '../focus';
 import { EventForm, removeEvent } from './QuickAdd';
 
 /* The edit pop-up: the task or event form over whatever page you're on, so
-   editing from Mae's office never moves you. Every save offers Undo. */
+   editing from Eumae's office never moves you. Every save offers Undo. */
 export default function EditModal() {
   const target = useEditModal();
   const { notify } = useNav();

@@ -1,4 +1,4 @@
-/* The guess detector (his call, Oct 19, 9:47 PM). When Mae stages something,
+/* The guess detector (his call, Oct 19, 9:47 PM). When Eumae stages something,
  * code compares each detail with what the person actually typed in this
  * thread. A detail they never said (60 minutes, urgent, a due date) goes back
  * to her in the tool result with a nudge to SAY it and why, in her own words,
@@ -6,7 +6,7 @@
  * speaks, he decides.
  *
  * Words-based and deliberately forgiving: a detail counts as theirs when the
- * phrase Mae passed appears in what they said, or when they said anything of
+ * phrase Eumae passed appears in what they said, or when they said anything of
  * that kind (a duration, a time, an urgency word). False "theirs" are cheap
  * (she just doesn't mention it); false "guesses" make her chatty, so the bar
  * for flagging is "nothing of this kind was said at all". */
@@ -32,7 +32,7 @@ function fmtMin(n: number): string {
   return m ? `${h} h ${m} min` : `${h} hour${h === 1 ? '' : 's'}`;
 }
 
-/** What Mae added to one item that the person didn't say, in plain words. */
+/** What Eumae added to one item that the person didn't say, in plain words. */
 function addedTo(kind: 'task' | 'event' | 'goal', x: Args, raw: Args, heard: string): string[] {
   const out: string[] = [];
   const dateField = (f: string, word: string) => {

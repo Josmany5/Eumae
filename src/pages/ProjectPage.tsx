@@ -118,7 +118,7 @@ export default function ProjectPage({ arg }: PageProps) {
  * the progress meter, a trail of milestones, then one section per milestone
  * holding its tasks, events, goals, notes and files, with a "+ Add to …"
  * under each. Anything under no milestone sits at the bottom. Edit opens the
- * project's own tab in Mae's office. Pin makes this whole view a Console
+ * project's own tab in Eumae's office. Pin makes this whole view a Console
  * page; the same component renders there. */
 export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted?: () => void; embedded?: boolean }) {
   const { notify, go, openPanel } = useNav();
@@ -166,10 +166,10 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
     openOfficeEdit('project', p.id);
     openPanel('item');
   };
-  /* Chat about it: Mae's office opens on this project, so she already has it. */
+  /* Chat about it: Eumae's office opens on this project, so she already has it. */
   const chat = () => {
     setFocus({ k: 'project', id: p.id });
-    openPanel('mae');
+    openPanel('eumae');
   };
   const pin = () => {
     if (pinnedAt >= 0) {
@@ -223,7 +223,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
     notify(`${KIND_LABEL[k]} added to ${where ? where.t : p.n}.`);
   };
 
-  /* Tasks, events and goals open in Mae's office like everywhere else;
+  /* Tasks, events and goals open in Eumae's office like everywhere else;
      notes and files open their own pages. */
   const open = (k: LinkKind, rid: string) => {
     if (k === 'note') return go('note', rid);
@@ -261,7 +261,7 @@ export function ProjectView({ id, onDeleted, embedded }: { id: string; onDeleted
   };
 
 
-  /* Open = this project's tab in Mae's office, read-only (his call, Oct 22). */
+  /* Open = this project's tab in Eumae's office, read-only (his call, Oct 22). */
   const openInOffice = () => {
     openOfficeView('project', p.id);
     openPanel('item');

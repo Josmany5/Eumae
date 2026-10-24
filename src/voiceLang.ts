@@ -1,4 +1,4 @@
-/* Voice language — the one language the mic listens in, Mae answers in, and
+/* Voice language — the one language the mic listens in, Eumae answers in, and
  * read-aloud speaks in.
  *
  * The list is Google's Chirp 3: HD locales (cloud.google.com/text-to-speech/docs/
@@ -16,7 +16,7 @@ export interface VoiceLang {
   code: string;
   /** What the picker shows, in the language itself. */
   label: string;
-  /** The English name Mae is told to answer in. */
+  /** The English name Eumae is told to answer in. */
   english: string;
   /** The tag the browser's recogniser listens with. */
   rec: string;
@@ -100,7 +100,7 @@ export function storedVoiceLang(): VoiceLang {
 /** The language rule, the same template for every language (English too):
  *  the setting decides, never the language earlier messages happen to be in.
  *  It was soft before ("unless they clearly write in another language") and
- *  blank for English, so an old Spanish chat kept Mae in Spanish (Oct 20). */
+ *  blank for English, so an old Spanish chat kept Eumae in Spanish (Oct 20). */
 export function replyLanguageLine(l: VoiceLang = storedVoiceLang()): string {
   return `\n\nLANGUAGE (app setting, overrides everything above): reply only in ${l.english}, even if earlier messages in this chat are in a different language. Short replies like "ok" or "yes" do not change the language.`;
 }

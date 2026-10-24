@@ -9,7 +9,7 @@ import { useGoalAdd } from '../GoalAdd';
 import { sortMilestones, newMilestone } from '../../milestones';
 import { dueLabel } from '../../pages/GoalsPage';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
-import { setFocus, onDataChange, dataChanged, askMae, takeOfficeEdit, takeOfficeView, onOfficeEdit, type Focus } from '../../focus';
+import { setFocus, onDataChange, dataChanged, askEumae, takeOfficeEdit, takeOfficeView, onOfficeEdit, type Focus } from '../../focus';
 import { getEvent, saveEvent, ymd, importanceOf, IMPORTANCE_LABEL, EVENT_IMPORTANCE, EVENT_TYPES, type CalEvent, type EventType, type EventImportance } from '../../events';
 import { removeEvent, TYPE_LABEL } from '../QuickAdd';
 import { MilestonesEditor } from '../Milestones';
@@ -38,16 +38,16 @@ function useOfficeEdit(k: 'task' | 'event' | 'goal' | 'project', id: string, sta
   }, [k, id]);
 }
 
-/** "Ask Mae" sends a ready question into the office's Mae chat (his call, Oct 21). */
+/** "Ask Eumae" sends a ready question into the office's Eumae chat (his call, Oct 21). */
 function useAsk(onView: (v: PanelView) => void, focus: Focus) {
   return (q: string) => {
     void focus;
-    askMae(q);
-    onView('mae');
+    askEumae(q);
+    onView('eumae');
   };
 }
 
-/** The tapped item's own tab in Mae's office: what it is, its details, its
+/** The tapped item's own tab in Eumae's office: what it is, its details, its
  *  steps, and the moves you'd make on it. Read-only first; Edit turns each
  *  row's value into an input in place (his correction, Oct 21 4:22 PM), Delete sits beside it. */
 export function ItemTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
@@ -238,7 +238,7 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
         <p className="itNote itNone">None</p>
       )}
       {editing ? null : (
-        <div className="itMae">
+        <div className="itEumae">
           <span className="n">Eumae</span>
           <span>Want to prep for this? Ask me for talking points or what to bring.</span>
           <button className="fact" onClick={() => ask(`Help me prep for "${ev.t}" (${dayWord}). Give me talking points and what to bring.`)}>Ask Eumae</button>
@@ -419,7 +419,7 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         </>
       ) : null}
       {editing ? null : (
-        <div className="itMae">
+        <div className="itEumae">
           <span className="n">Eumae</span>
           <span>Want help with this one? Ask me to break it into steps or plan when to do it.</span>
           <button className="fact" onClick={() => ask(`Help me with my task "${t.t}"${t.due ? ` (due ${dueWord}${t.tm ? ' ' + fmtTime(t.tm) : ''})` : ''}. Break it into steps or plan when to do it.`)}>Ask Eumae</button>
@@ -639,7 +639,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         ...notes.map((n) => ({ k: 'note' as const, id: n.id, t: titleOf(n) || 'Untitled', sub: 'Note' })),
       ].map((r) => (
         <div key={r.k + r.id} className="frow itKV">
-          <button className="ft tlT" onClick={() => (r.k === 'note' ? onView('mae') : setFocus({ k: r.k, id: r.id }))}>
+          <button className="ft tlT" onClick={() => (r.k === 'note' ? onView('eumae') : setFocus({ k: r.k, id: r.id }))}>
             {r.t}
           </button>
           <span className="fmeta">{r.sub}</span>
@@ -699,7 +699,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
             ))}
         </>
       ) : null}
-      <div className="itMae">
+      <div className="itEumae">
         <span className="n">Eumae</span>
         <span>{!tasks.length && !evs.length && !ms.length ? 'Nothing serves this goal yet. Ask me for a first small step.' : 'Stuck or behind? Ask me for the next small step.'}</span>
         <button className="fact" onClick={() => ask(`Help me with my goal "${g.t}" (${pct}%${count ? ', ' + count : ''}${pace === 'behind' ? ', behind pace' : ''}). What's the next small step?`)}>Ask Eumae</button>
@@ -937,7 +937,7 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
         </>
       ) : null}
       {editing ? null : (
-        <div className="itMae">
+        <div className="itEumae">
           <span className="n">Eumae</span>
           <span>{total ? 'Want the next step, or a plan to the deadline?' : 'Nothing in here yet. Ask me to break it into phases and steps.'}</span>
           <button className="fact" onClick={() => ask(`Help me with my project "${p.n}" (${projectCountLabel(p)}${p.due ? ', deadline ' + p.due : ''}). What should I do next?`)}>Ask Eumae</button>

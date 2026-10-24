@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-/** The item you tapped, shown in Mae's office as its own tab (Task, Event,
+/** The item you tapped, shown in Eumae's office as its own tab (Task, Event,
  *  Goal…). One at a time, in memory only: a reload lands back on the page's
  *  normal tabs. */
 export type FocusKind = 'task' | 'event' | 'day' | 'goal' | 'project';
@@ -104,11 +104,11 @@ export function onDataChange(f: () => void): () => void {
   };
 }
 
-/* "Ask Mae" from a row: open the office and send a ready question, so she
+/* "Ask Eumae" from a row: open the office and send a ready question, so she
    answers right away instead of waiting on an empty box (his call, Oct 20). */
 let pendingAsk: string | null = null;
 const askers = new Set<() => void>();
-export function askMae(q: string): void {
+export function askEumae(q: string): void {
   pendingAsk = q;
   askers.forEach((f) => f());
 }
@@ -124,7 +124,7 @@ export function onAsk(f: () => void): () => void {
   };
 }
 
-/* "Edit" from a row's ⋯ menu: open the item in Mae's office already in edit
+/* "Edit" from a row's ⋯ menu: open the item in Eumae's office already in edit
    mode (his call, Oct 21). The item tab takes the request when it's up. */
 let pendingEdit: string | null = null;
 const officeEditSubs = new Set<() => void>();
@@ -133,7 +133,7 @@ export function openOfficeEdit(k: 'task' | 'event' | 'goal' | 'project', id: str
   setFocus({ k, id, ...(day ? { day } : {}) });
   officeEditSubs.forEach((f) => f());
 }
-/* "Open in Mae's office": open it READ-ONLY (his call, Oct 22). Drops any
+/* "Open in Eumae's office": open it READ-ONLY (his call, Oct 22). Drops any
    edit request still waiting from an earlier tap, and tells an open tab in
    edit mode to leave it. */
 let pendingView: string | null = null;

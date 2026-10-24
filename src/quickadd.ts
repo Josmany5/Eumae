@@ -8,7 +8,7 @@
  *
  * Pure and local: no network, no model. Whatever it can't read stays in the
  * title, and every field it pulls out shows as a chip the user can remove.
- * Mae handles anything fuzzier from Chat.
+ * Eumae handles anything fuzzier from Chat.
  */
 
 import type { EventType, Repeat } from './events';

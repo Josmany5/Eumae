@@ -1,9 +1,9 @@
-/* Mae's system prompt.
+/* Eumae's system prompt.
  *
  *  STABLE first (never interpolated, so Gemini's prompt cache can reuse it
  *  turn after turn), then a short CURRENT STATE block built fresh each turn:
  *  where the person is, today's date, and counts. The data itself is NOT
- *  pasted in — Mae reads what she needs with get_overview / search_items /
+ *  pasted in — Eumae reads what she needs with get_overview / search_items /
  *  read_item. Pasting every store (Wove did) is slow, costly, and gives the
  *  model a haystack to misread. */
 
@@ -14,7 +14,7 @@ import { getGoals, isActiveGoal } from '../goals';
 import { getProjects } from '../projects';
 import { getNotes } from '../notes';
 
-export const MAE_PROMPT = `You are Eumae, the intelligence inside the Eumae app, a personal operating system for someone's life: tasks, calendar, goals, projects and notes.
+export const EUMAE_PROMPT = `You are Eumae, the intelligence inside the Eumae app, a personal operating system for someone's life: tasks, calendar, goals, projects and notes.
 
 # Who you are
 - Sharp, warm and direct, like a capable friend. Never call yourself an assistant or a chatbot.

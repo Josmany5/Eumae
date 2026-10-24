@@ -1,10 +1,10 @@
-/* The dispatcher: the one door every Mae action goes through.
+/* The dispatcher: the one door every Eumae action goes through.
  *
  *  The model fills out tool forms. This module:
  *    1. refuses a tool that isn't in the registry,
  *    2. checks the form all the way down (schema.ts) and the rules a form
  *       can't say (the action's own verify: ids exist, events have times),
- *    3. runs READS at once and hands the result back to Mae,
+ *    3. runs READS at once and hands the result back to Eumae,
  *    4. never runs a WRITE when the model asks: it stages it as a step on a
  *       plan, which the person sees as a card and approves or cancels,
  *    5. runs an approved plan as ONE unit: every store is snapshotted first,
@@ -51,11 +51,11 @@ export interface Plan {
   ranAt?: number;
 }
 
-/** What one call came back as, for Mae (functionResponse) and the steps row. */
+/** What one call came back as, for Eumae (functionResponse) and the steps row. */
 export interface CallOutcome {
   name: string;
   ok: boolean;
-  /** For Mae. */
+  /** For Eumae. */
   response: Record<string, unknown>;
   /** For the person, one short line. */
   label: string;
@@ -128,7 +128,7 @@ export function continuePlan(open: Plan): Plan {
   return copy;
 }
 
-/** The person decided the old card while Mae was answering: keep only what
+/** The person decided the old card while Eumae was answering: keep only what
  *  this turn added, as a card of its own. */
 export function detachFresh(plan: Plan): Plan | null {
   const steps = plan.steps.filter((st) => st.fresh);
@@ -171,7 +171,7 @@ export function dispatch(calls: readonly ToolCall[], plan: Plan, heard = ''): Ca
       continue;
     }
     /* Dates and times in the person's words become real values here, by
-       code (when.ts); Mae never does calendar maths. */
+       code (when.ts); Eumae never does calendar maths. */
     const when = resolveWhen(action.params, args);
     if (when.error) {
       out.push(refuse(name, `Nothing was done. ${when.error} Then call again with what they say.`));
@@ -344,7 +344,7 @@ export function newPlan(): Plan {
   return { id: `plan${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`, steps: [], status: 'pending' };
 }
 
-/** How a finished plan is told back to Mae on the next turn, so she knows
+/** How a finished plan is told back to Eumae on the next turn, so she knows
  *  what exists now without guessing. */
 export function planNote(plan: Plan): string {
   if (plan.status === 'done') return `[Plan approved and done: ${(plan.receipt ?? []).map((r) => r.summary).join('; ')}. Ids: ${(plan.touched ?? []).map((t) => `${t.kind} ${t.id} "${t.title}"`).join(', ')}]`;

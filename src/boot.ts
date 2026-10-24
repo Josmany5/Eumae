@@ -236,9 +236,9 @@ function readNav(): {
     const settingsOpen = parsed.settingsOpen === true;
     const settingsView = typeof parsed.settingsView === 'string' ? parsed.settingsView : null;
     const panelOpen = parsed.panelOpen === true;
-    /* Old readings map onto Mae's office: Activity lives in the Logbook now,
+    /* Old readings map onto Eumae's office: Activity lives in the Logbook now,
        and Studio's sandbox is Chat's Sandbox. */
-    const pv = parsed.panelView === 'activity' ? 'logbook' : parsed.panelView === 'studio' ? 'sandbox' : parsed.panelView;
+    const pv = parsed.panelView === 'mae' ? 'eumae' : parsed.panelView === 'activity' ? 'logbook' : parsed.panelView === 'studio' ? 'sandbox' : parsed.panelView;
     const panelView: PanelView = PANEL_VIEWS.includes(pv as PanelView) ? (pv as PanelView) : 'context';
     return { tab, stack, settingsOpen, settingsView, panelOpen, panelView };
   } catch {

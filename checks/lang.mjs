@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-/* Language check: the Voice language setting decides the language Mae replies
+/* Language check: the Voice language setting decides the language Eumae replies
  * in, for every language, English included, whatever earlier messages were in.
  *
  * The bug this exists for (Oct 20): the line was blank for English and soft
  * ("unless they clearly write in another language") for the rest, so a chat
  * that started in Spanish stayed Spanish after switching to Italian or English,
  * even after a reload. These cases build the real request the way Chat and the
- * office do (toApiBody, then withMae) and read what the model would see.
+ * office do (toApiBody, then withEumae) and read what the model would see.
  *
  * Exit codes: 0 everything holds, 1 something does not. */
 import { buildSync } from 'esbuild';
@@ -25,7 +25,7 @@ const setLang = (code) => localStorage.setItem('eumae:voiceLang', JSON.stringify
 
 const out = buildSync({
   stdin: {
-    contents: `export * from './src/voiceLang'; export { toApiBody } from './src/request'; export { withMae } from './src/mae/loop';`,
+    contents: `export * from './src/voiceLang'; export { toApiBody } from './src/request'; export { withEumae } from './src/eumae/loop';`,
     resolveDir: new URL('..', import.meta.url).pathname,
     loader: 'ts',
   },
@@ -55,15 +55,15 @@ ok(true, `all ${M.VOICE_LANGS.length} languages get the hard rule, English inclu
 
 // 2. The real request, Spanish history, then switch languages.
 const spanish = [
-  { role: 'you', text: 'Hola Mae, ¿cómo estás hoy?' },
-  { role: 'mae', text: '¡Hola! Estoy bien, gracias. ¿En qué te ayudo?' },
+  { role: 'you', text: 'Hola Eumae, ¿cómo estás hoy?' },
+  { role: 'eumae', text: '¡Hola! Estoy bien, gracias. ¿En qué te ayudo?' },
   { role: 'you', text: 'Hazme un tracker de hábitos por favor' },
-  { role: 'mae', text: 'Claro, aquí tienes tu tracker de hábitos.' },
+  { role: 'eumae', text: 'Claro, aquí tienes tu tracker de hábitos.' },
 ];
 const req = (text) => ({ text, refs: [] });
 function seen(code, text) {
   setLang(code);
-  const body = M.withMae(M.toApiBody(req(text), spanish), 'Chat');
+  const body = M.withEumae(M.toApiBody(req(text), spanish), 'Chat');
   return { sp: body.data.systemPrompt, msg: body.data.message };
 }
 for (const [code, name] of [['it-IT', 'Italian'], ['en-US', 'English'], ['ja-JP', 'Japanese'], ['es-US', 'Spanish']]) {

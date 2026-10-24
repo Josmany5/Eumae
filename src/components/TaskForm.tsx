@@ -2,10 +2,10 @@ import { useState, type ReactNode } from 'react';
 import type { Task, TaskPriority } from '../tasks';
 
 /* The full task form: used in place on the Tasks page and in the edit
-   pop-up any page can open from Mae's office. */
+   pop-up any page can open from Eumae's office. */
 export function TaskForm({ task, lists, onSave, onCancel, onDelete, saveLabel, extra, bare }: {
   task: Task; lists: { id: string; n: string }[]; onSave: (t: Task) => void; onCancel: () => void; onDelete?: () => void;
-  /** Mae's office edits in place: its button reads Done. */
+  /** Eumae's office edits in place: its button reads Done. */
   saveLabel?: string;
   /** More fields before the buttons (the office adds Project and Goal). */
   extra?: ReactNode;

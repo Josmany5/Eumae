@@ -1,6 +1,6 @@
 import type { ApiChatBody, ThreadTurn } from './request';
-import type { Plan } from './mae/dispatcher';
-import type { MaeStep } from './mae/loop';
+import type { Plan } from './eumae/dispatcher';
+import type { EumaeStep } from './eumae/loop';
 
 /** One message in a thread. Attachments are pointers (§4.15): `uploadId`
  *  survives in storage, `url` is memory-only (live send + live preview). */
@@ -12,10 +12,10 @@ export interface Msg extends ThreadTurn {
   sources?: { uri: string; title: string }[];
   attachments?: { label: string; icon: string; uploadId?: string; url?: string }[];
   ts: number;
-  /** Mae's staged changes for this reply, shown as a plan card. */
+  /** Eumae's staged changes for this reply, shown as a plan card. */
   plan?: Plan;
-  /** Mae's tool steps for this reply ("Read the overview"). */
-  steps?: MaeStep[];
+  /** Eumae's tool steps for this reply ("Read the overview"). */
+  steps?: EumaeStep[];
   /** A page this reply made or changed in the Sandbox (src/sandbox.ts). */
   made?: { id: string; v: number; title: string };
 }
@@ -91,7 +91,7 @@ function load(): Thread[] {
   }
 }
 
-/* Something outside Chat (Mae's office) changed a thread: App re-reads. */
+/* Something outside Chat (Eumae's office) changed a thread: App re-reads. */
 export const THREADS_EVENT = 'eumae:threads';
 export function threadsChanged(): void {
   try {
@@ -260,13 +260,13 @@ function isMsg(m: unknown): m is Msg {
 
 function cleanMessages(messages: unknown): Msg[] {
   if (!Array.isArray(messages)) return [];
-  return messages.filter(isMsg).map(cleanMae);
+  return messages.filter(isMsg).map(cleanEumae);
 }
 
 /* A plan or steps that don't parse are dropped from the message rather than
    dropping the message. A plan left "running" by a reload mid-run can't be
    trusted either way, so it reads as failed. */
-function cleanMae(m: Msg): Msg {
+function cleanEumae(m: Msg): Msg {
   const o = m as Msg & { plan?: unknown; steps?: unknown };
   let out: Msg = m;
   if (o.plan !== undefined) {
@@ -278,7 +278,7 @@ function cleanMae(m: Msg): Msg {
       out = rest;
     } else if (p!.status === 'running') out = { ...out, plan: { ...(p as Plan), status: 'failed', error: 'Interrupted. Check your items before trying again.' } };
   }
-  if (o.steps !== undefined && !(Array.isArray(o.steps) && o.steps.every((x) => x && typeof (x as MaeStep).label === 'string'))) {
+  if (o.steps !== undefined && !(Array.isArray(o.steps) && o.steps.every((x) => x && typeof (x as EumaeStep).label === 'string'))) {
     const { steps: _s, ...rest } = out;
     void _s;
     out = rest;

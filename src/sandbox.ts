@@ -1,7 +1,7 @@
-/* The Sandbox: things Mae makes in chat (a page, a widget, a calculator, a
+/* The Sandbox: things Eumae makes in chat (a page, a widget, a calculator, a
  * game), kept with their versions.
  *
- * The idea is Wove's (ChatPreview + ArtifactViewer), the code is ours: Mae
+ * The idea is Wove's (ChatPreview + ArtifactViewer), the code is ours: Eumae
  * writes the WHOLE page as one ```html block every time, never a patch; each
  * change becomes the next version; the page runs in a locked frame. Two things
  * Wove didn't do: the frame gets a lock rule that blocks the network (a made
@@ -216,7 +216,7 @@ export function markSaved(id: string, fileId: string | undefined, savedV: number
   save(load().map((x) => (x.id === id ? { ...x, fileId, savedV } : x)));
 }
 
-/** The page on show, handed to Mae so an edit changes THAT code (Wove's rule:
+/** The page on show, handed to Eumae so an edit changes THAT code (Wove's rule:
  *  never rebuild from memory). Only the chat's own page, never another's. */
 export function sandboxContext(threadId: string | null): string {
   const it = latestForThread(threadId);

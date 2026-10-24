@@ -1,4 +1,4 @@
-/* Mae's tool registry: every action Mae can take, with its form, its risk,
+/* Eumae's tool registry: every action Eumae can take, with its form, its risk,
  *  how it reads on the plan card, and how it runs.
  *
  *  Rules this file keeps (each one is a bug Wove had):
@@ -12,7 +12,7 @@
  *    subtasks with a done check, goal measure and pace, project links), and
  *    each is checked to the bottom of every list by schema.ts.
  *  - Ids must exist. A write naming an id that isn't there is refused before
- *    it reaches the plan card, with a sentence telling Mae how to find it.
+ *    it reaches the plan card, with a sentence telling Eumae how to find it.
  *  - Reads run at once. Writes never run when the model calls them: the
  *    dispatcher stages them on the plan card, and they run on Approve. */
 
@@ -36,7 +36,7 @@ export interface PlanLine {
   verb: 'Create' | 'Edit' | 'Complete' | 'Reopen' | 'Move' | 'Add' | 'Log' | 'Link' | 'Unlink' | 'Delete' | 'Skip';
   text: string;
   detail?: string;
-  /** What Mae filled in herself, in plain words ("due date, 30 min"). */
+  /** What Eumae filled in herself, in plain words ("due date, 30 min"). */
   guess?: string;
 }
 
@@ -47,7 +47,7 @@ export interface Opened {
 
 export interface Result {
   ok: boolean;
-  /** One sentence, for Mae and for the receipt. */
+  /** One sentence, for Eumae and for the receipt. */
   summary: string;
   data?: unknown;
   error?: string;
@@ -133,7 +133,7 @@ export function fmtTime(tm?: string): string {
 }
 
 /* 5B (his call, Oct 19): people read "7 pm", never "19:00". Tool fields stay
-   HH:MM; anything Mae SAYS is put back into a human clock. Skips ranges of
+   HH:MM; anything Eumae SAYS is put back into a human clock. Skips ranges of
    digits that are not times (ratios like 3:2 stay, since the minutes must be
    two digits) and anything already followed by am/pm. */
 export function humanTimes(text: string): string {
@@ -439,8 +439,8 @@ const reads: Action[] = [
 
 /* ───────────────────────── creates ───────────────────────── */
 
-/* Honesty (2B, his call Oct 19): every detail Mae filled in herself is named,
-   and Mae SAYS it in her reply (guess.ts checks her too; no card label, his call 9:47 PM). */
+/* Honesty (2B, his call Oct 19): every detail Eumae filled in herself is named,
+   and Eumae SAYS it in her reply (guess.ts checks her too; no card label, his call 9:47 PM). */
 const guessedField = list(
   "Names of the fields YOU filled in that the person did not say (e.g. [\"due\", \"estimate\", \"priority\"]). Leave out when every detail came from them.",
   s('A field name from this object.', { max: 30 }),

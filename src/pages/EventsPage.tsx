@@ -43,7 +43,7 @@ export default function EventsPage({ arg }: PageProps) {
   const [form, setForm] = useState<{ ev: CalEvent; editing: boolean } | null>(null);
   /* An event just marked Not attended stays while it offers Reschedule?. */
   const [held, setHeld] = useState<{ ev: CalEvent; day: string }[]>([]);
-  /* A tapped event opens in Mae's office (his call, Oct 21), never a card. */
+  /* A tapped event opens in Eumae's office (his call, Oct 21), never a card. */
   const open = (e: CalEvent) => {
     if (!e.id) return;
     setForm(null);
