@@ -2322,3 +2322,8 @@ select.itIn{ text-align-last:right; padding-right:8px; }
   .con .sdiv, .con .tlDay .snow, .con .wc .wt{ font-size:14px; }
   .con .attActs button{ font-size:15px; }
 }
+/* Phone: Done, Move and Ask Eumae stay on one line (his call, Oct 24). */
+@media (max-width:899px){
+  .tlActs:not(.attActs){ flex-wrap:nowrap; gap:6px; }
+  .tlActs:not(.attActs) button{ padding:5px 10px; }
+}
