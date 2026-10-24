@@ -493,6 +493,9 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .msgCol{ display:flex; flex-direction:column; align-items:flex-start; max-width:80%; }
 .msg.you .msgCol{ align-items:flex-end; }
 .msgCol .bubble{ max-width:100%; }
+/* Eumae replies keep their box but run the full width (his call, Oct 24). */
+.msg:not(.you) > .bubble, .msg:not(.you) > .msgCol{ max-width:100%; width:100%; }
+.msg:not(.you) .msgCol .bubble{ width:100%; }
 /* One sentence under a reply when it is not what it should be — about what
    arrived, not instead of it (ChatScreen.tsx). Muted, because it is the footnote
    to the answer, not a second answer. */
