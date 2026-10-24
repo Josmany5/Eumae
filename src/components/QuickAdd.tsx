@@ -161,7 +161,19 @@ export function QuickAdd({
           aria-label={placeholder}
         />
         {onMore ? (
-          <button className="qaMore" onClick={() => onMore(parsed)} aria-label="All fields">
+          <button
+            className="qaMore"
+            onClick={() => {
+              /* Drop the keyboard first so the whole office shows before you
+                 edit (his call, Oct 24), then fold the bar back into the +. */
+              ref.current?.blur();
+              (document.activeElement as HTMLElement | null)?.blur?.();
+              const q = parsed;
+              close();
+              onMore(q);
+            }}
+            aria-label="All fields"
+          >
             More
           </button>
         ) : null}
