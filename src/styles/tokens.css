@@ -1175,6 +1175,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
    hand-rolled 24px inline. Title + sub read as a unit. */
 .screenT{ font-size:28px; font-weight:700; letter-spacing:-.02em; margin:0 0 4px; }
 .screenS{ font-size:14px; color:var(--mut); }
+.screenS.conDate{ color:var(--tx); }
 /* Dashboard page tabs: the mockup's .pn — quiet pills, active is filled. */
 .pn{ display:flex; gap:6px; margin:4px 0 12px; align-items:center; flex-wrap:wrap; }
 .pn button{ background:var(--card2); border-radius:99px; padding:6px 12px;

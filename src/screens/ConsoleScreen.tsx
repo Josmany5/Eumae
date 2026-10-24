@@ -100,7 +100,7 @@ export default function ConsoleScreen() {
       <div className="row dashHead">
         <div className="g">
           <div className="screenT dupT">Console</div>
-          <div className="screenS">{editing ? 'Rearranging. Hold a widget and drag it.' : `${today} · ${openCount} left today`}</div>
+          <div className="screenS conDate">{editing ? 'Rearranging. Hold a widget and drag it.' : `${today} · ${openCount} left today`}</div>
         </div>
         <div className="dashSlot" ref={setHeadSlot} />
       </div>
