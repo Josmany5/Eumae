@@ -173,10 +173,15 @@ export default function TasksPage({ arg }: PageProps) {
         placeholder="New task"
         hint="Type it how you'd say it: “Call Marcus tomorrow 4pm 30m !urgent #work”"
         onAdd={addQuick}
+        /* More: make it, then open it in Eumae's office in edit mode, the same
+           clean inline rows as editing (his ok, Oct 24). Undo removes it. */
         onMore={(q) => {
           const t = fromQuick(q.title.trim() ? q : { ...q, title: 'New task' });
-          deleteTask(t.id); /* fromQuick saved a stub; the form saves for real */
-          setDraft(t);
+          saveTask(t);
+          refresh();
+          notify(`Added ${t.t}`, { undo: () => { deleteTask(t.id); refresh(); } });
+          openOfficeEdit('task', t.id);
+          openPanel('item');
         }}
       />
       {draft ? (

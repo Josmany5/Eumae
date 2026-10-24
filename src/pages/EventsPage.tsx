@@ -14,6 +14,7 @@ import {
   getEvent,
   getEvents,
   saveEvent,
+  deleteEvent,
   ymd,
   EVENT_TYPES,
   type CalEvent,
@@ -94,7 +95,13 @@ export default function EventsPage({ arg }: PageProps) {
           refresh();
           notify(`Added ${e.t}${e.rep ? ' · ' + repLabel(e.rep, e.d) : ''}`);
         }}
-        onMore={(q) => setForm({ ev: quickToEvent(q, today), editing: false })}
+        /* More: make it, then edit it inline in Eumae's office (his ok, Oct 24). */
+        onMore={(q) => {
+          const e = saveEvent(quickToEvent(q.title.trim() ? q : { ...q, title: 'New event' }, today));
+          refresh();
+          notify(`Added ${e.t}`, { undo: () => { deleteEvent(e); refresh(); } });
+          if (e.id) { openOfficeEdit('event', e.id, e.d); openPanel('item'); }
+        }}
       />
       {form ? (
         <EventForm

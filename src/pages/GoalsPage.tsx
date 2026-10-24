@@ -139,10 +139,14 @@ export default function GoalsPage({ arg }: PageProps) {
             },
           });
         }}
+        /* More: make it, then edit it inline in Eumae's office (his ok, Oct 24). */
         onMore={(q) => {
-          const g = createGoal(q.title || 'New goal');
-          deleteGoal(g.id); /* the form saves for real */
-          setEdit({ ...g, td: q.date ?? '' });
+          const g = createGoal(q.title.trim() || 'New goal');
+          saveGoal({ ...g, td: q.date ?? '' });
+          refresh();
+          notify('Goal set.', { undo: () => { deleteGoal(g.id); refresh(); } });
+          openOfficeEdit('goal', g.id);
+          openPanel('item');
         }}
       />
       {edit ? (

@@ -29,7 +29,7 @@ function attendWord(ev: CalEvent | undefined, day: string): { text: string; ask:
   return a === 'yes' ? { text: 'Attended', ask: false } : a === 'no' ? { text: 'Not attended', ask: false } : { text: 'Did you attend?', ask: true };
 }
 import { QuickAdd, EventForm, quickToEvent, removeEvent } from '../components/QuickAdd';
-import { setFocus, onEditEvent, onDataChange } from '../focus';
+import { setFocus, onEditEvent, onDataChange, openOfficeEdit } from '../focus';
 import { evKind } from '../components/shell/Timeline';
 import { fmtTime } from '../quickadd';
 import { useMedia } from '../useMedia';
@@ -222,7 +222,14 @@ export default function CalendarPage({ arg }: PageProps) {
           refresh();
           notify(`Added ${e.t} · ${new Date(e.d + 'T12:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}${e.tm ? ' ' + fmtTime(e.tm) : ''}`);
         }}
-        onMore={(q) => setForm({ ev: quickToEvent(q, day), editing: false })}
+        /* More: make it, then edit it inline in Eumae's office (his ok, Oct 24). */
+        onMore={(q) => {
+          const e = saveEvent(quickToEvent(q.title.trim() ? q : { ...q, title: 'New event' }, day));
+          setDay(e.d);
+          refresh();
+          notify(`Added ${e.t}`, { undo: () => { deleteEvent(e); refresh(); } });
+          if (e.id) { openOfficeEdit('event', e.id, e.d); openPanel('item'); }
+        }}
       />
 
       {form ? (
