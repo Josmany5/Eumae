@@ -1,3 +1,4 @@
+import { setHomeOn } from '../../home';
 import { useEffect, useState } from 'react';
 import { Icon } from '../shell/icons';
 import { LOG_AREAS, useLog, type LogArea } from '../../log';
@@ -177,6 +178,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
   // what puts it in a backup and lets Delete everything clear it. The default is
   // whatever boot applied in index.html — when nothing is stored yet, that value
   // already followed the OS, so the pane can't disagree with the screen.
+  const [homeScr, setHomeScr] = useStored('homeScreen', false);
   const [theme, setTheme] = useStored('theme', document.documentElement.dataset.theme || 'dark');
   /* The voice is stored as the name a request sends (`voices.ts`) rather than as
      the row's label: the old value was the mockup's `Nova`, which this server
@@ -559,10 +561,19 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
         )}
 
         {view === 'appearance' && (
-          <div className="seg" style={{ padding: '12px 16px' }}>
-            <button className={theme === 'dark' ? 'on' : ''} onClick={() => pickTheme('dark')}>Dark</button>
-            <button className={theme === 'light' ? 'on' : ''} onClick={() => pickTheme('light')}>Light</button>
-          </div>
+          <>
+            <div className="seg" style={{ padding: '12px 16px' }}>
+              <button className={theme === 'dark' ? 'on' : ''} onClick={() => pickTheme('dark')}>Dark</button>
+              <button className={theme === 'light' ? 'on' : ''} onClick={() => pickTheme('light')}>Light</button>
+            </div>
+            {/* Phone Home test (Oct 24): opens on an apps home on phone. */}
+            <div className="card cardPad">
+              <div className="gr">
+                <div className="g"><b>Home screen</b><div className="xs m">Phone only. Eumae opens on a home of apps; the back arrow returns to it.</div></div>
+                <Toggle on={homeScr} onClick={() => { setHomeScr(!homeScr); setHomeOn(!homeScr); }} label="Home screen" />
+              </div>
+            </div>
+          </>
         )}
 
         {view === 'voice' && (

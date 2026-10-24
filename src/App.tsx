@@ -28,6 +28,8 @@ import {
 import { boot, saveNav } from './boot';
 import { logEv } from './log';
 import { saveUpload, uploadData } from './uploads';
+import HomeScreen, { type HomeDest } from './screens/HomeScreen';
+import { homeOn, isPhone, HOME_EVENT } from './home';
 
 const CON_PAGES: { label: string; page: string | null }[] = [
   { label: 'Today', page: null },
@@ -128,6 +130,21 @@ export default function App() {
   const [turn, setTurnState] = useState<Turn>(DEFAULT_TURN);
 
   const notify = useCallback((msg: string, opts?: NotifyOpts) => setToast({ msg, undo: opts?.undo, id: Date.now() }), []);
+
+  /* Phone Home test (Oct 24): opt-in in Settings → Appearance. When on, a
+     phone opens on Home; a tile opens its screen, and the header's back
+     arrow on a top-level screen comes back here. */
+  const [homeEnabled, setHomeEnabled] = useState(homeOn);
+  const [showHome, setShowHome] = useState(() => homeOn() && isPhone());
+  useEffect(() => {
+    const f = () => {
+      const on = homeOn();
+      setHomeEnabled(on);
+      setShowHome(on && isPhone());
+    };
+    window.addEventListener(HOME_EVENT, f);
+    return () => window.removeEventListener(HOME_EVENT, f);
+  }, []);
 
   const closePanel = useCallback(() => setPanelOpen(false), []);
   const openPanel = useCallback((view?: PanelView) => {
@@ -459,6 +476,28 @@ export default function App() {
     [go, goTab, notify, pickFile, newChat, tab],
   );
 
+  const openFromHome = useCallback(
+    (d: HomeDest) => {
+      if ('soon' in d) {
+        notify(`${d.soon} is coming soon.`);
+        return;
+      }
+      if ('settings' in d) {
+        setSettingsOpen(true);
+        return;
+      }
+      setShowHome(false);
+      if ('office' in d) {
+        goTab('console');
+        openPanel(d.office);
+        return;
+      }
+      goTab(d.tab);
+      if (d.page) go(d.page, d.arg);
+    },
+    [go, goTab, notify, openPanel],
+  );
+
   /* Persist where you are on every change, so a reload restores it. One small
      sync JSON write — no render, no debounce to lose the last step. Overlays
      ride along: Settings open + section, panel open + reading — reload restores
@@ -486,6 +525,7 @@ export default function App() {
     panelOpen ? 'panelOpen' : '',
     booting ? 'booting' : '',
     kbdOpen ? 'kbd-open' : '',
+    showHome ? 'homeOn' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -507,11 +547,21 @@ export default function App() {
           onThreadRename={renameThread}
         />
         <div className="col">
+          {showHome ? (
+            <HomeScreen
+              onOpen={openFromHome}
+              onSearch={() => {
+                setShowHome(false);
+                openSearch();
+              }}
+            />
+          ) : (
+          <>
           <Header
             title={top ? pageTitle(top.page) : LABELS[tab]}
             onMenu={() => setDrawerOpen(true)}
             onActivity={() => openPanel()}
-            onBack={top ? back : undefined}
+            onBack={top ? back : homeEnabled && isPhone() ? () => setShowHome(true) : undefined}
           />
           {tab === 'console' && (!top || CON_PAGES.some((c) => c.page === top.page)) ? (
             /* Phone: Console's sub-pages as one scrolling row under the
@@ -556,6 +606,8 @@ export default function App() {
             )}
           </main>
           <TabBar active={tab} onChange={goTab} />
+          </>
+          )}
         </div>
 
         <EditModal />

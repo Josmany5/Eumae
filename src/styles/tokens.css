@@ -2329,3 +2329,33 @@ select.itIn{ text-align-last:right; padding-right:8px; }
   .tlActs:not(.attActs){ flex-wrap:nowrap; gap:6px; }
   .tlActs:not(.attActs) button{ padding:5px 10px; font-size:13px; }
 }
+
+/* ── Phone Home test (his ask, Oct 24; mockup 14). Opt-in in Settings →
+   Appearance. Tiles are doorways to the screens that already exist. Colors
+   are the spaces' own accents, nothing new. ─────────────────────────────── */
+.hm{ flex:1; overflow-y:auto; padding:calc(14px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom)); }
+.hmHead{ display:flex; align-items:center; }
+.hmHead h1{ flex:1; margin:0; font-size:32px; font-weight:700; letter-spacing:-.02em; }
+.hmHead .hb svg{ stroke:var(--tx); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.hmHi{ margin:8px 0 6px; font-size:17px; line-height:1.45; color:var(--mut); }
+.hmHi b{ color:var(--tx); }
+.hmSec{ margin-top:18px; }
+.hmSecT{ display:flex; align-items:center; gap:8px; font-size:16px; font-weight:600; color:var(--mut); margin-bottom:12px; }
+.hmDot{ width:9px; height:9px; border-radius:50%; }
+.hmGrid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:16px 8px; }
+.hmTile{ display:flex; flex-direction:column; align-items:center; gap:7px; background:none; border:0; padding:0; color:var(--tx); }
+.hmTile.soon{ opacity:.45; }
+.hmIc{ position:relative; width:64px; height:64px; border-radius:18px; display:flex; align-items:center; justify-content:center; }
+.hmIc svg{ width:28px; height:28px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.hmDate{ font-size:26px; font-weight:700; }
+.hmN{ font-size:14px; white-space:nowrap; }
+.hmSoon{ margin-top:-4px; font-size:13px; color:var(--mut); }
+.hmBadge{ position:absolute; top:-6px; right:-6px; min-width:22px; height:22px; padding:0 6px; border-radius:11px;
+  background:var(--rd); color:#fff; font-style:normal; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.sp-chat{ background:#4a8dff; color:#fff; }
+.sp-console{ background:#e0a040; color:#0b0b0c; }
+.sp-studio{ background:#9a86ff; color:#fff; }
+.sp-library{ background:#4fbf7f; color:#0b0b0c; }
+.sp-classroom{ background:#3fbfbf; color:#0b0b0c; }
+.sp-guild{ background:#e0708f; color:#fff; }
+.sp-grey{ background:var(--card3); color:var(--tx); }
