@@ -239,9 +239,9 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
       )}
       {editing ? null : (
         <div className="itMae">
-          <span className="n">Mae</span>
+          <span className="n">Eumae</span>
           <span>Want to prep for this? Ask me for talking points or what to bring.</span>
-          <button className="fact" onClick={() => ask(`Help me prep for "${ev.t}" (${dayWord}). Give me talking points and what to bring.`)}>Ask Mae</button>
+          <button className="fact" onClick={() => ask(`Help me prep for "${ev.t}" (${dayWord}). Give me talking points and what to bring.`)}>Ask Eumae</button>
         </div>
       )}
     </div>
@@ -420,9 +420,9 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
       ) : null}
       {editing ? null : (
         <div className="itMae">
-          <span className="n">Mae</span>
+          <span className="n">Eumae</span>
           <span>Want help with this one? Ask me to break it into steps or plan when to do it.</span>
-          <button className="fact" onClick={() => ask(`Help me with my task "${t.t}"${t.due ? ` (due ${dueWord}${t.tm ? ' ' + fmtTime(t.tm) : ''})` : ''}. Break it into steps or plan when to do it.`)}>Ask Mae</button>
+          <button className="fact" onClick={() => ask(`Help me with my task "${t.t}"${t.due ? ` (due ${dueWord}${t.tm ? ' ' + fmtTime(t.tm) : ''})` : ''}. Break it into steps or plan when to do it.`)}>Ask Eumae</button>
         </div>
       )}
     </div>
@@ -700,9 +700,9 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         </>
       ) : null}
       <div className="itMae">
-        <span className="n">Mae</span>
+        <span className="n">Eumae</span>
         <span>{!tasks.length && !evs.length && !ms.length ? 'Nothing serves this goal yet. Ask me for a first small step.' : 'Stuck or behind? Ask me for the next small step.'}</span>
-        <button className="fact" onClick={() => ask(`Help me with my goal "${g.t}" (${pct}%${count ? ', ' + count : ''}${pace === 'behind' ? ', behind pace' : ''}). What's the next small step?`)}>Ask Mae</button>
+        <button className="fact" onClick={() => ask(`Help me with my goal "${g.t}" (${pct}%${count ? ', ' + count : ''}${pace === 'behind' ? ', behind pace' : ''}). What's the next small step?`)}>Ask Eumae</button>
       </div>
       </>
       )}
@@ -938,9 +938,9 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
       ) : null}
       {editing ? null : (
         <div className="itMae">
-          <span className="n">Mae</span>
+          <span className="n">Eumae</span>
           <span>{total ? 'Want the next step, or a plan to the deadline?' : 'Nothing in here yet. Ask me to break it into phases and steps.'}</span>
-          <button className="fact" onClick={() => ask(`Help me with my project "${p.n}" (${projectCountLabel(p)}${p.due ? ', deadline ' + p.due : ''}). What should I do next?`)}>Ask Mae</button>
+          <button className="fact" onClick={() => ask(`Help me with my project "${p.n}" (${projectCountLabel(p)}${p.due ? ', deadline ' + p.due : ''}). What should I do next?`)}>Ask Eumae</button>
         </div>
       )}
     </div>

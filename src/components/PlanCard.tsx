@@ -87,7 +87,7 @@ export function PlanCard({ plan, onChange, notify, area = 'Chat' }: { plan: Plan
     if (back === p) return;
     onChange(back);
     dataChanged();
-    logEv({ area, text: 'Undid Mae\'s plan' });
+    logEv({ area, text: 'Undid Eumae\'s plan' });
   };
 
   const approve = () => {
@@ -96,10 +96,10 @@ export function PlanCard({ plan, onChange, notify, area = 'Chat' }: { plan: Plan
     dataChanged();
     if (ran.status === 'done') {
       const msg = madeLine(ran);
-      logEv({ area, text: `Mae: ${msg}` });
+      logEv({ area, text: `Eumae: ${msg}` });
       notify(`${msg}.`, { undo: () => undo(ran) });
     } else {
-      logEv({ area, text: `Mae's plan failed: ${ran.error}`, status: 'bad' });
+      logEv({ area, text: `Eumae's plan failed: ${ran.error}`, status: 'bad' });
       notify('That plan didn\'t go through. Nothing changed.');
     }
   };
@@ -127,7 +127,7 @@ export function PlanCard({ plan, onChange, notify, area = 'Chat' }: { plan: Plan
           <button
             onClick={() => {
               onChange({ ...plan, status: 'cancelled' });
-              logEv({ area, text: 'Cancelled Mae\'s plan' });
+              logEv({ area, text: 'Cancelled Eumae\'s plan' });
             }}
           >
             Cancel

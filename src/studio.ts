@@ -106,7 +106,7 @@ export const STUDIO_TEMPLATES: Record<string, StudioTemplate> = {
     v: [["Weekly", "Eumae - week of Oct 3", "Demo: Chat works end to end", "Blocked: none. Risk: Nov 2 scope creep", "Next: v8 navigation mockup"], ["Status", "Uptown Web Design - October", "Sites live: 4 \u00b7 Leads: 3", "Terravita is the warm one - follow up Monday", "Next: one call, one mockup"]] },
   "Memo": { u: "A short decision document. Reader should finish knowing what you want.",
     s: ["First line: the ask", "Three supporting points, no more", "What happens if we do nothing"],
-    v: [["Decision", "Memo: ship v8 before the backend", "Demo needs one honest screen flow", "Backend is five boxes; Nov 2 shows the slice", "Doing nothing costs the YC shot"], ["Update", "Memo: agents get names", "A name is a job title, not a second mind", "Mae is the intelligence in every seat", "Effective now, everywhere"]] },
+    v: [["Decision", "Memo: ship v8 before the backend", "Demo needs one honest screen flow", "Backend is five boxes; Nov 2 shows the slice", "Doing nothing costs the YC shot"], ["Update", "Memo: agents get names", "A name is a job title, not a second mind", "Eumae is the intelligence in every seat", "Effective now, everywhere"]] },
   "Landing page": { u: "One page, one action. Everything on it argues for the tap.",
     s: ["Headline = the outcome, not the product", "One call to action, repeated", "Proof near every claim"],
     v: [["Classic", "Uptown Web Design", "A website that answers the phone", "$400 flat \u00b7 live in a week", "See the Terravita mockup"], ["Bold", "YOUR CUSTOMERS ARE GOOGLING YOU RIGHT NOW", "What they find is either a menu or a mess", "Fixed in a week, one flat price", "Get the free mockup"]] },

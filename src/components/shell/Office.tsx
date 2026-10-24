@@ -49,24 +49,24 @@ const OFFICE: Record<TabId, OTab[]> = {
     { id: 'logbook', label: 'Logbook' },
   ],
   console: [
-    { id: 'mae', label: 'Mae' },
+    { id: 'mae', label: 'Eumae' },
     { id: 'desk', label: 'Desk' },
     { id: 'logbook', label: 'Logbook' },
   ],
   studio: [
-    { id: 'mae', label: 'Mae' },
+    { id: 'mae', label: 'Eumae' },
     { id: 'build', label: 'Build' },
     { id: 'desk', label: 'Desk' },
     { id: 'logbook', label: 'Logbook' },
   ],
   library: [
-    { id: 'mae', label: 'Mae' },
+    { id: 'mae', label: 'Eumae' },
     { id: 'details', label: 'Details' },
     { id: 'desk', label: 'Desk' },
     { id: 'logbook', label: 'Logbook' },
   ],
   classroom: [
-    { id: 'mae', label: 'Mae' },
+    { id: 'mae', label: 'Eumae' },
     { id: 'notes', label: 'My notes' },
     { id: 'desk', label: 'Desk' },
     { id: 'logbook', label: 'Logbook' },
@@ -95,25 +95,25 @@ const ROLE: Partial<Record<TabId, { name: string; intro: string; prompt: string;
   console: {
     name: 'Planner',
     intro: 'I can see your open tasks and this week. Ask me what to do first, or to plan your day.',
-    prompt: 'You are Mae acting as a planner on the Console page. Help the person decide what to do and when. Be brief and concrete.',
+    prompt: 'You are Eumae acting as a planner on the Console page. Help the person decide what to do and when. Be brief and concrete.',
     hint: 'What should I do first?',
   },
   studio: {
     name: 'Coach',
     intro: 'Tell me what you want to make. I\'ll ask what I need and give you tips as you go.',
-    prompt: 'You are Mae acting as a creative coach in Studio. Ask short questions that fill in a brief, give practical tips, and explain why choices work. When they want something to see or use (a page, game, tracker, widget), make it as one ```html block: it goes to the Sandbox, never shown as code. If they say no to an offer, do NOT make it; ask what they want instead. Never claim you made something unless this reply contains it.',
+    prompt: 'You are Eumae acting as a creative coach in Studio. Ask short questions that fill in a brief, give practical tips, and explain why choices work. When they want something to see or use (a page, game, tracker, widget), make it as one ```html block: it goes to the Sandbox, never shown as code. If they say no to an offer, do NOT make it; ask what they want instead. Never claim you made something unless this reply contains it.',
     hint: 'Help me make a one-pager',
   },
   library: {
     name: 'Ask this file',
     intro: 'Ask me about your files. Open one and I\'ll focus on it.',
-    prompt: 'You are Mae helping with the person\'s Library of files. Answer plainly. If they need a specific file, ask them to open it.',
+    prompt: 'You are Eumae helping with the person\'s Library of files. Answer plainly. If they need a specific file, ask them to open it.',
     hint: 'Ask about your files',
   },
   classroom: {
     name: 'Tutor',
     intro: 'Ask me to explain anything from your lessons, or to quiz you.',
-    prompt: 'You are Mae acting as a patient tutor in Classroom. Explain simply, check understanding with a short question, and never lecture at length.',
+    prompt: 'You are Eumae acting as a patient tutor in Classroom. Explain simply, check understanding with a short question, and never lecture at length.',
     hint: 'Explain this simply',
   },
 };
@@ -356,7 +356,7 @@ function MaeTab({ tab }: { tab: TabId }) {
       );
       threadsChanged();
       if (reply.open) setFocus({ k: reply.open.k, id: reply.open.id });
-      if (!reply.ok) logEv({ area: AREA[tab], text: `Mae couldn't answer: ${reply.error}`, status: 'bad' });
+      if (!reply.ok) logEv({ area: AREA[tab], text: `Eumae couldn't answer: ${reply.error}`, status: 'bad' });
     });
   };
 
@@ -382,7 +382,7 @@ function MaeTab({ tab }: { tab: TabId }) {
   return (
     <div className="oMae">
       <div className="oMaeHead">
-        <div className="flbl">Mae · {role.name}</div>
+        <div className="flbl">Eumae · {role.name}</div>
         {thread ? (
           <div className="oMaeActs">
             <button
@@ -409,7 +409,7 @@ function MaeTab({ tab }: { tab: TabId }) {
               <div className="oMe">{m.text}</div>
             ) : (
               <div className="oMae1" data-mid={m.id}>
-                <div className="n">Mae</div>
+                <div className="n">Eumae</div>
                 {m.text || <span className="fsub">Thinking…</span>}
                 {!m.streaming ? <MaeSteps steps={m.steps} plan={m.plan} /> : null}
                 {m.made && thread ? <OfficeMade made={m.made} threadId={thread.id} /> : null}
@@ -444,7 +444,7 @@ function MaeTab({ tab }: { tab: TabId }) {
             }
           }}
           placeholder={role.hint}
-          aria-label="Ask Mae"
+          aria-label="Ask Eumae"
         />
         <button className="oSend" type="submit" disabled={!text.trim() || busy} aria-label="Send">
           <Icon name="up" />
@@ -582,7 +582,7 @@ function ContextTab() {
       <div className="frow"><span className="ft">Today and this week</span></div>
       <div className="frow"><span className="ft">Recent conversations</span></div>
 
-      <div className="flbl">How Mae answers</div>
+      <div className="flbl">How Eumae answers</div>
       <div className="oPick">
         <span className="fsub">Mode</span>
         <Seg<Mode> value={turn.mode} options={['Ask', 'Build', 'Learn']} onPick={(v) => set({ mode: v }, `Mode set to ${v}`)} />
@@ -624,7 +624,7 @@ function ContextTab() {
 function SandboxTab() {
   useSbx();
   const open = getSbx(getOpenSbx()) ?? latestForThread(getCurrentThreadId());
-  if (!open) return <Empty title="Nothing built yet" note="Ask Mae in this chat to make a page, a widget, a calculator or a game. It opens here, and each change becomes a new version." />;
+  if (!open) return <Empty title="Nothing built yet" note="Ask Eumae in this chat to make a page, a widget, a calculator or a game. It opens here, and each change becomes a new version." />;
   return <SandboxView id={open.id} />;
 }
 
@@ -642,9 +642,9 @@ function Desk() {
     <>
       <Empty
         title="Nothing on your desk"
-        note="When Mae notices something or proposes a step, it lands here for your OK. Once it's done, it moves to the Logbook with a receipt and Undo."
+        note="When Eumae notices something or proposes a step, it lands here for your OK. Once it's done, it moves to the Logbook with a receipt and Undo."
       />
-      <p className="oIntro">Mae can't notice or act on her own yet. That comes with the backend.</p>
+      <p className="oIntro">Eumae can't notice or act on its own yet. That comes with the backend.</p>
     </>
   );
 }
@@ -682,11 +682,11 @@ function Logbook({ tab }: { tab: TabId }) {
             ))}
           </>
         ) : (
-          <Empty title="Nothing yet" note={`What you and Mae do in ${AREA[tab]} shows up here, newest first.`} />
+          <Empty title="Nothing yet" note={`What you and Eumae do in ${AREA[tab]} shows up here, newest first.`} />
         )
       ) : part === 'Memory' ? (
         <>
-          <div className="flbl">What Mae remembers</div>
+          <div className="flbl">What Eumae remembers</div>
           {mems.length ? (
             mems.map((m) => (
               <div key={m.id} className="frow"><span className="ft">{m.t}</span></div>
@@ -698,14 +698,14 @@ function Logbook({ tab }: { tab: TabId }) {
         </>
       ) : (
         <>
-          <div className="flbl">What Mae may do</div>
+          <div className="flbl">What Eumae may do</div>
           {Object.entries(grants).map(([k, v]) => (
             <div key={k} className="frow">
               <span className="ft">{GRANT_LABEL[k] ?? k}</span>
               <span className="fmeta">{GRANT_VALUE[v] ?? v}</span>
             </div>
           ))}
-          <p className="oIntro">These are the rules Mae will follow once she can act. Today she only answers.</p>
+          <p className="oIntro">These are the rules Eumae will follow once it can act. Today it only answers.</p>
           <button className="fact" onClick={() => openSettings('permissions')}>Change in Settings</button>
         </>
       )}
@@ -717,9 +717,9 @@ function Logbook({ tab }: { tab: TabId }) {
  *  desktop, where the panel's corner handle is the door. */
 export function OfficePeek({ tab, onOpen }: { tab: TabId; onOpen: () => void }) {
   return (
-    <button className="peek" onClick={onOpen} aria-label="Open Mae's office">
+    <button className="peek" onClick={onOpen} aria-label="Open Eumae's office">
       <span>
-        <b>Mae's office</b>
+        <b>Eumae's office</b>
         <span className="fmeta"> · {OFFICE[tab].map((t) => t.label).join(' · ')}</span>
       </span>
       <Icon name="up" />
@@ -747,16 +747,16 @@ export default function Office({ tab, open, view, onView, onClose, onToggle }: O
     <>
       <div className={`pscrim${open ? ' open' : ''}`} onClick={onClose} />
       {!open ? (
-        <button className="pHandle" onClick={onToggle} aria-label="Open Mae's office" title="Mae's office">
+        <button className="pHandle" onClick={onToggle} aria-label="Open Eumae's office" title="Eumae's office">
           <MaeIcon />
         </button>
       ) : null}
 
-      <aside className={`panel office${open ? ' open' : ''}`} aria-label="Mae's office" aria-hidden={!open}>
+      <aside className={`panel office${open ? ' open' : ''}`} aria-label="Eumae's office" aria-hidden={!open}>
         <div className="oHead">
           <span className="oGrab" aria-hidden="true" />
-          <b>Mae's office</b>
-          <button className="pX" onClick={onClose} aria-label="Close Mae's office">
+          <b>Eumae's office</b>
+          <button className="pX" onClick={onClose} aria-label="Close Eumae's office">
             <Icon name="x" />
           </button>
         </div>
@@ -791,13 +791,13 @@ export default function Office({ tab, open, view, onView, onClose, onToggle }: O
           ) : v === 'sandbox' ? (
             <SandboxTab />
           ) : v === 'build' ? (
-            <Empty title="Nothing to build yet" note="Pick something to make in Studio and its steps, preview and Mae's tips show here." />
+            <Empty title="Nothing to build yet" note="Pick something to make in Studio and its steps, preview and Eumae's tips show here." />
           ) : v === 'details' ? (
             <Empty title="No file open" note="Open a file in the Library and its details show here: type, size, where it's used." />
           ) : v === 'notes' ? (
             <Empty title="No notes yet" note="Notes you take during a lesson will collect here. Coming soon." />
           ) : v === 'huddles' ? (
-            <Empty title="No huddles yet" note="A huddle is a shared chat with Mae, one-on-one or in a group. Mae only uses what's shared there. Coming soon." />
+            <Empty title="No huddles yet" note="A huddle is a shared chat with Eumae, one-on-one or in a group. Eumae only uses what's shared there. Coming soon." />
           ) : v === 'desk' ? (
             <Desk />
           ) : (

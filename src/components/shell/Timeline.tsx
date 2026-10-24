@@ -192,7 +192,7 @@ export function Timeline({ editing, onChange }: { editing: boolean; onChange: ()
                     openPanel('mae');
                   }}
                 >
-                  Ask Mae
+                  Ask Eumae
                 </button>
               </div>
             )

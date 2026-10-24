@@ -39,7 +39,7 @@ export default function Header({ onMenu, onActivity, title, onBack }: HeaderProp
         </button>
       )}
       <div className="t">{title}</div>
-      <button className="hb hbMae" onClick={onActivity} aria-label="Mae's office" title="Mae's office">
+      <button className="hb hbMae" onClick={onActivity} aria-label="Eumae's office" title="Eumae's office">
         <MaeIcon />
       </button>
     </header>

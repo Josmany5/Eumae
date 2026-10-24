@@ -759,7 +759,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
               </select>
             </div>
             <div className="s m">
-              The mic listens in this language, Mae answers in it, and read aloud speaks it. The app&apos;s own
+              The mic listens in this language, Eumae answers in it, and read aloud speaks it. The app&apos;s own
               words stay in your browser&apos;s language for now.
             </div>
           </>
