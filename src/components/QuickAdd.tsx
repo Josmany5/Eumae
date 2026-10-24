@@ -51,6 +51,7 @@ export function QuickAdd({
   const [open, setOpen] = useState(!!autoFocus);
   const ref = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLDivElement>(null);
+  const pressed = useRef(false);
   useEffect(() => {
     if (open) ref.current?.focus();
   }, [open]);
@@ -106,9 +107,26 @@ export function QuickAdd({
     <div
       className="qa"
       ref={box}
+      onPointerDown={(e) => {
+        // A tap on one of the bar's own buttons (More, Add, Close, a chip's ×)
+        // must not count as tapping away. iPhone Safari blurs the input before
+        // the tap lands and gives no relatedTarget, so note the press here.
+        if ((e.target as HTMLElement).closest('button')) {
+          pressed.current = true;
+          window.setTimeout(() => (pressed.current = false), 500);
+        }
+      }}
+      onMouseDown={(e) => {
+        // Desktop: keep the cursor in the input when a button is clicked.
+        if ((e.target as HTMLElement).closest('button')) e.preventDefault();
+      }}
       onBlur={(e) => {
         // Tapping away with nothing typed folds it back into the + button.
-        if (!text.trim() && !box.current?.contains(e.relatedTarget as Node)) setOpen(false);
+        if (text.trim() || box.current?.contains(e.relatedTarget as Node)) return;
+        window.setTimeout(() => {
+          if (pressed.current) return;
+          if (!box.current?.contains(document.activeElement)) setOpen(false);
+        }, 250);
       }}
     >
       {chips.length ? (
