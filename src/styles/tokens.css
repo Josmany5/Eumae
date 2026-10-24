@@ -75,6 +75,8 @@ html[data-motion="reduce"] *::after{
 }
 
 *{ box-sizing:border-box; }
+/* Type pass (Oct 24): numbers line up in columns everywhere (brief). */
+html{ font-variant-numeric:tabular-nums; }
 html,body{ margin:0; padding:0; }
 /* Bare-HTML background matches the resolved theme, so neither side flashes:
    the inline script in index.html sets the same value before first paint,
@@ -129,7 +131,7 @@ input,textarea,select{ font-family:inherit; }
 .hd{ display:flex; align-items:center; gap:4px; padding:calc(10px + env(safe-area-inset-top)) 12px 8px;
   background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
   z-index:20; }
-.hd .t{ flex:1; text-align:center; font-size:16px; font-weight:600; }
+.hd .t{ flex:1; text-align:center; font-size:17px; font-weight:600; }
 .hb{ width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--tx);
   background:var(--card); box-shadow:0 2px 12px rgba(0,0,0,.12); border:1px solid var(--hair); }
 .hb:active{ background:var(--card2); transform:scale(.96); }
@@ -152,7 +154,7 @@ input,textarea,select{ font-family:inherit; }
   background:color-mix(in srgb, var(--ac) 16%, transparent);
   transition:transform .25s ease; }
 .tbar button{ position:relative; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-  color:var(--mut); font-size:10px; padding:6px 0; }
+  color:var(--mut); font-size:13px; padding:6px 0; }
 .tbar button.on{ color:var(--ac); }
 /* Tab taps pop: scale answers the finger, accent answers the state. */
 .tbar button{ transition:transform .16s cubic-bezier(.34,1.56,.64,1), color .15s ease; }
@@ -180,7 +182,7 @@ input,textarea,select{ font-family:inherit; }
 .dr svg{ width:21px; height:21px; stroke:var(--mut); fill:none; stroke-width:1.7;
   stroke-linecap:round; stroke-linejoin:round; flex:none; }
 .dr .g{ flex:1; }
-.dr.ghost{ color:var(--mut); font-size:14px; }
+.dr.ghost{ color:var(--mut); font-size:15px; }
 .ds{ font-size:13px; color:var(--mut); padding:16px 20px 6px; font-weight:600; }
 .dsearch{ padding:4px 16px 8px; }
 .dsearch input{ width:100%; background:var(--card2); border:0; border-radius:10px;
@@ -231,7 +233,7 @@ input,textarea,select{ font-family:inherit; }
    than Settings now: `.sg`/`.sr` by the composer's `+` window, and `.kv` by the
    panel's read-only "How Eumae answers" block. */
 .card{ background:var(--card); border-radius:16px; padding:14px; margin:10px 0; }
-.s{ font-size:14px; } .xs{ font-size:12px; } .m{ color:var(--mut); }
+.s{ font-size:14px; } .xs{ font-size:13px; } .m{ color:var(--mut); }
 /* A log row: the status dot, then the sentence and its house-keeping line.
    Straight from the mockup (115-116), except that its dot classes are renamed
    for what they claim — ok / warn / bad rather than ok / in / bd. */
@@ -283,7 +285,7 @@ input,textarea,select{ font-family:inherit; }
 .dbox{ background:var(--card2); border-radius:12px; padding:12px; margin-top:10px; font-size:15px; }
 /* Segmented control: the mockup's .dial. */
 .dial{ display:flex; background:var(--card2); border-radius:12px; overflow:hidden; margin-top:10px; }
-.dial button{ flex:1; border-radius:0; background:none; padding:11px; font-size:14px; color:var(--mut); }
+.dial button{ flex:1; border-radius:0; background:none; padding:11px; font-size:15px; color:var(--mut); }
 .dial button.on{ background:var(--card3); color:var(--tx); font-weight:700; }
 /* Menu row: hairline-separated line. The mockup's .mm. */
 .mm{ padding:11px 0; border-bottom:1px solid var(--hair); }
@@ -302,11 +304,11 @@ input,textarea,select{ font-family:inherit; }
 .kv{ display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid var(--hair); font-size:15px; }
 .kv:last-child{ border:0; }
 .fi{ width:44px; height:44px; border-radius:12px; background:var(--card2); display:flex; align-items:center;
-  justify-content:center; flex:none; font-size:11px; font-weight:700; color:var(--mut); }
+  justify-content:center; flex:none; font-size:13px; font-weight:700; color:var(--mut); }
 .fi.av{ border-radius:50%; font-size:15px; }
 .acctCard{ display:flex; align-items:center; gap:12px; }
 .fb{ font-size:13px; padding:6px 12px; border-radius:99px; background:var(--card2); flex:none; color:var(--tx); }
-.tag{ display:inline-block; font-size:11px; font-weight:700; color:var(--ac); background:var(--acsoft);
+.tag{ display:inline-block; font-size:13px; font-weight:700; color:var(--ac); background:var(--acsoft);
   border-radius:99px; padding:2px 9px; margin-left:6px; }
 .tag.gr{ color:var(--gr); background:var(--grsoft); }
 .tag.am{ color:var(--am); background:var(--amsoft); }
@@ -390,7 +392,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   .sbSep{ height:1px; background:var(--hair); margin:10px 8px; flex:none; }
   /* Level 2 — the page's own menu. This is what swaps when you change tabs. */
   .sbPanel{ flex:none; display:flex; flex-direction:column; gap:1px; }
-  .sbSect{ font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  .sbSect{ font-size:13px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
     color:var(--mut); padding:12px 10px 4px; }
   .sbFoot{ flex:none; margin-top:auto; padding-top:8px; border-top:1px solid var(--hair); }
 
@@ -450,8 +452,8 @@ input[type=checkbox]{ accent-color:var(--ac); }
 
 .scEmpty{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
   text-align:center; gap:6px; padding:40px 24px; }
-.scEmptyK{ font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ac); }
-.scEmptyT{ margin:0; font-size:20px; font-weight:700; letter-spacing:-.01em; }
+.scEmptyK{ font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ac); }
+.scEmptyT{ margin:0; font-size:20px; font-weight:700; letter-spacing:-.02em; }
 .scEmptyN{ margin:0; max-width:420px; font-size:14px; color:var(--mut); }
 
 .chat{ flex:1; min-height:0; display:flex; flex-direction:column; }
@@ -472,12 +474,12 @@ input[type=checkbox]{ accent-color:var(--ac); }
    the same line (older messages live in storage + drawer, not in this
    window). */
 .dayLine{ display:flex; align-items:center; gap:12px; margin:6px 0 2px;
-  font-size:12px; font-weight:600; letter-spacing:.04em; color:var(--mut); }
+  font-size:13px; font-weight:600; letter-spacing:.04em; color:var(--mut); }
 .dayLine::before, .dayLine::after{ content:""; flex:1; height:1px; background:var(--hair); }
 .dayLine span{ white-space:nowrap; }
 .msg{ display:flex; }
 .msg.you{ justify-content:flex-end; }
-.bubble{ max-width:80%; padding:11px 15px; border-radius:16px; font-size:15px; line-height:1.6;
+.bubble{ max-width:80%; padding:11px 15px; border-radius:16px; font-size:16px; line-height:1.6;
   background:var(--card);
   /* A reply is written by a model, and a model's line breaks are its paragraph
      breaks. Without this they collapse to spaces and a list of steps reads as one
@@ -496,21 +498,21 @@ input[type=checkbox]{ accent-color:var(--ac); }
    to the answer, not a second answer. */
 .bubbleNote{ margin-top:8px; font-size:13px; line-height:1.45; color:var(--mut); }
 .sources{ margin-top:10px; padding-top:8px; border-top:1px solid var(--hair); }
-.sourcesHead{ font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--mut); margin-bottom:4px; }
-.source{ display:block; font-size:12px; color:var(--link, #2563eb); text-decoration:none; padding:3px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sourcesHead{ font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--mut); margin-bottom:4px; }
+.source{ display:block; font-size:13px; color:var(--link, #2563eb); text-decoration:none; padding:3px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* Sources, collapsed — a quiet pill with the count. Tap to fan out the chips. */
 .sources{ margin-top:10px; }
 .sourcesPill{ background:none; border:1px solid var(--hair); border-radius:99px;
-  padding:4px 12px; font-size:11px; font-weight:600; color:var(--mut); }
+  padding:4px 12px; font-size:13px; font-weight:600; color:var(--mut); }
 .sourcesChips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
 .sourceChip{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px 6px 7px;
-  background:var(--card2); border:1px solid var(--hair); border-radius:16px; font-size:12px; color:var(--tx);
+  background:var(--card2); border:1px solid var(--hair); border-radius:16px; font-size:13px; color:var(--tx);
   text-decoration:none; max-width:100%; }
 /* Text stacks: full title on its own line (never cut), domain muted beneath.
    The chip grows to fit — no ellipsis, no clipped half-lines. */
 .sourceText{ display:flex; flex-direction:column; gap:1px; min-width:0; }
 .sourceTitle{ font-weight:600; white-space:normal; overflow:visible; }
-.sourceDomain{ color:var(--mut); font-size:11px; white-space:normal; overflow:visible; }
+.sourceDomain{ color:var(--mut); font-size:13px; white-space:normal; overflow:visible; }
 
 .sourceFav{ width:16px; height:16px; border-radius:50%; flex:none; }
 /* Full-screen image viewer — dark backdrop, picture centered, × top-left. */
@@ -543,7 +545,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .msgAttachImg{ width:100%; height:100%; max-height:280px; border-radius:14px; display:block; object-fit:cover; }
 .msgAttach{ display:flex; align-items:center; gap:8px; max-width:200px;
   background:var(--card2); border-radius:10px; padding:6px 8px; }
-.msgAttachName{ font-size:12px; font-weight:500; overflow:hidden;
+.msgAttachName{ font-size:13px; font-weight:500; overflow:hidden;
   text-overflow:ellipsis; white-space:nowrap; }
 /* The actions under a reply — the mockup's rowA (1642): bare buttons (BTN,
    1641: no background, no border, muted, bright on hover). Tight row, small
@@ -677,9 +679,9 @@ input[type=checkbox]{ accent-color:var(--ac); }
    menu honest: you can always see what you set. */
 .modeBar{ display:flex; flex-wrap:wrap; gap:6px; padding:2px 2px 8px; }
 .modeChip{ background:var(--card2); border-radius:99px; padding:5px 11px;
-  font-size:12px; font-weight:600; color:var(--tx); transition:background .15s ease; }
+  font-size:13px; font-weight:600; color:var(--tx); transition:background .15s ease; }
 .modeChip:hover{ background:var(--card3); }
-.modeChip .cv{ color:var(--mut); font-size:10px; }
+.modeChip .cv{ color:var(--mut); font-size:13px; }
 /* Attachment strip — files waiting to send, above the input. Thumbnails for
    images, icons for the rest, × to remove. The frontier pattern: visible where
    you compose, until sent or detached. */
@@ -695,7 +697,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   display:flex; align-items:center; justify-content:center; }
 .attachImgX svg{ width:13px; height:13px; stroke:#fff; fill:none; stroke-width:2.4;
   stroke-linecap:round; }
-.attachName{ font-size:12px; font-weight:500; color:var(--tx);
+.attachName{ font-size:13px; font-weight:500; color:var(--tx);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
 .attachX{ display:flex; align-items:center; justify-content:center;
   width:24px; height:24px; border:none; background:none; color:var(--mut);
@@ -796,9 +798,9 @@ input[type=checkbox]{ accent-color:var(--ac); }
   .stabs{ width:236px; flex:none; display:flex; flex-direction:column;
     border-right:1px solid var(--hair); background:var(--card); }
   .stAccount{ display:flex; align-items:center; gap:10px; padding:14px 14px 12px; }
-  .stAccount .fi{ width:34px; height:34px; border-radius:50%; font-size:12px; }
+  .stAccount .fi{ width:34px; height:34px; border-radius:50%; font-size:13px; }
   .stScroll{ flex:1; min-height:0; overflow-y:auto; padding:0 8px 8px; }
-  .stGroup{ padding:12px 10px 4px; font-size:11px; font-weight:600; letter-spacing:.06em;
+  .stGroup{ padding:12px 10px 4px; font-size:13px; font-weight:600; letter-spacing:.06em;
     text-transform:uppercase; color:var(--mut); }
   .stab{ display:flex; align-items:center; gap:10px; width:100%; padding:8px 10px;
     border-radius:9px; text-align:left; font-size:14px; color:var(--mut); }
@@ -806,7 +808,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   .stab.on{ background:var(--acsoft); color:var(--ac); font-weight:600; }
   .stab svg{ width:17px; height:17px; flex:none; stroke:currentColor; fill:none; stroke-width:1.7;
     stroke-linecap:round; stroke-linejoin:round; }
-  .stab .v{ margin-left:auto; font-size:12px; color:var(--mut); }
+  .stab .v{ margin-left:auto; font-size:13px; color:var(--mut); }
   .stab.on .v{ color:var(--ac); }
   .stab.danger{ color:var(--rd); }
   .stFoot{ padding:8px; border-top:1px solid var(--hair); }
@@ -828,7 +830,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .pageWrap{ flex:1; min-height:0; display:flex; flex-direction:column; }
 .pageBody{ flex:1; min-height:0; overflow-y:auto; padding:8px 16px calc(16px + env(safe-area-inset-bottom)); }
 .page .empty{ padding:28px 0; text-align:center; font-size:15px; color:var(--mut); }
-.note{ margin:14px 0 0; font-size:12px; color:var(--mut); text-align:center; }
+.note{ margin:14px 0 0; font-size:13px; color:var(--mut); text-align:center; }
 .backbar{ display:none; }
 
 @media (min-width:900px){
@@ -891,7 +893,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   padding:6px 12px calc(20px + env(safe-area-inset-bottom)); }
 .pSec{ padding:8px 0; }
 .pSec + .pSec{ border-top:1px solid var(--hair); }
-.pGrp{ padding:4px 2px 8px; font-size:11px; font-weight:600; letter-spacing:.06em;
+.pGrp{ padding:4px 2px 8px; font-size:13px; font-weight:600; letter-spacing:.06em;
   text-transform:uppercase; color:var(--mut); }
 .pList{ display:flex; flex-direction:column; gap:2px; }
 .pItem{ display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:10px;
@@ -908,7 +910,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   align-items:center; justify-content:center; color:var(--mut); }
 .pRm:hover{ background:var(--card3); color:var(--tx); }
 .pRm svg{ width:13px; height:13px; stroke-width:2.2; }
-.pNote{ margin:10px 2px 0; font-size:12px; line-height:1.5; color:var(--mut); }
+.pNote{ margin:10px 2px 0; font-size:13px; line-height:1.5; color:var(--mut); }
 
 /* The two honest empties. `--card2` at 40% rather than `--card`, which is the
    panel's own background and would have come out invisible on it. */
@@ -918,7 +920,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .pEmpty svg{ width:22px; height:22px; color:var(--mut); stroke:currentColor; fill:none;
   stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 .pEmptyT{ margin:0; font-size:14px; font-weight:600; }
-.pEmptyN{ margin:0; font-size:12px; line-height:1.55; color:var(--mut); }
+.pEmptyN{ margin:0; font-size:13px; line-height:1.55; color:var(--mut); }
 
 @media (min-width:900px){
   /* Desktop: the panel stops being an overlay and becomes the third column.
@@ -969,14 +971,14 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .srEd .sr{ border-bottom:0; flex:1; }
 .srEd > .fb{ margin-right:10px; }
 /* The line under a label — the mockup sets it as `.xs.m` inside the row. */
-.sr .d{ display:block; font-size:12px; line-height:1.45; color:var(--mut); }
+.sr .d{ display:block; font-size:13px; line-height:1.45; color:var(--mut); }
 .sr .ch{ flex:none; display:inline-flex; color:var(--ac); }
 .sr .ch svg{ width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:2;
   stroke-linecap:round; stroke-linejoin:round; }
 /* A section with nothing to choose yet still says why, in its own voice. The `sh`
    is the sheet this window used to be; the class name stayed, the sheet didn't. */
-.shEmpty{ margin:0; padding:12px 14px; font-size:12px; line-height:1.5; color:var(--mut); }
-.shTip{ margin:14px 2px 0; font-size:11px; line-height:1.6; color:var(--mut); }
+.shEmpty{ margin:0; padding:12px 14px; font-size:13px; line-height:1.5; color:var(--mut); }
+.shTip{ margin:14px 2px 0; font-size:13px; line-height:1.6; color:var(--mut); }
 
 /* Library as a Finder — toolbar + contents, phone/desktop. No sidebar: the
    rail's Library section + the view chips already go everywhere. */
@@ -985,7 +987,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 /* Folder pane + toolbar. */
 .lib2-main{ min-width:0; display:flex; flex-direction:column; gap:4px; }
 .lib2-bar{ display:flex; align-items:center; gap:8px; padding:6px 0; }
-.lib2-title{ font-size:20px; font-weight:700; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lib2-title{ font-size:20px; font-weight:700; letter-spacing:-.02em; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .lib2-search{ flex:1; min-width:0; background:var(--card); border:1px solid var(--hair); border-radius:10px; padding:8px 12px; font:inherit; font-size:14px; color:var(--tx); }
 .lib2-bar .lib2-search{ max-width:220px; }
 .lib2-tools{ display:flex; align-items:center; gap:4px; flex:none; }
@@ -998,8 +1000,8 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .lib2-tile{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:12px 6px 10px; background:var(--card); border-radius:14px; text-align:center; min-width:0; }
 .lib2-tileIcon{ width:44px; height:44px; border-radius:12px; background:var(--card2); display:flex; align-items:center; justify-content:center; }
 .lib2-tileIcon svg{ width:24px; height:24px; stroke:var(--ac); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-.lib2-tileName{ font-size:12px; font-weight:600; line-height:1.3; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere; }
-.lib2-tileSub{ font-size:10px; color:var(--mut); }
+.lib2-tileName{ font-size:13px; font-weight:600; line-height:1.3; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere; }
+.lib2-tileSub{ font-size:13px; color:var(--mut); }
 /* Studio / Classroom desktop: gallery + tutorial grids. Phone keeps the
    stacked cards; desktop tiles them. Template detail stays readable. */
 @media (min-width:900px){
@@ -1024,8 +1026,8 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .lib-preview-body audio{ width:100%; }
 .lib-preview-body iframe{ width:100%; height:100%; border:none; border-radius:8px; background:#fff; }
 .daySep{ text-align:center; margin:14px 0 8px; }
-.daySep span, .daySep{ font-size:12px; font-weight:600; color:var(--mut); }
-.drDate{ margin-left:auto; font-size:12px; color:var(--mut); flex:none; }
+.daySep span, .daySep{ font-size:13px; font-weight:600; color:var(--mut); }
+.drDate{ margin-left:auto; font-size:13px; color:var(--mut); flex:none; }
 .dr .g{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .swipeRow{ position:relative; overflow:hidden; }
 .swipeActions{ position:absolute; right:0; top:0; bottom:0; display:flex; align-items:stretch; }
@@ -1041,7 +1043,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   width:min(320px, 85vw); background:var(--card); border-radius:14px; padding:20px;
   box-shadow:0 8px 32px rgba(0,0,0,.25); }
 .dlgTitle{ font-size:17px; font-weight:700; margin-bottom:8px; }
-.dlgBody{ font-size:14px; color:var(--mut); margin-bottom:20px; }
+.dlgBody{ font-size:15px; color:var(--mut); margin-bottom:20px; }
 .dlgBtns{ display:flex; gap:10px; justify-content:flex-end; }
 .dlgCancel{ border:1px solid var(--hair); background:none; border-radius:10px;
   padding:10px 18px; font-size:15px; font-weight:600; color:var(--tx); }
@@ -1070,7 +1072,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   .drIconBtn:hover{ background:var(--card2); }
 }
 .pageHead{ display:flex; align-items:center; gap:12px; padding:16px 20px; }
-.pageHead h2{ flex:1; margin:0; font-size:22px; font-weight:700; }
+.pageHead h2{ flex:1; margin:0; font-size:22px; font-weight:700; letter-spacing:-.02em; }
 /* The note face: a flex column with the sheet growing, so the format bar
    docks at the viewport bottom even on a short note. Sticky-in-flow used to
    leave it floating mid-page on desktop, where the empty space below the
@@ -1086,7 +1088,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 /* The clean note: one bare sheet. No title field (the first block IS the
    title, large + bold by position), no entry boxes, no toolbar on the face.
    The meta line is the only chrome: date + word count, muted. */
-.nmeta{ padding:12px 24px 0; font-size:12px; color:var(--mut); }
+.nmeta{ padding:12px 24px 0; font-size:13px; color:var(--mut); }
 .ndoc{ min-height:60vh; font-size:17px; line-height:1.65; outline:none;
   padding:4px 24px 40px; color:var(--tx); word-wrap:break-word; }
 /* First line is the title — Apple Notes: large, bold, tight. Carried by the
@@ -1095,7 +1097,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
    no selector — a `:first-child` rule styled the second line instead. Class
    beats tag, so an h1 first line still reads as the title. */
 .ndoc h1{ font-size:22px; margin:16px 0 8px; }
-.ndoc .ntitle{ font-size:28px; font-weight:700; line-height:1.2; margin:0 0 8px; }
+.ndoc .ntitle{ font-size:28px; font-weight:700; letter-spacing:-.02em; line-height:1.2; margin:0 0 8px; }
 /* Empty sheet: the placeholder. Toggled by JS (tEmpty) rather than `:empty` —
    the sheet seeds a title div holding a br for caret height, which is never
    `:empty`. */
@@ -1106,7 +1108,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 /* Session ribbon: a hairline date divider, not a box. contenteditable=false
    so the caret never lands in it. */
 .nsess{ display:flex; align-items:center; gap:10px; margin:20px 0 12px;
-  font-size:12px; color:var(--mut); font-weight:600; pointer-events:none;
+  font-size:13px; color:var(--mut); font-weight:600; pointer-events:none;
   user-select:none; }
 .nsess::before, .nsess::after{ content:''; flex:1; height:1px; background:var(--hair); }
 .nsess span{ white-space:nowrap; }
@@ -1136,7 +1138,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .crash{ display:flex; align-items:center; justify-content:center; min-height:100dvh;
   padding:24px; background:var(--bg); }
 .crash-card{ max-width:340px; text-align:center; display:flex; flex-direction:column; gap:12px; }
-.crash-title{ font-size:20px; font-weight:700; color:var(--tx); }
+.crash-title{ font-size:20px; font-weight:700; letter-spacing:-.02em; color:var(--tx); }
 .crash-note{ font-size:14px; line-height:1.5; color:var(--mut); }
 /* ─── Widget cards: the mockup's .wc/.wt/.rm + shake ─────────────────────── */
 /* Card: 2-col grid span, half class halves it. The mockup's .wc/.half. */
@@ -1156,7 +1158,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   border-radius:50%; background:var(--card3); color:var(--tx); padding:0;
   z-index:2; font-size:16px; line-height:1; cursor:pointer; }
 .rmSz{ left:auto; right:40px; width:auto; padding:0 9px;
-  border-radius:99px; font-size:11px; font-weight:600; }
+  border-radius:99px; font-size:13px; font-weight:600; }
 /* Hero number: first card's big count. The mockup's .big. */
 .big{ font-size:34px; font-weight:700; letter-spacing:-.02em; line-height:1.1; }
 .big small{ font-size:15px; font-weight:600; color:var(--mut); margin-left:6px;
@@ -1171,7 +1173,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 
 /* Screen titles: one size everywhere. The mockup's .greet is 28px; screens
    hand-rolled 24px inline. Title + sub read as a unit. */
-.screenT{ font-size:28px; font-weight:700; letter-spacing:-.01em; margin:0 0 4px; }
+.screenT{ font-size:28px; font-weight:700; letter-spacing:-.02em; margin:0 0 4px; }
 .screenS{ font-size:14px; color:var(--mut); }
 /* Dashboard page tabs: the mockup's .pn — quiet pills, active is filled. */
 .pn{ display:flex; gap:6px; margin:4px 0 12px; align-items:center; flex-wrap:wrap; }
@@ -1196,7 +1198,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .cdots{ display:flex; gap:6px; justify-content:center; margin:8px 0 2px; }
 .cdots i{ width:6px; height:6px; border-radius:50%; background:var(--card3); }
 .cdots i.on{ background:var(--ac); width:18px; border-radius:4px; }
-.cpl{ text-align:center; font-size:12px; color:var(--mut); margin-bottom:2px;
+.cpl{ text-align:center; font-size:13px; color:var(--mut); margin-bottom:2px;
   text-transform:uppercase; letter-spacing:.4px; }
 /* Streamlined list: the mockup's ul.st for brief bullets. */
 .st{ list-style:none; margin:0; padding:0; }
@@ -1233,7 +1235,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
    Kept for the Calendar full page (batch 3); the dashboard week widget
    uses .ev rows above. */
 .calgrid{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
-.dw{ text-align:center; font-size:12px; color:var(--mut); padding:4px 0; }
+.dw{ text-align:center; font-size:13px; color:var(--mut); padding:4px 0; }
 .dy{ position:relative; aspect-ratio:1; border-radius:10px; background:none;
   color:var(--tx); font-size:15px; display:flex; align-items:center;
   justify-content:center; cursor:pointer; }
@@ -1330,7 +1332,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .lnkBtn{ background:none; padding:0; color:var(--ac); font:inherit; font-weight:600; }
 
 .mGrid{ display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:2px; padding:8px; }
-.mDow{ text-align:center; font-size:11px; font-weight:700; color:var(--mut); padding:4px 0; text-transform:uppercase; letter-spacing:.04em; }
+.mDow{ text-align:center; font-size:13px; font-weight:700; color:var(--mut); padding:4px 0; text-transform:uppercase; letter-spacing:.04em; }
 .mCell{ display:flex; flex-direction:column; align-items:center; gap:3px; min-height:46px; padding:6px 2px;
   border-radius:10px; background:transparent; color:var(--tx); min-width:0; }
 .mCell.out{ color:var(--mut); opacity:.5; }
@@ -1341,7 +1343,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .mDots{ display:flex; gap:3px; }
 .mDots i{ width:5px; height:5px; border-radius:50%; background:var(--k); }
 .mItems{ display:flex; flex-direction:column; gap:2px; width:100%; }
-.mItem{ display:flex; align-items:center; gap:4px; font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--tx); text-align:left; }
+.mItem{ display:flex; align-items:center; gap:4px; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--tx); text-align:left; }
 .mItem i{ flex:none; width:6px; height:6px; border-radius:50%; background:var(--k); }
 .mItem em{ font-style:normal; color:var(--mut); }
 .mItem.done, .agRow.done, .hEv.done, .hChip.done{ opacity:.45; text-decoration:line-through; }
@@ -1360,13 +1362,13 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .hDay b{ font-size:17px; width:30px; height:30px; line-height:30px; border-radius:50%; }
 .hDay.today b{ background:var(--ac); color:var(--acink); }
 .hAll{ border-top:1px solid var(--hair); border-bottom:1px solid var(--hair); min-height:30px; }
-.hLbl{ align-self:center; text-align:right; padding-right:8px; font-size:10px; }
+.hLbl{ align-self:center; text-align:right; padding-right:8px; font-size:13px; }
 .hAllCell{ display:flex; flex-direction:column; gap:2px; padding:3px 2px; border-left:1px solid var(--hair); min-width:0; cursor:pointer; }
-.hChip{ display:block; text-align:left; font-size:11.5px; font-weight:600; padding:3px 6px; border-radius:6px; background:var(--card2);
+.hChip{ display:block; text-align:left; font-size:13px; font-weight:600; padding:3px 6px; border-radius:6px; background:var(--card2);
   color:var(--tx); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-shadow:inset 3px 0 0 var(--k); }
 .hBody{ position:relative; }
 .hLbls{ position:relative; }
-.hLbls span{ position:absolute; right:8px; transform:translateY(-6px); font-size:10px; white-space:nowrap; }
+.hLbls span{ position:absolute; right:8px; transform:translateY(-6px); font-size:13px; white-space:nowrap; }
 .hCol{ position:relative; border-left:1px solid var(--hair); cursor:pointer; min-width:0; }
 .hCol:hover{ background:rgba(127,127,127,.03); }
 .hLine{ position:absolute; left:0; right:0; border-top:1px solid var(--hair); pointer-events:none; }
@@ -1374,13 +1376,13 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .hNow::before{ content:''; position:absolute; left:-4px; top:-5px; width:8px; height:8px; border-radius:50%; background:var(--rd); }
 .hEv{ position:absolute; z-index:1; display:flex; flex-direction:column; align-items:flex-start; gap:1px; text-align:left;
   background:var(--card2); color:var(--tx); border-radius:8px; padding:4px 6px 4px 9px; overflow:hidden;
-  box-shadow:inset 3px 0 0 var(--k); font-size:12px; line-height:1.25; }
+  box-shadow:inset 3px 0 0 var(--k); font-size:13px; line-height:1.25; }
 .hEv:hover{ background:var(--card3); }
 .hEv b{ font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-.hEv span{ color:var(--mut); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.hEv span{ color:var(--mut); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .ftabs .fdot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--k); margin-right:6px; vertical-align:middle; }
 @media (max-width:899px){
-  .hEv{ padding:3px 4px 3px 6px; font-size:11px; }
+  .hEv{ padding:3px 4px 3px 6px; font-size:13px; }
   .calLabel{ font-size:15px; }
 }
 .tkBar{ display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin:10px 0; }
@@ -1528,7 +1530,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   width:100%; text-align:left; background:var(--card); border:1px solid var(--hair); border-radius:14px; padding:12px 14px; color:var(--tx); }
 .stTile svg{ grid-row:1 / span 2; width:22px; height:22px; stroke:var(--ac); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 .stTile .stName{ font-weight:600; font-size:15px; min-width:0; }
-.stTile .stSub{ font-size:12px; color:var(--mut); min-width:0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.4; }
+.stTile .stSub{ font-size:13px; color:var(--mut); min-width:0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.4; }
 .stTile:hover{ background:var(--card2); }
 @media (min-width:900px){
   .stGrid{ grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)) !important; gap:12px; }
@@ -1543,7 +1545,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .flName{ font-size:18px; font-weight:600; }
 .flStep{ display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--hair); }
 .flStep:last-child{ border-bottom:0; }
-.flNum{ flex:none; width:24px; height:24px; border-radius:50%; background:var(--card2); color:var(--mut); font-size:12px; font-weight:700;
+.flNum{ flex:none; width:24px; height:24px; border-radius:50%; background:var(--card2); color:var(--mut); font-size:13px; font-weight:700;
   display:flex; align-items:center; justify-content:center; }
 .flStep.add .flNum{ background:var(--acsoft); color:var(--ac); }
 .flIn{ flex:1; min-width:0; background:transparent; border:0; color:var(--tx); font:inherit; font-size:15px; padding:8px 4px; border-radius:8px; outline:none; }
@@ -1573,7 +1575,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .imRow{ display:flex; flex-direction:column; align-items:flex-start; }
 .imRow.first{ margin-top:8px; }
 .imRow.me{ align-items:flex-end; }
-.imWho{ font-size:12px; color:var(--mut); margin:0 0 2px 14px; }
+.imWho{ font-size:13px; color:var(--mut); margin:0 0 2px 14px; }
 .imB{ position:relative; max-width:min(75%, 520px); padding:8px 13px; border-radius:18px; font-size:16px; line-height:1.35;
   background:var(--card2); color:var(--tx); white-space:pre-wrap; overflow-wrap:anywhere; }
 .imRow.me .imB{ background:var(--ac); color:var(--acink); }
@@ -1600,7 +1602,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   overflow:hidden; text-overflow:ellipsis; }
 .imItem:hover{ background:var(--card3); }
 .imItem.danger{ color:var(--rd); border-top:1px solid var(--hair); border-radius:0 0 9px 9px; margin-top:4px; }
-.imEmpty{ padding:11px 12px; font-size:14px; color:var(--mut); }
+.imEmpty{ padding:11px 12px; font-size:15px; color:var(--mut); }
 .dlgWide{ width:min(440px, 92vw); }
 .dlgField{ margin-bottom:16px; font-size:15px; }
 textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
@@ -1835,7 +1837,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
 .tkPr{ flex:none; width:7px; height:7px; border-radius:50%; margin-top:8px; }
 .tkBox{ flex:none; width:18px; height:18px; margin-top:2px; border-radius:5px; border:1.5px solid var(--mut);
-  display:grid; place-items:center; font-size:12px; color:var(--acink); }
+  display:grid; place-items:center; font-size:13px; color:var(--acink); }
 .tkBox.on{ background:var(--ac); border-color:var(--ac); }
 .tkSubs{ padding:0 0 8px 30px; }
 .tkBulk{ position:sticky; top:0; z-index:3; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
@@ -1858,7 +1860,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .itStep{ border-bottom:1px solid var(--hair); }
 .itStep.cur .ft{ font-weight:600; }
 .itNum{ flex:none; width:22px; height:22px; border-radius:50%; border:1.5px solid var(--mut); background:none;
-  color:var(--mut); font-size:12px; display:grid; place-items:center; padding:0; }
+  color:var(--mut); font-size:13px; display:grid; place-items:center; padding:0; }
 .itStep.cur .itNum{ border-color:var(--ac); color:var(--ac); }
 .itNum.on{ background:var(--ac); border-color:var(--ac); color:var(--acink); }
 .itEumae{ display:flex; flex-direction:column; gap:4px; margin:18px 0 12px; padding:12px 14px; border-radius:14px;
@@ -1914,7 +1916,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .agRow2{ border-bottom:1px solid var(--hair); gap:14px; }
 .agRow2.past .tlT, .agRow2.past .agT{ color:var(--mut); }
 .agT{ flex:none; width:72px; display:flex; flex-direction:column; padding-top:2px; }
-.agEnd{ font-size:12px; opacity:.7; }
+.agEnd{ font-size:13px; opacity:.7; }
 .agBar{ flex:none; width:3px; align-self:stretch; min-height:22px; border-radius:2px; background:var(--ac); }
 .agRow2.c-meeting .agBar{ background:var(--ac); }
 .agRow2.c-appointment .agBar{ background:var(--am); }
@@ -1945,7 +1947,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .calWeek button:hover{ background:var(--card); }
 .calWeek span{ font-size:13px; }
 .calWeek b{ color:var(--tx); font-size:17px; font-weight:700; }
-.calWeek i{ font-style:normal; font-size:12px; }
+.calWeek i{ font-style:normal; font-size:13px; }
 .calWeek .today span, .calWeek .today b{ color:var(--ac); }
 .calWeek .on{ background:var(--card2); }
 .calWeek .on span, .calWeek .on b{ color:var(--ac); }
@@ -2000,7 +2002,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
    dropped (Console, Notes) and the header title is larger. Desktop has no
    header, so it keeps the inner title. */
 @media (max-width:899px){
-  .hd .t{ font-size:24px; font-weight:700; letter-spacing:-.01em; }
+  .hd .t{ font-size:24px; font-weight:700; letter-spacing:-.02em; }
   .dupT{ display:none; }
   .pageHead .hb{ margin-left:auto; }
 }
@@ -2041,9 +2043,9 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .tkList .tkRow .fmeta, .tkList .tkRow .fsub{ font-size:13px; }
 .tkList .tkRow .fsub{ margin-top:2px; }
 .tkList .tkRow .fchk{ width:16px; height:16px; }
-.tkList .tkPill{ font-size:12.5px; padding:1px 8px; }
-.tkList .tkPrL{ font-size:12.5px; }
-.tkList .tkH{ font-size:12.5px; padding:22px 0 4px; }
+.tkList .tkPill{ font-size:13px; padding:1px 8px; }
+.tkList .tkPrL{ font-size:13px; }
+.tkList .tkH{ font-size:13px; padding:22px 0 4px; }
 .tkList .tkGroup + .tkGroup{ margin-top:0; }
 .tkList .tkGroup:first-child .tkH{ padding-top:14px; }
 
@@ -2159,7 +2161,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .sbx{ display:flex; flex-direction:column; gap:4px; }
 .sbxHead{ display:flex; align-items:flex-start; gap:10px; }
 .sbxHead .g, .sbxFullHead .g{ flex:1; min-width:0; }
-.sbxTitle{ font-size:18px; font-weight:700; color:var(--tx); overflow-wrap:anywhere; }
+.sbxTitle{ font-size:18px; font-weight:700; letter-spacing:-.02em; color:var(--tx); overflow-wrap:anywhere; }
 .sbxMeta{ font-size:15px; color:var(--mut); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sbxVers{ display:flex; gap:6px; overflow-x:auto; margin-top:8px; scrollbar-width:none; }
 .sbxVers .chip.on{ background:var(--acsoft); color:var(--ac); font-weight:600; }
@@ -2230,7 +2232,7 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 /* Project page, flat (Oct 21): facts on top, then rows like Tasks. */
 .pjFacts{ display:flex; gap:10px; margin:16px 0 12px; }
 .pjTile{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:2px; background:var(--card); border-radius:14px; padding:10px 12px; }
-.pjTile .k{ font-size:12.5px; color:var(--mut); }
+.pjTile .k{ font-size:13px; color:var(--mut); }
 .pjTile .v{ font-size:17px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .pjTile .v small{ font-size:13px; font-weight:400; color:var(--mut); }
 .pjTile .v.over, .pjTile .v.over small{ color:var(--rd); }
@@ -2239,7 +2241,7 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .pjMeter i{ height:5px; }
 .pjCount{ display:flex; justify-content:space-between; font-size:13px; color:var(--mut); }
 .pjTrail{ display:flex; margin:20px 0 4px; }
-.pjStop{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; font-size:12.5px; color:var(--mut); padding:0 4px; }
+.pjStop{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; font-size:13px; color:var(--mut); padding:0 4px; }
 .pjStop .msDot{ margin-bottom:4px; box-shadow:inset 0 0 0 2px var(--mut); }
 .pjStop.done .msDot{ background:var(--ac); box-shadow:none; }
 .pjStop.cur .msDot{ box-shadow:inset 0 0 0 2px var(--ac); }
@@ -2257,13 +2259,13 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .pjGH .m{ font-size:14px; color:var(--mut); white-space:nowrap; }
 .pjGH .m.cur{ color:var(--ac); font-weight:600; }
 .pjGHtx{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-.pjPh{ font-size:22px; font-weight:700; line-height:1.2; }
+.pjPh{ font-size:22px; font-weight:700; letter-spacing:-.02em; line-height:1.2; }
 .pjGHrow{ display:flex; align-items:baseline; gap:10px; min-width:0; }
 .pjGHrow .t{ flex:0 1 auto; font-size:16px; font-weight:600; }
 .pjGH .pjChev{ margin-left:auto; font-size:24px; }
 .pjSec{ margin-top:26px; }
 .pjSecH{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding-bottom:6px; }
-.pjSecH .t{ font-size:19px; font-weight:700; }
+.pjSecH .t{ font-size:19px; font-weight:700; letter-spacing:-.02em; }
 .pjSecH .lb, .pjSecH .pjAddBtn{ font-size:15px; padding:4px 0; }
 .pjSecH .pjAddRow{ padding:0; }
 .pjSpine{ position:relative; padding-left:38px; }

@@ -45,7 +45,7 @@ export function FileHero({ k, t, b }: { k: string; t: string; b: string }) {
       >
         <div style={{ fontSize: 19, fontWeight: 700, marginBottom: 14 }}>{t}</div>
         <div className="s">{first.slice(0, 140)}</div>
-        <div style={{ marginTop: 26, color: '#888', fontSize: 12 }}>Page 1 of 1 · {t}.pdf</div>
+        <div style={{ marginTop: 26, color: '#888', fontSize: 13 }}>Page 1 of 1 · {t}.pdf</div>
       </div>
     );
   }
