@@ -2314,7 +2314,9 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 @media (max-width:899px){
   #mn.tab-studio, #mn.tab-classroom, #mn.tab-library, #mn.tab-guild{ --fsUp:1px; }
   .office{ --fsUp:2px; }
-  .office .otabs, .office .itIn,
+  .office .otabs{ --fsUp:1px; }
+  .office .oHead b{ --fsUp:3px; }
+  .office .itIn,
   .imPop, .imScrim, .addWin, .dlg, .tbar, .conBar{ --fsUp:0px; }
 
   .con .tlRow .tlT, .con .ft, .con .tlNext{ font-size:16px; }
