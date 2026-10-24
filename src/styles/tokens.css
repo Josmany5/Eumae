@@ -86,7 +86,7 @@ html[data-theme="light"]{ background:#f2f2f7; }
 body{
   background:var(--bg); color:var(--tx);
   font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  font-size:16px; line-height:1.45;
+  font-size:calc(16px + var(--fsUp, 0px)); line-height:1.45;
   /* The mockup sets this on the phone; on desktop it's most of what makes
      text read like an AI app instead of a document. */
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
@@ -131,7 +131,7 @@ input,textarea,select{ font-family:inherit; }
 .hd{ display:flex; align-items:center; gap:4px; padding:calc(10px + env(safe-area-inset-top)) 12px 8px;
   background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
   z-index:20; }
-.hd .t{ flex:1; text-align:center; font-size:17px; font-weight:600; }
+.hd .t{ flex:1; text-align:center; font-size:calc(17px + var(--fsUp, 0px)); font-weight:600; }
 .hb{ width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--tx);
   background:var(--card); box-shadow:0 2px 12px rgba(0,0,0,.12); border:1px solid var(--hair); }
 .hb:active{ background:var(--card2); transform:scale(.96); }
@@ -154,7 +154,7 @@ input,textarea,select{ font-family:inherit; }
   background:color-mix(in srgb, var(--ac) 16%, transparent);
   transition:transform .25s ease; }
 .tbar button{ position:relative; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-  color:var(--mut); font-size:13px; padding:6px 0; }
+  color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); padding:6px 0; }
 .tbar button.on{ color:var(--ac); }
 /* Tab taps pop: scale answers the finger, accent answers the state. */
 .tbar button{ transition:transform .16s cubic-bezier(.34,1.56,.64,1), color .15s ease; }
@@ -174,19 +174,19 @@ input,textarea,select{ font-family:inherit; }
   background:var(--card); transform:translateX(-110%); transition:transform .28s ease;
   display:flex; flex-direction:column; }
 .drawer.open{ transform:translateX(0); }
-.drawer .dh{ padding:calc(16px + env(safe-area-inset-top)) 20px 12px; font-size:17px; font-weight:700; letter-spacing:-.02em; }
+.drawer .dh{ padding:calc(16px + env(safe-area-inset-top)) 20px 12px; font-size:calc(17px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; }
 .drawer .db{ flex:1; overflow-y:auto; padding:8px 0 calc(16px + env(safe-area-inset-bottom)); }
 .dr{ display:flex; align-items:center; gap:12px; width:100%; background:none; padding:12px 20px;
-  font-size:16px; text-align:left; border-radius:0; color:var(--tx); }
+  font-size:calc(16px + var(--fsUp, 0px)); text-align:left; border-radius:0; color:var(--tx); }
 .dr:active{ background:var(--card2); }
 .dr svg{ width:21px; height:21px; stroke:var(--mut); fill:none; stroke-width:1.7;
   stroke-linecap:round; stroke-linejoin:round; flex:none; }
 .dr .g{ flex:1; }
-.dr.ghost{ color:var(--mut); font-size:15px; }
-.ds{ font-size:13px; color:var(--mut); padding:16px 20px 6px; font-weight:600; }
+.dr.ghost{ color:var(--mut); font-size:calc(15px + var(--fsUp, 0px)); }
+.ds{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); padding:16px 20px 6px; font-weight:600; }
 .dsearch{ padding:4px 16px 8px; }
 .dsearch input{ width:100%; background:var(--card2); border:0; border-radius:10px;
-  padding:10px 12px; font-size:16px; color:var(--tx); }
+  padding:10px 12px; font-size:calc(16px + var(--fsUp, 0px)); color:var(--tx); }
 .dsearch input::placeholder{ color:var(--mut); }
 .drawer .df{ display:flex; justify-content:flex-end; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); }
 .gearbtn{ width:44px; height:44px; border-radius:50%; background:transparent;
@@ -217,7 +217,7 @@ input,textarea,select{ font-family:inherit; }
 .settings.open{ transform:translateY(0); }
 .smodal, .spanel{ display:contents; }
 .shead{ display:flex; align-items:center; gap:4px; padding:calc(10px + env(safe-area-inset-top)) 12px 8px; }
-.shead .tt{ flex:1; font-size:17px; font-weight:700; }
+.shead .tt{ flex:1; font-size:calc(17px + var(--fsUp, 0px)); font-weight:700; }
 .shead .sp{ width:40px; flex:none; }
 .shead .hb svg{ stroke:var(--tx); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 .sbody{ flex:1; overflow-y:auto; padding:0 16px calc(16px + env(safe-area-inset-bottom)); }
@@ -226,41 +226,41 @@ input,textarea,select{ font-family:inherit; }
    while it scrolls. */
 .ftabs{ display:flex; gap:6px; overflow-x:auto; margin:8px -16px 0; padding:0 16px 6px; scrollbar-width:none; }
 .ftabs::-webkit-scrollbar{ display:none; }
-.ftabs button{ flex:none; border-radius:99px; font-size:14px; background:var(--card); padding:8px 15px; }
+.ftabs button{ flex:none; border-radius:99px; font-size:calc(14px + var(--fsUp, 0px)); background:var(--card); padding:8px 15px; }
 .ftabs button.on{ background:var(--acsoft); color:var(--ac); font-weight:700; }
 
 /* Settings page pieces (ported from the mockup) — three of these are read by more
    than Settings now: `.sg`/`.sr` by the composer's `+` window, and `.kv` by the
    panel's read-only "How Eumae answers" block. */
 .card{ background:var(--card); border-radius:16px; padding:14px; margin:10px 0; }
-.s{ font-size:14px; } .xs{ font-size:13px; } .m{ color:var(--mut); }
+.s{ font-size:calc(14px + var(--fsUp, 0px)); } .xs{ font-size:calc(13px + var(--fsUp, 0px)); } .m{ color:var(--mut); }
 /* A log row: the status dot, then the sentence and its house-keeping line.
    Straight from the mockup (115-116), except that its dot classes are renamed
    for what they claim — ok / warn / bad rather than ok / in / bd. */
-.hi{ display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--hair); font-size:15px; }
+.hi{ display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--hair); font-size:calc(15px + var(--fsUp, 0px)); }
 .hi:last-child{ border:0; }
 .dt{ width:9px; height:9px; border-radius:50%; margin-top:7px; flex:none; }
 .dt.ok{ background:var(--gr); }
 .dt.warn{ background:var(--am); }
 .dt.bad{ background:var(--rd); }
-.sec{ font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--mut); margin:22px 0 2px; font-weight:600; }
+.sec{ font-size:calc(13px + var(--fsUp, 0px)); text-transform:uppercase; letter-spacing:.06em; color:var(--mut); margin:22px 0 2px; font-weight:600; }
 .sg{ background:var(--card); border-radius:16px; margin:10px 0; overflow:hidden; }
 .sr{ display:flex; align-items:center; gap:12px; width:100%; background:none; padding:13px 16px;
-  font-size:16px; text-align:left; border-bottom:1px solid var(--hair); border-radius:0; color:var(--tx); }
+  font-size:calc(16px + var(--fsUp, 0px)); text-align:left; border-bottom:1px solid var(--hair); border-radius:0; color:var(--tx); }
 .sr:last-child{ border-bottom:0; }
 .sr svg{ width:21px; height:21px; stroke:var(--mut); fill:none; stroke-width:1.7;
   stroke-linecap:round; stroke-linejoin:round; flex:none; }
-.sr .v{ color:var(--mut); font-size:14px; }
+.sr .v{ color:var(--mut); font-size:calc(14px + var(--fsUp, 0px)); }
 .gr{ display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid var(--hair); }
 .gr:last-child{ border:0; }
-.gr select{ background:var(--card2); color:var(--tx); border:0; border-radius:8px; padding:8px; font-size:15px; }
+.gr select{ background:var(--card2); color:var(--tx); border:0; border-radius:8px; padding:8px; font-size:calc(15px + var(--fsUp, 0px)); }
 .tg{ width:51px; height:31px; border-radius:99px; background:var(--card3); padding:0; position:relative; flex:none; transition:background .2s; }
 .tg::after{ content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%;
   background:#fff; transition:left .2s; box-shadow:0 2px 6px rgba(0,0,0,.3); }
 .tg.on{ background:var(--ac); }
 .tg.on::after{ left:22px; }
 .btns{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-.btns button{ flex:1; white-space:nowrap; padding:12px; border-radius:12px; font-size:16px; font-weight:600; background:var(--card2); color:var(--tx); }
+.btns button{ flex:1; white-space:nowrap; padding:12px; border-radius:12px; font-size:calc(16px + var(--fsUp, 0px)); font-weight:600; background:var(--card2); color:var(--tx); }
 /* Settings utilities: one padded card + one danger button, instead of the
    same inline style handwritten ~25 times. */
 .cardPad{ padding:6px 14px; }
@@ -270,7 +270,7 @@ input,textarea,select{ font-family:inherit; }
 /* Destructive wins over the ghost/btns colors it sits beside. */
 .gho.danger, .btns button.danger{ color:var(--rd); }
 .seg{ display:flex; gap:6px; margin:10px 0; }
-.seg button{ flex:1; padding:12px 16px; border-radius:12px; background:var(--card); font-size:16px; color:var(--tx); }
+.seg button{ flex:1; padding:12px 16px; border-radius:12px; background:var(--card); font-size:calc(16px + var(--fsUp, 0px)); color:var(--tx); }
 .seg button.on{ background:var(--acsoft); color:var(--ac); font-weight:600; }
 .row{ display:flex; align-items:center; gap:10px; }
 /* List row: the mockup's .li, used across Library/Studio/Classroom/Guild.
@@ -279,18 +279,18 @@ input,textarea,select{ font-family:inherit; }
   border-bottom:1px solid var(--hair); }
 .li:last-child{ border:0; }
 /* Suggestion note: accent-ruled aside. The mockup's .why. */
-.why{ font-size:14px; color:var(--mut); border-left:2px solid var(--ac);
+.why{ font-size:calc(14px + var(--fsUp, 0px)); color:var(--mut); border-left:2px solid var(--ac);
   padding:2px 0 2px 10px; margin-top:8px; }
 /* Detail box: inset panel for rendered bodies. The mockup's .dbox. */
-.dbox{ background:var(--card2); border-radius:12px; padding:12px; margin-top:10px; font-size:15px; }
+.dbox{ background:var(--card2); border-radius:12px; padding:12px; margin-top:10px; font-size:calc(15px + var(--fsUp, 0px)); }
 /* Segmented control: the mockup's .dial. */
 .dial{ display:flex; background:var(--card2); border-radius:12px; overflow:hidden; margin-top:10px; }
-.dial button{ flex:1; border-radius:0; background:none; padding:11px; font-size:15px; color:var(--mut); }
+.dial button{ flex:1; border-radius:0; background:none; padding:11px; font-size:calc(15px + var(--fsUp, 0px)); color:var(--mut); }
 .dial button.on{ background:var(--card3); color:var(--tx); font-weight:700; }
 /* Menu row: hairline-separated line. The mockup's .mm. */
 .mm{ padding:11px 0; border-bottom:1px solid var(--hair); }
 /* Link button: accent text, no chrome. The mockup's .lb. */
-.lb{ background:none; color:var(--ac); padding:0; font-size:14px; font-weight:600; }
+.lb{ background:none; color:var(--ac); padding:0; font-size:calc(14px + var(--fsUp, 0px)); font-weight:600; }
 /* Inline icon holder. The mockup's .ic. */
 .ic{ display:inline-flex; flex:none; }
 /* Hard hide. The mockup's .hid. */
@@ -301,24 +301,24 @@ input,textarea,select{ font-family:inherit; }
 .gstick{ position:sticky; bottom:12px; z-index:6; }
 .bar{ height:8px; background:var(--card3); border-radius:99px; overflow:hidden; margin:8px 0; }
 .bar i{ display:block; height:100%; background:var(--ac); border-radius:99px; }
-.kv{ display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid var(--hair); font-size:15px; }
+.kv{ display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid var(--hair); font-size:calc(15px + var(--fsUp, 0px)); }
 .kv:last-child{ border:0; }
 .fi{ width:44px; height:44px; border-radius:12px; background:var(--card2); display:flex; align-items:center;
-  justify-content:center; flex:none; font-size:13px; font-weight:700; color:var(--mut); }
-.fi.av{ border-radius:50%; font-size:15px; }
+  justify-content:center; flex:none; font-size:calc(13px + var(--fsUp, 0px)); font-weight:700; color:var(--mut); }
+.fi.av{ border-radius:50%; font-size:calc(15px + var(--fsUp, 0px)); }
 .acctCard{ display:flex; align-items:center; gap:12px; }
-.fb{ font-size:13px; padding:6px 12px; border-radius:99px; background:var(--card2); flex:none; color:var(--tx); }
-.tag{ display:inline-block; font-size:13px; font-weight:700; color:var(--ac); background:var(--acsoft);
+.fb{ font-size:calc(13px + var(--fsUp, 0px)); padding:6px 12px; border-radius:99px; background:var(--card2); flex:none; color:var(--tx); }
+.tag{ display:inline-block; font-size:calc(13px + var(--fsUp, 0px)); font-weight:700; color:var(--ac); background:var(--acsoft);
   border-radius:99px; padding:2px 9px; margin-left:6px; }
 .tag.gr{ color:var(--gr); background:var(--grsoft); }
 .tag.am{ color:var(--am); background:var(--amsoft); }
 .sinput{ width:100%; background:var(--card2); border:0; border-radius:10px; padding:12px;
-  font-size:16px; color:var(--tx); margin-bottom:10px; }
+  font-size:calc(16px + var(--fsUp, 0px)); color:var(--tx); margin-bottom:10px; }
 .sinput::placeholder{ color:var(--mut); }
 /* Small inline picker (a permission, a folder). Bare <select>s were rendering
    as the browser's white square box on a dark card; this is the same fill
    and radius as `.gr select`, sized to sit in a row. */
-.selIn{ background:var(--card2); color:var(--tx); border:0; border-radius:8px; padding:8px 10px; font:inherit; font-size:15px; }
+.selIn{ background:var(--card2); color:var(--tx); border:0; border-radius:8px; padding:8px 10px; font:inherit; font-size:calc(15px + var(--fsUp, 0px)); }
 input[type=checkbox]{ accent-color:var(--ac); }
 /* A control whose feature hasn't shipped. It still answers the tap with a
    toast that names the gap, but it no longer looks like a live button that
@@ -342,11 +342,11 @@ input[type=checkbox]{ accent-color:var(--ac); }
 /* Toast: small confirmation pill */
 .tst{ position:fixed; left:50%; bottom:170px; transform:translateX(-50%) translateY(8px);
   background:var(--card3); color:var(--tx); padding:11px 20px; border-radius:99px;
-  font-size:15px; font-weight:500; z-index:60; pointer-events:none;
+  font-size:calc(15px + var(--fsUp, 0px)); font-weight:500; z-index:60; pointer-events:none;
   opacity:0; transition:opacity .25s ease, transform .25s ease; white-space:nowrap; }
 .tst.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 .tst.show.act{ pointer-events:auto; }
-.tstUndo{ background:none; color:var(--ac); font-weight:700; font-size:15px; margin-left:14px; padding:0; }
+.tstUndo{ background:none; color:var(--ac); font-weight:700; font-size:calc(15px + var(--fsUp, 0px)); margin-left:14px; padding:0; }
 
 /* ─── Web app shell ─────────────────────────────────────────────────────────
    The rail is the web home for the six tabs. It replaces the phone's bottom
@@ -359,7 +359,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 @media (min-width:900px){
   #app{ grid-template-columns:264px 1fr; }
   .hd, .tbar{ display:none; }
-  body{ font-size:14px; }
+  body{ font-size:calc(14px + var(--fsUp, 0px)); }
 
   .sb{ display:flex; flex-direction:column; gap:2px; min-height:0;
     background:var(--card); border-right:1px solid var(--hair);
@@ -368,7 +368,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   .sb::-webkit-scrollbar{ display:none; }
 
   .sbHead{ display:flex; align-items:center; gap:8px; padding:6px 2px 12px 8px; }
-  .sbMark{ flex:1; font-size:17px; font-weight:700; letter-spacing:-.02em; }
+  .sbMark{ flex:1; font-size:calc(17px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; }
   .sbIcon{ width:28px; height:28px; border-radius:8px; display:flex; align-items:center;
     justify-content:center; color:var(--mut); flex:none; }
   .sbIcon:hover{ background:var(--card2); color:var(--tx); }
@@ -376,7 +376,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   /* One row style for every line in the rail: the six tabs, the two actions
      and the page menu all read the same — nothing is a filled card. */
   .sbItem{ display:flex; align-items:center; gap:10px; width:100%; padding:8px 10px; text-align:left;
-    border-radius:9px; font-size:14px; color:var(--mut); }
+    border-radius:9px; font-size:calc(14px + var(--fsUp, 0px)); color:var(--mut); }
   .sbItem:hover{ background:var(--card2); color:var(--tx); }
   .sbItem.on{ background:var(--acsoft); color:var(--ac); font-weight:600; }
   .sbItem .g{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -385,14 +385,14 @@ input[type=checkbox]{ accent-color:var(--ac); }
 
   /* Search sits above everything, where the mockup's drawer puts it. */
   .sbSearch{ flex:none; }
-  .sbEmpty{ font-size:13px; color:var(--mut); padding:4px 10px 8px; }
+  .sbEmpty{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); padding:4px 10px 8px; }
 
   /* Level 1 — the six. Global, never swaps. */
   .sbNav{ flex:none; display:flex; flex-direction:column; gap:1px; }
   .sbSep{ height:1px; background:var(--hair); margin:10px 8px; flex:none; }
   /* Level 2 — the page's own menu. This is what swaps when you change tabs. */
   .sbPanel{ flex:none; display:flex; flex-direction:column; gap:1px; }
-  .sbSect{ font-size:13px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  .sbSect{ font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; letter-spacing:.06em; text-transform:uppercase;
     color:var(--mut); padding:12px 10px 4px; }
   .sbFoot{ flex:none; margin-top:auto; padding-top:8px; border-top:1px solid var(--hair); }
 
@@ -409,7 +409,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   #app.railCollapsed .sbHead{ padding:6px 0 12px; justify-content:center; }
   #app.railCollapsed .sbItem{ justify-content:center; padding:9px 0; }
 
-  .sr{ padding:10px 14px; font-size:14px; }
+  .sr{ padding:10px 14px; font-size:calc(14px + var(--fsUp, 0px)); }
   .card{ padding:12px; border-radius:12px; }
   /* ── Desktop surfaces: phone is frozen, desktop gets its own layouts ──
      No global measure cap: each surface owns its width. Dashboards fill the
@@ -419,11 +419,11 @@ input[type=checkbox]{ accent-color:var(--ac); }
   #mn > .dashWide{ max-width:none; }
   /* Desktop scale: cards + heroes + pills join the 14px block. */
   .wc{ border-radius:16px; padding:12px 14px; }
-  .big{ font-size:30px; }
-  .screenT{ font-size:24px; }
-  .ftabs button{ font-size:13px; padding:7px 13px; }
-  .qz button{ font-size:14px; }
-  .btns button{ font-size:14px; padding:10px; }
+  .big{ font-size:calc(30px + var(--fsUp, 0px)); }
+  .screenT{ font-size:calc(24px + var(--fsUp, 0px)); }
+  .ftabs button{ font-size:calc(13px + var(--fsUp, 0px)); padding:7px 13px; }
+  .qz button{ font-size:calc(14px + var(--fsUp, 0px)); }
+  .btns button{ font-size:calc(14px + var(--fsUp, 0px)); padding:10px; }
   /* Dashboard grid: phone keeps swipe + dots + 2-col pgrid. Desktop turns
      the swipe off — pages become sections under the tab row, grid goes
      2-col here, 3-col at 1200px. Dots are a swipe affordance: hidden. */
@@ -439,7 +439,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   .dashWide .cdots{ display:none; }
   .dashWide .pgrid{ grid-template-columns:1fr 1fr; gap:12px; }
   .dashWide .pn{ margin:0 0 14px; }
-  .dashWide .pn button{ font-size:14px; padding:8px 16px; }
+  .dashWide .pn button{ font-size:calc(14px + var(--fsUp, 0px)); padding:8px 16px; }
 }
 
 @media (min-width:1200px){
@@ -452,20 +452,20 @@ input[type=checkbox]{ accent-color:var(--ac); }
 
 .scEmpty{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
   text-align:center; gap:6px; padding:40px 24px; }
-.scEmptyK{ font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ac); }
-.scEmptyT{ margin:0; font-size:20px; font-weight:700; letter-spacing:-.02em; }
-.scEmptyN{ margin:0; max-width:420px; font-size:14px; color:var(--mut); }
+.scEmptyK{ font-size:calc(13px + var(--fsUp, 0px)); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ac); }
+.scEmptyT{ margin:0; font-size:calc(20px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; }
+.scEmptyN{ margin:0; max-width:420px; font-size:calc(14px + var(--fsUp, 0px)); color:var(--mut); }
 
 .chat{ flex:1; min-height:0; display:flex; flex-direction:column; }
 .chatScroll{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; padding:24px 20px; }
 .hello{ margin:auto; max-width:520px; text-align:center; }
-.helloT{ margin:0 0 8px; font-size:24px; font-weight:700; letter-spacing:-.02em; }
+.helloT{ margin:0 0 8px; font-size:calc(24px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; }
 /* The smart welcome's second line: continuity, not a lecture. Muted, small,
    one line — names where you left off without competing with the title. */
-.helloS{ margin:0 0 18px; font-size:14px; line-height:1.5; color:var(--mut); }
-.helloN{ margin:0 0 20px; font-size:15px; line-height:1.55; color:var(--mut); }
+.helloS{ margin:0 0 18px; font-size:calc(14px + var(--fsUp, 0px)); line-height:1.5; color:var(--mut); }
+.helloN{ margin:0 0 20px; font-size:calc(15px + var(--fsUp, 0px)); line-height:1.55; color:var(--mut); }
 .chips{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
-.chip{ padding:8px 14px; border-radius:99px; font-size:13px; color:var(--tx);
+.chip{ padding:8px 14px; border-radius:99px; font-size:calc(13px + var(--fsUp, 0px)); color:var(--tx);
   background:var(--card); border:1px solid var(--hair); }
 .chip:hover{ background:var(--card2); }
 .thread{ width:100%; max-width:720px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
@@ -474,12 +474,12 @@ input[type=checkbox]{ accent-color:var(--ac); }
    the same line (older messages live in storage + drawer, not in this
    window). */
 .dayLine{ display:flex; align-items:center; gap:12px; margin:6px 0 2px;
-  font-size:13px; font-weight:600; letter-spacing:.04em; color:var(--mut); }
+  font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; letter-spacing:.04em; color:var(--mut); }
 .dayLine::before, .dayLine::after{ content:""; flex:1; height:1px; background:var(--hair); }
 .dayLine span{ white-space:nowrap; }
 .msg{ display:flex; }
 .msg.you{ justify-content:flex-end; }
-.bubble{ max-width:80%; padding:11px 15px; border-radius:16px; font-size:16px; line-height:1.6;
+.bubble{ max-width:80%; padding:11px 15px; border-radius:16px; font-size:calc(16px + var(--fsUp, 0px)); line-height:1.6;
   background:var(--card);
   /* A reply is written by a model, and a model's line breaks are its paragraph
      breaks. Without this they collapse to spaces and a list of steps reads as one
@@ -499,23 +499,23 @@ input[type=checkbox]{ accent-color:var(--ac); }
 /* One sentence under a reply when it is not what it should be — about what
    arrived, not instead of it (ChatScreen.tsx). Muted, because it is the footnote
    to the answer, not a second answer. */
-.bubbleNote{ margin-top:8px; font-size:13px; line-height:1.45; color:var(--mut); }
+.bubbleNote{ margin-top:8px; font-size:calc(13px + var(--fsUp, 0px)); line-height:1.45; color:var(--mut); }
 .sources{ margin-top:10px; padding-top:8px; border-top:1px solid var(--hair); }
-.sourcesHead{ font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--mut); margin-bottom:4px; }
-.source{ display:block; font-size:13px; color:var(--link, #2563eb); text-decoration:none; padding:3px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sourcesHead{ font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--mut); margin-bottom:4px; }
+.source{ display:block; font-size:calc(13px + var(--fsUp, 0px)); color:var(--link, #2563eb); text-decoration:none; padding:3px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* Sources, collapsed — a quiet pill with the count. Tap to fan out the chips. */
 .sources{ margin-top:10px; }
 .sourcesPill{ background:none; border:1px solid var(--hair); border-radius:99px;
-  padding:4px 12px; font-size:13px; font-weight:600; color:var(--mut); }
+  padding:4px 12px; font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; color:var(--mut); }
 .sourcesChips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
 .sourceChip{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px 6px 7px;
-  background:var(--card2); border:1px solid var(--hair); border-radius:16px; font-size:13px; color:var(--tx);
+  background:var(--card2); border:1px solid var(--hair); border-radius:16px; font-size:calc(13px + var(--fsUp, 0px)); color:var(--tx);
   text-decoration:none; max-width:100%; }
 /* Text stacks: full title on its own line (never cut), domain muted beneath.
    The chip grows to fit — no ellipsis, no clipped half-lines. */
 .sourceText{ display:flex; flex-direction:column; gap:1px; min-width:0; }
 .sourceTitle{ font-weight:600; white-space:normal; overflow:visible; }
-.sourceDomain{ color:var(--mut); font-size:13px; white-space:normal; overflow:visible; }
+.sourceDomain{ color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); white-space:normal; overflow:visible; }
 
 .sourceFav{ width:16px; height:16px; border-radius:50%; flex:none; }
 /* Full-screen image viewer — dark backdrop, picture centered, × top-left. */
@@ -548,7 +548,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .msgAttachImg{ width:100%; height:100%; max-height:280px; border-radius:14px; display:block; object-fit:cover; }
 .msgAttach{ display:flex; align-items:center; gap:8px; max-width:200px;
   background:var(--card2); border-radius:10px; padding:6px 8px; }
-.msgAttachName{ font-size:13px; font-weight:500; overflow:hidden;
+.msgAttachName{ font-size:calc(13px + var(--fsUp, 0px)); font-weight:500; overflow:hidden;
   text-overflow:ellipsis; white-space:nowrap; }
 /* The actions under a reply — the mockup's rowA (1642): bare buttons (BTN,
    1641: no background, no border, muted, bright on hover). Tight row, small
@@ -586,17 +586,17 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .md-p{ margin:0 0 8px; }
 .md-p:last-child{ margin-bottom:0; }
 .md-h1,.md-h2,.md-h3{ font-weight:700; margin:10px 0 6px; line-height:1.35; }
-.md-h1{ font-size:17px; }
-.md-h2{ font-size:16px; }
-.md-h3{ font-size:15px; }
+.md-h1{ font-size:calc(17px + var(--fsUp, 0px)); }
+.md-h2{ font-size:calc(16px + var(--fsUp, 0px)); }
+.md-h3{ font-size:calc(15px + var(--fsUp, 0px)); }
 .md-ul,.md-ol{ margin:0 0 8px; padding-left:20px; }
 .md-ul li,.md-ol li{ margin:2px 0; }
 .md-code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:13px; background:var(--card2); border-radius:6px; padding:1px 6px; }
+  font-size:calc(13px + var(--fsUp, 0px)); background:var(--card2); border-radius:6px; padding:1px 6px; }
 .md-pre{ margin:8px 0; padding:10px 12px; border-radius:12px;
   background:var(--card2); overflow-x:auto; }
 .md-pre code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:13px; line-height:1.5; }
+  font-size:calc(13px + var(--fsUp, 0px)); line-height:1.5; }
 .md-link{ color:var(--ac); text-decoration:none; }
 .md-link:hover{ text-decoration:underline; }
 /* Your own blue bubble keeps its white text — a blue link on a blue bubble
@@ -620,11 +620,11 @@ input[type=checkbox]{ accent-color:var(--ac); }
    to the text by ChatScreen up to 160px and scrolled past that. */
 .editIn{ width:100%; background:transparent; border:none; outline:none; resize:none;
   max-height:160px; overflow-y:auto;
-  color:inherit; font-family:inherit; font-size:16px; line-height:1.5; }
+  color:inherit; font-family:inherit; font-size:calc(16px + var(--fsUp, 0px)); line-height:1.5; }
 .editBtns{ display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
-.editCancel{ background:none; border:none; color:inherit; opacity:.7; font-size:14px; padding:7px 10px; }
+.editCancel{ background:none; border:none; color:inherit; opacity:.7; font-size:calc(14px + var(--fsUp, 0px)); padding:7px 10px; }
 .editCancel:hover{ opacity:1; }
-.editSend{ background:var(--ac); color:var(--acink); border:none; border-radius:10px; padding:7px 16px; font-size:14px; }
+.editSend{ background:var(--ac); color:var(--acink); border:none; border-radius:10px; padding:7px 16px; font-size:calc(14px + var(--fsUp, 0px)); }
 /* While a reply is on its way (mockup 1866): three dots in a card-coloured pill,
    each one bouncing a seventh of a second after the one before (its `.wxpill`
    and `@keyframes wxdot`, 1836). The only keyframes in the shell — which is why
@@ -682,9 +682,9 @@ input[type=checkbox]{ accent-color:var(--ac); }
    menu honest: you can always see what you set. */
 .modeBar{ display:flex; flex-wrap:wrap; gap:6px; padding:2px 2px 8px; }
 .modeChip{ background:var(--card2); border-radius:99px; padding:5px 11px;
-  font-size:13px; font-weight:600; color:var(--tx); transition:background .15s ease; }
+  font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; color:var(--tx); transition:background .15s ease; }
 .modeChip:hover{ background:var(--card3); }
-.modeChip .cv{ color:var(--mut); font-size:13px; }
+.modeChip .cv{ color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); }
 /* Attachment strip — files waiting to send, above the input. Thumbnails for
    images, icons for the rest, × to remove. The frontier pattern: visible where
    you compose, until sent or detached. */
@@ -700,7 +700,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   display:flex; align-items:center; justify-content:center; }
 .attachImgX svg{ width:13px; height:13px; stroke:#fff; fill:none; stroke-width:2.4;
   stroke-linecap:round; }
-.attachName{ font-size:13px; font-weight:500; color:var(--tx);
+.attachName{ font-size:calc(13px + var(--fsUp, 0px)); font-weight:500; color:var(--tx);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
 .attachX{ display:flex; align-items:center; justify-content:center;
   width:24px; height:24px; border:none; background:none; color:var(--mut);
@@ -747,7 +747,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .cmp:focus-within{ border-color:color-mix(in srgb, var(--ac) 45%, var(--hair));
   box-shadow:0 10px 34px rgba(0,0,0,.42); }
 .cmpIn{ flex:1; min-width:0; max-height:160px; overflow-y:auto; padding:10px 6px;
-  resize:none; border:0; background:none; color:var(--tx); font-size:16px; line-height:1.5; }
+  resize:none; border:0; background:none; color:var(--tx); font-size:calc(16px + var(--fsUp, 0px)); line-height:1.5; }
 .cmpIn:focus{ outline:none; }
 .cmpIn::placeholder{ color:var(--mut); }
 /* The mockup's `.cb` (line 86): 40px, --card2, 19px stroke at 1.8. */
@@ -801,23 +801,23 @@ input[type=checkbox]{ accent-color:var(--ac); }
   .stabs{ width:236px; flex:none; display:flex; flex-direction:column;
     border-right:1px solid var(--hair); background:var(--card); }
   .stAccount{ display:flex; align-items:center; gap:10px; padding:14px 14px 12px; }
-  .stAccount .fi{ width:34px; height:34px; border-radius:50%; font-size:13px; }
+  .stAccount .fi{ width:34px; height:34px; border-radius:50%; font-size:calc(13px + var(--fsUp, 0px)); }
   .stScroll{ flex:1; min-height:0; overflow-y:auto; padding:0 8px 8px; }
-  .stGroup{ padding:12px 10px 4px; font-size:13px; font-weight:600; letter-spacing:.06em;
+  .stGroup{ padding:12px 10px 4px; font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; letter-spacing:.06em;
     text-transform:uppercase; color:var(--mut); }
   .stab{ display:flex; align-items:center; gap:10px; width:100%; padding:8px 10px;
-    border-radius:9px; text-align:left; font-size:14px; color:var(--mut); }
+    border-radius:9px; text-align:left; font-size:calc(14px + var(--fsUp, 0px)); color:var(--mut); }
   .stab:hover{ background:var(--card2); color:var(--tx); }
   .stab.on{ background:var(--acsoft); color:var(--ac); font-weight:600; }
   .stab svg{ width:17px; height:17px; flex:none; stroke:currentColor; fill:none; stroke-width:1.7;
     stroke-linecap:round; stroke-linejoin:round; }
-  .stab .v{ margin-left:auto; font-size:13px; color:var(--mut); }
+  .stab .v{ margin-left:auto; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); }
   .stab.on .v{ color:var(--ac); }
   .stab.danger{ color:var(--rd); }
   .stFoot{ padding:8px; border-top:1px solid var(--hair); }
 
   .shead{ padding:15px 18px 12px; border-bottom:1px solid var(--hair); }
-  .shead .tt{ order:1; text-align:left; font-size:16px; }
+  .shead .tt{ order:1; text-align:left; font-size:calc(16px + var(--fsUp, 0px)); }
   .shead .sp{ display:none; }
   .shead .hb{ order:2; width:32px; height:32px; color:var(--mut); }
   .shead .hb:hover{ background:var(--card2); color:var(--tx); }
@@ -832,13 +832,13 @@ input[type=checkbox]{ accent-color:var(--ac); }
 
 .pageWrap{ flex:1; min-height:0; display:flex; flex-direction:column; }
 .pageBody{ flex:1; min-height:0; overflow-y:auto; padding:8px 16px calc(16px + env(safe-area-inset-bottom)); }
-.page .empty{ padding:28px 0; text-align:center; font-size:15px; color:var(--mut); }
-.note{ margin:14px 0 0; font-size:13px; color:var(--mut); text-align:center; }
+.page .empty{ padding:28px 0; text-align:center; font-size:calc(15px + var(--fsUp, 0px)); color:var(--mut); }
+.note{ margin:14px 0 0; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); text-align:center; }
 .backbar{ display:none; }
 
 @media (min-width:900px){
   .backbar{ display:flex; align-items:center; gap:8px; padding:16px 20px 4px; }
-  .backbar .tt{ flex:1; font-size:15px; font-weight:600; }
+  .backbar .tt{ flex:1; font-size:calc(15px + var(--fsUp, 0px)); font-weight:600; }
   .backbar .bbsp{ width:32px; flex:none; }
   .backbar .hb{ width:32px; height:32px; color:var(--mut); }
   .backbar .hb:hover{ background:var(--card2); color:var(--tx); }
@@ -880,7 +880,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .ptabs{ flex:1; min-width:0; display:flex; gap:2px; padding:2px;
   border-radius:10px; background:var(--card2); }
 .ptab{ flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:6px;
-  padding:7px 6px; border-radius:8px; font-size:13px; font-weight:600; color:var(--mut);
+  padding:7px 6px; border-radius:8px; font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; color:var(--mut);
   transition:background .15s ease, color .15s ease; }
 .ptab:hover{ color:var(--tx); }
 .ptab.on{ background:var(--card3); color:var(--tx); }
@@ -896,11 +896,11 @@ input[type=checkbox]{ accent-color:var(--ac); }
   padding:6px 12px calc(20px + env(safe-area-inset-bottom)); }
 .pSec{ padding:8px 0; }
 .pSec + .pSec{ border-top:1px solid var(--hair); }
-.pGrp{ padding:4px 2px 8px; font-size:13px; font-weight:600; letter-spacing:.06em;
+.pGrp{ padding:4px 2px 8px; font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; letter-spacing:.06em;
   text-transform:uppercase; color:var(--mut); }
 .pList{ display:flex; flex-direction:column; gap:2px; }
 .pItem{ display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:10px;
-  font-size:14px; }
+  font-size:calc(14px + var(--fsUp, 0px)); }
 .pItem:hover{ background:var(--card2); }
 .pItem svg{ width:17px; height:17px; flex:none; color:var(--mut); stroke:currentColor; fill:none;
   stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
@@ -913,7 +913,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   align-items:center; justify-content:center; color:var(--mut); }
 .pRm:hover{ background:var(--card3); color:var(--tx); }
 .pRm svg{ width:13px; height:13px; stroke-width:2.2; }
-.pNote{ margin:10px 2px 0; font-size:13px; line-height:1.5; color:var(--mut); }
+.pNote{ margin:10px 2px 0; font-size:calc(13px + var(--fsUp, 0px)); line-height:1.5; color:var(--mut); }
 
 /* The two honest empties. `--card2` at 40% rather than `--card`, which is the
    panel's own background and would have come out invisible on it. */
@@ -922,8 +922,8 @@ input[type=checkbox]{ accent-color:var(--ac); }
   background:color-mix(in srgb, var(--card2) 40%, transparent); }
 .pEmpty svg{ width:22px; height:22px; color:var(--mut); stroke:currentColor; fill:none;
   stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-.pEmptyT{ margin:0; font-size:14px; font-weight:600; }
-.pEmptyN{ margin:0; font-size:13px; line-height:1.55; color:var(--mut); }
+.pEmptyT{ margin:0; font-size:calc(14px + var(--fsUp, 0px)); font-weight:600; }
+.pEmptyN{ margin:0; font-size:calc(13px + var(--fsUp, 0px)); line-height:1.55; color:var(--mut); }
 
 @media (min-width:900px){
   /* Desktop: the panel stops being an overlay and becomes the third column.
@@ -963,7 +963,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
    (`--card`) the way Settings' do; `.shGroup` was the one-step-up group the old
    bottom sheet (already `--card`) needed, and it went with the sheet. */
 .sr{ display:flex; align-items:center; gap:12px; width:100%; padding:12px 14px;
-  text-align:left; font-size:14px; border-bottom:1px solid var(--hair); }
+  text-align:left; font-size:calc(14px + var(--fsUp, 0px)); border-bottom:1px solid var(--hair); }
 .sr:last-child{ border-bottom:0; }
 .sr:hover{ background:var(--card3); }
 .sr .g{ flex:1; min-width:0; }
@@ -974,14 +974,14 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .srEd .sr{ border-bottom:0; flex:1; }
 .srEd > .fb{ margin-right:10px; }
 /* The line under a label — the mockup sets it as `.xs.m` inside the row. */
-.sr .d{ display:block; font-size:13px; line-height:1.45; color:var(--mut); }
+.sr .d{ display:block; font-size:calc(13px + var(--fsUp, 0px)); line-height:1.45; color:var(--mut); }
 .sr .ch{ flex:none; display:inline-flex; color:var(--ac); }
 .sr .ch svg{ width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:2;
   stroke-linecap:round; stroke-linejoin:round; }
 /* A section with nothing to choose yet still says why, in its own voice. The `sh`
    is the sheet this window used to be; the class name stayed, the sheet didn't. */
-.shEmpty{ margin:0; padding:12px 14px; font-size:13px; line-height:1.5; color:var(--mut); }
-.shTip{ margin:14px 2px 0; font-size:13px; line-height:1.6; color:var(--mut); }
+.shEmpty{ margin:0; padding:12px 14px; font-size:calc(13px + var(--fsUp, 0px)); line-height:1.5; color:var(--mut); }
+.shTip{ margin:14px 2px 0; font-size:calc(13px + var(--fsUp, 0px)); line-height:1.6; color:var(--mut); }
 
 /* Library as a Finder — toolbar + contents, phone/desktop. No sidebar: the
    rail's Library section + the view chips already go everywhere. */
@@ -990,21 +990,21 @@ input[type=checkbox]{ accent-color:var(--ac); }
 /* Folder pane + toolbar. */
 .lib2-main{ min-width:0; display:flex; flex-direction:column; gap:4px; }
 .lib2-bar{ display:flex; align-items:center; gap:8px; padding:6px 0; }
-.lib2-title{ font-size:20px; font-weight:700; letter-spacing:-.02em; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.lib2-search{ flex:1; min-width:0; background:var(--card); border:1px solid var(--hair); border-radius:10px; padding:8px 12px; font:inherit; font-size:14px; color:var(--tx); }
+.lib2-title{ font-size:calc(20px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lib2-search{ flex:1; min-width:0; background:var(--card); border:1px solid var(--hair); border-radius:10px; padding:8px 12px; font:inherit; font-size:calc(14px + var(--fsUp, 0px)); color:var(--tx); }
 .lib2-bar .lib2-search{ max-width:220px; }
 .lib2-tools{ display:flex; align-items:center; gap:4px; flex:none; }
-.lib2-tools button{ width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--mut); font-size:15px; }
+.lib2-tools button{ width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--mut); font-size:calc(15px + var(--fsUp, 0px)); }
 .lib2-tools button.on{ background:var(--card2); color:var(--ac); }
 .lib2-tools button svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-.lib2-tools select{ background:var(--card); color:var(--tx); border:1px solid var(--hair); border-radius:8px; padding:6px 4px; font:inherit; font-size:13px; max-width:92px; }
+.lib2-tools select{ background:var(--card); color:var(--tx); border:1px solid var(--hair); border-radius:8px; padding:6px 4px; font:inherit; font-size:calc(13px + var(--fsUp, 0px)); max-width:92px; }
 /* Icon grid: tiles with icon + name + kind line. */
 .lib2-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:10px; }
 .lib2-tile{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:12px 6px 10px; background:var(--card); border-radius:14px; text-align:center; min-width:0; }
 .lib2-tileIcon{ width:44px; height:44px; border-radius:12px; background:var(--card2); display:flex; align-items:center; justify-content:center; }
 .lib2-tileIcon svg{ width:24px; height:24px; stroke:var(--ac); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-.lib2-tileName{ font-size:13px; font-weight:600; line-height:1.3; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere; }
-.lib2-tileSub{ font-size:13px; color:var(--mut); }
+.lib2-tileName{ font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; line-height:1.3; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow-wrap:anywhere; }
+.lib2-tileSub{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); }
 /* Studio / Classroom desktop: gallery + tutorial grids. Phone keeps the
    stacked cards; desktop tiles them. Template detail stays readable. */
 @media (min-width:900px){
@@ -1018,19 +1018,19 @@ input[type=checkbox]{ accent-color:var(--ac); }
 /* Upload thumbs + delete, carried over from the uploads browser. */
 .lib-thumb{ width:40px; height:40px; object-fit:cover; border-radius:8px; flex:none; }
 .lib-icon{ width:40px; height:40px; border-radius:8px; background:var(--hair); flex:none; }
-.lib-name{ font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.lib-del{ width:28px; height:28px; border-radius:50%; border:none; background:none; color:var(--mut); font-size:18px; flex:none; }
+.lib-name{ font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lib-del{ width:28px; height:28px; border-radius:50%; border:none; background:none; color:var(--mut); font-size:calc(18px + var(--fsUp, 0px)); flex:none; }
 .lib-preview{ position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.6); display:flex; flex-direction:column; }
-.lib-preview-head{ display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 14px; color:#fff; font-size:14px; }
-.lib-preview-head button{ background:none; border:none; color:#fff; font-size:24px; display:flex; align-items:center; }
+.lib-preview-head{ display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 14px; color:#fff; font-size:calc(14px + var(--fsUp, 0px)); }
+.lib-preview-head button{ background:none; border:none; color:#fff; font-size:calc(24px + var(--fsUp, 0px)); display:flex; align-items:center; }
 .lib-preview-head button svg{ width:22px; height:22px; stroke:#fff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .lib-preview-body{ flex:1; display:flex; align-items:center; justify-content:center; padding:0 14px 14px; min-height:0; }
 .lib-preview-body img, .lib-preview-body video{ max-width:100%; max-height:100%; border-radius:8px; }
 .lib-preview-body audio{ width:100%; }
 .lib-preview-body iframe{ width:100%; height:100%; border:none; border-radius:8px; background:#fff; }
 .daySep{ text-align:center; margin:14px 0 8px; }
-.daySep span, .daySep{ font-size:13px; font-weight:600; color:var(--mut); }
-.drDate{ margin-left:auto; font-size:13px; color:var(--mut); flex:none; }
+.daySep span, .daySep{ font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; color:var(--mut); }
+.drDate{ margin-left:auto; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); flex:none; }
 .dr .g{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .swipeRow{ position:relative; overflow:hidden; }
 .swipeActions{ position:absolute; right:0; top:0; bottom:0; display:flex; align-items:stretch; }
@@ -1038,20 +1038,20 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .swExp{ background:var(--ac); }
 .swDel{ background:var(--rd); }
 .drSwipe{ display:flex; align-items:center; gap:12px; width:100%; background:var(--card);
-  padding:6px 20px; font-size:15px; text-align:left; color:var(--tx);
+  padding:6px 20px; font-size:calc(15px + var(--fsUp, 0px)); text-align:left; color:var(--tx);
   transition:transform .2s ease; position:relative; }
 .drSwipe.on{ background:var(--card2); }
 .dlgScrim{ position:fixed; inset:0; z-index:400; background:rgba(0,0,0,.4); }
 .dlg{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:401;
   width:min(320px, 85vw); background:var(--card); border-radius:14px; padding:20px;
   box-shadow:0 8px 32px rgba(0,0,0,.25); }
-.dlgTitle{ font-size:17px; font-weight:700; margin-bottom:8px; }
-.dlgBody{ font-size:15px; color:var(--mut); margin-bottom:20px; }
+.dlgTitle{ font-size:calc(17px + var(--fsUp, 0px)); font-weight:700; margin-bottom:8px; }
+.dlgBody{ font-size:calc(15px + var(--fsUp, 0px)); color:var(--mut); margin-bottom:20px; }
 .dlgBtns{ display:flex; gap:10px; justify-content:flex-end; }
 .dlgCancel{ border:1px solid var(--hair); background:none; border-radius:10px;
-  padding:10px 18px; font-size:15px; font-weight:600; color:var(--tx); }
+  padding:10px 18px; font-size:calc(15px + var(--fsUp, 0px)); font-weight:600; color:var(--tx); }
 .dlgDanger{ border:none; border-radius:10px; padding:10px 18px;
-  font-size:15px; font-weight:700; background:var(--rd); color:#fff; }
+  font-size:calc(15px + var(--fsUp, 0px)); font-weight:700; background:var(--rd); color:#fff; }
 .drDesktop{ display:none; }
 
 /* In-row ghost tools: desktop hover reveals Export/Delete pinned inside the
@@ -1075,7 +1075,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   .drIconBtn:hover{ background:var(--card2); }
 }
 .pageHead{ display:flex; align-items:center; gap:12px; padding:16px 20px; }
-.pageHead h2{ flex:1; margin:0; font-size:22px; font-weight:700; letter-spacing:-.02em; }
+.pageHead h2{ flex:1; margin:0; font-size:calc(22px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; }
 /* The note face: a flex column with the sheet growing, so the format bar
    docks at the viewport bottom even on a short note. Sticky-in-flow used to
    leave it floating mid-page on desktop, where the empty space below the
@@ -1083,24 +1083,24 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .noteClean{ min-height:100%; display:flex; flex-direction:column; padding-bottom:0; }
 .noteClean .ndoc{ flex:1; }
 .noteRow{ display:flex; align-items:center; gap:12px; width:100%; background:var(--card);
-  padding:14px 20px; font-size:16px; text-align:left; color:var(--tx); border:none;
+  padding:14px 20px; font-size:calc(16px + var(--fsUp, 0px)); text-align:left; color:var(--tx); border:none;
   transition:transform .2s ease; position:relative; }
 .noteRow .g{ flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
 .noteTitle{ font-weight:600; }
-.notePreview{ font-size:13px; color:var(--mut); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.notePreview{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* The clean note: one bare sheet. No title field (the first block IS the
    title, large + bold by position), no entry boxes, no toolbar on the face.
    The meta line is the only chrome: date + word count, muted. */
-.nmeta{ padding:12px 24px 0; font-size:13px; color:var(--mut); }
-.ndoc{ min-height:60vh; font-size:17px; line-height:1.65; outline:none;
+.nmeta{ padding:12px 24px 0; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); }
+.ndoc{ min-height:60vh; font-size:calc(17px + var(--fsUp, 0px)); line-height:1.65; outline:none;
   padding:4px 24px 40px; color:var(--tx); word-wrap:break-word; }
 /* First line is the title — Apple Notes: large, bold, tight. Carried by the
    `ntitle` class (see ensureTitle in NoteViewPage), never by position: the
    first line is a bare text node until its first Enter, and bare text matches
    no selector — a `:first-child` rule styled the second line instead. Class
    beats tag, so an h1 first line still reads as the title. */
-.ndoc h1{ font-size:22px; margin:16px 0 8px; }
-.ndoc .ntitle{ font-size:28px; font-weight:700; letter-spacing:-.02em; line-height:1.2; margin:0 0 8px; }
+.ndoc h1{ font-size:calc(22px + var(--fsUp, 0px)); margin:16px 0 8px; }
+.ndoc .ntitle{ font-size:calc(28px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; line-height:1.2; margin:0 0 8px; }
 /* Empty sheet: the placeholder. Toggled by JS (tEmpty) rather than `:empty` —
    the sheet seeds a title div holding a br for caret height, which is never
    `:empty`. */
@@ -1111,7 +1111,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 /* Session ribbon: a hairline date divider, not a box. contenteditable=false
    so the caret never lands in it. */
 .nsess{ display:flex; align-items:center; gap:10px; margin:20px 0 12px;
-  font-size:13px; color:var(--mut); font-weight:600; pointer-events:none;
+  font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); font-weight:600; pointer-events:none;
   user-select:none; }
 .nsess::before, .nsess::after{ content:''; flex:1; height:1px; background:var(--hair); }
 .nsess span{ white-space:nowrap; }
@@ -1131,7 +1131,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
   background:color-mix(in srgb, var(--card) 92%, transparent);
   backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
   border-top:1px solid var(--hair); }
-.nbar button{ border:none; background:none; color:var(--tx); font-size:14px;
+.nbar button{ border:none; background:none; color:var(--tx); font-size:calc(14px + var(--fsUp, 0px));
   font-weight:600; padding:8px 11px; border-radius:8px; flex:none; }
 .nbar button:active{ background:var(--card2); }
 .nfmtSep{ width:1px; height:18px; background:var(--hair); margin:0 4px; flex:none; }
@@ -1141,8 +1141,8 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .crash{ display:flex; align-items:center; justify-content:center; min-height:100dvh;
   padding:24px; background:var(--bg); }
 .crash-card{ max-width:340px; text-align:center; display:flex; flex-direction:column; gap:12px; }
-.crash-title{ font-size:20px; font-weight:700; letter-spacing:-.02em; color:var(--tx); }
-.crash-note{ font-size:14px; line-height:1.5; color:var(--mut); }
+.crash-title{ font-size:calc(20px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; color:var(--tx); }
+.crash-note{ font-size:calc(14px + var(--fsUp, 0px)); line-height:1.5; color:var(--mut); }
 /* ─── Widget cards: the mockup's .wc/.wt/.rm + shake ─────────────────────── */
 /* Card: 2-col grid span, half class halves it. The mockup's .wc/.half. */
 .wc{ background:var(--card); border-radius:20px; padding:14px 16px;
@@ -1150,21 +1150,21 @@ input[type=checkbox]{ accent-color:var(--ac); }
   flex-direction:column; gap:6px; min-width:0; cursor:pointer; }
 .wc.half{ grid-column:span 1; }
 /* Title row: icon + name + chevron. The mockup's .wt. */
-.wt{ display:flex; align-items:center; gap:8px; color:var(--mut); font-size:13px;
+.wt{ display:flex; align-items:center; gap:8px; color:var(--mut); font-size:calc(13px + var(--fsUp, 0px));
   font-weight:600; }
 .wt svg{ width:18px; height:18px; stroke:var(--ac); fill:none; stroke-width:1.8;
   stroke-linecap:round; stroke-linejoin:round; flex:none; }
-.wt i{ margin-left:auto; font-style:normal; font-size:20px; color:var(--mut); }
+.wt i{ margin-left:auto; font-style:normal; font-size:calc(20px + var(--fsUp, 0px)); color:var(--mut); }
 /* Remove ×: top-left circle in edit. The mockup's .rm. Size toggle reuses
    the same circle, offset right of × (the mockup's inline `right:40px`). */
 .rm{ position:absolute; top:-8px; left:-8px; width:26px; height:26px;
   border-radius:50%; background:var(--card3); color:var(--tx); padding:0;
-  z-index:2; font-size:16px; line-height:1; cursor:pointer; }
+  z-index:2; font-size:calc(16px + var(--fsUp, 0px)); line-height:1; cursor:pointer; }
 .rmSz{ left:auto; right:40px; width:auto; padding:0 9px;
-  border-radius:99px; font-size:13px; font-weight:600; }
+  border-radius:99px; font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; }
 /* Hero number: first card's big count. The mockup's .big. */
-.big{ font-size:34px; font-weight:700; letter-spacing:-.02em; line-height:1.1; }
-.big small{ font-size:15px; font-weight:600; color:var(--mut); margin-left:6px;
+.big{ font-size:calc(34px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; line-height:1.1; }
+.big small{ font-size:calc(15px + var(--fsUp, 0px)); font-weight:600; color:var(--mut); margin-left:6px;
   letter-spacing:0; }
 /* Page grid: 2 columns, half cards share a row. The mockup's .pgrid. */
 .pgrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; align-content:start; }
@@ -1176,17 +1176,17 @@ input[type=checkbox]{ accent-color:var(--ac); }
 
 /* Screen titles: one size everywhere. The mockup's .greet is 28px; screens
    hand-rolled 24px inline. Title + sub read as a unit. */
-.screenT{ font-size:28px; font-weight:700; letter-spacing:-.02em; margin:0 0 4px; }
-.screenS{ font-size:14px; color:var(--mut); }
+.screenT{ font-size:calc(28px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; margin:0 0 4px; }
+.screenS{ font-size:calc(14px + var(--fsUp, 0px)); color:var(--mut); }
 .screenS.conDate{ color:var(--tx); }
 /* Dashboard page tabs: the mockup's .pn — quiet pills, active is filled. */
 .pn{ display:flex; gap:6px; margin:4px 0 12px; align-items:center; flex-wrap:wrap; }
 .pn button{ background:var(--card2); border-radius:99px; padding:6px 12px;
-  font-size:14px; font-weight:600; color:var(--mut); }
+  font-size:calc(14px + var(--fsUp, 0px)); font-weight:600; color:var(--mut); }
 .pn button.on{ background:var(--ac); color:var(--acink); }
 /* Page arrows: desktop only — phones swipe. */
 .pn .pnArrow{ display:none; align-items:center; justify-content:center; width:32px; height:32px;
-  padding:0; font-size:18px; line-height:1; background:transparent; color:var(--mut); }
+  padding:0; font-size:calc(18px + var(--fsUp, 0px)); line-height:1; background:transparent; color:var(--mut); }
 .pn .pnArrow:first-child{ order:-1; }
 .pn .pnArrow:disabled{ opacity:.3; cursor:default; }
 .pn .pnArrow:not(:disabled):hover{ color:var(--tx); background:var(--card2); }
@@ -1202,18 +1202,18 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .cdots{ display:flex; gap:6px; justify-content:center; margin:8px 0 2px; }
 .cdots i{ width:6px; height:6px; border-radius:50%; background:var(--card3); }
 .cdots i.on{ background:var(--ac); width:18px; border-radius:4px; }
-.cpl{ text-align:center; font-size:13px; color:var(--mut); margin-bottom:2px;
+.cpl{ text-align:center; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); margin-bottom:2px;
   text-transform:uppercase; letter-spacing:.4px; }
 /* Streamlined list: the mockup's ul.st for brief bullets. */
 .st{ list-style:none; margin:0; padding:0; }
 .st li{ display:flex; align-items:center; gap:8px; padding:6px 0;
-  border-bottom:1px solid var(--hair); font-size:15px; }
+  border-bottom:1px solid var(--hair); font-size:calc(15px + var(--fsUp, 0px)); }
 .st li:last-child{ border:0; }
 .st svg{ width:18px; height:18px; flex:none; }
 /* Classroom: course/digest cards + quiz buttons. The mockup's .cxcard/.qz. */
 .cxcard{ background:var(--card); border-radius:16px; padding:14px; margin:10px 0; }
 .qz button{ display:block; width:100%; text-align:left; padding:12px; border-radius:12px;
-  background:var(--card2); margin:6px 0; font-size:15px; }
+  background:var(--card2); margin:6px 0; font-size:calc(15px + var(--fsUp, 0px)); }
 .qz button.right{ background:var(--grsoft); color:var(--gr); font-weight:700; }
 .qz button.wrong{ background:var(--rdsoft); color:var(--rd); font-weight:700; }
 
@@ -1239,9 +1239,9 @@ input[type=checkbox]{ accent-color:var(--ac); }
    Kept for the Calendar full page (batch 3); the dashboard week widget
    uses .ev rows above. */
 .calgrid{ display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
-.dw{ text-align:center; font-size:13px; color:var(--mut); padding:4px 0; }
+.dw{ text-align:center; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); padding:4px 0; }
 .dy{ position:relative; aspect-ratio:1; border-radius:10px; background:none;
-  color:var(--tx); font-size:15px; display:flex; align-items:center;
+  color:var(--tx); font-size:calc(15px + var(--fsUp, 0px)); display:flex; align-items:center;
   justify-content:center; cursor:pointer; }
 .dy:active{ background:var(--card2); }
 .dy.sel{ background:var(--acsoft); color:var(--ac); font-weight:700; }
@@ -1250,16 +1250,16 @@ input[type=checkbox]{ accent-color:var(--ac); }
   background:var(--ac); }
 .wkstrip{ display:flex; gap:4px; margin:10px 0; }
 .wkstrip button{ flex:1; background:var(--card); border-radius:12px; padding:8px 2px;
-  font-size:15px; color:var(--tx); line-height:1.3; }
+  font-size:calc(15px + var(--fsUp, 0px)); color:var(--tx); line-height:1.3; }
 .wkstrip button.sel{ background:var(--acsoft); color:var(--ac); font-weight:700; }
 
-.crash-btn{ border:none; border-radius:12px; padding:12px 20px; font-size:15px;
+.crash-btn{ border:none; border-radius:12px; padding:12px 20px; font-size:calc(15px + var(--fsUp, 0px));
   font-weight:600; background:var(--ac); color:var(--acink); cursor:pointer; }
 /* The escape hatch: a quieter second button, not a second primary. Same
    shape, no fill — findable in a crash without competing with the safe
    first move (Reload). */
 .crash-btn-ghost{ background:none; border:1px solid var(--hair); color:var(--mut);
-  font-weight:500; font-size:14px; padding:10px 20px; }
+  font-weight:500; font-size:calc(14px + var(--fsUp, 0px)); padding:10px 20px; }
 
 /* ─── Quick add + Calendar + Events (Oct 2026) ───────────────────────────
    Graphite surfaces; color only on dots (kind), the today marker and the
@@ -1269,13 +1269,13 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .c-other{ --k:var(--mut); } .c-task{ --k:var(--tx); }
 
 .qa{ display:flex; flex-direction:column; gap:8px; margin:4px 0 14px; }
-.qaHint{ font-size:13px; color:var(--mut); line-height:1.35; }
+.qaHint{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); line-height:1.35; }
 .qaBar{ display:flex; align-items:center; gap:4px; background:var(--card); border:1px solid var(--hair);
   border-radius:24px; padding:5px 5px 5px 16px; }
 .qaBar:focus-within{ border-color:color-mix(in srgb, var(--ac) 60%, var(--hair)); }
-.qaIn{ flex:1; min-width:0; background:none; border:0; outline:none; padding:9px 0; font:inherit; font-size:16px; color:var(--tx); }
+.qaIn{ flex:1; min-width:0; background:none; border:0; outline:none; padding:9px 0; font:inherit; font-size:calc(16px + var(--fsUp, 0px)); color:var(--tx); }
 .qaIn::placeholder{ color:var(--mut); }
-.qaMore{ flex:none; background:none; color:var(--mut); font-size:13px; font-weight:600; padding:8px 10px; border-radius:16px; }
+.qaMore{ flex:none; background:none; color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; padding:8px 10px; border-radius:16px; }
 .qaMore:hover{ color:var(--tx); background:var(--card2); }
 .qaSend{ flex:none; width:36px; height:36px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center;
   background:var(--card3); color:var(--mut); transition:background .15s, color .15s; }
@@ -1291,8 +1291,8 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .qaX svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; }
 .qaChips{ display:flex; flex-wrap:wrap; gap:6px; }
 .qaChip{ display:inline-flex; align-items:center; gap:4px; background:var(--card2); color:var(--tx);
-  border-radius:99px; padding:4px 6px 4px 11px; font-size:13px; font-weight:600; }
-.qaChip button{ width:22px; height:22px; border-radius:50%; padding:0; background:transparent; color:var(--mut); font-size:15px; line-height:1; }
+  border-radius:99px; padding:4px 6px 4px 11px; font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; }
+.qaChip button{ width:22px; height:22px; border-radius:50%; padding:0; background:transparent; color:var(--mut); font-size:calc(15px + var(--fsUp, 0px)); line-height:1; }
 .qaChip button:hover{ background:var(--card3); color:var(--tx); }
 /* Phone: the bar docks at the bottom of the page, above the tab bar, with
    the hint/chips sitting just above it. Pages that use it set .qaPage. */
@@ -1313,66 +1313,66 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .evRow label{ display:flex; flex-direction:column; gap:4px; }
 .evRow input, .evRow select{ color-scheme:dark; }
 [data-theme="light"] .evRow input{ color-scheme:light; }
-.evCheck{ display:flex; align-items:center; gap:8px; font-size:14px; }
+.evCheck{ display:flex; align-items:center; gap:8px; font-size:calc(14px + var(--fsUp, 0px)); }
 .evTypes{ display:flex; flex-wrap:wrap; gap:6px; }
 .evType{ display:inline-flex; align-items:center; gap:6px; background:var(--card2); color:var(--mut);
-  border-radius:99px; padding:7px 12px; font-size:13px; font-weight:600; }
+  border-radius:99px; padding:7px 12px; font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; }
 .evType i{ width:8px; height:8px; border-radius:50%; background:var(--k); }
 .evType.on{ color:var(--tx); box-shadow:inset 0 0 0 1.5px var(--k); }
 .evType.t-meeting{ --k:var(--ac); } .evType.t-appointment{ --k:var(--gr); } .evType.t-class{ --k:var(--am); } .evType.t-other{ --k:var(--mut); }
 .evDays{ display:flex; gap:6px; }
-.evDays button{ width:34px; height:34px; border-radius:50%; background:var(--card2); color:var(--mut); font-weight:700; font-size:13px; padding:0; }
+.evDays button{ width:34px; height:34px; border-radius:50%; background:var(--card2); color:var(--mut); font-weight:700; font-size:calc(13px + var(--fsUp, 0px)); padding:0; }
 .evDays button.on{ background:var(--ac); color:var(--acink); }
 
 .calBar{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:4px 0 10px; }
 .calNav{ display:flex; align-items:center; gap:6px; min-width:0; }
-.calNav .hb{ width:34px; height:34px; font-size:20px; }
+.calNav .hb{ width:34px; height:34px; font-size:calc(20px + var(--fsUp, 0px)); }
 .calNav .fb:disabled{ opacity:.4; }
-.calLabel{ font-size:17px; margin-left:6px; white-space:nowrap; }
+.calLabel{ font-size:calc(17px + var(--fsUp, 0px)); margin-left:6px; white-space:nowrap; }
 .calSeg{ display:flex; background:var(--card); border-radius:10px; padding:3px; gap:2px; }
-.calSeg button{ padding:6px 14px; border-radius:8px; font-size:13px; font-weight:600; color:var(--mut); background:transparent; }
+.calSeg button{ padding:6px 14px; border-radius:8px; font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; color:var(--mut); background:transparent; }
 .calSeg button.on{ background:var(--card3); color:var(--tx); }
 .calFoot{ margin:14px 0 4px; text-align:center; }
 .lnkBtn{ background:none; padding:0; color:var(--ac); font:inherit; font-weight:600; }
 
 .mGrid{ display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:2px; padding:8px; }
-.mDow{ text-align:center; font-size:13px; font-weight:700; color:var(--mut); padding:4px 0; text-transform:uppercase; letter-spacing:.04em; }
+.mDow{ text-align:center; font-size:calc(13px + var(--fsUp, 0px)); font-weight:700; color:var(--mut); padding:4px 0; text-transform:uppercase; letter-spacing:.04em; }
 .mCell{ display:flex; flex-direction:column; align-items:center; gap:3px; min-height:46px; padding:6px 2px;
   border-radius:10px; background:transparent; color:var(--tx); min-width:0; }
 .mCell.out{ color:var(--mut); opacity:.5; }
 .mCell:hover{ background:var(--card2); }
 .mCell.sel{ background:var(--card2); }
-.mNum{ font-size:14px; font-weight:600; width:26px; height:26px; line-height:26px; border-radius:50%; text-align:center; }
+.mNum{ font-size:calc(14px + var(--fsUp, 0px)); font-weight:600; width:26px; height:26px; line-height:26px; border-radius:50%; text-align:center; }
 .mCell.today .mNum{ background:var(--ac); color:var(--acink); }
 .mDots{ display:flex; gap:3px; }
 .mDots i{ width:5px; height:5px; border-radius:50%; background:var(--k); }
 .mItems{ display:flex; flex-direction:column; gap:2px; width:100%; }
-.mItem{ display:flex; align-items:center; gap:4px; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--tx); text-align:left; }
+.mItem{ display:flex; align-items:center; gap:4px; font-size:calc(13px + var(--fsUp, 0px)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--tx); text-align:left; }
 .mItem i{ flex:none; width:6px; height:6px; border-radius:50%; background:var(--k); }
 .mItem em{ font-style:normal; color:var(--mut); }
 .mItem.done, .agRow.done, .hEv.done, .hChip.done{ opacity:.45; text-decoration:line-through; }
 
 .agRow{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:none; padding:11px 0;
-  border-bottom:1px solid var(--hair); color:var(--tx); font-size:15px; }
+  border-bottom:1px solid var(--hair); color:var(--tx); font-size:calc(15px + var(--fsUp, 0px)); }
 .agRow:last-child{ border-bottom:0; }
 .agRow > i{ flex:none; width:8px; height:8px; border-radius:50%; background:var(--k); }
 .c-task.agRow > i{ background:transparent; box-shadow:inset 0 0 0 1.5px var(--mut); }
-.agTm{ flex:none; width:100px; font-size:13px; color:var(--mut); font-variant-numeric:tabular-nums; }
+.agTm{ flex:none; width:100px; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); font-variant-numeric:tabular-nums; }
 
 .wkstrip .today{ color:var(--ac); }
 .hGrid{ padding:8px 8px 10px; overflow:hidden; }
 .hHead, .hAll, .hBody{ display:grid; }
 .hDay{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px 0 8px; background:none; color:var(--tx); }
-.hDay b{ font-size:17px; width:30px; height:30px; line-height:30px; border-radius:50%; }
+.hDay b{ font-size:calc(17px + var(--fsUp, 0px)); width:30px; height:30px; line-height:30px; border-radius:50%; }
 .hDay.today b{ background:var(--ac); color:var(--acink); }
 .hAll{ border-top:1px solid var(--hair); border-bottom:1px solid var(--hair); min-height:30px; }
-.hLbl{ align-self:center; text-align:right; padding-right:8px; font-size:13px; }
+.hLbl{ align-self:center; text-align:right; padding-right:8px; font-size:calc(13px + var(--fsUp, 0px)); }
 .hAllCell{ display:flex; flex-direction:column; gap:2px; padding:3px 2px; border-left:1px solid var(--hair); min-width:0; cursor:pointer; }
-.hChip{ display:block; text-align:left; font-size:13px; font-weight:600; padding:3px 6px; border-radius:6px; background:var(--card2);
+.hChip{ display:block; text-align:left; font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; padding:3px 6px; border-radius:6px; background:var(--card2);
   color:var(--tx); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-shadow:inset 3px 0 0 var(--k); }
 .hBody{ position:relative; }
 .hLbls{ position:relative; }
-.hLbls span{ position:absolute; right:8px; transform:translateY(-6px); font-size:13px; white-space:nowrap; }
+.hLbls span{ position:absolute; right:8px; transform:translateY(-6px); font-size:calc(13px + var(--fsUp, 0px)); white-space:nowrap; }
 .hCol{ position:relative; border-left:1px solid var(--hair); cursor:pointer; min-width:0; }
 .hCol:hover{ background:rgba(127,127,127,.03); }
 .hLine{ position:absolute; left:0; right:0; border-top:1px solid var(--hair); pointer-events:none; }
@@ -1380,14 +1380,14 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .hNow::before{ content:''; position:absolute; left:-4px; top:-5px; width:8px; height:8px; border-radius:50%; background:var(--rd); }
 .hEv{ position:absolute; z-index:1; display:flex; flex-direction:column; align-items:flex-start; gap:1px; text-align:left;
   background:var(--card2); color:var(--tx); border-radius:8px; padding:4px 6px 4px 9px; overflow:hidden;
-  box-shadow:inset 3px 0 0 var(--k); font-size:13px; line-height:1.25; }
+  box-shadow:inset 3px 0 0 var(--k); font-size:calc(13px + var(--fsUp, 0px)); line-height:1.25; }
 .hEv:hover{ background:var(--card3); }
 .hEv b{ font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-.hEv span{ color:var(--mut); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.hEv span{ color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .ftabs .fdot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--k); margin-right:6px; vertical-align:middle; }
 @media (max-width:899px){
-  .hEv{ padding:3px 4px 3px 6px; font-size:13px; }
-  .calLabel{ font-size:15px; }
+  .hEv{ padding:3px 4px 3px 6px; font-size:calc(13px + var(--fsUp, 0px)); }
+  .calLabel{ font-size:calc(15px + var(--fsUp, 0px)); }
 }
 .tkBar{ display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin:10px 0; }
 .tkTitle{ background:none; padding:0; color:inherit; font:inherit; text-align:left; }
@@ -1423,10 +1423,10 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .evDHead{ display:flex; align-items:center; gap:10px; }
 .evDHead > i{ flex:none; width:10px; height:10px; border-radius:50%; background:var(--k); }
 .c-task .evDHead > i{ background:transparent; box-shadow:inset 0 0 0 1.5px var(--mut); }
-.evDHead b{ flex:1; font-size:17px; line-height:1.25; }
-.evDX{ flex:none; width:30px; height:30px; border-radius:50%; padding:0; background:var(--card2); color:var(--mut); font-size:18px; }
-.evDRow{ font-size:14px; padding-left:20px; }
-.evDNote{ font-size:14px; padding:8px 0 0 20px; white-space:pre-wrap; color:var(--tx); }
+.evDHead b{ flex:1; font-size:calc(17px + var(--fsUp, 0px)); line-height:1.25; }
+.evDX{ flex:none; width:30px; height:30px; border-radius:50%; padding:0; background:var(--card2); color:var(--mut); font-size:calc(18px + var(--fsUp, 0px)); }
+.evDRow{ font-size:calc(14px + var(--fsUp, 0px)); padding-left:20px; }
+.evDNote{ font-size:calc(14px + var(--fsUp, 0px)); padding:8px 0 0 20px; white-space:pre-wrap; color:var(--tx); }
 
 /* Task done: line draws through, then the row fades and folds. */
 .strike{ background-image:linear-gradient(currentColor, currentColor); background-repeat:no-repeat;
@@ -1452,7 +1452,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .pjRow:last-child{ border-bottom:0; }
 .pjMain{ flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; text-align:left; background:none; padding:12px 0; color:var(--tx); }
 .pjTop{ display:flex; align-items:baseline; gap:10px; }
-.pjTop b{ flex:1; min-width:0; font-weight:600; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pjTop b{ flex:1; min-width:0; font-weight:600; font-size:calc(15px + var(--fsUp, 0px)); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pjDesc{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pjBar{ display:block; height:4px; border-radius:2px; background:var(--card3); overflow:hidden; margin-top:2px; }
 .pjBar i{ display:block; height:100%; background:var(--ac); border-radius:2px; }
@@ -1471,7 +1471,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
    widgets between pages the way you move apps on a phone. */
 .pdStage{ position:relative; }
 .pgArr{ display:none; position:absolute; top:clamp(100px, 34%, 260px); z-index:5; width:36px; height:36px;
-  border-radius:50%; padding:0; background:var(--card2); color:var(--tx); font-size:22px; line-height:1;
+  border-radius:50%; padding:0; background:var(--card2); color:var(--tx); font-size:calc(22px + var(--fsUp, 0px)); line-height:1;
   align-items:center; justify-content:center; border:1px solid var(--hair); transition:background .15s; }
 .pgArr:hover{ background:var(--card3); }
 .pgArr.l{ left:-44px; } .pgArr.r{ right:-44px; }
@@ -1494,7 +1494,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .pdBtns{ display:flex; flex-wrap:wrap; gap:8px; }
 .pdAdd{ border-top:1px solid var(--hair); padding-top:6px; }
 .pdAdd .sr{ padding:10px 4px; }
-.pdEmpty{ border:1.5px dashed var(--hair); border-radius:18px; padding:40px 16px; text-align:center; color:var(--mut); font-size:14px; min-height:140px; display:flex; align-items:center; justify-content:center; }
+.pdEmpty{ border:1.5px dashed var(--hair); border-radius:18px; padding:40px 16px; text-align:center; color:var(--mut); font-size:calc(14px + var(--fsUp, 0px)); min-height:140px; display:flex; align-items:center; justify-content:center; }
 .ed8 .cpg{ min-height:120px; }
 
 /* Month view on desktop: every week row gets the same tall height. */
@@ -1518,7 +1518,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 [data-theme="light"] .msRow input[type=date]{ color-scheme:light; }
 .msDot{ flex:none; width:12px; height:12px; transform:rotate(45deg); border-radius:2px; box-shadow:inset 0 0 0 2px #ffd60a; background:transparent; padding:0; }
 .msDot.on{ background:#ffd60a; }
-.msX{ flex:none; background:none; color:var(--mut); font-size:18px; padding:0 6px; }
+.msX{ flex:none; background:none; color:var(--mut); font-size:calc(18px + var(--fsUp, 0px)); padding:0 6px; }
 .msAdd{ display:flex; gap:8px; margin-top:6px; }
 .msAdd .sinput{ margin:0; }
 .msAdd .sinput:first-child{ flex:1; min-width:0; }
@@ -1533,8 +1533,8 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .stTile{ display:grid; grid-template-columns:28px 1fr; grid-template-rows:auto auto; column-gap:12px; row-gap:2px; align-items:center;
   width:100%; text-align:left; background:var(--card); border:1px solid var(--hair); border-radius:14px; padding:12px 14px; color:var(--tx); }
 .stTile svg{ grid-row:1 / span 2; width:22px; height:22px; stroke:var(--ac); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-.stTile .stName{ font-weight:600; font-size:15px; min-width:0; }
-.stTile .stSub{ font-size:13px; color:var(--mut); min-width:0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.4; }
+.stTile .stName{ font-weight:600; font-size:calc(15px + var(--fsUp, 0px)); min-width:0; }
+.stTile .stSub{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); min-width:0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.4; }
 .stTile:hover{ background:var(--card2); }
 @media (min-width:900px){
   .stGrid{ grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)) !important; gap:12px; }
@@ -1546,18 +1546,18 @@ input[type=checkbox]{ accent-color:var(--ac); }
 
 /* Flow editor. */
 .flEdit{ max-width:720px; padding-bottom:20px; }
-.flName{ font-size:18px; font-weight:600; }
+.flName{ font-size:calc(18px + var(--fsUp, 0px)); font-weight:600; }
 .flStep{ display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--hair); }
 .flStep:last-child{ border-bottom:0; }
-.flNum{ flex:none; width:24px; height:24px; border-radius:50%; background:var(--card2); color:var(--mut); font-size:13px; font-weight:700;
+.flNum{ flex:none; width:24px; height:24px; border-radius:50%; background:var(--card2); color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); font-weight:700;
   display:flex; align-items:center; justify-content:center; }
 .flStep.add .flNum{ background:var(--acsoft); color:var(--ac); }
-.flIn{ flex:1; min-width:0; background:transparent; border:0; color:var(--tx); font:inherit; font-size:15px; padding:8px 4px; border-radius:8px; outline:none; }
+.flIn{ flex:1; min-width:0; background:transparent; border:0; color:var(--tx); font:inherit; font-size:calc(15px + var(--fsUp, 0px)); padding:8px 4px; border-radius:8px; outline:none; }
 .flIn:focus{ background:var(--card2); }
 .flStep .msX:disabled{ opacity:.25; }
 .flSave{ margin-top:16px; padding-bottom:10px; }
 .dashHead{ align-items:center; margin-bottom:6px; }
-.dashEdit{ flex:none; min-width:84px; padding:11px 20px; border-radius:12px; font-size:15px; font-weight:600; background:var(--card2); color:var(--tx); }
+.dashEdit{ flex:none; min-width:84px; padding:11px 20px; border-radius:12px; font-size:calc(15px + var(--fsUp, 0px)); font-weight:600; background:var(--card2); color:var(--tx); }
 .dashEdit.pri{ background:var(--ac); color:var(--acink); }
 .pdBtns{ margin-top:0; }
 @media (min-width:900px){ .pdBtns button{ flex:0 1 auto; padding:10px 18px; } }
@@ -1579,15 +1579,15 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .imRow{ display:flex; flex-direction:column; align-items:flex-start; }
 .imRow.first{ margin-top:8px; }
 .imRow.me{ align-items:flex-end; }
-.imWho{ font-size:13px; color:var(--mut); margin:0 0 2px 14px; }
-.imB{ position:relative; max-width:min(75%, 520px); padding:8px 13px; border-radius:18px; font-size:16px; line-height:1.35;
+.imWho{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); margin:0 0 2px 14px; }
+.imB{ position:relative; max-width:min(75%, 520px); padding:8px 13px; border-radius:18px; font-size:calc(16px + var(--fsUp, 0px)); line-height:1.35;
   background:var(--card2); color:var(--tx); white-space:pre-wrap; overflow-wrap:anywhere; }
 .imRow.me .imB{ background:var(--ac); color:var(--acink); }
 .imB.tail{ border-bottom-left-radius:5px; }
 .imRow.me .imB.tail{ border-bottom-left-radius:18px; border-bottom-right-radius:5px; }
 .imHead{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 0 12px; border-bottom:1px solid var(--hair); }
-.imAv{ width:52px; height:52px; border-radius:50%; display:grid; place-items:center; background:var(--card3); color:var(--tx); font-weight:600; font-size:19px; }
-.imName{ font-size:15px; font-weight:600; }
+.imAv{ width:52px; height:52px; border-radius:50%; display:grid; place-items:center; background:var(--card3); color:var(--tx); font-weight:600; font-size:calc(19px + var(--fsUp, 0px)); }
+.imName{ font-size:calc(15px + var(--fsUp, 0px)); font-weight:600; }
 .imTime{ align-self:stretch; text-align:center; margin:10px 0 4px; }
 
 /* ⋯ item menu (components/ItemMenu.tsx). One button on every row and in every
@@ -1602,26 +1602,26 @@ input[type=checkbox]{ accent-color:var(--ac); }
   background:var(--card2); border:1px solid var(--hair); border-radius:14px; padding:6px;
   box-shadow:0 10px 32px rgba(0,0,0,.35); }
 .imItem{ display:block; width:100%; text-align:left; background:none; color:var(--tx);
-  font-size:15px; font-weight:500; padding:11px 12px; border-radius:9px; white-space:nowrap;
+  font-size:calc(15px + var(--fsUp, 0px)); font-weight:500; padding:11px 12px; border-radius:9px; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; }
 .imItem:hover{ background:var(--card3); }
 .imItem.danger{ color:var(--rd); border-top:1px solid var(--hair); border-radius:0 0 9px 9px; margin-top:4px; }
-.imEmpty{ padding:11px 12px; font-size:15px; color:var(--mut); }
+.imEmpty{ padding:11px 12px; font-size:calc(15px + var(--fsUp, 0px)); color:var(--mut); }
 .dlgWide{ width:min(440px, 92vw); }
-.dlgField{ margin-bottom:16px; font-size:15px; }
-textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
-.dlgOk{ border:none; border-radius:10px; padding:10px 18px; font-size:15px; font-weight:700;
+.dlgField{ margin-bottom:16px; font-size:calc(15px + var(--fsUp, 0px)); }
+textarea.dlgField{ resize:vertical; font:inherit; font-size:calc(15px + var(--fsUp, 0px)); }
+.dlgOk{ border:none; border-radius:10px; padding:10px 18px; font-size:calc(15px + var(--fsUp, 0px)); font-weight:700;
   background:var(--ac); color:var(--acink); }
 .pickList{ max-height:min(50vh, 360px); overflow-y:auto; margin:0 -6px 16px; }
 .pickRow{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; width:100%; text-align:left;
   background:none; color:var(--tx); padding:11px 8px; border-radius:10px; }
 .pickRow:hover{ background:var(--card2); }
-.pickLabel{ font-size:15px; font-weight:600; }
-.pickSub{ font-size:13px; color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
-.pickEmpty{ padding:12px 8px; font-size:14px; color:var(--mut); }
+.pickLabel{ font-size:calc(15px + var(--fsUp, 0px)); font-weight:600; }
+.pickSub{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+.pickEmpty{ padding:12px 8px; font-size:calc(14px + var(--fsUp, 0px)); color:var(--mut); }
 /* The way back from a linked item to its project. */
 .pjChip{ display:inline-flex; gap:5px; align-items:baseline; background:none; padding:2px 0; margin-top:2px;
-  font-size:13px; font-weight:600; color:var(--ac); text-align:left; }
+  font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; color:var(--ac); text-align:left; }
 .pjChip .m{ font-weight:500; }
 /* A detail page's header line: title or summary on the left, ⋯ on the right. */
 .itemHead{ display:flex; align-items:center; gap:10px; }
@@ -1630,15 +1630,15 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 /* A tappable row with its ⋯ beside it (a button can't hold a button). */
 .imWrap{ display:flex; align-items:center; gap:4px; }
 .imWrap > :first-child{ flex:1; min-width:0; }
-.msName{ background:none; color:var(--tx); text-align:left; padding:4px 0; font-size:15px; }
+.msName{ background:none; color:var(--tx); text-align:left; padding:4px 0; font-size:calc(15px + var(--fsUp, 0px)); }
 .msRow input.g{ margin:0; padding:8px 10px; }
 .noteTop{ display:flex; align-items:center; gap:8px; padding:8px 16px 0 24px; }
 .noteTop .g{ flex:1; }
 /* Project page */
-.imBtn.pjAddBtn{ width:auto; padding:0 14px; font-size:15px; font-weight:600; color:var(--ac); }
-.pjDescBtn{ display:block; background:none; color:var(--mut); font-size:15px; text-align:left; padding:4px 0; line-height:1.45; }
+.imBtn.pjAddBtn{ width:auto; padding:0 14px; font-size:calc(15px + var(--fsUp, 0px)); font-weight:600; color:var(--ac); }
+.pjDescBtn{ display:block; background:none; color:var(--mut); font-size:calc(15px + var(--fsUp, 0px)); text-align:left; padding:4px 0; line-height:1.45; }
 .pjItem{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
-.pjItemSub{ font-size:13px; color:var(--mut); }
+.pjItemSub{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); }
 .dlgLink{ display:block; margin:-4px 0 16px; text-align:left; }
 /* Desktop rail chat rows: the ⋯ shows on hover, keyboard focus, an open
    menu, and the chat on screen, so twelve rows don't read as twelve icons. */
@@ -1657,25 +1657,25 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
    footprint under a row she touched, a receipt with View/Undo, and the thin
    outline that only Needs you and Proposed get. Text stays full size:
    22 titles, 15 rows, 13 meta. Colors come from the tokens above. */
-.flbl{ margin:20px 0 4px; font-size:13px; font-weight:600; color:var(--mut);
+.flbl{ margin:20px 0 4px; font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; color:var(--mut);
   display:flex; justify-content:space-between; gap:8px; }
 .flbl:first-child{ margin-top:6px; }
 .flbl span{ font-weight:400; }
 .frow{ display:flex; align-items:center; gap:12px; padding:10px 0; min-height:44px;
-  border-bottom:1px solid var(--hair); font-size:15px; }
+  border-bottom:1px solid var(--hair); font-size:calc(15px + var(--fsUp, 0px)); }
 .frow.top{ align-items:flex-start; }
 .frow > svg{ width:17px; height:17px; flex:none; color:var(--mut); stroke:currentColor; fill:none;
   stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-.ft{ flex:1; min-width:0; overflow-wrap:anywhere; font-size:15px; }
-.fsub{ color:var(--mut); font-size:13px; line-height:1.45; }
-.fmeta{ color:var(--mut); font-size:13px; white-space:nowrap; }
+.ft{ flex:1; min-width:0; overflow-wrap:anywhere; font-size:calc(15px + var(--fsUp, 0px)); }
+.fsub{ color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); line-height:1.45; }
+.fmeta{ color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); white-space:nowrap; }
 .frow .over, .ft.over, .fmeta.over{ color:var(--rd); }
-.fp{ margin-top:2px; color:var(--mut); font-size:13px; }
+.fp{ margin-top:2px; color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); }
 .fp b{ color:var(--ac); font-weight:600; }
-.fact{ margin-top:10px; color:var(--ac); font-size:14px; font-weight:600; padding:6px 0; }
+.fact{ margin-top:10px; color:var(--ac); font-size:calc(14px + var(--fsUp, 0px)); font-weight:600; padding:6px 0; }
 .needs{ border:1px solid var(--hair); border-radius:12px; padding:10px 12px; margin:6px 0; }
 .rcpt{ margin-top:8px; padding:8px 12px; border-left:2px solid var(--ac); border-radius:0 8px 8px 0;
-  background:color-mix(in srgb, var(--card2) 50%, transparent); font-size:14px; }
+  background:color-mix(in srgb, var(--card2) 50%, transparent); font-size:calc(14px + var(--fsUp, 0px)); }
 .rcpt .fact{ margin:0 0 0 12px; padding:0; }
 .spine{ position:relative; padding-left:24px; }
 .spine::before{ content:""; position:absolute; left:5px; top:12px; bottom:12px; width:1px; background:var(--hair); }
@@ -1683,11 +1683,11 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .spine .frow::before{ content:""; position:absolute; left:-23px; top:17px; width:9px; height:9px;
   border-radius:50%; border:1px solid var(--mut); background:var(--bg); }
 .spine .snow{ position:relative; display:flex; align-items:center; gap:10px; padding:6px 0;
-  color:var(--ac); font-size:13px; font-weight:600; }
+  color:var(--ac); font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; }
 .spine .snow::before{ content:""; position:absolute; left:-25px; width:13px; height:13px; border-radius:50%; background:var(--ac); }
 .spine .snow::after{ content:""; flex:1; border-top:1px solid var(--ac); opacity:.5; }
 .oseg{ display:flex; gap:2px; padding:3px; border-radius:9px; background:var(--card2); }
-.oseg button{ flex:1; padding:5px 8px; border-radius:7px; font-size:13px; color:var(--mut); white-space:nowrap; }
+.oseg button{ flex:1; padding:5px 8px; border-radius:7px; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); white-space:nowrap; }
 .oseg button.on{ background:var(--card3); color:var(--tx); font-weight:600; }
 
 /* ── Eumae's office (step 2) ──────────────────────────────────────────────
@@ -1695,24 +1695,24 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
    Phone: a peek bar above the tabs that opens the office as a bottom sheet. */
 .oHead{ flex:none; display:flex; align-items:center; gap:8px;
   padding:calc(12px + env(safe-area-inset-top)) 10px 0 16px; }
-.oHead b{ flex:1; font-size:15px; font-weight:650; }
+.oHead b{ flex:1; font-size:calc(15px + var(--fsUp, 0px)); font-weight:650; }
 .oGrab{ display:none; }
 .otabs{ flex:none; display:flex; gap:18px; padding:0 16px; margin-top:6px;
   border-bottom:1px solid var(--hair); overflow-x:auto; scrollbar-width:none; }
 .otabs::-webkit-scrollbar{ display:none; }
-.otabs button{ padding:10px 0 9px; font-size:14px; color:var(--mut); white-space:nowrap;
+.otabs button{ padding:10px 0 9px; font-size:calc(14px + var(--fsUp, 0px)); color:var(--mut); white-space:nowrap;
   border-bottom:2px solid transparent; margin-bottom:-1px; }
 .otabs button.on{ color:var(--tx); font-weight:600; border-bottom-color:var(--ac); }
 .oBody{ padding:4px 16px calc(24px + env(safe-area-inset-bottom)); }
 .oBody > .oseg{ margin:12px 0 4px; }
-.oIntro{ margin:8px 0 0; color:var(--mut); font-size:14px; line-height:1.5; }
+.oIntro{ margin:8px 0 0; color:var(--mut); font-size:calc(14px + var(--fsUp, 0px)); line-height:1.5; }
 .oEmpty{ padding:22px 0 12px; }
 .oEmpty .ft{ font-weight:600; display:block; margin-bottom:4px; }
-.oEmpty .fsub{ margin:0; font-size:14px; }
+.oEmpty .fsub{ margin:0; font-size:calc(14px + var(--fsUp, 0px)); }
 .oPick{ display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding:9px 0; border-bottom:1px solid var(--hair); }
 .oPick .oseg{ flex:none; }
-.oPick .selIn{ font-size:14px; padding:6px 10px; }
+.oPick .selIn{ font-size:calc(14px + var(--fsUp, 0px)); padding:6px 10px; }
 /* Eumae tab: the thread scrolls on its own and the box stays pinned under it. */
 .oBody.oBodyEumae{ display:flex; flex-direction:column; overflow:hidden; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
 /* Side padding moves inside so the thread's scrollbar sits on the panel's right edge. */
@@ -1727,19 +1727,19 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .oBox{ resize:none; font:inherit; box-sizing:border-box; line-height:20px; min-height:40px; padding:9px 12px !important; max-height:150px; overflow-y:auto; display:block; }
 .oAsk .oSend{ width:40px; height:40px; margin:0; }
 .oMe{ margin:12px 0 0 auto; max-width:85%; width:fit-content; background:var(--ac); color:var(--acink);
-  border-radius:16px; padding:8px 13px; font-size:15px; line-height:1.45; }
-.oEumae1{ margin:12px 0 0; font-size:15px; line-height:1.5; white-space:pre-wrap; }
-.oEumae1 .n{ color:var(--ac); font-size:13px; font-weight:600; margin-bottom:2px; }
+  border-radius:16px; padding:8px 13px; font-size:calc(15px + var(--fsUp, 0px)); line-height:1.45; }
+.oEumae1{ margin:12px 0 0; font-size:calc(15px + var(--fsUp, 0px)); line-height:1.5; white-space:pre-wrap; }
+.oEumae1 .n{ color:var(--ac); font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; margin-bottom:2px; }
 .oAsk{ position:relative; flex:none; display:flex; gap:8px; align-items:flex-end; padding:12px 0 0;
   background:var(--card); }
-.oAsk .sinput{ padding:10px 12px; font-size:15px; margin:0; flex:1; min-width:0; }
+.oAsk .sinput{ padding:10px 12px; font-size:calc(15px + var(--fsUp, 0px)); margin:0; flex:1; min-width:0; }
 .oSend{ width:36px; height:36px; flex:none; border-radius:50%; background:var(--ac); color:var(--acink);
   display:inline-flex; align-items:center; justify-content:center; }
 .oSend:disabled{ opacity:.4; }
 .oSend svg{ width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
 .peek{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:10px;
   margin:0 12px 6px; padding:10px 14px; border-radius:14px; border:1px solid var(--hair);
-  background:var(--card); font-size:14px; text-align:left; }
+  background:var(--card); font-size:calc(14px + var(--fsUp, 0px)); text-align:left; }
 .peek b{ font-weight:600; }
 .peek svg{ width:16px; height:16px; color:var(--mut); stroke:currentColor; fill:none; stroke-width:2; }
 
@@ -1767,7 +1767,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   margin:0; border-top:1px solid var(--hair); cursor:default; }
 .con .pdCell:first-child .wc{ border-top:0; padding-top:4px; }
 .con .wc .wt svg{ display:none; }
-.con .wc .wt{ font-size:13px; }
+.con .wc .wt{ font-size:calc(13px + var(--fsUp, 0px)); }
 .con.ed8 .wc{ padding-left:12px; padding-right:12px; border-radius:14px; }
 .con .w-tl8 > .wt{ display:none; }
 .con.ed8 .w-tl8 > .wt{ display:flex; }
@@ -1780,7 +1780,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 }
 /* Timeline */
 .tl{ display:block; }
-.tlNext{ margin:0; font-size:15px; line-height:1.5; color:var(--mut); }
+.tlNext{ margin:0; font-size:calc(15px + var(--fsUp, 0px)); line-height:1.5; color:var(--mut); }
 .tlNext b{ color:var(--tx); font-weight:600; }
 .tlNext .over{ color:var(--rd); }
 /* Quick capture: a boxed bar with + on the left and the kind chip on the right. */
@@ -1789,14 +1789,14 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .tlAdd:focus-within{ border-color:var(--ac); }
 .tlAdd > svg{ width:16px; height:16px; flex:none; stroke:var(--mut); fill:none; stroke-width:2; stroke-linecap:round; }
 .tlAdd input{ flex:1; min-width:0; padding:11px 0; background:none; border:0; color:var(--tx);
-  font:inherit; font-size:15px; outline:none; }
+  font:inherit; font-size:calc(15px + var(--fsUp, 0px)); outline:none; }
 .tlAdd input::placeholder{ color:var(--mut); }
 .tlKind{ flex:none; padding:5px 10px; border-radius:14px; background:var(--acsoft); color:var(--ac);
-  font-size:13px; font-weight:600; }
-.sdiv{ display:block; padding:14px 0 2px; font-size:13px; font-weight:600; color:var(--mut); }
+  font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; }
+.sdiv{ display:block; padding:14px 0 2px; font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; color:var(--mut); }
 .sdiv.att{ color:var(--rd); }
 .tlFold{ background:none; text-align:left; cursor:pointer; }
-.tlRow .tlT{ display:block; text-align:left; color:inherit; padding:0; background:none; font-size:15px; }
+.tlRow .tlT{ display:block; text-align:left; color:inherit; padding:0; background:none; font-size:calc(15px + var(--fsUp, 0px)); }
 .tlRow.past .tlT, .tlRow.past .fmeta{ color:var(--mut); }
 .tlDone{ text-decoration:line-through; }
 .spine .tlRow.ev::before{ border-color:var(--ac); }
@@ -1806,7 +1806,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .fchk.on{ background:var(--ac); border-color:var(--ac); }
 .tlActs{ display:flex; gap:8px; margin-top:8px; }
 .tlActs button{ padding:6px 14px; border-radius:99px; border:1px solid var(--hair); background:none;
-  color:var(--tx); font-size:14px; font-weight:600; }
+  color:var(--tx); font-size:calc(14px + var(--fsUp, 0px)); font-weight:600; }
 .tlActs button.pri{ background:var(--ac); border-color:var(--ac); color:var(--acink); }
 .tlNone{ margin:4px 0 6px; }
 /* This week card (Option A): bordered card, dated rows, hairline between */
@@ -1814,8 +1814,8 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .wkRow{ display:grid; grid-template-columns:96px 1fr auto; gap:10px; align-items:center; width:100%;
   min-height:40px; padding:8px 12px; text-align:left; background:none; color:var(--tx); }
 .wkRow + .wkRow{ border-top:1px solid var(--hair); }
-.wkRow .wkD{ color:var(--mut); font-size:13px; }
-.wkRow .ft{ font-size:14px; }
+.wkRow .wkD{ color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); }
+.wkRow .ft{ font-size:calc(14px + var(--fsUp, 0px)); }
 @media (max-width:899px){ .wkRow{ grid-template-columns:76px 1fr auto; } }
 /* Goals with meters */
 .wGoal{ padding:10px 0; }
@@ -1837,50 +1837,50 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .tkRow .fmeta{ padding-top:2px; }
 .tkRow.sel{ background:var(--acsoft); margin:0 -10px; padding-left:10px; padding-right:10px; border-radius:10px; }
 .tkRow.leaving{ opacity:.45; transition:opacity .6s ease-out .3s; }
-.tkPill{ flex:none; padding:2px 10px; border:1px solid var(--hair); border-radius:99px; font-size:13px; color:var(--mut);
+.tkPill{ flex:none; padding:2px 10px; border:1px solid var(--hair); border-radius:99px; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut);
   max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
 .tkPr{ flex:none; width:7px; height:7px; border-radius:50%; margin-top:8px; }
 .tkBox{ flex:none; width:18px; height:18px; margin-top:2px; border-radius:5px; border:1.5px solid var(--mut);
-  display:grid; place-items:center; font-size:13px; color:var(--acink); }
+  display:grid; place-items:center; font-size:calc(13px + var(--fsUp, 0px)); color:var(--acink); }
 .tkBox.on{ background:var(--ac); border-color:var(--ac); }
 .tkSubs{ padding:0 0 8px 30px; }
 .tkBulk{ position:sticky; top:0; z-index:3; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
   padding:10px 0; background:var(--bg); border-bottom:1px solid var(--hair); }
-.tkBulk b{ font-size:14px; margin-right:auto; }
+.tkBulk b{ font-size:calc(14px + var(--fsUp, 0px)); margin-right:auto; }
 .tkBulk button{ padding:6px 14px; border-radius:99px; border:1px solid var(--hair); background:none; color:var(--tx);
-  font-size:14px; font-weight:600; }
+  font-size:calc(14px + var(--fsUp, 0px)); font-weight:600; }
 .tkBulk button.pri{ background:var(--ac); border-color:var(--ac); color:var(--acink); }
 .tkBulk button.danger{ color:var(--rd); }
 @media (max-width:899px){ .tkPill{ max-width:96px; } }
 
 /* ── Office item tab (Task) ──────────────────────────────────────────── */
-.otabs .otX{ margin-left:6px; color:var(--mut); font-size:15px; padding:0 2px; }
+.otabs .otX{ margin-left:6px; color:var(--mut); font-size:calc(15px + var(--fsUp, 0px)); padding:0 2px; }
 .otabs .otX:hover{ color:var(--tx); }
 .itab{ padding-top:10px; }
-.itT{ margin:0; font-size:20px; font-weight:600; line-height:1.3; overflow-wrap:anywhere; }
+.itT{ margin:0; font-size:calc(20px + var(--fsUp, 0px)); font-weight:600; line-height:1.3; overflow-wrap:anywhere; }
 .itSub{ margin:4px 0 8px; white-space:normal; }
 .itKV{ justify-content:space-between; border-bottom:1px solid var(--hair); }
 .itKV .ft{ flex:none; max-width:65%; text-align:right; }
 .itStep{ border-bottom:1px solid var(--hair); }
 .itStep.cur .ft{ font-weight:600; }
 .itNum{ flex:none; width:22px; height:22px; border-radius:50%; border:1.5px solid var(--mut); background:none;
-  color:var(--mut); font-size:13px; display:grid; place-items:center; padding:0; }
+  color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); display:grid; place-items:center; padding:0; }
 .itStep.cur .itNum{ border-color:var(--ac); color:var(--ac); }
 .itNum.on{ background:var(--ac); border-color:var(--ac); color:var(--acink); }
 .itEumae{ display:flex; flex-direction:column; gap:4px; margin:18px 0 12px; padding:12px 14px; border-radius:14px;
-  background:var(--card); font-size:15px; line-height:1.45; }
-.itEumae .n{ color:var(--ac); font-size:13px; font-weight:600; }
+  background:var(--card); font-size:calc(15px + var(--fsUp, 0px)); line-height:1.45; }
+.itEumae .n{ color:var(--ac); font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; }
 .itEumae .fact{ align-self:flex-start; margin:4px 0 0; padding:0; }
 .itActs{ display:flex; gap:8px; align-items:center; }
 .itActs > button{ padding:7px 16px; border-radius:99px; border:1px solid var(--hair); background:none; color:var(--tx);
-  font-size:14px; font-weight:600; }
+  font-size:calc(14px + var(--fsUp, 0px)); font-weight:600; }
 .itActs > button.pri{ background:var(--ac); border-color:var(--ac); color:var(--acink); }
 
 /* Phone: Console sub-page bar under the header (p1 mockup). */
 .conBar{ flex:none; display:flex; gap:22px; overflow-x:auto; scrollbar-width:none; padding:2px 18px 8px;
   border-bottom:1px solid var(--hair); }
 .conBar::-webkit-scrollbar{ display:none; }
-.conBar button{ flex:none; padding:6px 0 7px; font-size:16px; color:var(--mut); background:none; border:0;
+.conBar button{ flex:none; padding:6px 0 7px; font-size:calc(16px + var(--fsUp, 0px)); color:var(--mut); background:none; border:0;
   border-bottom:2px solid transparent; }
 .conBar button.on{ color:var(--tx); font-weight:600; border-bottom-color:var(--ac); }
 .hbEumae{ color:var(--ac); }
@@ -1888,12 +1888,12 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 
 /* ── Desktop scale-up for the flat-row style (his call, Oct 18) ───────── */
 @media (min-width:900px){
-  .ft, .tlT, .tlRow .tlT, .wkRow .ft{ font-size:17px; }
-  .fmeta, .fsub{ font-size:14px; }
-  .flbl, .sdiv, .con .wc .wt{ font-size:14px; }
-  .tlNext, .tlAdd input{ font-size:17px; }
+  .ft, .tlT, .tlRow .tlT, .wkRow .ft{ font-size:calc(17px + var(--fsUp, 0px)); }
+  .fmeta, .fsub{ font-size:calc(14px + var(--fsUp, 0px)); }
+  .flbl, .sdiv, .con .wc .wt{ font-size:calc(14px + var(--fsUp, 0px)); }
+  .tlNext, .tlAdd input{ font-size:calc(17px + var(--fsUp, 0px)); }
   .frow{ min-height:50px; padding:12px 0; }
-  .tkPill{ font-size:14px; }
+  .tkPill{ font-size:calc(14px + var(--fsUp, 0px)); }
   .pageBody{ padding:16px max(48px, calc((100% - 900px) / 2)) 32px; }
   .backbar{ padding:16px max(20px, calc((100% - 948px) / 2)) 4px; }
   .pageBody > .qaPage{ max-width:900px; }
@@ -1905,9 +1905,9 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 }
 @media (min-width:900px){
   .wkRow{ min-height:48px; padding:10px 16px; grid-template-columns:120px 1fr auto; }
-  .wkRow .wkD{ font-size:14px; }
+  .wkRow .wkD{ font-size:calc(14px + var(--fsUp, 0px)); }
   .fchk{ width:20px; height:20px; }
-  .tlActs button, .tkBulk button, .itActs > button{ font-size:15px; }
+  .tlActs button, .tkBulk button, .itActs > button{ font-size:calc(15px + var(--fsUp, 0px)); }
 }
 
 /* ── Calendar agenda (Option D): day headers, flat rows, time on the left ── */
@@ -1916,22 +1916,22 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .agH{ display:flex; justify-content:space-between; align-items:center; padding:16px 0 4px; border-bottom:1px solid var(--hair); }
 .agH b{ color:var(--tx); font-weight:600; }
 .agDay.today .agH b{ color:var(--ac); }
-.agAdd{ margin:0; padding:0 4px; font-size:18px; line-height:1; }
+.agAdd{ margin:0; padding:0 4px; font-size:calc(18px + var(--fsUp, 0px)); line-height:1; }
 .agRow2{ border-bottom:1px solid var(--hair); gap:14px; }
 .agRow2.past .tlT, .agRow2.past .agT{ color:var(--mut); }
 .agT{ flex:none; width:72px; display:flex; flex-direction:column; padding-top:2px; }
-.agEnd{ font-size:13px; opacity:.7; }
+.agEnd{ font-size:calc(13px + var(--fsUp, 0px)); opacity:.7; }
 .agBar{ flex:none; width:3px; align-self:stretch; min-height:22px; border-radius:2px; background:var(--ac); }
 .agRow2.c-meeting .agBar{ background:var(--ac); }
 .agRow2.c-appointment .agBar{ background:var(--am); }
 .agRow2.c-class .agBar{ background:var(--gr, var(--ac)); }
 .agRow2.c-other .agBar, .agRow2.c-goal .agBar, .agRow2.c-project .agBar, .agRow2.c-milestone .agBar{ background:var(--mut); }
 .agFree{ margin:8px 0 4px; }
-.itNote{ margin:4px 0 0; font-size:15px; line-height:1.5; white-space:pre-wrap; }
+.itNote{ margin:4px 0 0; font-size:calc(15px + var(--fsUp, 0px)); line-height:1.5; white-space:pre-wrap; }
 @media (min-width:900px){
   .agT{ width:88px; }
-  .agEnd{ font-size:13px; }
-  .itNote{ font-size:16px; }
+  .agEnd{ font-size:calc(13px + var(--fsUp, 0px)); }
+  .itNote{ font-size:calc(16px + var(--fsUp, 0px)); }
 }
 
 /* Month with the office open: small square cells and dots, not crushed text. */
@@ -1941,7 +1941,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
   .mGrid.compact .mCell .mNum{ align-self:center; }
 }
 /* Console timeline in the agenda look: no spine dots, Now as a thin line. */
-.tlDay .snow{ display:flex; align-items:center; gap:10px; padding:6px 0; color:var(--ac); font-size:13px; font-weight:600; }
+.tlDay .snow{ display:flex; align-items:center; gap:10px; padding:6px 0; color:var(--ac); font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; }
 .tlDay .snow::after{ content:""; flex:1; border-top:1px solid var(--ac); opacity:.5; }
 .fsub.over{ color:var(--rd); }
 
@@ -1949,9 +1949,9 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .calWeek{ display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:4px; margin:4px 0 12px; }
 .calWeek button{ display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 0; border-radius:12px; background:none; color:var(--mut); min-width:0; }
 .calWeek button:hover{ background:var(--card); }
-.calWeek span{ font-size:13px; }
-.calWeek b{ color:var(--tx); font-size:17px; font-weight:700; }
-.calWeek i{ font-style:normal; font-size:13px; }
+.calWeek span{ font-size:calc(13px + var(--fsUp, 0px)); }
+.calWeek b{ color:var(--tx); font-size:calc(17px + var(--fsUp, 0px)); font-weight:700; }
+.calWeek i{ font-style:normal; font-size:calc(13px + var(--fsUp, 0px)); }
 .calWeek .today span, .calWeek .today b{ color:var(--ac); }
 .calWeek .on{ background:var(--card2); }
 .calWeek .on span, .calWeek .on b{ color:var(--ac); }
@@ -1961,20 +1961,20 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .hdAny{ border:1px solid var(--hair); border-radius:12px; padding:0 12px; margin-bottom:10px; }
 .hdAny .frow + .frow{ border-top:1px solid var(--hair); }
 .hdHour{ display:grid; grid-template-columns:64px 1fr; border-top:1px solid var(--hair); min-height:40px; }
-.hdH{ text-align:left; background:none; padding:10px 0; color:var(--mut); font-size:13px; font-weight:600; align-self:start; }
+.hdH{ text-align:left; background:none; padding:10px 0; color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; align-self:start; }
 .hdBody{ min-width:0; display:flex; flex-direction:column; }
 .agRow2.hdItem{ border-bottom:0; padding:8px 0; align-items:center; }
 .hdItem.past .tlT{ color:var(--mut); }
 .hdEmpty{ flex:1; background:none; min-height:38px; }
 .hdEmpty:hover{ background:var(--card); }
-.hdNow{ display:flex; align-items:center; gap:10px; color:var(--ac); font-size:13px; font-weight:600; padding:10px 0; }
+.hdNow{ display:flex; align-items:center; gap:10px; color:var(--ac); font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; padding:10px 0; }
 .hdNow::after{ content:""; flex:1; border-top:1.5px solid var(--ac); }
 .hdItem .agBar{ align-self:stretch; }
-@media (min-width:900px){ .hdHour{ grid-template-columns:80px 1fr; } .hdH{ font-size:14px; } }
+@media (min-width:900px){ .hdHour{ grid-template-columns:80px 1fr; } .hdH{ font-size:calc(14px + var(--fsUp, 0px)); } }
 .agDay{ scroll-margin-top:12px; }
 
 /* Priority on a task row: a dot and the word. */
-.tkPrL{ flex:none; display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:600; margin-top:2px; }
+.tkPrL{ flex:none; display:inline-flex; align-items:center; gap:5px; font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; margin-top:2px; }
 .tkPrL i{ width:7px; height:7px; border-radius:50%; }
 
 /* Edit pop-up over any page. */
@@ -1992,21 +1992,21 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 }
 
 /* Chat list rows: where it started and when. */
-.thMeta{ flex:none; margin-left:auto; padding-left:8px; font-size:13px; color:var(--mut); white-space:nowrap; }
+.thMeta{ flex:none; margin-left:auto; padding-left:8px; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); white-space:nowrap; }
 #app.railCollapsed .thMeta{ display:none; }
 
 /* iPhone Safari zooms the page when you tap a text field whose text is under
    16px, and stays zoomed. Every field on phone is 16px so typing never zooms;
    pinch-zoom still works. */
 @media (max-width:899px){
-  input, textarea, select{ font-size:16px !important; }
+  input, textarea, select{ font-size:calc(16px + var(--fsUp, 0px)) !important; }
 }
 
 /* Phone: the header already names the page, so the page's own big title is
    dropped (Console, Notes) and the header title is larger. Desktop has no
    header, so it keeps the inner title. */
 @media (max-width:899px){
-  .hd .t{ font-size:24px; font-weight:700; letter-spacing:-.02em; }
+  .hd .t{ font-size:calc(24px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; }
   .dupT{ display:none; }
   .pageHead .hb{ margin-left:auto; }
 }
@@ -2020,7 +2020,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .tlDot:hover{ box-shadow:inset 0 0 0 1px var(--ac); }
 .tlR{ flex:none; margin-left:auto; display:flex; align-items:center; gap:10px; padding-top:1px; }
 .tlR .fmeta{ white-space:nowrap; }
-.tlChip{ padding:2px 10px; border:1px solid var(--hair); border-radius:99px; font-size:13px; color:var(--mut); white-space:nowrap; }
+.tlChip{ padding:2px 10px; border:1px solid var(--hair); border-radius:99px; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); white-space:nowrap; }
 .tlSpine .sdiv{ padding-top:16px; }
 .tlSpine .snow{ margin:8px 0 2px; }
 /* This week stands on its own as a card on Console (his call, Oct 19):
@@ -2043,19 +2043,19 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 /* Tasks spacing = the mockup his screenshot came from (02-console-tasks):
    compact rows (9px top and bottom), 15px titles, 22px above each group label. */
 .tkList .tkRow{ min-height:0; padding-top:9px; padding-bottom:9px; gap:12px; }
-.tkList .tkRow .tlT{ font-size:15px; }
-.tkList .tkRow .fmeta, .tkList .tkRow .fsub{ font-size:13px; }
+.tkList .tkRow .tlT{ font-size:calc(15px + var(--fsUp, 0px)); }
+.tkList .tkRow .fmeta, .tkList .tkRow .fsub{ font-size:calc(13px + var(--fsUp, 0px)); }
 .tkList .tkRow .fsub{ margin-top:2px; }
 .tkList .tkRow .fchk{ width:16px; height:16px; }
-.tkList .tkPill{ font-size:13px; padding:1px 8px; }
-.tkList .tkPrL{ font-size:13px; }
-.tkList .tkH{ font-size:13px; padding:22px 0 4px; }
+.tkList .tkPill{ font-size:calc(13px + var(--fsUp, 0px)); padding:1px 8px; }
+.tkList .tkPrL{ font-size:calc(13px + var(--fsUp, 0px)); }
+.tkList .tkH{ font-size:calc(13px + var(--fsUp, 0px)); padding:22px 0 4px; }
 .tkList .tkGroup + .tkGroup{ margin-top:0; }
 .tkList .tkGroup:first-child .tkH{ padding-top:14px; }
 
 /* Office › Context › Add from */
 .ctxChips{ display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 4px; }
-.ctxChip{ padding:6px 12px; border-radius:99px; border:1px solid var(--hair); background:none; color:var(--tx); font-size:14px; font-weight:600; }
+.ctxChip{ padding:6px 12px; border-radius:99px; border:1px solid var(--hair); background:none; color:var(--tx); font-size:calc(14px + var(--fsUp, 0px)); font-weight:600; }
 .ctxChip:hover{ background:var(--card); }
 .ctxChip.on{ background:var(--acsoft); border-color:var(--ac); color:var(--ac); }
 .ctxPick{ margin:8px 0 4px; }
@@ -2066,7 +2066,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 
 /* ── Goals (step 6): flat rows like Tasks, percent + thin meter ───────── */
 .gRow .tlT{ display:inline; }
-.gPct{ margin-left:8px; font-size:13px; color:var(--mut); font-weight:400; }
+.gPct{ margin-left:8px; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); font-weight:400; }
 .gBar{ display:block; height:6px; width:min(220px, 100%); margin-top:8px; border-radius:99px; background:var(--card3); overflow:hidden; }
 .gBar i{ display:block; height:100%; border-radius:99px; background:var(--ac); }
 .gRow.past .gBar i{ background:var(--mut); }
@@ -2090,15 +2090,15 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 
 /* Eumae's tool steps and plan card (flat rows, existing tokens only). */
 .eumaeSteps{ margin:4px 0 6px; display:flex; flex-direction:column; gap:2px; }
-.eumaeStep{ color:var(--mut); font-size:13px; }
+.eumaeStep{ color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); }
 .eumaeStep::before{ content:"· "; }
 .eumaeStep.bad{ color:var(--rd); }
 .eumaePlan{ margin:8px 0; }
 .eumaePlan .flbl{ margin-bottom:4px; }
 .eumaeLine{ display:flex; gap:12px; align-items:baseline; padding:7px 0; }
-.eumaeKind{ flex:none; min-width:96px; color:var(--ac); font-size:13px; font-weight:600; }
+.eumaeKind{ flex:none; min-width:96px; color:var(--ac); font-size:calc(13px + var(--fsUp, 0px)); font-weight:600; }
 .eumaeKind.danger{ color:var(--rd); }
-.eumaeTxt{ flex:1; min-width:0; font-size:15px; color:var(--tx); overflow-wrap:anywhere; }
+.eumaeTxt{ flex:1; min-width:0; font-size:calc(15px + var(--fsUp, 0px)); color:var(--tx); overflow-wrap:anywhere; }
 .eumaeTxt .fp{ display:block; }
 .eumaeDone{ padding:3px 0; color:var(--tx); }
 .eumaeOpen{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
@@ -2124,39 +2124,39 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .pdTools{ gap:6px; margin:0 0 10px; }
 .pdBar{ display:flex; align-items:center; gap:4px; }
 .pdTools .pdName{ flex:1; min-width:0; margin:0; }
-.pdName .sinput{ background:transparent; padding:6px 0; font-size:17px; font-weight:600; border-radius:0;
+.pdName .sinput{ background:transparent; padding:6px 0; font-size:calc(17px + var(--fsUp, 0px)); font-weight:600; border-radius:0;
   border-bottom:1px solid var(--hair); }
 .pdName .sinput:focus{ outline:none; border-bottom-color:var(--ac); }
-.pdLink{ background:transparent; border:0; color:var(--ac); font:inherit; font-size:15px; font-weight:600;
+.pdLink{ background:transparent; border:0; color:var(--ac); font:inherit; font-size:calc(15px + var(--fsUp, 0px)); font-weight:600;
   padding:8px 8px; border-radius:8px; white-space:nowrap; cursor:pointer; }
 .pdLink:hover, .pdLink.on{ background:var(--acsoft); }
 .pdLink.rd{ color:var(--rd); }
 .pdLink.rd:hover{ background:var(--rdsoft); }
 .pdHint{ color:var(--mut); }
 .pdBar{ justify-content:space-between; }
-.pdBar .imBtn.pdLink{ color:var(--ac); font-weight:600; width:auto; height:auto; padding:8px 12px; margin-left:-12px; font-size:16px; }
+.pdBar .imBtn.pdLink{ color:var(--ac); font-weight:600; width:auto; height:auto; padding:8px 12px; margin-left:-12px; font-size:calc(16px + var(--fsUp, 0px)); }
 .dashSlot{ flex:none; margin-left:auto; align-self:center; display:flex; }
-.dashSlot .imBtn.dashEdit{ width:auto; height:auto; min-width:84px; padding:11px 20px; border-radius:12px; font-size:15px; font-weight:600;
+.dashSlot .imBtn.dashEdit{ width:auto; height:auto; min-width:84px; padding:11px 20px; border-radius:12px; font-size:calc(15px + var(--fsUp, 0px)); font-weight:600;
   background:var(--card2); color:var(--tx); justify-content:center; }
 /* Edit reads as a plain text button, iOS style; Done stays a small filled pill (his call, Oct 19). */
-.dashSlot .imBtn.dashEdit{ min-width:0; padding:6px 10px; margin-right:-10px; border-radius:8px; font-size:16px; background:transparent; color:var(--ac); }
+.dashSlot .imBtn.dashEdit{ min-width:0; padding:6px 10px; margin-right:-10px; border-radius:8px; font-size:calc(16px + var(--fsUp, 0px)); background:transparent; color:var(--ac); }
 .dashSlot .imBtn.dashEdit:hover{ background:var(--acsoft); }
-.dashSlot .dashEdit.pri{ min-width:0; padding:6px 14px; border-radius:999px; font-size:15px; }
+.dashSlot .dashEdit.pri{ min-width:0; padding:6px 14px; border-radius:999px; font-size:calc(15px + var(--fsUp, 0px)); }
 /* Rearranging: a long press picks the widget up, never selects its text or opens iOS's callout. */
 .ed8 .pdCell, .ed8 .pdCell *{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
 /* Needs-attention actions: small pills that never wrap (his screenshot IMG_5097). */
 .tlActs{ flex-wrap:wrap; gap:6px; }
-.tlActs button{ flex:none; width:auto; min-width:0; min-height:0; height:auto; white-space:nowrap; padding:5px 12px; font-size:14px; line-height:1.25; }
-@media (max-width:899px){ .tlActs button{ font-size:14px; } }
+.tlActs button{ flex:none; width:auto; min-width:0; min-height:0; height:auto; white-space:nowrap; padding:5px 12px; font-size:calc(14px + var(--fsUp, 0px)); line-height:1.25; }
+@media (max-width:899px){ .tlActs button{ font-size:calc(14px + var(--fsUp, 0px)); } }
 .tlActs button:disabled{ opacity:.45; }
 .tlMove{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:8px; }
-.tlMove .sinput{ width:auto; flex:1 1 130px; margin:0; padding:8px 10px; font-size:15px; }
+.tlMove .sinput{ width:auto; flex:1 1 130px; margin:0; padding:8px 10px; font-size:calc(15px + var(--fsUp, 0px)); }
 .tlMove .tlActs{ margin-top:0; width:100%; }
 /* Hover tints only where hover exists, so a tapped button doesn't stay lit on iPhone. */
 @media (hover:none){ .dashSlot .imBtn.dashEdit:hover{ background:transparent; } }
 /* Move picker: labelled fields that always show their value (iOS hides an empty date input). */
 .tlField{ display:flex; align-items:center; gap:10px; flex:1 1 100%; }
-.tlField > span{ width:42px; flex:none; font-size:15px; color:var(--mut); }
+.tlField > span{ width:42px; flex:none; font-size:calc(15px + var(--fsUp, 0px)); color:var(--mut); }
 .tlMove .tlField .sinput{ flex:1; min-width:0; -webkit-appearance:none; appearance:none; min-height:40px; color:var(--tx); text-align:left; }
 .tlMove .tlField .sinput::-webkit-date-and-time-value{ text-align:left; }
 
@@ -2165,25 +2165,25 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .sbx{ display:flex; flex-direction:column; gap:4px; }
 .sbxHead{ display:flex; align-items:flex-start; gap:10px; }
 .sbxHead .g, .sbxFullHead .g{ flex:1; min-width:0; }
-.sbxTitle{ font-size:18px; font-weight:700; letter-spacing:-.02em; color:var(--tx); overflow-wrap:anywhere; }
-.sbxMeta{ font-size:15px; color:var(--mut); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sbxTitle{ font-size:calc(18px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; color:var(--tx); overflow-wrap:anywhere; }
+.sbxMeta{ font-size:calc(15px + var(--fsUp, 0px)); color:var(--mut); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sbxVers{ display:flex; gap:6px; overflow-x:auto; margin-top:8px; scrollbar-width:none; }
 .sbxVers .chip.on{ background:var(--acsoft); color:var(--ac); font-weight:600; }
 .sbxFrame{ width:100%; height:62vh; min-height:360px; border:0; border-radius:12px; background:#fff; display:block; }
 .sbxFrameFull{ flex:1; height:auto; min-height:0; border-radius:0; }
 .sbxFrameFile{ height:70vh; margin-top:12px; }
-.sbxCode{ margin:0; max-height:62vh; overflow:auto; padding:12px; border-radius:12px; background:var(--card); color:var(--tx); font-size:13px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
+.sbxCode{ margin:0; max-height:62vh; overflow:auto; padding:12px; border-radius:12px; background:var(--card); color:var(--tx); font-size:calc(13px + var(--fsUp, 0px)); line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
 .sbxFull{ position:fixed; inset:0; z-index:200; display:flex; flex-direction:column; background:var(--bg); height:100dvh; padding-bottom:env(safe-area-inset-bottom); }
 .sbxFullHead{ display:flex; align-items:center; gap:12px; padding:max(12px, env(safe-area-inset-top)) 16px 12px; }
 .sbxClose{ width:44px; height:44px; flex:none; border-radius:99px; background:var(--card2); color:var(--tx); display:flex; align-items:center; justify-content:center; }
 /* The one row a reply shows for what it made — flat, like the rest. */
-.sbxRow{ display:flex; align-items:center; gap:10px; width:100%; max-width:420px; margin-top:6px; padding:10px 12px; border-radius:12px; background:var(--card); color:var(--tx); text-align:left; font-size:16px; }
+.sbxRow{ display:flex; align-items:center; gap:10px; width:100%; max-width:420px; margin-top:6px; padding:10px 12px; border-radius:12px; background:var(--card); color:var(--tx); text-align:left; font-size:calc(16px + var(--fsUp, 0px)); }
 .sbxRow:hover{ background:var(--card2); }
 .sbxRow:disabled{ opacity:.5; cursor:default; }
 .sbxRowIc{ color:var(--ac); display:flex; }
 .sbxRowT{ flex:1; min-width:0; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.sbxRowV{ color:var(--mut); font-size:15px; }
-.sbxRowGo{ color:var(--ac); font-weight:600; font-size:15px; }
+.sbxRowV{ color:var(--mut); font-size:calc(15px + var(--fsUp, 0px)); }
+.sbxRowGo{ color:var(--ac); font-weight:600; font-size:calc(15px + var(--fsUp, 0px)); }
 
 /* "Did you attend?" (Oct 21): the unanswered word reads in the accent; the
    Event tab's ask sits under the title. */
@@ -2198,14 +2198,14 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .itNone{ color:var(--mut); }
 .itKVe{ padding:6px 0; }
 .itVal{ flex:none; max-width:65%; display:flex; justify-content:flex-end; }
-.itIn{ font:inherit; font-size:15px; color:var(--tx); background:var(--card); border:1px solid var(--hair); border-radius:8px;
+.itIn{ font:inherit; font-size:calc(15px + var(--fsUp, 0px)); color:var(--tx); background:var(--card); border:1px solid var(--hair); border-radius:8px;
   padding:6px 10px; min-width:0; max-width:100%; text-align:right; color-scheme:dark; }
 [data-theme="light"] .itIn{ color-scheme:light; }
 .itIn:focus{ outline:none; border-color:var(--ac); }
 .itIn:disabled{ opacity:.45; }
 .itIn::placeholder{ color:var(--mut); }
 select.itIn{ text-align-last:right; padding-right:8px; }
-.itTIn{ display:block; width:100%; text-align:left; font-size:20px; font-weight:600; line-height:1.3; padding:6px 10px; }
+.itTIn{ display:block; width:100%; text-align:left; font-size:calc(20px + var(--fsUp, 0px)); font-weight:600; line-height:1.3; padding:6px 10px; }
 .itArea{ display:block; width:100%; text-align:left; line-height:1.5; resize:vertical; margin-top:4px; }
 .itWhyIn{ margin:8px 0 6px; }
 .itPair{ display:flex; align-items:center; gap:6px; }
@@ -2215,13 +2215,13 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .itStep input[type="date"]{ flex:none; width:136px; }
 .itDays button{ width:30px; height:30px; }
 .itab .itActs{ margin-top:14px; }
-@media (min-width: 900px){ .itIn{ font-size:17px; } }
+@media (min-width: 900px){ .itIn{ font-size:calc(17px + var(--fsUp, 0px)); } }
 /* Office item tab, condensed (his call, Oct 21): Edit/Delete sit beside the
    title, rows sit close with no lines between them. */
 .itHead{ display:flex; align-items:flex-start; gap:10px; }
 .itHead > .itT, .itHead > .itTIn{ flex:1; min-width:0; }
 .itHead > .itActs{ flex:none; margin:0; flex-wrap:wrap; justify-content:flex-end; gap:6px; padding-top:2px; }
-.itHead > .itActs > button{ padding:4px 12px; font-size:13px; }
+.itHead > .itActs > button{ padding:4px 12px; font-size:calc(13px + var(--fsUp, 0px)); }
 .itab .itKV{ border-bottom:0; min-height:0; padding:3px 0; }
 .itab .itKVe{ padding:2px 0; }
 .itab .itStep{ border-bottom:0; min-height:0; padding:4px 0; }
@@ -2230,70 +2230,70 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .itab .itEumae{ margin:12px 0 8px; }
 .itab .itIn{ padding:3px 8px; }
 .itab .itTIn{ padding:4px 8px; }
-@media (min-width: 900px){ .itHead > .itActs > button{ font-size:14px; } }
+@media (min-width: 900px){ .itHead > .itActs > button{ font-size:calc(14px + var(--fsUp, 0px)); } }
 .tapRow{ cursor:pointer; }
 
 /* Project page, flat (Oct 21): facts on top, then rows like Tasks. */
 .pjFacts{ display:flex; gap:10px; margin:16px 0 12px; }
 .pjTile{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:2px; background:var(--card); border-radius:14px; padding:10px 12px; }
-.pjTile .k{ font-size:13px; color:var(--mut); }
-.pjTile .v{ font-size:17px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-.pjTile .v small{ font-size:13px; font-weight:400; color:var(--mut); }
+.pjTile .k{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); }
+.pjTile .v{ font-size:calc(17px + var(--fsUp, 0px)); font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.pjTile .v small{ font-size:calc(13px + var(--fsUp, 0px)); font-weight:400; color:var(--mut); }
 .pjTile .v.over, .pjTile .v.over small{ color:var(--rd); }
 .pjTile .v.none{ color:var(--mut); font-weight:500; }
 .pjMeter{ width:100%; height:5px; margin:0 0 6px; }
 .pjMeter i{ height:5px; }
-.pjCount{ display:flex; justify-content:space-between; font-size:13px; color:var(--mut); }
+.pjCount{ display:flex; justify-content:space-between; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); }
 .pjTrail{ display:flex; margin:20px 0 4px; }
-.pjStop{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; font-size:13px; color:var(--mut); padding:0 4px; }
+.pjStop{ flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); padding:0 4px; }
 .pjStop .msDot{ margin-bottom:4px; box-shadow:inset 0 0 0 2px var(--mut); }
 .pjStop.done .msDot{ background:var(--ac); box-shadow:none; }
 .pjStop.cur .msDot{ box-shadow:inset 0 0 0 2px var(--ac); }
 .pjStop .t{ overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.3; }
 .pjStop.cur .t, .pjStop.cur .d{ color:var(--tx); font-weight:600; }
 .pjMsEmpty{ margin:20px 0 0; }
-.pjMsEmpty .t{ font-size:17px; font-weight:650; }
-.pjMsEmpty p{ margin:4px 0 6px; color:var(--mut); font-size:14px; line-height:1.45; }
-.pjMsEmpty .lb{ padding:4px 0; font-size:15px; }
+.pjMsEmpty .t{ font-size:calc(17px + var(--fsUp, 0px)); font-weight:650; }
+.pjMsEmpty p{ margin:4px 0 6px; color:var(--mut); font-size:calc(14px + var(--fsUp, 0px)); line-height:1.45; }
+.pjMsEmpty .lb{ padding:4px 0; font-size:calc(15px + var(--fsUp, 0px)); }
 .pjGroups .pjGroup{ margin-top:22px; }
 .pjGH{ display:flex; align-items:center; gap:10px; width:100%; padding:6px 0; background:none; border:0; color:inherit; text-align:left; cursor:pointer; font:inherit; }
-.pjChev{ flex:none; width:18px; text-align:center; font-size:20px; line-height:1; color:var(--mut); transition:transform .15s; }
+.pjChev{ flex:none; width:18px; text-align:center; font-size:calc(20px + var(--fsUp, 0px)); line-height:1; color:var(--mut); transition:transform .15s; }
 .pjChev.open{ transform:rotate(90deg); }
-.pjGH .t{ flex:1; min-width:0; font-size:17px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.pjGH .m{ font-size:14px; color:var(--mut); white-space:nowrap; }
+.pjGH .t{ flex:1; min-width:0; font-size:calc(17px + var(--fsUp, 0px)); font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pjGH .m{ font-size:calc(14px + var(--fsUp, 0px)); color:var(--mut); white-space:nowrap; }
 .pjGH .m.cur{ color:var(--ac); font-weight:600; }
 .pjGHtx{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-.pjPh{ font-size:22px; font-weight:700; letter-spacing:-.02em; line-height:1.2; }
+.pjPh{ font-size:calc(22px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; line-height:1.2; }
 .pjGHrow{ display:flex; align-items:baseline; gap:10px; min-width:0; }
-.pjGHrow .t{ flex:0 1 auto; font-size:16px; font-weight:600; }
-.pjGH .pjChev{ margin-left:auto; font-size:24px; }
+.pjGHrow .t{ flex:0 1 auto; font-size:calc(16px + var(--fsUp, 0px)); font-weight:600; }
+.pjGH .pjChev{ margin-left:auto; font-size:calc(24px + var(--fsUp, 0px)); }
 .pjSec{ margin-top:26px; }
 .pjSecH{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding-bottom:6px; }
-.pjSecH .t{ font-size:19px; font-weight:700; letter-spacing:-.02em; }
-.pjSecH .lb, .pjSecH .pjAddBtn{ font-size:15px; padding:4px 0; }
+.pjSecH .t{ font-size:calc(19px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; }
+.pjSecH .lb, .pjSecH .pjAddBtn{ font-size:calc(15px + var(--fsUp, 0px)); padding:4px 0; }
 .pjSecH .pjAddRow{ padding:0; }
 .pjSpine{ position:relative; padding-left:38px; }
 .pjSpine::before{ content:""; position:absolute; left:12px; top:14px; bottom:14px; width:1px; background:var(--hair); }
 .pjNode{ position:relative; padding-bottom:14px; }
 .pjNum{ position:absolute; left:-38px; top:8px; width:25px; height:25px; border-radius:50%; border:1.5px solid var(--mut); background:var(--bg);
-  display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:var(--mut); }
+  display:flex; align-items:center; justify-content:center; font-size:calc(13px + var(--fsUp, 0px)); font-weight:700; color:var(--mut); }
 .pjNode.cur .pjNum{ border-color:var(--ac); color:var(--ac); }
 .pjNode.done .pjNum{ background:var(--ac); border-color:var(--ac); color:var(--acink); }
 .pjNode.loose .pjNum{ width:11px; height:11px; left:-31px; top:12px; }
 .pjSpine .pjKindH, .pjSpine .pjAddRow{ padding-left:0; }
 .pjNode.done .tkRow{ opacity:.6; }
-.pjPhBar{ display:flex; align-items:center; justify-content:space-between; margin-top:18px; font-size:14px; color:var(--mut); }
-.pjPhBar .lb{ font-size:15px; padding:4px 0; }
+.pjPhBar{ display:flex; align-items:center; justify-content:space-between; margin-top:18px; font-size:calc(14px + var(--fsUp, 0px)); color:var(--mut); }
+.pjPhBar .lb{ font-size:calc(15px + var(--fsUp, 0px)); padding:4px 0; }
 .pjGroup.done .tkRow{ opacity:.6; }
 .pjLead{ flex:none; width:18px; }
 .pjOffRow{ padding-left:32px; cursor:pointer; }
 .pjOffRow .ft{ flex:1; min-width:0; }
 .pjKindList{ margin-top:6px; }
-.pjKindH{ padding:8px 0 2px 30px; font-size:14px; font-weight:600; color:var(--mut); }
+.pjKindH{ padding:8px 0 2px 30px; font-size:calc(14px + var(--fsUp, 0px)); font-weight:600; color:var(--mut); }
 .pjKindH span{ font-weight:400; margin-left:4px; }
 .pjOffH{ padding-left:32px; }
 .pjAddRow{ padding:4px 0 0 30px; }
-.pjAddRow .pjAddBtn{ font-size:14px; color:var(--mut); background:none; width:auto; height:auto; padding:4px 0; }
+.pjAddRow .pjAddBtn{ font-size:calc(14px + var(--fsUp, 0px)); color:var(--mut); background:none; width:auto; height:auto; padding:4px 0; }
 .pjEmb .screenT.tlT{ text-align:left; padding:0; background:none; }
 
 /* Project phases in Today's timeline look (Oct 22): rows sit on the phase
@@ -2304,4 +2304,21 @@ select.itIn{ text-align-last:right; padding-right:8px; }
   border-radius:50%; border:1.5px solid var(--ac); background:var(--bg); }
 .pjNode.done .tlRow{ opacity:.6; }
 .pjAddPh{ padding:2px 0 14px; }
-.pjAddPh .lb{ font-size:15px; padding:4px 0; }
+.pjAddPh .lb{ font-size:calc(15px + var(--fsUp, 0px)); padding:4px 0; }
+
+/* Oct 24, his calls (phone only). --fsUp is added to every font-size above
+   (0 by default): Studio, Classroom, Library and Guild +1; Eumae's office +2,
+   except its tab names and the inline edit fields. Menus, dialogs, the
+   bottom toolbar and the Console slide bar stay put. Console's own rows are
+   set by hand below (names 16, small text 14), not by --fsUp. */
+@media (max-width:899px){
+  #mn.tab-studio, #mn.tab-classroom, #mn.tab-library, #mn.tab-guild{ --fsUp:1px; }
+  .office{ --fsUp:2px; }
+  .office .otabs, .office .itIn,
+  .imPop, .imScrim, .addWin, .dlg, .tbar, .conBar{ --fsUp:0px; }
+
+  .con .tlRow .tlT, .con .ft, .con .tlNext{ font-size:16px; }
+  .con .fmeta, .con .fsub, .con .tlChip, .con .tlKind,
+  .con .sdiv, .con .tlDay .snow, .con .wc .wt{ font-size:14px; }
+  .con .attActs button{ font-size:15px; }
+}

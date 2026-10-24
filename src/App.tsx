@@ -532,7 +532,7 @@ export default function App() {
               })}
             </nav>
           ) : null}
-          <main id="mn">
+          <main id="mn" className={`tab-${tab}`}>
             {top ? (
               <div className="pageWrap">
                 {/* Mobile uses the header's back button; this bar is desktop-only. */}

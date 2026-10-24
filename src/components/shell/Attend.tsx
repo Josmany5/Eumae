@@ -101,7 +101,7 @@ export function AttendAsk({ ev, day, onChange, onMark, onSettled }: {
   return (
     <>
       <div className="fsub">Did you attend?</div>
-      <div className="tlActs">
+      <div className="tlActs attActs">
         <button className={answer === 'yes' ? 'pri' : ''} aria-pressed={answer === 'yes'} onClick={() => mark('yes')}>Attended</button>
         <button className={answer === 'no' ? 'pri' : ''} aria-pressed={answer === 'no'} onClick={() => mark('no')}>Not attended</button>
         {answer === 'no' ? <button onClick={() => setStage('pick')}>Reschedule</button> : null}
