@@ -1035,7 +1035,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .swExp{ background:var(--ac); }
 .swDel{ background:var(--rd); }
 .drSwipe{ display:flex; align-items:center; gap:12px; width:100%; background:var(--card);
-  padding:12px 20px; font-size:15px; text-align:left; color:var(--tx);
+  padding:6px 20px; font-size:15px; text-align:left; color:var(--tx);
   transition:transform .2s ease; position:relative; }
 .drSwipe.on{ background:var(--card2); }
 .dlgScrim{ position:fixed; inset:0; z-index:400; background:rgba(0,0,0,.4); }
@@ -1642,7 +1642,7 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:15px; }
 .sbThread .imBtn{ width:30px; height:30px; opacity:0; }
 .sbThread:hover .imBtn, .sbThread.on .imBtn, .sbThread .imBtn:focus-visible, .sbThread .imBtn[aria-expanded="true"]{ opacity:1; }
 .railCollapsed .sbThread .imBtn{ display:none; }
-.drSwipe .imBtn{ margin-right:-8px; }
+.drSwipe .imBtn{ margin-right:-8px; height:30px; }
 /* Library tile + its ⋯ in the corner. */
 .lib2-tileWrap{ position:relative; min-width:0; display:flex; }
 .lib2-tileWrap > .lib2-tile{ flex:1; }
