@@ -450,11 +450,6 @@ input[type=checkbox]{ accent-color:var(--ac); }
 
 /* ─── Screens ─────────────────────────────────────────────────────────────── */
 
-.scEmpty{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  text-align:center; gap:6px; padding:40px 24px; }
-.scEmptyK{ font-size:calc(13px + var(--fsUp, 0px)); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ac); }
-.scEmptyT{ margin:0; font-size:calc(20px + var(--fsUp, 0px)); font-weight:700; letter-spacing:-.02em; }
-.scEmptyN{ margin:0; max-width:420px; font-size:calc(14px + var(--fsUp, 0px)); color:var(--mut); }
 
 .chat{ flex:1; min-height:0; display:flex; flex-direction:column; }
 .chatScroll{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; padding:24px 20px; }
@@ -1737,11 +1732,6 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:calc(15px + var(--fs
   display:inline-flex; align-items:center; justify-content:center; }
 .oSend:disabled{ opacity:.4; }
 .oSend svg{ width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
-.peek{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:10px;
-  margin:0 12px 6px; padding:10px 14px; border-radius:14px; border:1px solid var(--hair);
-  background:var(--card); font-size:calc(14px + var(--fsUp, 0px)); text-align:left; }
-.peek b{ font-weight:600; }
-.peek svg{ width:16px; height:16px; color:var(--mut); stroke:currentColor; fill:none; stroke-width:2; }
 
 @media (max-width:899px){
   /* Phone: the office is a sheet from the bottom, not a drawer from the side. */
@@ -1754,7 +1744,6 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:calc(15px + var(--fs
     margin-left:-19px; border-radius:3px; background:var(--card3); }
 }
 @media (min-width:900px){
-  .peek{ display:none; }
   .panel.office{ background:var(--bg); }
   .oAsk{ background:var(--bg); }
 }

@@ -6,7 +6,6 @@ import { useState } from 'react';
 import { useNav } from '../nav';
 import { COURSES, courseProgress, isLessonDone, markLessonDone, quizRight } from '../classroom';
 import { queueBrief } from '../studio';
-import { Icon } from '../components/shell/icons';
 import type { PageProps } from './index';
 
 export default function CoursePage({ arg }: PageProps) {
@@ -98,13 +97,3 @@ export default function CoursePage({ arg }: PageProps) {
   );
 }
 
-export function CourseBackBar({ onBack }: { onBack: () => void }) {
-  return (
-    <div className="backbar">
-      <button className="hb" onClick={onBack} aria-label="Back">
-        <Icon name="bk" />
-      </button>
-      <div className="tt" />
-    </div>
-  );
-}

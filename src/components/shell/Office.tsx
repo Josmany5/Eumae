@@ -713,19 +713,6 @@ function Logbook({ tab }: { tab: TabId }) {
   );
 }
 
-/** Phone: the office's peek bar, sitting just above the tab bar. Hidden on
- *  desktop, where the panel's corner handle is the door. */
-export function OfficePeek({ tab, onOpen }: { tab: TabId; onOpen: () => void }) {
-  return (
-    <button className="peek" onClick={onOpen} aria-label="Open Eumae's office">
-      <span>
-        <b>Eumae's office</b>
-        <span className="fmeta"> · {OFFICE[tab].map((t) => t.label).join(' · ')}</span>
-      </span>
-      <Icon name="up" />
-    </button>
-  );
-}
 
 interface OfficeProps {
   tab: TabId;

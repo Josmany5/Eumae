@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { getProjects, projectOf, linkItem, unlinkItem, snapshotProjects, restoreProjects, type LinkKind } from '../../projects';
-import { getGoals, goalOf, linkToGoal, unlinkFromGoal, isActiveGoal, snapshotGoals, restoreGoals, type GoalLinkKind } from '../../goals';
+import { projectOf, linkItem, unlinkItem, snapshotProjects, restoreProjects, type LinkKind } from '../../projects';
+import { goalOf, linkToGoal, unlinkFromGoal, snapshotGoals, restoreGoals, type GoalLinkKind } from '../../goals';
 
 /* Eumae's office edits in place (his call, Oct 21): the item opens read-only
  * as clean rows; Edit turns each row's value into an input right there (see
@@ -37,35 +37,6 @@ export function applyLinks(k: LinkKind, id: string, next: Links): () => void {
   };
 }
 
-/** Project (and Goal, for tasks and events) as plain selects. */
-export function LinkFields({ value, onChange, withGoal }: { value: Links; onChange: (v: Links) => void; withGoal: boolean }) {
-  const projects = getProjects();
-  const goals = getGoals().filter((g) => isActiveGoal(g) || g.id === value.goal);
-  return (
-    <div className="evRow">
-      <label>
-        <span className="xs m">Project</span>
-        <select className="sinput" value={value.project} onChange={(e) => onChange({ ...value, project: e.target.value })}>
-          <option value="">None</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>{p.n}</option>
-          ))}
-        </select>
-      </label>
-      {withGoal ? (
-        <label>
-          <span className="xs m">Goal</span>
-          <select className="sinput" value={value.goal} onChange={(e) => onChange({ ...value, goal: e.target.value })}>
-            <option value="">None</option>
-            {goals.map((g) => (
-              <option key={g.id} value={g.id}>{g.t}</option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-    </div>
-  );
-}
 
 /** Edit and Delete. A repeating event asks which: this one or the series. */
 export function ItemActs({ onEdit, onDelete, onDeleteOne }: { onEdit: () => void; onDelete: () => void; onDeleteOne?: () => void }) {
