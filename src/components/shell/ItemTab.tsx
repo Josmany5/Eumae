@@ -23,6 +23,14 @@ import { isOverdue, hasEnded, daysLeft } from '../../due';
 import { AttendAsk } from './Attend';
 
 /** "Edit" from a row's ⋯ menu opens this tab already in edit mode. */
+
+/** Cancel on a brand-new item throws it away and closes the office:
+ *  it never existed, so there is nothing left to show. */
+function useCancelFresh(): () => void {
+  const { closePanel } = useNav();
+  return () => { if (discardFresh()) closePanel(); };
+}
+
 function useOfficeEdit(k: 'task' | 'event' | 'goal' | 'project', id: string, start: () => void, view?: () => void) {
   const ref = useRef(start);
   ref.current = start;
@@ -116,6 +124,7 @@ function DayTab({ day }: { day: string }) {
 }
 
 function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
+  const cancelFresh = useCancelFresh();
   const { notify } = useNav();
   const [draft, setDraft] = useState<CalEvent | null>(null);
   const [links, setLinks] = useState<Links>({ project: '', goal: '' });
@@ -180,7 +189,7 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
         ) : (
           <h2 className="itT">{ev.t}</h2>
         )}
-        {editing ? <EditActs onDone={done} onCancel={() => { setDraft(null); discardFresh(); }} /> : <ItemActs onEdit={edit} onDelete={() => del('all')} onDeleteOne={ev.rep ? () => del('one') : undefined} />}
+        {editing ? <EditActs onDone={done} onCancel={() => { setDraft(null); cancelFresh(); }} /> : <ItemActs onEdit={edit} onDelete={() => del('all')} onDeleteOne={ev.rep ? () => del('one') : undefined} />}
       </div>
       {d < today ? <p className="fmeta itSub">Past</p> : <div style={{ height: 8 }} />}
       {ended && !editing ? (
@@ -250,6 +259,7 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
 }
 
 function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
+  const cancelFresh = useCancelFresh();
   const { notify } = useNav();
   const [draft, setDraft] = useState<Task | null>(null);
   const [links, setLinks] = useState<Links>({ project: '', goal: '' });
@@ -339,7 +349,7 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         ) : (
           <h2 className={'itT' + (t.d ? ' tlDone' : '')}>{t.t}</h2>
         )}
-        {editing ? <EditActs onDone={done} onCancel={() => { setDraft(null); discardFresh(); }} /> : <ItemActs onEdit={edit} onDelete={del} />}
+        {editing ? <EditActs onDone={done} onCancel={() => { setDraft(null); cancelFresh(); }} /> : <ItemActs onEdit={edit} onDelete={del} />}
       </div>
       <p className="fmeta itSub">
         Added {added}
@@ -432,6 +442,7 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
 }
 
 function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
+  const cancelFresh = useCancelFresh();
   const { notify } = useNav();
   const [draft, setDraft] = useState<Goal | null>(null);
   const [links, setLinks] = useState<Links>({ project: '', goal: '' });
@@ -537,7 +548,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         ) : (
           <h2 className={'itT' + (g.st === 'completed' ? ' tlDone' : '')}>{g.t}</h2>
         )}
-        {editing ? <EditActs onDone={done} onCancel={() => { setDraft(null); discardFresh(); }} /> : <ItemActs onEdit={edit} onDelete={del} />}
+        {editing ? <EditActs onDone={done} onCancel={() => { setDraft(null); cancelFresh(); }} /> : <ItemActs onEdit={edit} onDelete={del} />}
       </div>
       {editing ? (
         <>
@@ -720,6 +731,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
    input, a date and ×, plus an "Add a milestone" row, like task steps. */
 const PJ_KINDS: [LinkKind, string][] = [['task', 'Tasks'], ['event', 'Events'], ['goal', 'Goals'], ['note', 'Notes'], ['file', 'Files']];
 function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
+  const cancelFresh = useCancelFresh();
   const { notify, go } = useNav();
   const [draft, setDraft] = useState<Project | null>(null);
   const [newMs, setNewMs] = useState({ t: '', d: '' });
@@ -859,7 +871,7 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
         ) : (
           <h2 className="itT">{p.n}</h2>
         )}
-        {editing ? <EditActs onDone={save} onCancel={() => { setDraft(null); discardFresh(); }} /> : <ItemActs onEdit={() => startEdit(p)} onDelete={del} />}
+        {editing ? <EditActs onDone={save} onCancel={() => { setDraft(null); cancelFresh(); }} /> : <ItemActs onEdit={() => startEdit(p)} onDelete={del} />}
       </div>
       <p className="fmeta itSub">
         Added {added}
