@@ -9,7 +9,7 @@ import { useGoalAdd } from '../GoalAdd';
 import { sortMilestones, newMilestone } from '../../milestones';
 import { dueLabel } from '../../pages/GoalsPage';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
-import { setFocus, onDataChange, dataChanged, askEumae, takeOfficeEdit, takeOfficeView, onOfficeEdit, type Focus } from '../../focus';
+import { setFocus, onDataChange, dataChanged, askEumae, takeOfficeEdit, takeOfficeView, onOfficeEdit, keepFresh, discardFresh, type Focus } from '../../focus';
 import { getEvent, saveEvent, ymd, importanceOf, IMPORTANCE_LABEL, EVENT_IMPORTANCE, EVENT_TYPES, type CalEvent, type EventType, type EventImportance } from '../../events';
 import { removeEvent, TYPE_LABEL } from '../QuickAdd';
 import { MilestonesEditor } from '../Milestones';
@@ -161,6 +161,7 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
     const next: CalEvent = { ...draft, t: draft.t.trim(), loc: draft.loc?.trim() || undefined, note: draft.note?.trim() || undefined, tm: draft.allDay ? '' : draft.tm || '12:00' };
     if (next.allDay || (next.end && next.end <= next.tm)) delete next.end;
     saveEvent(next);
+    keepFresh('event', ev.id!);
     const undoLinks = applyLinks('event', ev.id!, links);
     setDraft(null);
     dataChanged();
@@ -179,7 +180,7 @@ function EventTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => v
         ) : (
           <h2 className="itT">{ev.t}</h2>
         )}
-        {editing ? <EditActs onDone={done} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={edit} onDelete={() => del('all')} onDeleteOne={ev.rep ? () => del('one') : undefined} />}
+        {editing ? <EditActs onDone={done} onCancel={() => { setDraft(null); discardFresh(); }} /> : <ItemActs onEdit={edit} onDelete={() => del('all')} onDeleteOne={ev.rep ? () => del('one') : undefined} />}
       </div>
       {d < today ? <p className="fmeta itSub">Past</p> : <div style={{ height: 8 }} />}
       {ended && !editing ? (
@@ -316,6 +317,7 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
       delete next.repUntil;
     }
     saveTask(next);
+    keepFresh('task', t.id);
     const undoLinks = applyLinks('task', t.id, links);
     setDraft(null);
     dataChanged();
@@ -337,7 +339,7 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         ) : (
           <h2 className={'itT' + (t.d ? ' tlDone' : '')}>{t.t}</h2>
         )}
-        {editing ? <EditActs onDone={done} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={edit} onDelete={del} />}
+        {editing ? <EditActs onDone={done} onCancel={() => { setDraft(null); discardFresh(); }} /> : <ItemActs onEdit={edit} onDelete={del} />}
       </div>
       <p className="fmeta itSub">
         Added {added}
@@ -503,6 +505,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
     }
     if (!out.pace || !out.pace.n) delete out.pace;
     saveGoal(out);
+    keepFresh('goal', g.id);
     const undoLinks = applyLinks('goal', g.id, links);
     setDraft(null);
     dataChanged();
@@ -534,7 +537,7 @@ function GoalTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         ) : (
           <h2 className={'itT' + (g.st === 'completed' ? ' tlDone' : '')}>{g.t}</h2>
         )}
-        {editing ? <EditActs onDone={done} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={edit} onDelete={del} />}
+        {editing ? <EditActs onDone={done} onCancel={() => { setDraft(null); discardFresh(); }} /> : <ItemActs onEdit={edit} onDelete={del} />}
       </div>
       {editing ? (
         <>
@@ -856,7 +859,7 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
         ) : (
           <h2 className="itT">{p.n}</h2>
         )}
-        {editing ? <EditActs onDone={save} onCancel={() => setDraft(null)} /> : <ItemActs onEdit={() => startEdit(p)} onDelete={del} />}
+        {editing ? <EditActs onDone={save} onCancel={() => { setDraft(null); discardFresh(); }} /> : <ItemActs onEdit={() => startEdit(p)} onDelete={del} />}
       </div>
       <p className="fmeta itSub">
         Added {added}

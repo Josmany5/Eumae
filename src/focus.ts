@@ -15,6 +15,8 @@ let cur: Focus | null = null;
 const subs = new Set<() => void>();
 
 export function setFocus(f: Focus | null): void {
+  /* Moving off a brand-new item from More that was never saved drops it. */
+  if (fresh && (!f || fresh.key !== f.k + ':' + f.id)) discardFresh();
   cur = f;
   subs.forEach((s) => s());
 }
@@ -158,4 +160,34 @@ export function onOfficeEdit(f: () => void): () => void {
   return () => {
     officeEditSubs.delete(f);
   };
+}
+
+/* A brand-new item from QuickAdd's More (his call, Oct 25): it opens in the
+   office in edit mode, but it only counts once you press Done. Cancel, the
+   item tab's ×, closing the office, or moving to another item removes it as
+   if it never existed — no toast, no Undo. */
+let fresh: { key: string; discard: () => void } | null = null;
+export function markFresh(k: 'task' | 'event' | 'goal' | 'project', id: string, discard: () => void): void {
+  if (fresh) discardFresh();
+  fresh = { key: k + ':' + id, discard };
+}
+export function isFresh(k: string, id: string): boolean {
+  return !!fresh && fresh.key === k + ':' + id;
+}
+/** Done was pressed: the new item stays. */
+export function keepFresh(k: string, id: string): void {
+  if (isFresh(k, id)) fresh = null;
+}
+/** Throw away the unsaved new item, if there is one. True when it did. */
+export function discardFresh(): boolean {
+  if (!fresh) return false;
+  const f = fresh;
+  fresh = null;
+  f.discard();
+  if (cur && cur.k + ':' + cur.id === f.key) {
+    cur = null;
+    subs.forEach((s) => s());
+  }
+  dataChanged();
+  return true;
 }

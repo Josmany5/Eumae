@@ -11,13 +11,15 @@ import {
   skipOccurrence,
   snapshotEvents,
   restoreEvents,
+  setAttendance,
+  attendanceOf,
   type CalEvent,
   type EventType,
   type Repeat,
 } from '../events';
 import { ItemMenu, ProjectChip } from './ItemMenu';
 import { undoable } from '../undo';
-import type { NotifyOpts } from '../nav';
+import { useNav, type NotifyOpts } from '../nav';
 
 /* Quick add: one field, typed naturally. What it understands shows live as
  * chips under the field; tap a chip's × to keep that part as plain title.
@@ -414,17 +416,43 @@ export function removeEvent(
 /* The ⋯ for an event, the same on a list row and on the detail card. */
 export function EventMenu({
   ev,
+  day,
   onOpen,
   onEdit,
   onDelete,
   onChange,
 }: {
   ev: CalEvent;
+  /** The occurrence's date, for Attended (a repeat marks just this one). */
+  day?: string;
   onOpen?: () => void;
   onEdit: () => void;
   onDelete: (scope: DeleteScope) => void;
   onChange?: () => void;
 }) {
+  const { notify } = useNav();
+  const d = day ?? ev.d;
+  const was = ev.id ? attendanceOf(ev, d) : undefined;
+  /* Mark attended any time, even before it ends (his call, Oct 25). */
+  const extra: { label: string; danger?: boolean; onClick: () => void }[] = [];
+  if (ev.id) {
+    const id = ev.id;
+    const to = was === 'yes' ? null : 'yes';
+    extra.push({
+      label: was === 'yes' ? 'Not attended yet' : 'Attended',
+      onClick: () => {
+        setAttendance(id, d, to);
+        onChange?.();
+        notify(to ? 'Marked attended.' : 'Attended cleared.', {
+          undo: () => {
+            setAttendance(id, d, was ?? null);
+            onChange?.();
+          },
+        });
+      },
+    });
+  }
+  if (ev.rep) extra.push({ label: 'Delete this one', danger: true, onClick: () => onDelete('one') });
   return (
     <ItemMenu
       name={ev.t}
@@ -432,7 +460,7 @@ export function EventMenu({
       edit={onEdit}
       link={ev.id ? { k: 'event', id: ev.id } : undefined}
       onChange={onChange}
-      extra={ev.rep ? [{ label: 'Delete this one', danger: true, onClick: () => onDelete('one') }] : undefined}
+      extra={extra.length ? extra : undefined}
       onDelete={() => onDelete('all')}
       deleteLabel={ev.rep ? 'Delete the series' : 'Delete'}
     />
@@ -467,7 +495,7 @@ export function EventDetail({
       <div className="evDHead">
         <i />
         <b>{ev.t}</b>
-        <EventMenu ev={ev} onEdit={onEdit} onDelete={onDelete} onChange={() => setTick((t) => t + 1)} />
+        <EventMenu ev={ev} day={d} onEdit={onEdit} onDelete={onDelete} onChange={() => setTick((t) => t + 1)} />
         <button className="evDX" aria-label="Close" onClick={onClose}>
           ×
         </button>

@@ -29,7 +29,7 @@ import { GoalForm } from '../components/GoalForm';
 import { nextMilestone } from '../milestones';
 import { fmtShort } from '../quickadd';
 import { projectOf } from '../projects';
-import { setFocus, onDataChange, dataChanged, openOfficeEdit } from '../focus';
+import { setFocus, onDataChange, dataChanged, openOfficeEdit, markFresh } from '../focus';
 import { useGoalAdd } from '../components/GoalAdd';
 import type { PageProps } from './index';
 
@@ -144,7 +144,7 @@ export default function GoalsPage({ arg }: PageProps) {
           const g = createGoal(q.title.trim() || 'New goal');
           saveGoal({ ...g, td: q.date ?? '' });
           refresh();
-          notify('Goal set.', { undo: () => { deleteGoal(g.id); refresh(); } });
+          markFresh('goal', g.id, () => { deleteGoal(g.id); refresh(); });
           openOfficeEdit('goal', g.id);
           openPanel('item');
         }}

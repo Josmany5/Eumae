@@ -29,7 +29,7 @@ function attendWord(ev: CalEvent | undefined, day: string): { text: string; ask:
   return a === 'yes' ? { text: 'Attended', ask: false } : a === 'no' ? { text: 'Not attended', ask: false } : { text: 'Did you attend?', ask: true };
 }
 import { QuickAdd, EventForm, quickToEvent, removeEvent } from '../components/QuickAdd';
-import { setFocus, onEditEvent, onDataChange, openOfficeEdit } from '../focus';
+import { setFocus, onEditEvent, onDataChange, openOfficeEdit, markFresh } from '../focus';
 import { evKind } from '../components/shell/Timeline';
 import { fmtTime } from '../quickadd';
 import { useMedia } from '../useMedia';
@@ -227,7 +227,7 @@ export default function CalendarPage({ arg }: PageProps) {
           const e = saveEvent(quickToEvent(q.title.trim() ? q : { ...q, title: 'New event' }, day));
           setDay(e.d);
           refresh();
-          notify(`Added ${e.t}`, { undo: () => { deleteEvent(e); refresh(); } });
+          if (e.id) markFresh('event', e.id, () => { deleteEvent(e); refresh(); });
           if (e.id) { openOfficeEdit('event', e.id, e.d); openPanel('item'); }
         }}
       />

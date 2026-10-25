@@ -21,7 +21,7 @@ import {
   type EventType,
 } from '../events';
 import { QuickAdd, EventForm, EventMenu, quickToEvent, removeEvent } from '../components/QuickAdd';
-import { setFocus, openOfficeEdit } from '../focus';
+import { setFocus, openOfficeEdit, markFresh } from '../focus';
 import { ProjectChip } from '../components/ItemMenu';
 import { fmtTime, repLabel } from '../quickadd';
 import { toConfirm, attendState, attendLabel } from '../due';
@@ -99,7 +99,7 @@ export default function EventsPage({ arg }: PageProps) {
         onMore={(q) => {
           const e = saveEvent(quickToEvent(q.title.trim() ? q : { ...q, title: 'New event' }, today));
           refresh();
-          notify(`Added ${e.t}`, { undo: () => { deleteEvent(e); refresh(); } });
+          if (e.id) markFresh('event', e.id, () => { deleteEvent(e); refresh(); });
           if (e.id) { openOfficeEdit('event', e.id, e.d); openPanel('item'); }
         }}
       />
@@ -194,6 +194,7 @@ export default function EventsPage({ arg }: PageProps) {
                     </span>
                     <EventMenu
                       ev={full}
+                      day={e.d}
                       onOpen={() => open(full)}
                       onEdit={() => { if (full.id) { setForm(null); openOfficeEdit('event', full.id, e.d); openPanel('item'); } }}
                       onDelete={(scope) => removeEvent(notify, full, e.d, scope, refresh)}

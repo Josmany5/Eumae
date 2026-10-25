@@ -36,7 +36,7 @@ import { fmtShort, fmtTime, type Quick } from '../quickadd';
 import { ItemMenu, ProjectChip } from '../components/ItemMenu';
 import { projectOf, linkedIds } from '../projects';
 import { getGoals } from '../goals';
-import { setFocus, onEditTask, onDataChange, openOfficeEdit } from '../focus';
+import { setFocus, onEditTask, onDataChange, openOfficeEdit, markFresh } from '../focus';
 import { TaskForm } from '../components/TaskForm';
 import { isOverdue } from '../due';
 
@@ -179,7 +179,8 @@ export default function TasksPage({ arg }: PageProps) {
           const t = fromQuick(q.title.trim() ? q : { ...q, title: 'New task' });
           saveTask(t);
           refresh();
-          notify(`Added ${t.t}`, { undo: () => { deleteTask(t.id); refresh(); } });
+          /* Only Done keeps it; Cancel or × removes it (his call, Oct 25). */
+          markFresh('task', t.id, () => { deleteTask(t.id); refresh(); });
           openOfficeEdit('task', t.id);
           openPanel('item');
         }}

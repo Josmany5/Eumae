@@ -1,4 +1,5 @@
 import { setDraftsOpen } from './studio';
+import { discardFresh } from './focus';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import Header from './components/shell/Header';
 import TabBar, { type TabId } from './components/shell/TabBar';
@@ -130,6 +131,10 @@ export default function App() {
   // Both seed from boot, so a reload with the panel open restores the reading
   // you were in rather than resetting to Context.
   const [panelOpen, setPanelOpen] = useState(() => snap.panelOpen);
+  /* Closing the office throws away a new item from More that was never saved (his call, Oct 25). */
+  useEffect(() => {
+    if (!panelOpen) discardFresh();
+  }, [panelOpen]);
   const [panelView, setPanelView] = useState<PanelView>(() => snap.panelView);
   /** What Eumae is holding on this conversation. Local until the files work. */
   const [refs, setRefs] = useState<Ref[]>([]);
