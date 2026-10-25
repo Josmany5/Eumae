@@ -20,7 +20,7 @@ import {
   type CalEvent,
   type EventType,
 } from '../events';
-import { QuickAdd, EventForm, EventMenu, quickToEvent, removeEvent } from '../components/QuickAdd';
+import { QuickAdd, EventMenu, quickToEvent, removeEvent } from '../components/QuickAdd';
 import { setFocus, openOfficeEdit, markFresh } from '../focus';
 import { ProjectChip } from '../components/ItemMenu';
 import { fmtTime, repLabel } from '../quickadd';
@@ -41,13 +41,11 @@ export default function EventsPage({ arg }: PageProps) {
   const { notify, go, openPanel } = useNav();
   const [filter, setFilter] = useState<Filter>('all');
   const [tick, setTick] = useState(0);
-  const [form, setForm] = useState<{ ev: CalEvent; editing: boolean } | null>(null);
   /* An event just marked Not attended stays while it offers Reschedule?. */
   const [held, setHeld] = useState<{ ev: CalEvent; day: string }[]>([]);
   /* A tapped event opens in Eumae's office (his call, Oct 21), never a card. */
   const open = (e: CalEvent) => {
     if (!e.id) return;
-    setForm(null);
     setFocus({ k: 'event', id: e.id, day: e.d });
     openPanel('item');
   };
@@ -103,26 +101,6 @@ export default function EventsPage({ arg }: PageProps) {
           if (e.id) { openOfficeEdit('event', e.id, e.d); openPanel('item'); }
         }}
       />
-      {form ? (
-        <EventForm
-          initial={form.ev}
-          onCancel={() => setForm(null)}
-          onSave={(e) => {
-            saveEvent(e);
-            setForm(null);
-            refresh();
-            notify(form.editing ? 'Event updated.' : 'Event added.');
-          }}
-          onDelete={
-            form.editing
-              ? () => {
-                  setForm(null);
-                  removeEvent(notify, form.ev, undefined, 'all', refresh);
-                }
-              : undefined
-          }
-        />
-      ) : null}
       <div className="ftabs">
         {(['all', ...EVENT_TYPES] as Filter[]).map((f) => (
           <button key={f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
@@ -196,7 +174,7 @@ export default function EventsPage({ arg }: PageProps) {
                       ev={full}
                       day={e.d}
                       onOpen={() => open(full)}
-                      onEdit={() => { if (full.id) { setForm(null); openOfficeEdit('event', full.id, e.d); openPanel('item'); } }}
+                      onEdit={() => { if (full.id) { openOfficeEdit('event', full.id, e.d); openPanel('item'); } }}
                       onDelete={(scope) => removeEvent(notify, full, e.d, scope, refresh)}
                       onChange={refresh}
                     />

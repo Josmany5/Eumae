@@ -15,7 +15,7 @@
 import { rowTap } from '../rowTap';
 import { useEffect, useMemo, useState } from 'react';
 import { useNav } from '../nav';
-import { dayEvents, getEvent, saveEvent, deleteEvent, ymd, mins, type CalEvent } from '../events';
+import { dayEvents, saveEvent, deleteEvent, ymd, mins, type CalEvent } from '../events';
 import { getTasks, toggleTask, type Task } from '../tasks';
 import { attendanceOf } from '../events';
 import { hasEnded } from '../due';
@@ -28,8 +28,8 @@ function attendWord(ev: CalEvent | undefined, day: string): { text: string; ask:
   const a = attendanceOf(ev, day);
   return a === 'yes' ? { text: 'Attended', ask: false } : a === 'no' ? { text: 'Not attended', ask: false } : { text: 'Did you attend?', ask: true };
 }
-import { QuickAdd, EventForm, quickToEvent, removeEvent } from '../components/QuickAdd';
-import { setFocus, onEditEvent, onDataChange, openOfficeEdit, markFresh } from '../focus';
+import { QuickAdd, quickToEvent } from '../components/QuickAdd';
+import { setFocus, onDataChange, openOfficeEdit, markFresh } from '../focus';
 import { evKind } from '../components/shell/Timeline';
 import { fmtTime } from '../quickadd';
 import { useMedia } from '../useMedia';
@@ -118,7 +118,7 @@ export function itemsOn(day: string, tasks: Task[]): Item[] {
   return [...marks, ...evs, ...ts].sort((a, b) => (a.start ?? -1) - (b.start ?? -1));
 }
 
-export default function CalendarPage({ arg }: PageProps) {
+export default function CalendarPage(_: PageProps) {
   const { notify, go, openPanel, panelOpen } = useNav();
   const desktop = useMedia('(min-width:900px)');
   const [view, setView] = useState<CalView>('week');
@@ -126,22 +126,8 @@ export default function CalendarPage({ arg }: PageProps) {
   /* Week view: the strip's first day; `day` is the one picked in it. */
   const [wk, setWk] = useState(() => todayStr());
   const [tick, setTick] = useState(0);
-  /* Opened with an event id (Edit from Eumae's office): land on its form. */
-  const [form, setForm] = useState<{ ev: CalEvent; editing: boolean } | null>(() => {
-    const e = typeof arg === 'string' ? getEvent(arg) : undefined;
-    return e ? { ev: e, editing: true } : null;
-  });
   const refresh = () => setTick((t) => t + 1);
   useEffect(() => onDataChange(refresh), []);
-  useEffect(
-    () =>
-      onEditEvent((id) => {
-        /* A second tap on Edit closes the form again. */
-        const e = getEvent(id);
-        setForm((f) => (f?.editing && f.ev.id === id ? null : e ? { ev: e, editing: true } : null));
-      }),
-    [],
-  );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const tasks = useMemo(() => getTasks(), [tick]);
@@ -172,19 +158,15 @@ export default function CalendarPage({ arg }: PageProps) {
           );
         })();
 
-  const openNew = (d: string, minute?: number) => {
-    const tm = minute === undefined ? '' : `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
-    const endM = minute === undefined ? undefined : minute + 60;
-    setForm({
-      ev: {
-        d,
-        tm,
-        t: '',
-        allDay: minute === undefined ? true : undefined,
-        end: endM === undefined ? undefined : `${String(Math.floor(endM / 60) % 24).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`,
-      },
-      editing: false,
-    });
+  /* "+" on a day: make it, then edit it inline in Eumae's office, the same as
+     More. Only Done keeps it (his call, Oct 25). */
+  const openNew = (d: string) => {
+    const e = saveEvent({ d, tm: '', t: 'New event', allDay: true });
+    refresh();
+    if (!e.id) return;
+    markFresh('event', e.id, () => { deleteEvent(e); refresh(); });
+    openOfficeEdit('event', e.id, e.d);
+    openPanel('item');
   };
 
   /* Tap: events and tasks open read-only in Eumae's office; goals and
@@ -231,35 +213,6 @@ export default function CalendarPage({ arg }: PageProps) {
           if (e.id) { openOfficeEdit('event', e.id, e.d); openPanel('item'); }
         }}
       />
-
-      {form ? (
-        <EventForm
-          initial={form.ev}
-          onCancel={() => setForm(null)}
-          onSave={(e) => {
-            const before = e.id ? getEvent(e.id) : undefined;
-            const saved = saveEvent(e);
-            setForm(null);
-            setDay(saved.d);
-            refresh();
-            notify(before ? 'Event updated.' : 'Event added.', {
-              undo: () => {
-                if (before) saveEvent(before);
-                else deleteEvent(saved);
-                refresh();
-              },
-            });
-          }}
-          onDelete={
-            form.editing
-              ? () => {
-                  setForm(null);
-                  removeEvent(notify, form.ev, undefined, 'all', refresh);
-                }
-              : undefined
-          }
-        />
-      ) : null}
 
       <div className="calBar">
         <div className="calNav">

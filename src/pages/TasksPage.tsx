@@ -36,8 +36,7 @@ import { fmtShort, fmtTime, type Quick } from '../quickadd';
 import { ItemMenu, ProjectChip } from '../components/ItemMenu';
 import { projectOf, linkedIds } from '../projects';
 import { getGoals } from '../goals';
-import { setFocus, onEditTask, onDataChange, openOfficeEdit, markFresh } from '../focus';
-import { TaskForm } from '../components/TaskForm';
+import { setFocus, onDataChange, openOfficeEdit, markFresh } from '../focus';
 import { isOverdue } from '../due';
 
 type Mode = 'day' | 'project' | 'goal' | 'matrix' | 'done';
@@ -58,7 +57,7 @@ const PR_COLOR: Record<TaskPriority, string> = {
   critical: 'var(--rd)',
 };
 
-export default function TasksPage({ arg }: PageProps) {
+export default function TasksPage(_: PageProps) {
   const { notify, openPanel } = useNav();
   const [list, setList] = useState('all');
   const [tick, setTick] = useState(0);
@@ -66,7 +65,6 @@ export default function TasksPage({ arg }: PageProps) {
   const [selecting, setSelecting] = useState(false);
   const [sel, setSel] = useState<Set<string>>(() => new Set());
   /* Opened with a task id (from a project): land on that task's form. */
-  const [draft, setDraft] = useState<Task | null>(() => (typeof arg === 'string' ? getTask(arg) ?? null : null));
   const [newList, setNewList] = useState('');
   const [addingList, setAddingList] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -75,16 +73,6 @@ export default function TasksPage({ arg }: PageProps) {
   const refresh = () => setTick((t) => t + 1);
   useEffect(() => onDataChange(refresh), []);
   void tick;
-  /* Edit from Eumae's office opens the form right here. */
-  useEffect(
-    () =>
-      onEditTask((id) => {
-        /* A second tap on Edit closes the form again. */
-        const t = getTask(id);
-        setDraft((d) => (d?.id === id ? null : t ?? null));
-      }),
-    [],
-  );
   /* Tap a task: it opens read-only in Eumae's office (the sheet on a phone). */
   const openItem = (t: Task) => {
     setFocus({ k: 'task', id: t.id });
@@ -185,35 +173,6 @@ export default function TasksPage({ arg }: PageProps) {
           openPanel('item');
         }}
       />
-      {draft ? (
-        <TaskForm
-          task={draft}
-          lists={lists}
-          onCancel={() => setDraft(null)}
-          onDelete={
-            getTask(draft.id)
-              ? () => {
-                  const id = draft.id;
-                  setDraft(null);
-                  undoable('Task deleted.', () => deleteTask(id));
-                }
-              : undefined
-          }
-          onSave={(t) => {
-            const before = getTask(t.id);
-            saveTask(t);
-            setDraft(null);
-            refresh();
-            notify(before ? 'Task saved.' : 'Task added.', {
-              undo: () => {
-                if (before) saveTask(before);
-                else deleteTask(t.id);
-                refresh();
-              },
-            });
-          }}
-        />
-      ) : null}
       <div className="ftabs">
         <button className={list === 'all' ? 'on' : ''} onClick={() => setList('all')}>
           All

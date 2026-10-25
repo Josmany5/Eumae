@@ -25,7 +25,6 @@ import {
 import { ItemMenu } from '../components/ItemMenu';
 import { undoable } from '../undo';
 import { QuickAdd } from '../components/QuickAdd';
-import { GoalForm } from '../components/GoalForm';
 import { nextMilestone } from '../milestones';
 import { fmtShort } from '../quickadd';
 import { projectOf } from '../projects';
@@ -99,11 +98,10 @@ function groupGoals(all: Goal[], mode: Mode): Group[] {
   return out;
 }
 
-export default function GoalsPage({ arg }: PageProps) {
+export default function GoalsPage(_: PageProps) {
   const { notify, openPanel } = useNav();
   const [mode, setMode] = useState<Mode>('active');
   const [tick, setTick] = useState(0);
-  const [edit, setEdit] = useState<Goal | null>(() => (typeof arg === 'string' ? getGoals().find((g) => g.id === arg) ?? null : null));
   const refresh = () => setTick((t) => t + 1);
   useEffect(() => onDataChange(refresh), []);
   void tick;
@@ -149,36 +147,6 @@ export default function GoalsPage({ arg }: PageProps) {
           openPanel('item');
         }}
       />
-      {edit ? (
-        <GoalForm
-          goal={edit}
-          isNew={!all.some((g) => g.id === edit.id)}
-          onCancel={() => setEdit(null)}
-          onSave={(g) => {
-            const before = all.find((x) => x.id === g.id);
-            saveGoal(g);
-            setEdit(null);
-            refresh();
-            dataChanged();
-            notify(before ? 'Goal saved.' : 'Goal set.', {
-              undo: () => {
-                if (before) saveGoal(before);
-                else deleteGoal(g.id);
-                refresh();
-                dataChanged();
-              },
-            });
-          }}
-          onDelete={
-            all.some((g) => g.id === edit.id)
-              ? () => {
-                  setEdit(null);
-                  remove(edit.id);
-                }
-              : undefined
-          }
-        />
-      ) : null}
       <div className="tkBar">
         <div className="calSeg" role="tablist" aria-label="View">
           {MODES.map((m) => (
