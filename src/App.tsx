@@ -537,7 +537,15 @@ export default function App() {
 
   const openFromHome = useCallback(
     (d: HomeDest, name?: string) => {
-      if (name && 'tab' in d && resumeApp(name)) return;
+      if (name && 'tab' in d) {
+        /* Console tiles are pages of one app, so a saved window only resumes
+           while it still sits on the tile's own page: open Tasks, switch to
+           Calendar in the pills, and the Tasks tile opens Tasks again. */
+        const a = openApps.find((x) => x.key === name);
+        const same = !!a && (d.tab !== 'console' || (a.tab === 'console' && (a.stack[0]?.page ?? null) === (d.page ?? null)));
+        if (same && resumeApp(name)) return;
+        if (a) setOpenApps((l) => l.filter((x) => x.key !== name));
+      }
       if ('soon' in d) {
         notify(`${d.soon} is coming soon.`);
         return;
@@ -556,7 +564,7 @@ export default function App() {
       goTab(d.tab);
       if (d.page) go(d.page, d.arg);
     },
-    [go, goTab, notify, openPanel, resumeApp],
+    [go, goTab, notify, openPanel, resumeApp, openApps],
   );
 
   /* Persist where you are on every change, so a reload restores it. One small
@@ -679,7 +687,15 @@ export default function App() {
                     key={c.label}
                     className={on ? 'on' : ''}
                     aria-current={on ? 'page' : undefined}
-                    onClick={() => setStack(c.page ? [{ page: c.page }] : [])}
+                    onClick={() => {
+                      setStack(c.page ? [{ page: c.page }] : []);
+                      /* Home mode: the window becomes the page you moved to, so
+                         its tile and the switcher name it right. */
+                      if (appMode && curApp !== c.label) {
+                        setOpenApps((l) => l.filter((x) => x.key !== curApp && x.key !== c.label));
+                        setCurApp(c.label);
+                      }
+                    }}
                   >
                     {c.label}
                   </button>
