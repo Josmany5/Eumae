@@ -625,7 +625,27 @@ export default function App() {
             title={top ? pageTitle(top.page) : LABELS[tab]}
             onMenu={appMode && tab !== 'chat' ? undefined : () => setDrawerOpen(true)}
             onActivity={() => openPanel()}
-            onBack={top && !(appMode && pillPage) ? back : !appMode && homeEnabled && isPhone() ? () => setShowHome(true) : undefined}
+            onBack={
+              appMode
+                ? /* Home mode: Back always works. A sub-page goes back a page;
+                     a pill page goes up to the app's first page; the app's
+                     first page goes Home. Chat keeps its menu (threads). */
+                  top
+                  ? pillPage
+                    ? () => {
+                        setStack([]);
+                        setPillSel(null);
+                      }
+                    : back
+                  : tab === 'chat'
+                    ? undefined
+                    : goHome
+                : top
+                  ? back
+                  : homeEnabled && isPhone()
+                    ? () => setShowHome(true)
+                    : undefined
+            }
           />
           {appMode && APP_PILLS[tab] ? (
             <nav className="conBar" aria-label={LABELS[tab] + ' pages'}>
