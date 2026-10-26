@@ -36,12 +36,7 @@ type Part = Record<string, unknown>;
  *  add the fresh state block. Directives and the timestamp stay as they were. */
 /** Last word in every prompt: mode, role and skill set tone and depth only.
  *  Without this, Build's "return one html code block" outranked the tools. */
-const TOOLS_WIN =
-  '\n\nWHAT WINS: the settings above change your tone and depth only. When the person wants a task, ' +
-  'event, goal, project, note or list (even if they say make, build, create or help me), use your tools ' +
-  'and the plan card. Never answer that with code. When they ask for a page, game, app, widget, ' +
-  'calculator, tracker or other thing to use, write the page (one html block); never make a project, ' +
-  'task or note for it.';
+const TOOLS_WIN = '\u27E6tools_win\u27E7'; // words in api/_prompts.ts
 
 export function withEumae(body: ApiChatBody, where: string): ApiChatBody {
   const sp = body.data.systemPrompt;

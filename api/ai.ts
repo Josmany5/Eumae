@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { expandPrompt, isAppPrompt } from './_prompts.js';
 
 /* Google's Chirp 3: HD locales (cloud.google.com/text-to-speech/docs/chirp3-hd,
    read 2026-10-20). The client's list is src/voiceLang.ts. */
@@ -40,6 +41,21 @@ function sanitizeAttachments(attachments: unknown): { inlineData: { mimeType: st
     parts.push({ inlineData: { mimeType, data: a.data } });
   }
   return parts;
+}
+
+/* Per-account usage cap. Each server instance counts requests per signed-in
+   account over a rolling window. Generous on purpose: normal use never meets
+   it. A shared, database-backed count comes with the database. */
+const LIMIT = 120;
+const WINDOW_MS = 10 * 60 * 1000;
+const hits = new Map<string, number[]>();
+function overLimit(id: string): boolean {
+  const now = Date.now();
+  const list = (hits.get(id) ?? []).filter((t) => now - t < WINDOW_MS);
+  list.push(now);
+  hits.set(id, list);
+  if (hits.size > 5000) hits.clear();
+  return list.length > LIMIT;
 }
 
 async function verifyCaller(req: VercelRequest): Promise<string | null> {
@@ -282,6 +298,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Sign in required' });
   }
 
+  // The meter: no one account can flood the AI (Oct 26).
+  if (overLimit(callerId)) {
+    return res.status(429).json({ error: 'Too many requests. Wait a few minutes and try again.' });
+  }
+
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   const GOOGLE_CLOUD_TTS_KEY = process.env.GOOGLE_CLOUD_TTS_KEY;
 
@@ -301,6 +322,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         functionDeclarations?: unknown[];
         model?: string;
       };
+      /* Eumae's instructions live on the server (api/_prompts.ts): the app
+         sends markers, and a prompt that is not the app's is refused, so the
+         endpoint cannot be borrowed with someone's own instructions. */
+      if (!isAppPrompt(systemPrompt)) {
+        return res.status(400).json({ error: 'Unsupported request' });
+      }
       /* The fallback is the table's own `auto` entry rather than a copy of it: a
          literal here is a second thing to remember to change, and one was
          sitting on this line until checks/models.mjs went looking for it. It is
@@ -315,7 +342,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
-            buildGeminiBody(systemPrompt, message, conversationHistory, attachments, functionDeclarations, tail)
+            buildGeminiBody(expandPrompt(systemPrompt), message, conversationHistory, attachments, functionDeclarations, tail)
           ),
         }
       );
@@ -358,6 +385,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         functionDeclarations?: unknown[];
         model?: string;
       };
+      /* Eumae's instructions live on the server (api/_prompts.ts): the app
+         sends markers, and a prompt that is not the app's is refused, so the
+         endpoint cannot be borrowed with someone's own instructions. */
+      if (!isAppPrompt(systemPrompt)) {
+        return res.status(400).json({ error: 'Unsupported request' });
+      }
       /* The fallback is the table's own `auto` entry rather than a copy of it: a
          literal here is a second thing to remember to change, and one was
          sitting on this line until checks/models.mjs went looking for it. It is
@@ -372,7 +405,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
-            buildGeminiBody(systemPrompt, message, conversationHistory, attachments, functionDeclarations, tail)
+            buildGeminiBody(expandPrompt(systemPrompt), message, conversationHistory, attachments, functionDeclarations, tail)
           ),
         }
       );

@@ -21,18 +21,15 @@ import type { CustomRole } from './roles';
  *  §5 check 6 is what keeps it true until then.
  */
 
-/** The base instruction, prepended to the settings block.
+/** The base instruction, prepended to the settings block. Since Oct 26 its
+ *  words live on the server (api/_prompts.ts); this is the marker for them.
  *
  *  The mockup's own paragraph (1626) names the owner and calls him "the person
  *  building it". This repo is public and carries no real name (§3), so the
  *  paragraph is written fresh: same job, nobody's name in it, and the same
  *  admission — that this thread cannot yet see or change anything inside the
  *  app, so a request to do so is answered plainly instead of faked. */
-export const BASE_PROMPT =
-  'You are Eumae, the personal AI inside the Eumae app. Answer directly and plainly, in a ' +
-  'warm, natural tone. You cannot yet see or change the person\u2019s tasks, files, or anything ' +
-  'else in the app; if they ask you to do something inside the app, say plainly that this ' +
-  'thread is not wired to do that yet. Answer everything else normally.';
+export const BASE_PROMPT = '\u27E6base\u27E7';
 
 /** What each mode asks for. The mockup's clauses (1647) are one short sentence
  *  each and this keeps that length — but the three are now three different
@@ -53,14 +50,9 @@ export const BASE_PROMPT =
  *     last line is what keeps it on the subject that was asked about.
  */
 const MODE_CLAUSE: Record<Mode, string> = {
-  Ask: '. Talk, plan, and decide with them. Answer in prose, on the thing they asked about, and keep code out of the reply unless they ask for code.',
-  Build:
-    '. Make the thing they asked for. Open with what you made and how to use it — a short guide, ' +
-    'not a second copy of the thing — and put the thing itself at the end, once.',
-  Learn:
-    '. Teach it as a lesson rather than a set of facts: what it is, why it matters, how it works ' +
-    'step by step, one worked example, and one thing to try next. Stay on what they asked about: ' +
-    'no detours, and no extra ideas they did not ask for.',
+  Ask: '\u27E6mode:Ask\u27E7',
+  Build: '\u27E6mode:Build\u27E7',
+  Learn: '\u27E6mode:Learn\u27E7',
 };
 
 /** Studio's premise (mockup 1655), and since 2026-10-08 Build's alone.
@@ -72,12 +64,7 @@ const MODE_CLAUSE: Record<Mode, string> = {
  *  now travels only with the mode that builds for it. It stays in that mode
  *  because it is what makes a built thing land in one shape instead of five, and
  *  one shape is what makes it findable later, when something renders it (§7). */
-const VISUAL =
-  'If you make something visual for them to use (a page, widget, calculator, game, document ' +
-  'layout), return it as one complete html code block: whole, working on its own, and at the ' +
-  'end of the reply. The words above the block are a guide to it — never a second copy. It runs in a ' +
-  'locked frame with no internet: inline all CSS and JavaScript, load nothing from outside, and use no ' +
-  'storage, cookies or history changes.';
+const VISUAL = '\u27E6visual\u27E7';
 
 /** How this one message was asked: the chat's turn, plus the two things that
  *  belong to the message rather than to the chat — what was attached, and what

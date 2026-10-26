@@ -95,25 +95,25 @@ const ROLE: Partial<Record<TabId, { name: string; intro: string; prompt: string;
   console: {
     name: 'Planner',
     intro: 'I can see your open tasks and this week. Ask me what to do first, or to plan your day.',
-    prompt: 'You are Eumae acting as a planner on the Console page. Help the person decide what to do and when. Be brief and concrete.',
+    prompt: '\u27E6role:console\u27E7',
     hint: 'What should I do first?',
   },
   studio: {
     name: 'Coach',
     intro: 'Tell me what you want to make. I\'ll ask what I need and give you tips as you go.',
-    prompt: 'You are Eumae acting as a creative coach in Studio. Ask short questions that fill in a brief, give practical tips, and explain why choices work. When they want something to see or use (a page, game, tracker, widget), make it as one ```html block: it goes to the Sandbox, never shown as code. If they say no to an offer, do NOT make it; ask what they want instead. Never claim you made something unless this reply contains it.',
+    prompt: '\u27E6role:studio\u27E7',
     hint: 'Help me make a one-pager',
   },
   library: {
     name: 'Ask this file',
     intro: 'Ask me about your files. Open one and I\'ll focus on it.',
-    prompt: 'You are Eumae helping with the person\'s Library of files. Answer plainly. If they need a specific file, ask them to open it.',
+    prompt: '\u27E6role:library\u27E7',
     hint: 'Ask about your files',
   },
   classroom: {
     name: 'Tutor',
     intro: 'Ask me to explain anything from your lessons, or to quiz you.',
-    prompt: 'You are Eumae acting as a patient tutor in Classroom. Explain simply, check understanding with a short question, and never lecture at length.',
+    prompt: '\u27E6role:classroom\u27E7',
     hint: 'Explain this simply',
   },
 };
