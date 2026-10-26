@@ -2371,3 +2371,56 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .swBody{ flex:1; border-radius:14px; background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:15px; color:var(--mut); padding:12px; text-align:center; }
 .swEmpty{ text-align:center; color:#fff; font-size:16px; opacity:.8; }
 .swHome{ align-self:center; margin-top:22px; padding:10px 26px; border-radius:20px; border:0; background:var(--card3); color:var(--tx); font-size:15px; }
+
+/* ── Desktop Home (Oct 26, his mockup IMG_5131) ─────────────────────────
+   Opt-in in Settings → Appearance. A top bar, apps on the desktop, the open
+   app in a window, Eumae's window beside it, a dock. Desktop only. */
+.dkBar, .dkIcons, .dock, .dkWin{ display:none; }
+@media (min-width:900px){
+  #app.deskMode{ grid-template-columns:196px minmax(0,1fr); grid-template-rows:34px minmax(0,1fr) 100px;
+    background:radial-gradient(120% 90% at 75% 110%, var(--card2), var(--bg) 62%); }
+  #app.deskMode.panelOpen, #app.deskMode.railCollapsed.panelOpen{ grid-template-columns:196px minmax(0,1fr) minmax(320px,380px); }
+  #app.deskMode .sb{ display:none; }
+  #app.deskMode .backbar{ padding-top:12px; }
+
+  .dkBar{ grid-column:1 / -1; grid-row:1; display:flex; align-items:center; gap:14px; padding:0 18px;
+    font-size:14px; background:var(--bg); border-bottom:1px solid var(--hair); }
+  .dkBar b{ font-weight:700; }
+  .dkBar .m{ color:var(--mut); }
+  .dkBar .sp{ flex:1; }
+  .dkSea{ display:inline-flex; background:none; border:0; padding:4px; color:var(--mut); }
+  .dkSea:hover{ color:var(--tx); }
+  .dkSea svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+
+  .dkIcons{ grid-column:1; grid-row:2; display:grid; grid-template-columns:repeat(2, 1fr); align-content:start;
+    gap:20px 4px; padding:24px 10px; overflow-y:auto; scrollbar-width:none; min-height:0; }
+  .dkIcons .hmIc{ width:58px; height:58px; border-radius:16px; }
+  .dkIcons .hmIc svg{ width:26px; height:26px; }
+  .dkIcons .hmN{ font-size:13px; }
+  .dkIcons .hmTile:hover .hmIc{ filter:brightness(1.08); }
+
+  #app.deskMode .col{ grid-column:2; grid-row:2; margin:20px 10px 6px 10px; border:1px solid var(--hair);
+    border-radius:14px; overflow:hidden; box-shadow:0 22px 60px rgba(0,0,0,.45); }
+  #app.deskMode .col.dkHidden{ visibility:hidden; }
+  #app.deskMode .panel.open{ grid-column:3; grid-row:2; margin:20px 20px 6px 6px; border:1px solid var(--hair);
+    border-radius:14px; box-shadow:0 22px 60px rgba(0,0,0,.45); }
+  #app.deskMode .pHandle{ top:44px; }
+
+  .dkWin{ flex:none; display:flex; align-items:center; gap:14px; padding:11px 16px; border-bottom:1px solid var(--hair); background:var(--card); }
+  .dkWin b{ font-size:15px; font-weight:600; }
+  .dkLights{ display:inline-flex; gap:8px; }
+  .dkLights button{ width:13px; height:13px; border-radius:50%; border:0; padding:0; cursor:pointer; }
+  .dkLights .r{ background:#ff5f57; } .dkLights .y{ background:#febc2e; } .dkLights .g{ background:#28c840; }
+
+  .dock{ grid-column:1 / -1; grid-row:3; justify-self:center; align-self:center; display:flex; gap:10px;
+    padding:10px 12px; background:var(--card); border:1px solid var(--hair); border-radius:20px; max-width:calc(100vw - 40px); overflow-x:auto; scrollbar-width:none; }
+  .dock button{ position:relative; background:none; border:0; padding:0; transition:transform .15s ease; }
+  .dock button:hover{ transform:translateY(-4px); }
+  .dock .hmIc{ width:52px; height:52px; border-radius:14px; }
+  .dock .hmIc svg{ width:24px; height:24px; }
+  .dock .hmDate{ font-size:22px; }
+  .dock .dot{ position:absolute; bottom:-7px; left:50%; width:4px; height:4px; border-radius:50%; background:var(--tx); transform:translateX(-50%); }
+  .dock { padding-bottom:14px; }
+}
+/* The window bar already names the app, so its first page drops the back bar. */
+@media (min-width:900px){ #app.deskMode .col.dkRoot .backbar{ display:none; } #app.deskMode .col.dkRoot .pageBody{ padding-top:12px; } }

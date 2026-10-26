@@ -22,3 +22,24 @@ export function setHomeOn(on: boolean): void {
 }
 
 export const isPhone = () => window.matchMedia('(max-width:899px)').matches;
+
+/* The desktop Home (his ask, Oct 26, mockup IMG_5131): apps on a desktop,
+   the open app in a window, Eumae beside it, a dock. Opt-in, desktop only. */
+const DESK = 'eumae:deskHome';
+
+export function deskOn(): boolean {
+  try {
+    return JSON.parse(localStorage.getItem(DESK) ?? 'false') === true;
+  } catch {
+    return false;
+  }
+}
+
+export function setDeskOn(on: boolean): void {
+  try {
+    localStorage.setItem(DESK, JSON.stringify(on));
+  } catch {
+    /* storage unavailable */
+  }
+  window.dispatchEvent(new Event(HOME_EVENT));
+}

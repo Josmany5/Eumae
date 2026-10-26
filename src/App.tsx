@@ -28,8 +28,9 @@ import {
 import { boot, saveNav } from './boot';
 import { logEv } from './log';
 import { saveUpload, uploadData } from './uploads';
-import HomeScreen, { type HomeDest } from './screens/HomeScreen';
-import { homeOn, isPhone, HOME_EVENT } from './home';
+import HomeScreen, { homeSections, type HomeDest, type Tile } from './screens/HomeScreen';
+import { homeOn, deskOn, isPhone, HOME_EVENT } from './home';
+import { DeskBar, DeskIcons, Dock, WinBar } from './components/shell/Desk';
 import { HomeHandle, AppSwitcher } from './components/shell/AppSwitch';
 
 const CON_PAGES: { label: string; page: string | null }[] = [
@@ -149,11 +150,21 @@ export default function App() {
      arrow on a top-level screen comes back here. */
   const [homeEnabled, setHomeEnabled] = useState(homeOn);
   const [showHome, setShowHome] = useState(() => homeOn() && isPhone());
+  /* Desktop Home (Oct 26): opt-in, wide screens only. */
+  const [deskEnabled, setDeskEnabled] = useState(deskOn);
+  const [wide, setWide] = useState(() => !isPhone());
+  useEffect(() => {
+    const m = window.matchMedia('(max-width:899px)');
+    const f = () => setWide(!m.matches);
+    m.addEventListener('change', f);
+    return () => m.removeEventListener('change', f);
+  }, []);
   useEffect(() => {
     const f = () => {
       const on = homeOn();
       setHomeEnabled(on);
       setShowHome(on && isPhone());
+      setDeskEnabled(deskOn());
     };
     window.addEventListener(HOME_EVENT, f);
     return () => window.removeEventListener(HOME_EVENT, f);
@@ -591,7 +602,43 @@ export default function App() {
   const appMode = homeEnabled && !showHome && isPhone();
   const pillPage = !!top && stack.length === 1 && (CON_PAGES.some((c) => c.page === top.page) || !!APP_PILLS[tab]);
 
+  /* Desktop Home: which tile the window shows, which apps are open (dock
+     dots), and whether the window is closed or minimized. */
+  const deskMode = deskEnabled && wide;
+  const [deskOpen, setDeskOpen] = useState<string[]>([]);
+  const [winHidden, setWinHidden] = useState(false);
+  useEffect(() => {
+    if (deskMode) setPanelOpen(true);
+  }, [deskMode]);
+  const deskTiles = useMemo(() => homeSectionsFlat(), []);
+  const root = stack[0]?.page ?? null;
+  const curTile =
+    deskTiles.find((t) => 'tab' in t.to && t.to.tab === tab && (t.to.page ?? null) === root) ??
+    deskTiles.find((t) => 'tab' in t.to && t.to.tab === tab && !t.to.page) ??
+    null;
+  const winTitle = curTile?.n ?? (top ? pageTitle(top.page) : LABELS[tab]);
+  const openDesk = (t: Tile) => {
+    const d = t.to;
+    if ('soon' in d) {
+      notify(`${d.soon} is coming soon.`);
+      return;
+    }
+    if ('settings' in d) {
+      setSettingsOpen(true);
+      return;
+    }
+    if ('office' in d) {
+      openPanel(d.office);
+      return;
+    }
+    goTab(d.tab);
+    if (d.page) go(d.page, d.arg);
+    setWinHidden(false);
+    setDeskOpen((l) => (l.includes(t.n) ? l : [...l, t.n]));
+  };
+
   const appClass = [
+    deskMode ? 'deskMode' : '',
     railCollapsed ? 'railCollapsed' : '',
     panelOpen ? 'panelOpen' : '',
     booting ? 'booting' : '',
@@ -605,6 +652,13 @@ export default function App() {
   return (
     <NavContext.Provider value={nav}>
       <div id="app" className={appClass || undefined}>
+        {deskMode ? (
+          <>
+            <DeskBar app={winHidden ? 'Desktop' : winTitle} onSearch={() => { setWinHidden(false); openSearch(); }} />
+            <DeskIcons onOpen={openDesk} />
+            <Dock open={winHidden ? deskOpen.filter((n) => n !== curTile?.n) : deskOpen} current={winHidden ? null : curTile?.n ?? null} onOpen={openDesk} />
+          </>
+        ) : null}
         <Sidebar
           active={tab}
           onSelect={goTab}
@@ -618,7 +672,18 @@ export default function App() {
           onThreadDelete={removeThread}
           onThreadRename={renameThread}
         />
-        <div className="col">
+        <div className={'col' + (deskMode && winHidden ? ' dkHidden' : '') + (deskMode && stack.length === 1 && curTile && 'tab' in curTile.to && curTile.to.page === root ? ' dkRoot' : '')}>
+          {deskMode ? (
+            <WinBar
+              title={winTitle}
+              onClose={() => {
+                setDeskOpen((l) => l.filter((n) => n !== curTile?.n));
+                setWinHidden(true);
+              }}
+              onMin={() => setWinHidden(true)}
+              onZoom={togglePanel}
+            />
+          ) : null}
           {showHome ? (
             <HomeScreen
               onOpen={openFromHome}
@@ -771,4 +836,9 @@ export default function App() {
       </div>
     </NavContext.Provider>
   );
+}
+
+/** Every Home tile, flat, for the desktop window's title and dock. */
+function homeSectionsFlat(): Tile[] {
+  return homeSections().flatMap((x) => x.tiles);
 }
