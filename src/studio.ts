@@ -74,7 +74,7 @@ export const STUDIO_TEMPLATES: Record<string, StudioTemplate> = {
   "From a goal": { u: "Turns a goal you already have into a working project with steps.",
     s: ["Pick the goal it serves", "Break it into first steps", "Open it and start today"],
     v: [["Starter", "Goal project", "Goal:", "First steps:"]] },
-  "Checklist flow": { u: "A flow is a checklist that runs on a schedule - Eumae walks you through it.",
+  "Checklist flow": { u: "A flow is a checklist you run yourself, on your own schedule. Eumae keeps the checks.",
     s: ["Steps in order, one action each", "Say when it runs", "Keep it under seven steps"],
     v: [["Starter", "New flow", "Steps:", "Runs:"]] },
   "Daily routine": { u: "The same steps, every day. Small enough to never skip.",

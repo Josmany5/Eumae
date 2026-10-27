@@ -1,7 +1,7 @@
 import { rowTap } from '../../rowTap';
 import { useEffect, useRef, useState } from 'react';
 import { useNav, type PanelView } from '../../nav';
-import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists, saveTask, type Task } from '../../tasks';
+import { getTasks, getTask, toggleTask, toggleSubtask, deleteTask, snapshotTasks, restoreTasks, getLists, saveTask, toggleCheck, addCheck, renameCheck, deleteCheck, checkCount, type Task } from '../../tasks';
 import { projectOf, linkedIds, linkMilestone, getProject, saveProject, deleteProject, snapshotProjects, restoreProjects, projectPercent, projectCountLabel, projectProgress, type Project, type LinkKind } from '../../projects';
 import { getGoals, saveGoal, deleteGoal, snapshotGoals, restoreGoals, goalPct, goalCount, goalPace, isActiveGoal, GOAL_STATUS_LABEL, goalLinkedIds, goalOf, linkToGoal, unlinkFromGoal, type Goal, type GoalStatus } from '../../goals';
 import { getNote, titleOf } from '../../notes';
@@ -318,6 +318,10 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
     const before = t;
     const sub = [...(draft.sub ?? []), ...(newStep.trim() ? [{ t: newStep.trim(), d: 0 as const }] : [])].map((s) => ({ ...s, t: s.t.trim() })).filter((s) => s.t);
     const next: Task = { ...draft, t: draft.t.trim(), sub: sub.length ? sub : undefined };
+    /* The checklist saves on its own, line by line; keep what is stored now. */
+    const cl = getTask(t.id)?.cl;
+    if (cl && cl.length) next.cl = cl;
+    else delete next.cl;
     if (!next.due) {
       delete next.tm;
       next.rep = 'none';
@@ -432,6 +436,7 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
           ) : null}
         </>
       ) : null}
+      <TaskChecklist task={t} onChange={refresh} />
       {editing ? null : (
         <div className="itEumae">
           <span className="n">Eumae</span>
@@ -440,6 +445,109 @@ function TaskTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
         </div>
       )}
     </div>
+  );
+}
+
+/* The task's checklist: plain tick lines, no dates, separate from steps.
+   Ticking works anytime, edit mode or not. Tap a line's text to edit it in
+   the same row (never a form swap, his rule); × removes it; the last row
+   adds one. Every change shows the Undo pill. */
+function TaskChecklist({ task, onChange }: { task: Task; onChange: () => void }) {
+  const { notify } = useNav();
+  const [edit, setEdit] = useState<number | null>(null);
+  const [text, setText] = useState('');
+  const [add, setAdd] = useState('');
+  useEffect(() => {
+    setEdit(null);
+    setAdd('');
+  }, [task.id]);
+  const cl = task.cl ?? [];
+  const change = (msg: string, f: () => boolean) => {
+    const before = getTask(task.id);
+    if (!before || !f()) return;
+    onChange();
+    dataChanged();
+    notify(msg, { undo: () => { saveTask(before); dataChanged(); } });
+  };
+  /* Enter then the blur that follows must save once, not twice. */
+  const editing = useRef<number | null>(null);
+  editing.current = edit;
+  const saveEdit = () => {
+    const i = editing.current;
+    if (i === null) return;
+    editing.current = null;
+    setEdit(null);
+    if (!text.trim()) change('Line removed.', () => deleteCheck(task.id, i));
+    else change('Line updated.', () => renameCheck(task.id, i, text));
+  };
+  const submitAdd = () => {
+    const v = add.trim();
+    if (!v) return;
+    setAdd('');
+    change('Line added.', () => addCheck(task.id, v));
+  };
+  const count = checkCount(task);
+  return (
+    <>
+      <div className="flbl">
+        Checklist{count ? <span> {count}</span> : null}
+      </div>
+      {cl.map((c, i) => (
+        <div key={i} className="frow itStep">
+          <button
+            className={'fchk' + (c.d ? ' on' : '')}
+            aria-label={c.d ? `Untick ${c.t}` : `Tick ${c.t}`}
+            onClick={() => change(c.d ? 'Line unticked.' : 'Line ticked.', () => toggleCheck(task.id, i))}
+          />
+          {edit === i ? (
+            <input
+              className="itIn itStepIn"
+              aria-label={`Checklist line ${i + 1}`}
+              autoFocus
+              value={text}
+              onChange={(x) => setText(x.target.value)}
+              onBlur={saveEdit}
+              onKeyDown={(x) => {
+                if (x.key === 'Enter') saveEdit();
+                if (x.key === 'Escape') {
+                  editing.current = null;
+                  setEdit(null);
+                }
+              }}
+            />
+          ) : (
+            <button
+              className="tlT ft"
+              style={{ textAlign: 'left' }}
+              aria-label={`Edit line: ${c.t}`}
+              onClick={() => {
+                setEdit(i);
+                setText(c.t);
+              }}
+            >
+              <span className={c.d ? 'tlDone' : ''}>{c.t}</span>
+            </button>
+          )}
+          <button className="fb gho" aria-label={`Remove line ${i + 1}`} onMouseDown={(x) => x.preventDefault()} onClick={() => { editing.current = null; setEdit(null); change('Line removed.', () => deleteCheck(task.id, i)); }}>
+            ×
+          </button>
+        </div>
+      ))}
+      <div className="frow itStep">
+        <span className="itNum">+</span>
+        <input
+          className="itIn itStepIn"
+          aria-label="Add a checklist line"
+          placeholder="Add a line"
+          value={add}
+          onChange={(x) => setAdd(x.target.value)}
+          onKeyDown={(x) => {
+            if (x.key === 'Enter') submitAdd();
+          }}
+          onBlur={submitAdd}
+        />
+      </div>
+    </>
   );
 }
 

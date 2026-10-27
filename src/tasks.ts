@@ -20,6 +20,13 @@ export interface Subtask {
   d: 0 | 1;
 }
 
+/** A checklist line: plain text and a tick. No date, priority or owner —
+ *  that is what subtasks are for (his call, Oct 26). */
+export interface CheckItem {
+  t: string;
+  d: boolean;
+}
+
 export interface TaskList {
   id: string;
   n: string;
@@ -49,6 +56,8 @@ export interface Task {
   pr?: TaskPriority;
   /** Subtasks — the mockup's t.sub, default empty. */
   sub?: Subtask[];
+  /** Checklist — plain tick lines, separate from subtasks. Absent on old rows. */
+  cl?: CheckItem[];
   /** True for a labeled example seed — see above. Never synced anywhere. */
   example?: boolean;
   /** ms since epoch. */
@@ -106,6 +115,12 @@ function isSubtask(s: unknown): s is Subtask {
   return typeof o.t === 'string' && (o.d === 0 || o.d === 1);
 }
 
+function isCheckItem(c: unknown): c is CheckItem {
+  if (!c || typeof c !== 'object') return false;
+  const o = c as Record<string, unknown>;
+  return typeof o.t === 'string' && typeof o.d === 'boolean';
+}
+
 function isTask(t: unknown): t is Task {
   if (!t || typeof t !== 'object') return false;
   const o = t as Record<string, unknown>;
@@ -120,6 +135,7 @@ function isTask(t: unknown): t is Task {
     (o.list === undefined || typeof o.list === 'string') &&
     (o.pr === undefined || PRIORITIES.includes(o.pr as TaskPriority)) &&
     (o.sub === undefined || (Array.isArray(o.sub) && o.sub.every(isSubtask))) &&
+    (o.cl === undefined || (Array.isArray(o.cl) && o.cl.every(isCheckItem))) &&
     typeof o.createdAt === 'number'
   );
 }
@@ -131,6 +147,7 @@ function normalize(t: Task): Task {
     list: typeof t.list === 'string' ? t.list : 'inbox',
     pr: t.pr && PRIORITIES.includes(t.pr) ? t.pr : 'none',
     sub: Array.isArray(t.sub) ? t.sub.filter(isSubtask) : [],
+    ...(Array.isArray(t.cl) ? { cl: t.cl.filter(isCheckItem) } : {}),
   };
 }
 
@@ -200,6 +217,48 @@ export function addSubtask(id: string, t: string): void {
   const name = t.trim();
   if (!task || !name) return;
   saveTask({ ...task, sub: [...(task.sub ?? []), { t: name, d: 0 }] });
+}
+
+/* Checklist: plain tick lines. Each helper returns false when nothing
+   changed, so the caller only shows the Undo pill for a real change. */
+function setCl(id: string, f: (cl: CheckItem[]) => CheckItem[] | null): boolean {
+  const task = getTask(id);
+  if (!task) return false;
+  const next = f((task.cl ?? []).map((c) => ({ ...c })));
+  if (!next) return false;
+  const t2: Task = { ...task };
+  if (next.length) t2.cl = next;
+  else delete t2.cl;
+  saveTask(t2);
+  return true;
+}
+
+export function setChecklist(id: string, lines: string[]): boolean {
+  return setCl(id, () => lines.map((t) => t.trim()).filter(Boolean).map((t) => ({ t, d: false })));
+}
+
+export function toggleCheck(id: string, index: number): boolean {
+  return setCl(id, (cl) => (cl[index] ? cl.map((c, i) => (i === index ? { ...c, d: !c.d } : c)) : null));
+}
+
+export function addCheck(id: string, t: string): boolean {
+  const name = t.trim();
+  return setCl(id, (cl) => (name ? [...cl, { t: name, d: false }] : null));
+}
+
+export function renameCheck(id: string, index: number, t: string): boolean {
+  const name = t.trim();
+  return setCl(id, (cl) => (cl[index] && name && cl[index].t !== name ? cl.map((c, i) => (i === index ? { ...c, t: name } : c)) : null));
+}
+
+export function deleteCheck(id: string, index: number): boolean {
+  return setCl(id, (cl) => (cl[index] ? cl.filter((_, i) => i !== index) : null));
+}
+
+/** "2/5" for a task with a checklist, '' without one. */
+export function checkCount(task: Task): string {
+  const cl = task.cl ?? [];
+  return cl.length ? `${cl.filter((c) => c.d).length}/${cl.length}` : '';
 }
 
 /* Lists — the mockup's S.lists, seeded inbox + work. */

@@ -7,7 +7,7 @@
  * (`scrub10`).
  */
 
-import { getTasks, toggleTask } from '../../tasks';
+import { getTasks, toggleTask, checkCount } from '../../tasks';
 import { dayEvents } from '../../events';
 import { getGoals, goalPct, goalCount, isActiveGoal } from '../../goals';
 import { getPinnedProject, linkedIds, projectPercent, projectCountLabel, type Project } from '../../projects';
@@ -49,7 +49,7 @@ function QuickToday({ refresh }: { refresh: () => void }) {
               refresh();
             }}
           />
-          <div className="g s">{t.t}</div>
+          <div className="g s">{t.t}{checkCount(t) ? <span className="xs m"> · ☑ {checkCount(t)}</span> : null}</div>
         </div>
       ))}
       {open.length === 0 ? <div className="s m">All clear.</div> : null}
@@ -210,7 +210,7 @@ function FullToday({ refresh }: { refresh: () => void }) {
               refresh();
             }}
           />
-          <div className="g s">{t.t}</div>
+          <div className="g s">{t.t}{checkCount(t) ? <span className="xs m"> · ☑ {checkCount(t)}</span> : null}</div>
         </div>
       ))}
       {done.length > 0 ? (
@@ -231,6 +231,7 @@ function FullToday({ refresh }: { refresh: () => void }) {
               />
               <div className="g s">
                 <s className="m">{t.t}</s>
+                {checkCount(t) ? <span className="xs m"> · ☑ {checkCount(t)}</span> : null}
               </div>
             </div>
           ))}
@@ -334,7 +335,7 @@ function FullPinned({ refresh }: { refresh: () => void }) {
               refresh();
             }}
           />
-          <div className="g s">{t.t}</div>
+          <div className="g s">{t.t}{checkCount(t) ? <span className="xs m"> · ☑ {checkCount(t)}</span> : null}</div>
         </div>
       ))}
     </>

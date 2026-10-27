@@ -27,6 +27,7 @@ import {
   getTask,
   snapshotTasks,
   restoreTasks,
+  checkCount,
   type Task,
   type TaskPriority,
 } from '../tasks';
@@ -608,6 +609,8 @@ function TaskMeta({ task, subs, hideDate }: { task: Task; subs: string; hideDate
   if (task.rep && task.rep !== 'none')
     bits.push('↻ ' + (task.rep === 'weekly' && task.repDays?.length ? task.repDays.map((d) => DOW3[d]).join(' ') : task.rep));
   if (subs) bits.push(subs);
+  const cl = checkCount(task);
+  if (cl) bits.push('☑ ' + cl);
   if (!bits.length) return null;
   return <div className="fsub" style={late ? { color: 'var(--rd)' } : undefined}>{bits.join(' · ')}</div>;
 }

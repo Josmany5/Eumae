@@ -32,8 +32,8 @@ const LINKABLE: readonly LinkKind[] = ['task', 'event', 'goal', 'note'];
 
 /** One line on the plan card: what kind of thing, what happens to it. */
 export interface PlanLine {
-  kind: 'Task' | 'Event' | 'Goal' | 'Project' | 'Note' | 'List' | 'Subtask' | 'Milestone' | 'Phase' | 'Link';
-  verb: 'Create' | 'Edit' | 'Complete' | 'Reopen' | 'Move' | 'Add' | 'Log' | 'Link' | 'Unlink' | 'Delete' | 'Skip';
+  kind: 'Task' | 'Event' | 'Goal' | 'Project' | 'Note' | 'List' | 'Subtask' | 'Checklist line' | 'Milestone' | 'Phase' | 'Link';
+  verb: 'Create' | 'Edit' | 'Complete' | 'Reopen' | 'Tick' | 'Untick' | 'Remove' | 'Move' | 'Add' | 'Log' | 'Link' | 'Unlink' | 'Delete' | 'Skip';
   text: string;
   detail?: string;
   /** What Eumae filled in herself, in plain words ("due date, 30 min"). */
@@ -237,7 +237,7 @@ function milestones(v: unknown): Milestone[] | undefined {
 
 /* ───────────────────────── reads ───────────────────────── */
 
-const taskRow = (t: Task) => ({ id: t.id, title: t.t, done: !!t.d, due: t.due, time: t.tm, priority: t.pr, list: t.list, project: projectOf('task', t.id)?.n, goal: goalOf('task', t.id)?.t });
+const taskRow = (t: Task) => ({ id: t.id, title: t.t, done: !!t.d, due: t.due, time: t.tm, priority: t.pr, list: t.list, project: projectOf('task', t.id)?.n, goal: goalOf('task', t.id)?.t, ...(t.cl?.length ? { checklist: `${t.cl.filter((c) => c.d).length}/${t.cl.length} ticked` } : {}) });
 const eventRow = (e: CalEvent) => ({ id: e.id, title: e.t, date: e.d, start: e.allDay ? undefined : e.tm, end: e.end, all_day: !!e.allDay, repeats: e.rep?.f, location: e.loc, importance: importanceOf(e), goal: e.id ? goalOf('event', e.id)?.t : undefined });
 const goalRow = (g: Goal) => ({ id: g.id, title: g.t, status: g.st, percent: goalPct(g), progress: goalCount(g) || undefined, target_date: g.td || undefined, steps: GOAL_KINDS.reduce((n, k) => n + goalLinkedIds(g.id, k).length, 0) || undefined });
 
@@ -359,7 +359,7 @@ const reads: Action[] = [
   {
     name: 'read_item',
     risk: 'read',
-    description: 'Read one item in full by kind and id: every field, subtasks, milestones, its project and goal, what a project or goal holds, and for notes the text.',
+    description: 'Read one item in full by kind and id: every field, subtasks, a task\'s checklist, milestones, its project and goal, what a project or goal holds, and for notes the text.',
     params: obj({ kind: s('Item kind.', { enum: ITEM_KINDS }), id: s('The item id.') }, ['kind', 'id']),
     verify: (a) => (exists(a.kind, a.id) ? null : missing(a.kind, a.id)),
     run: (a) => {
@@ -367,7 +367,7 @@ const reads: Action[] = [
       let data: unknown;
       if (a.kind === 'task') {
         const t = getTask(id)!;
-        data = { ...taskRow(t), goal: goalOf('task', id)?.t, estimate_min: t.est, repeat: t.rep, repeat_days: t.repDays, repeat_until: t.repUntil, subtasks: (t.sub ?? []).map((x, i) => ({ index: i, title: x.t, done: !!x.d })) };
+        data = { ...taskRow(t), goal: goalOf('task', id)?.t, estimate_min: t.est, repeat: t.rep, repeat_days: t.repDays, repeat_until: t.repUntil, subtasks: (t.sub ?? []).map((x, i) => ({ index: i, title: x.t, done: !!x.d })), checklist: (t.cl ?? []).map((x, i) => ({ index: i, text: x.t, done: x.d })) };
       } else if (a.kind === 'event') {
         const e = getEvent(id)!;
         data = { ...eventRow(e), type: e.type, notes: e.note, repeat: e.rep, skipped_dates: e.skip, project: projectOf('event', id)?.n, goal: goalOf('event', id)?.t };
@@ -458,6 +458,7 @@ const taskFields: Record<string, Param> = {
   repeat_days: list('Weekly repeat only: days 0-6 (0 = Sunday).', num('Weekday.', { min: 0, max: 6, integer: true })),
   repeat_until: date('Last date it repeats.'),
   subtasks: list('Subtask titles, one per step.', s('Subtask.', { max: 200 }), { maxItems: 30 }),
+  checklist: list('Checklist lines: plain tick-off lines with no dates, priority or owner (packing list, things to bring). Use this, not subtasks, when they ask for a checklist.', s('Checklist line.', { max: 200 }), { maxItems: 50 }),
   project: projectField,
   goal: goalField,
   guessed: guessedField,
@@ -473,7 +474,7 @@ function verifyTask(t: Args, at: string, ctx: StageCtx): string | null {
 }
 
 function taskDetail(t: Args): string {
-  return join(t.due && fmtDate(t.due), t.time && `by ${fmtTime(t.time)}`, t.estimate && `${t.estimate} min`, t.priority && t.priority !== 'none' && t.priority, t.repeat && t.repeat !== 'none' && `repeats ${t.repeat}`, t.subtasks?.length && plural(t.subtasks.length, 'subtask'));
+  return join(t.due && fmtDate(t.due), t.time && `by ${fmtTime(t.time)}`, t.estimate && `${t.estimate} min`, t.priority && t.priority !== 'none' && t.priority, t.repeat && t.repeat !== 'none' && `repeats ${t.repeat}`, t.subtasks?.length && plural(t.subtasks.length, 'subtask'), t.checklist?.length && `checklist of ${plural(t.checklist.length, 'line')}`);
 }
 
 const eventFields: Record<string, Param> = {
@@ -564,6 +565,8 @@ const creates: Action[] = [
           ...(t.repeat_until ? { repUntil: t.repeat_until } : {}),
           sub: (t.subtasks ?? []).map((x: string) => ({ t: x.trim(), d: 0 as const })).filter((x: { t: string }) => x.t),
         };
+        const cl = checklistOf(t.checklist);
+        if (cl.length) task.cl = cl;
         saveTask(task);
         const pid = resolveProject(t.project, ctx);
         if (pid) linkItem(pid, 'task', task.id);
@@ -736,6 +739,13 @@ const creates: Action[] = [
 
 /* ───────────────────────── changes ───────────────────────── */
 
+const checkLines = (x: unknown): string[] => (Array.isArray(x) ? x.map((v) => String(v).trim()).filter(Boolean) : []);
+function checklistOf(x: unknown): { t: string; d: boolean }[] {
+  return checkLines(x).map((t) => ({ t, d: false }));
+}
+const CHECK_KEYS = ['checklist', 'checklist_add', 'checklist_tick', 'checklist_untick', 'checklist_remove'];
+const checkIdx = (d: string) => list(d, num('Line index from read_item checklist.', { min: 0, max: 99, integer: true }), { maxItems: 50 });
+
 const taskChange = obj(
   {
     title: taskFields.title,
@@ -747,9 +757,14 @@ const taskChange = obj(
     repeat: taskFields.repeat,
     repeat_days: taskFields.repeat_days,
     repeat_until: date('Last repeat date, or "" to clear.'),
+    checklist: list('Replace the whole checklist with these lines (all unticked). [] clears it.', s('Checklist line.', { max: 200 }), { maxItems: 50 }),
+    checklist_add: list('Checklist lines to add at the end.', s('Checklist line.', { max: 200 }), { maxItems: 50 }),
+    checklist_tick: checkIdx('Checklist line indexes to tick.'),
+    checklist_untick: checkIdx('Checklist line indexes to untick.'),
+    checklist_remove: checkIdx('Checklist line indexes to remove.'),
   },
   [],
-  'Only the fields to change.',
+  'Only the fields to change. Checklist lines are plain tick lines, separate from subtasks.',
 );
 
 const eventChange = obj(
@@ -798,15 +813,42 @@ const changes: Action[] = [
   {
     name: 'update_task',
     risk: 'write',
-    description: 'Change fields on one task. Only send the fields that change.',
+    description: 'Change fields on one task, including its checklist (replace it, add lines, tick, untick or remove lines by index from read_item). Only send the fields that change.',
     params: obj({ id: s('Task id.'), changes: taskChange }, ['id', 'changes']),
     verify: (a) => {
       if (!getTask(a.id)) return missing('task', a.id);
       const t = getTask(a.id)!;
       const merged = { title: a.changes.title ?? t.t, due: a.changes.due ?? t.due, time: a.changes.time ?? t.tm, repeat: a.changes.repeat ?? t.rep, repeat_days: a.changes.repeat_days ?? t.repDays, list: a.changes.list };
+      const n = (t.cl ?? []).length;
+      for (const k of ['checklist_tick', 'checklist_untick', 'checklist_remove']) {
+        const bad = (a.changes[k] ?? []).find((i: number) => i >= n);
+        if (bad !== undefined) return `changes.${k}: line ${bad} is not on the checklist (it has ${plural(n, 'line')}, index from 0). Read the task with read_item first.`;
+      }
+      if (a.changes.checklist !== undefined && ['checklist_tick', 'checklist_untick', 'checklist_remove'].some((k) => a.changes[k]?.length)) return 'changes.checklist replaces the whole list, so it cannot be mixed with checklist_tick, checklist_untick or checklist_remove in one call.';
       return emptyChange(a.changes) ?? verifyTask({ ...merged, due: merged.due || undefined, time: merged.time || undefined }, 'changes', { refs: new Set() });
     },
-    preview: (a) => [{ kind: 'Task', verb: 'Edit', text: getTask(a.id)?.t ?? a.id, detail: changeList(a.changes) }],
+    preview: (a) => {
+      const t = getTask(a.id);
+      const name = t?.t ?? a.id;
+      const on = `on ${name}`;
+      const c = a.changes;
+      const rest = Object.fromEntries(Object.entries(c).filter(([k]) => !CHECK_KEYS.includes(k)));
+      const cl = t?.cl ?? [];
+      const lines: PlanLine[] = Object.keys(rest).length ? [{ kind: 'Task', verb: 'Edit', text: name, detail: changeList(rest) }] : [];
+      if (c.checklist !== undefined) {
+        const set = checkLines(c.checklist);
+        if (!set.length) lines.push({ kind: 'Checklist line', verb: 'Remove', text: `all ${plural(cl.length, 'line')}`, detail: on });
+        else {
+          if (cl.length) lines.push({ kind: 'Checklist line', verb: 'Remove', text: `the old ${plural(cl.length, 'line')}`, detail: on });
+          for (const x of set) lines.push({ kind: 'Checklist line', verb: 'Add', text: x, detail: on });
+        }
+      }
+      for (const i of c.checklist_tick ?? []) lines.push({ kind: 'Checklist line', verb: 'Tick', text: cl[i]?.t ?? `line ${i}`, detail: on });
+      for (const i of c.checklist_untick ?? []) lines.push({ kind: 'Checklist line', verb: 'Untick', text: cl[i]?.t ?? `line ${i}`, detail: on });
+      for (const i of c.checklist_remove ?? []) lines.push({ kind: 'Checklist line', verb: 'Remove', text: cl[i]?.t ?? `line ${i}`, detail: on });
+      for (const x of checkLines(c.checklist_add)) lines.push({ kind: 'Checklist line', verb: 'Add', text: x, detail: on });
+      return lines.length ? lines : [{ kind: 'Task', verb: 'Edit', text: name, detail: changeList(c) }];
+    },
     run: (a) => {
       const t = getTask(a.id);
       if (!t) return { ok: false, summary: 'Task not found', error: missing('task', a.id) };
@@ -821,6 +863,16 @@ const changes: Action[] = [
       if (c.repeat !== undefined) c.repeat === 'none' ? (delete next.rep, delete next.repDays, delete next.repUntil) : (next.rep = c.repeat);
       if (c.repeat_days !== undefined) next.repDays = weekdays(c.repeat_days);
       if (c.repeat_until !== undefined) c.repeat_until ? (next.repUntil = c.repeat_until) : delete next.repUntil;
+      if (CHECK_KEYS.some((k) => c[k] !== undefined)) {
+        let cl = c.checklist !== undefined ? checklistOf(c.checklist) : (t.cl ?? []).map((x) => ({ ...x }));
+        const tick = new Set<number>(c.checklist_tick ?? []);
+        const untick = new Set<number>(c.checklist_untick ?? []);
+        const drop = new Set<number>(c.checklist_remove ?? []);
+        cl = cl.map((x, i) => (tick.has(i) ? { ...x, d: true } : untick.has(i) ? { ...x, d: false } : x)).filter((_, i) => !drop.has(i));
+        cl = [...cl, ...checklistOf(c.checklist_add)];
+        if (cl.length) next.cl = cl;
+        else delete next.cl;
+      }
       saveTask(next);
       return { ok: true, summary: `Updated task "${next.t}"`, touched: [{ kind: 'task', id: next.id, title: next.t }] };
     },

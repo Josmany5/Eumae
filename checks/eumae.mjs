@@ -226,6 +226,26 @@ const stage = (calls, heard = "") => {
   check('goal-list-filter', li.ok && li.data.items.length === 1 && li.data.items[0].goal === 'Write my book', JSON.stringify(li.data));
 }
 
+// Checklist: plain tick lines on a task, separate from subtasks.
+{
+  const { plan, res } = stage([{ name: 'create_tasks', args: { tasks: [{ title: 'Pack for the trip', checklist: ['Passport', 'Charger', 'Socks'] }] } }]);
+  check('checklist-stage', res[0].ok && /checklist of 3 lines/.test(plan.steps[0].lines[0].detail ?? ''), JSON.stringify(res[0].response));
+  M.executePlan(plan);
+  const t = M.getTasks().find((x) => x.t === 'Pack for the trip');
+  check('checklist-shape', t && t.cl.length === 3 && t.cl.every((c) => c.d === false) && t.sub.length === 0, JSON.stringify(t));
+  const read = M.REGISTRY.find((a) => a.name === 'read_item').run({ kind: 'task', id: t.id }, {});
+  check('checklist-read', read.ok && read.data.checklist.length === 3 && read.data.checklist[1].text === 'Charger');
+  const up = stage([{ name: 'update_task', args: { id: t.id, changes: { checklist_tick: [0], checklist_add: ['Toothbrush'] } } }]);
+  check('checklist-lines', up.res[0].ok && up.plan.steps[0].lines.map((l) => l.verb + ' ' + l.text).join('|') === 'Tick Passport|Add Toothbrush', JSON.stringify(up.plan.steps[0]?.lines));
+  check('checklist-not-before-approve', !M.getTask(t.id).cl[0].d);
+  M.executePlan(up.plan);
+  const t2 = M.getTask(t.id);
+  check('checklist-tick-add', t2.cl.length === 4 && t2.cl[0].d === true && t2.cl[3].t === 'Toothbrush');
+  check('checklist-refuse-bad-index', !stage([{ name: 'update_task', args: { id: t.id, changes: { checklist_tick: [9] } } }]).res[0].ok);
+  const li = M.REGISTRY.find((a) => a.name === 'list_items').run({ kind: 'task' }, {});
+  check('checklist-in-list', li.ok && li.data.items.some((x) => x.id === t.id && x.checklist === '1/4 ticked'), JSON.stringify(li.data.items.find((x) => x.id === t.id)));
+}
+
 // Honesty bite: guesses are named on the card, times read like people say them.
 {
   const { plan } = stage([{ name: 'create_tasks', args: { tasks: [{ title: 'Draft chapter one', due: d(3), estimate: 60, guessed: ['due', 'estimate'] }, { title: 'Email editor' }] } }]);
