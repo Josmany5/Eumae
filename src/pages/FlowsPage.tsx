@@ -215,13 +215,14 @@ export default function FlowsPage({ arg }: PageProps) {
               <span>Starters</span>
             </div>
             {starters.map((s) => (
-              <div key={s.key} className="frow top tkRow">
+              <div key={s.key} className="frow tkRow flStarter">
                 <div className="ft">
                   <span className="tlT">{s.n}</span>
                   <div className="fsub">
-                    {s.u} {s.steps.length ? `${s.steps.length} steps · ` : ''}
+                    {s.steps.length ? `${s.steps.length} steps · ` : ''}
                     {scheduleLabel(s)}
                   </div>
+                  {s.u ? <div className="fsub flWhy">{s.u}</div> : null}
                 </div>
                 <button
                   className="fb"

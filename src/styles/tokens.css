@@ -2424,3 +2424,9 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 }
 /* The window bar already names the app, so its first page drops the back bar. */
 @media (min-width:900px){ #app.deskMode .col.dkRoot .backbar{ display:none; } #app.deskMode .col.dkRoot .pageBody{ padding-top:12px; } }
+
+/* Flows Starters (Oct 26): one clean line each, Add pill centered, never squeezed. */
+.flStarter{ align-items:center; }
+.flStarter .fsub{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; overflow-wrap:normal; }
+.flStarter .fsub.flWhy{ white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.flStarter > .fb{ white-space:nowrap; align-self:center; min-width:56px; text-align:center; }
