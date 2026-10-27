@@ -5,7 +5,8 @@
  * own check for today; a routine or flow row shows today's steps x/y with a
  * thin meter. Tap a row and it opens in Eumae's office as its own tab, where
  * it's edited inline and started step by step. The round + adds one of the
- * tab's kind. Starters below the list add a ready-made one with one tap.
+ * tab's kind. Starters below the list are tiles: tap one to preview its
+ * steps in the office, and add it from there.
  */
 
 import { rowTap } from '../rowTap';
@@ -24,13 +25,13 @@ import {
   isScheduledOn,
   scheduleLabel,
   streakLabel,
-  addStarter,
   STARTERS,
   type Flow,
   type FlowKind,
 } from '../flows';
 import { useNav } from '../nav';
 import { ItemMenu } from '../components/ItemMenu';
+import { Icon } from '../components/shell/icons';
 import { QuickAdd } from '../components/QuickAdd';
 import { undoable } from '../undo';
 import { setFocus, onDataChange, dataChanged, openOfficeEdit, markFresh } from '../focus';
@@ -99,6 +100,11 @@ export default function FlowsPage({ arg }: PageProps) {
 
   const open = (f: Flow) => {
     setFocus({ k: 'flow', id: f.id });
+    openPanel('item');
+  };
+  /* A starter opens as a read-only preview in the office (his call, Oct 26). */
+  const preview = (key: string) => {
+    setFocus({ k: 'starter', id: key });
     openPanel('item');
   };
   const edit = (f: Flow) => {
@@ -214,36 +220,22 @@ export default function FlowsPage({ arg }: PageProps) {
             <div className="sdiv tkH">
               <span>Starters</span>
             </div>
-            {starters.map((s) => (
-              <div key={s.key} className="frow tkRow flStarter">
-                <div className="ft">
-                  <span className="tlT">{s.n}</span>
-                  <div className="fsub">
+            <div className="flTiles">
+              {starters.map((s) => (
+                <button key={s.key} className="flTile" aria-label={`Preview ${s.n}`} onClick={() => preview(s.key)}>
+                  {s.icon ? (
+                    <span className="flIc">
+                      <Icon name={s.icon} />
+                    </span>
+                  ) : null}
+                  <span className="flTileN">{s.n}</span>
+                  <span className="flTileM">
                     {s.steps.length ? `${s.steps.length} steps · ` : ''}
                     {scheduleLabel(s)}
-                  </div>
-                  {s.u ? <div className="fsub flWhy">{s.u}</div> : null}
-                </div>
-                <button
-                  className="fb"
-                  aria-label={`Add ${s.n}`}
-                  onClick={() => {
-                    const f = addStarter(s);
-                    refresh();
-                    dataChanged();
-                    notify(`Added ${f.n}. It's yours to change.`, {
-                      undo: () => {
-                        deleteFlow(f.id);
-                        refresh();
-                        dataChanged();
-                      },
-                    });
-                  }}
-                >
-                  Add
+                  </span>
                 </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </section>
         ) : null}
       </div>

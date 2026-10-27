@@ -21,7 +21,7 @@ import { getProjects, linkedIds, getProject, projectCountLabel } from '../../pro
 import { getFiles } from '../../library';
 import type { Ref } from '../../nav';
 import { useFocus, setFocus, getFocus, focusLabel, takeAsk, onAsk } from '../../focus';
-import { getFlow, scheduleLabel, KIND_LABEL, doneToday } from '../../flows';
+import { getFlow, getStarter, scheduleLabel, KIND_LABEL, doneToday } from '../../flows';
 import { ItemTab } from './ItemTab';
 import { SandboxView, useSbx } from '../SandboxView';
 import { getOpenSbx, getSbx, latestForThread, wantsAThing, thingHint, extractHtml, hideHtmlWhileStreaming, addFromReply, openSbx, saidNoHint } from '../../sandbox';
@@ -199,6 +199,12 @@ function focusContext(): string {
     const x = getFlow(f.id);
     return x
       ? `\n\nThe person has this ${KIND_LABEL[x.kind].toLowerCase()} open (they run it themselves): ${x.n}, ${scheduleLabel(x)}${x.steps.length ? `, steps: ${x.steps.join('; ')} (${doneToday(x).length} of ${x.steps.length} done today)` : ''}.`
+      : '';
+  }
+  if (f.k === 'starter') {
+    const x = getStarter(f.id);
+    return x
+      ? `\n\nThe person is previewing a starter ${KIND_LABEL[x.kind].toLowerCase()} they haven't added yet: ${x.n} (${x.u})${x.steps.length ? `, steps: ${x.steps.join('; ')}` : ''}.`
       : '';
   }
   return f.k === 'day' ? `\n\nThe person is looking at ${f.id}.` : '';

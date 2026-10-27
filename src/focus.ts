@@ -4,7 +4,8 @@ import { getFlow, KIND_LABEL } from './flows';
 /** The item you tapped, shown in Eumae's office as its own tab (Task, Event,
  *  Goal…). One at a time, in memory only: a reload lands back on the page's
  *  normal tabs. */
-export type FocusKind = 'task' | 'event' | 'day' | 'goal' | 'project' | 'flow';
+/** 'starter': a read-only preview of a ready-made one (id = its key), before it's added. */
+export type FocusKind = 'task' | 'event' | 'day' | 'goal' | 'project' | 'flow' | 'starter';
 /** The kinds that open from a row and can open in edit mode. */
 export type OfficeKind = 'task' | 'event' | 'goal' | 'project' | 'flow';
 export interface Focus {
@@ -41,7 +42,7 @@ export function useFocus(): Focus | null {
   );
 }
 
-export const FOCUS_LABEL: Record<FocusKind, string> = { task: 'Task', event: 'Event', day: 'Day', goal: 'Goal', project: 'Project', flow: 'Flow' };
+export const FOCUS_LABEL: Record<FocusKind, string> = { task: 'Task', event: 'Event', day: 'Day', goal: 'Goal', project: 'Project', flow: 'Flow', starter: 'Starter' };
 
 /** The office tab's label. A flow is labeled by its kind (Habit, Routine, Flow). */
 export function focusLabel(f: Focus): string {

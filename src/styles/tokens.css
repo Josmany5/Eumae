@@ -2425,8 +2425,20 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 /* The window bar already names the app, so its first page drops the back bar. */
 @media (min-width:900px){ #app.deskMode .col.dkRoot .backbar{ display:none; } #app.deskMode .col.dkRoot .pageBody{ padding-top:12px; } }
 
-/* Flows Starters (Oct 26): one clean line each, Add pill centered, never squeezed. */
-.flStarter, .tkList .tkRow.flStarter{ display:flex; align-items:center; }
-.flStarter .fsub{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; overflow-wrap:normal; }
-.flStarter .fsub.flWhy{ white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-.flStarter > .fb{ white-space:nowrap; align-self:center; min-width:56px; text-align:center; }
+/* Flows Starters (Oct 26): tiles, not rows. Tap one to preview its steps in
+   the office. Not .tkRow, so the phone task-row grid never reaches them. */
+.flTiles{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; margin:6px 0 12px; }
+@media (min-width:900px){ .flTiles{ grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); } }
+.flTile{ display:flex; flex-direction:column; align-items:flex-start; gap:6px; min-width:0; min-height:112px; padding:14px;
+  background:var(--card); border:1px solid var(--hair); border-radius:16px; color:var(--tx); font:inherit; text-align:left; cursor:pointer; }
+.flTile:hover{ background:var(--card2); }
+.flTile:active{ background:var(--card2); transform:scale(.98); }
+.flIc{ display:inline-flex; align-items:center; justify-content:center; flex:none; width:36px; height:36px; border-radius:10px; background:var(--card2); color:var(--tx); }
+.flTile:hover .flIc, .flTile:active .flIc{ background:var(--card); }
+.flIc svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.flTileN{ font-size:calc(15px + var(--fsUp, 0px)); font-weight:600; line-height:1.3; overflow-wrap:anywhere; }
+.flTileM{ margin-top:auto; font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); line-height:1.3; }
+/* The starter preview tab. */
+.flPvHead{ justify-content:flex-start; gap:12px; align-items:center; }
+.flPvAdd{ margin-top:16px; }
+.flPvWhy{ margin:4px 0 6px; font-size:calc(15px + var(--fsUp, 0px)); color:var(--tx); line-height:1.4; }

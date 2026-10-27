@@ -21,7 +21,8 @@ import { itemsOn, minsToTm } from '../../pages/CalendarPage';
 import { evKind } from './Timeline';
 import { isOverdue, hasEnded, daysLeft } from '../../due';
 import { AttendAsk } from './Attend';
-import { getFlow, saveFlow, deleteFlow, snapshotFlows, restoreFlows, toggleFlowStep, setFlowStep, toggleFlowToday, doneToday, isDoneToday, isScheduledOn, scheduleLabel, daysLabel, streakLabel, lastDone, todayYmd, fmt12, KIND_LABEL, type Flow, type FlowKind } from '../../flows';
+import { getFlow, saveFlow, deleteFlow, snapshotFlows, restoreFlows, toggleFlowStep, setFlowStep, toggleFlowToday, doneToday, isDoneToday, isScheduledOn, scheduleLabel, daysLabel, streakLabel, lastDone, todayYmd, fmt12, KIND_LABEL, getStarter, hasStarter, addStarter, type Flow, type FlowKind } from '../../flows';
+import { Icon } from './icons';
 
 /** "Edit" from a row's ⋯ menu opens this tab already in edit mode. */
 
@@ -64,6 +65,7 @@ export function ItemTab({ focus, onView }: { focus: Focus; onView: (v: PanelView
   if (focus.k === 'goal') return <GoalTab focus={focus} onView={onView} />;
   if (focus.k === 'project') return <ProjectTab focus={focus} onView={onView} />;
   if (focus.k === 'flow') return <FlowTab focus={focus} onView={onView} />;
+  if (focus.k === 'starter') return <StarterTab focus={focus} />;
   return focus.k === 'event' ? <EventTab focus={focus} onView={onView} /> : <TaskTab focus={focus} onView={onView} />;
 }
 
@@ -1351,6 +1353,75 @@ function FlowTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => vo
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Starter preview (his call, Oct 26): see every step before adding one.
+   Read-only; one button adds it as theirs and opens their own copy. ── */
+const ADD_LABEL: Record<FlowKind, string> = { habit: 'Add habit', routine: 'Add routine', flow: 'Add to my flows' };
+
+function StarterTab({ focus }: { focus: Focus }) {
+  const { notify } = useNav();
+  const s = getStarter(focus.id);
+  if (!s) {
+    return (
+      <div className="oEmpty">
+        <span className="ft">That starter is gone</span>
+        <p className="oIntro">Pick another one from Flows.</p>
+      </div>
+    );
+  }
+  const added = hasStarter(s);
+  const add = () => {
+    const f = addStarter(s);
+    dataChanged();
+    setFocus({ k: 'flow', id: f.id });
+    notify(`Added ${f.n}. It's yours to change.`, {
+      undo: () => {
+        deleteFlow(f.id);
+        setFocus({ k: 'starter', id: s.key });
+        dataChanged();
+      },
+    });
+  };
+  return (
+    <div className="itab">
+      <div className="itHead flPvHead">
+        {s.icon ? (
+          <span className="flIc">
+            <Icon name={s.icon} />
+          </span>
+        ) : null}
+        <h2 className="itT">{s.n}</h2>
+      </div>
+      <p className="fmeta itSub">
+        {KIND_LABEL[s.kind]} · {scheduleLabel(s)}
+      </p>
+      <p className="flPvWhy">{s.u}</p>
+      {s.how ? <p className="oIntro">{s.how}</p> : null}
+      {s.steps.length ? (
+        <>
+          <div className="flbl">
+            Steps<span>{s.steps.length}</span>
+          </div>
+          {s.steps.map((x, i) => (
+            <div key={i} className="frow itStep">
+              <span className="itNum">{i + 1}</span>
+              <span className="ft">{x}</span>
+            </div>
+          ))}
+        </>
+      ) : null}
+      <div className="itActs flPvAdd">
+        {added ? (
+          <p className="fmeta itSub">Already in your {s.kind === 'flow' ? 'flows' : s.kind === 'habit' ? 'habits' : 'routines'}.</p>
+        ) : (
+          <button className="pri" onClick={add}>
+            {ADD_LABEL[s.kind]}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

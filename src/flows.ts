@@ -306,11 +306,17 @@ export interface Starter {
   steps: string[];
   /** One line on what it's for. */
   u: string;
+  /** Why it works, in one or two plain sentences (the preview shows it). */
+  how?: string;
+  /** A name from the shell Icon set, shown on the tile and the preview. */
+  icon?: string;
 }
 
 export const STARTERS: Starter[] = [
   {
     key: 'braindump',
+    icon: 'ed',
+    how: 'Write everything down without sorting first. Sorting comes after, so nothing gets lost and your head feels lighter.',
     n: 'Brain dump',
     kind: 'flow',
     days: [],
@@ -324,6 +330,8 @@ export const STARTERS: Starter[] = [
   },
   {
     key: 'weekly',
+    icon: 'cal',
+    how: 'Looking back and ahead once a week keeps small things from piling up. You start Monday already knowing what matters.',
     n: 'Weekly review',
     kind: 'flow',
     days: [5],
@@ -339,6 +347,8 @@ export const STARTERS: Starter[] = [
   },
   {
     key: 'deep',
+    icon: 'ctx',
+    how: 'Switching tasks costs more time than it feels like. One thing, no interruptions, gets more done in an hour than a scattered afternoon.',
     n: 'Deep work',
     kind: 'flow',
     days: [],
@@ -352,6 +362,8 @@ export const STARTERS: Starter[] = [
   },
   {
     key: 'delegate',
+    icon: 'acc',
+    how: "Most hand-offs fail because done was never spelled out. Saying what, who, by when and how you'll check in fixes that up front.",
     n: 'Delegate',
     kind: 'flow',
     days: [],
@@ -366,6 +378,8 @@ export const STARTERS: Starter[] = [
   },
   {
     key: 'morning',
+    icon: 'clk',
+    how: 'Doing the same few things in the same order means fewer choices before your day starts. Small wins early make the rest easier.',
     n: 'Morning routine',
     kind: 'routine',
     days: [1, 2, 3, 4, 5],
@@ -375,6 +389,8 @@ export const STARTERS: Starter[] = [
   },
   {
     key: 'water',
+    icon: 'chk',
+    how: "Thirst is easy to miss when you're busy. A daily check makes it something you notice instead of something you forget.",
     n: 'Drink water',
     kind: 'habit',
     days: [0, 1, 2, 3, 4, 5, 6],
@@ -383,6 +399,8 @@ export const STARTERS: Starter[] = [
   },
   {
     key: 'read',
+    icon: 'tab-library',
+    how: 'Ten pages is small enough to do on a tired night. Done every night, it adds up to a book or two a month.',
     n: 'Read 10 pages',
     kind: 'habit',
     days: [0, 1, 2, 3, 4, 5, 6],
@@ -391,6 +409,16 @@ export const STARTERS: Starter[] = [
     steps: [],
   },
 ];
+
+export function getStarter(key: string): Starter | undefined {
+  return STARTERS.find((s) => s.key === key);
+}
+
+/** Added already: one of their flows has the starter's name. */
+export function hasStarter(s: Starter): boolean {
+  const n = s.n.trim().toLowerCase();
+  return load().some((f) => f.n.trim().toLowerCase() === n);
+}
 
 /** Add a starter as the person's own (not an example: they chose it). */
 export function addStarter(s: Starter): Flow {
