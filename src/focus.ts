@@ -1,9 +1,12 @@
 import { useSyncExternalStore } from 'react';
+import { getFlow, KIND_LABEL } from './flows';
 
 /** The item you tapped, shown in Eumae's office as its own tab (Task, Event,
  *  Goal…). One at a time, in memory only: a reload lands back on the page's
  *  normal tabs. */
-export type FocusKind = 'task' | 'event' | 'day' | 'goal' | 'project';
+export type FocusKind = 'task' | 'event' | 'day' | 'goal' | 'project' | 'flow';
+/** The kinds that open from a row and can open in edit mode. */
+export type OfficeKind = 'task' | 'event' | 'goal' | 'project' | 'flow';
 export interface Focus {
   k: FocusKind;
   id: string;
@@ -38,7 +41,16 @@ export function useFocus(): Focus | null {
   );
 }
 
-export const FOCUS_LABEL: Record<FocusKind, string> = { task: 'Task', event: 'Event', day: 'Day', goal: 'Goal', project: 'Project' };
+export const FOCUS_LABEL: Record<FocusKind, string> = { task: 'Task', event: 'Event', day: 'Day', goal: 'Goal', project: 'Project', flow: 'Flow' };
+
+/** The office tab's label. A flow is labeled by its kind (Habit, Routine, Flow). */
+export function focusLabel(f: Focus): string {
+  if (f.k === 'flow') {
+    const x = getFlow(f.id);
+    if (x) return KIND_LABEL[x.kind];
+  }
+  return FOCUS_LABEL[f.k];
+}
 
 /* ── Data changed somewhere (pop-up save, undo): views that read the
    stores re-render. ── */
@@ -77,7 +89,7 @@ export function onAsk(f: () => void): () => void {
    mode (his call, Oct 21). The item tab takes the request when it's up. */
 let pendingEdit: string | null = null;
 const officeEditSubs = new Set<() => void>();
-export function openOfficeEdit(k: 'task' | 'event' | 'goal' | 'project', id: string, day?: string): void {
+export function openOfficeEdit(k: OfficeKind, id: string, day?: string): void {
   pendingEdit = k + ':' + id;
   setFocus({ k, id, ...(day ? { day } : {}) });
   officeEditSubs.forEach((f) => f());
@@ -86,7 +98,7 @@ export function openOfficeEdit(k: 'task' | 'event' | 'goal' | 'project', id: str
    edit request still waiting from an earlier tap, and tells an open tab in
    edit mode to leave it. */
 let pendingView: string | null = null;
-export function openOfficeView(k: 'task' | 'event' | 'goal' | 'project', id: string): void {
+export function openOfficeView(k: OfficeKind, id: string): void {
   pendingEdit = null;
   pendingView = k + ':' + id;
   setFocus({ k, id });
@@ -114,7 +126,7 @@ export function onOfficeEdit(f: () => void): () => void {
    item tab's ×, closing the office, or moving to another item removes it as
    if it never existed — no toast, no Undo. */
 let fresh: { key: string; discard: () => void } | null = null;
-export function markFresh(k: 'task' | 'event' | 'goal' | 'project', id: string, discard: () => void): void {
+export function markFresh(k: OfficeKind, id: string, discard: () => void): void {
   if (fresh) discardFresh();
   fresh = { key: k + ':' + id, discard };
 }

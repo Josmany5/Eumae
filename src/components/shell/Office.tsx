@@ -20,7 +20,8 @@ import { getNotes, titleOf, noteText } from '../../notes';
 import { getProjects, linkedIds, getProject, projectCountLabel } from '../../projects';
 import { getFiles } from '../../library';
 import type { Ref } from '../../nav';
-import { useFocus, setFocus, getFocus, FOCUS_LABEL, takeAsk, onAsk } from '../../focus';
+import { useFocus, setFocus, getFocus, focusLabel, takeAsk, onAsk } from '../../focus';
+import { getFlow, scheduleLabel, KIND_LABEL, doneToday } from '../../flows';
 import { ItemTab } from './ItemTab';
 import { SandboxView, useSbx } from '../SandboxView';
 import { getOpenSbx, getSbx, latestForThread, wantsAThing, thingHint, extractHtml, hideHtmlWhileStreaming, addFromReply, openSbx, saidNoHint } from '../../sandbox';
@@ -193,6 +194,12 @@ function focusContext(): string {
   if (f.k === 'project') {
     const p = getProject(f.id);
     return p ? `\n\nThe person has this project open: ${p.n}${p.d ? ' (' + p.d + ')' : ''}, ${projectCountLabel(p)}${p.due ? ', deadline ' + p.due : ''}.` : '';
+  }
+  if (f.k === 'flow') {
+    const x = getFlow(f.id);
+    return x
+      ? `\n\nThe person has this ${KIND_LABEL[x.kind].toLowerCase()} open (they run it themselves): ${x.n}, ${scheduleLabel(x)}${x.steps.length ? `, steps: ${x.steps.join('; ')} (${doneToday(x).length} of ${x.steps.length} done today)` : ''}.`
+      : '';
   }
   return f.k === 'day' ? `\n\nThe person is looking at ${f.id}.` : '';
 }
@@ -728,7 +735,7 @@ export default function Office({ tab, open, view, onView, onClose, onToggle }: O
      (Tasks, Calendar, Goals… all live under Console). */
   const focus = useFocus();
   const item = tab === 'console' ? focus : null;
-  const tabs: OTab[] = item ? [{ id: 'item', label: FOCUS_LABEL[item.k] }, ...OFFICE[tab]] : OFFICE[tab];
+  const tabs: OTab[] = item ? [{ id: 'item', label: focusLabel(item) }, ...OFFICE[tab]] : OFFICE[tab];
   const v = fitView(tab, view, !!item);
   return (
     <>

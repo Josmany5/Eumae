@@ -26,7 +26,7 @@ const check = (name, cond, detail) => {
   }
 };
 
-function run(js, setup, body) {
+function run(js, setup, body, realDate = false) {
   const store = {};
   const localStorage = {
     getItem: (k) => (k in store ? store[k] : null),
@@ -41,7 +41,7 @@ function run(js, setup, body) {
   const fakeDate = { now: () => 5000 };
   const mod = { exports: {} };
   const fn = new Function('module', 'exports', 'localStorage', 'Date', `${js}; return (${body});`);
-  return { out: fn(mod, mod.exports, localStorage, fakeDate), store };
+  return { out: fn(mod, mod.exports, localStorage, realDate ? Date : fakeDate), store };
 }
 
 const goals = loadMod('../src/goals.ts');
@@ -77,22 +77,58 @@ const guild = loadMod('../src/guild.ts');
   check('projects-status', out.st === 'active' && out.pc === 60, JSON.stringify({ st: out.st, pc: out.pc }));
 }
 
-// Flows: the mockup's two flows, on. Step toggle + on toggle.
+// Flows (habits / routines / flows): starts empty (starters are offered, not
+// seeded), the old example seeds are dropped, old rows migrate, checks belong
+// to today, the streak comes from real history on scheduled days only.
 {
-  const { out } = run(flows, () => {}, `(() => getFlows())()`);
+  const { out } = run(flows, () => {}, `(() => ({ n: getFlows().length, starters: STARTERS.length }))()`, true);
+  check('flows-empty-start', out.n === 0 && out.starters >= 5, JSON.stringify(out));
+}
+{
+  const { out } = run(
+    flows,
+    (store) => {
+      store['eumae:flows'] = JSON.stringify([
+        { id: 'brief', n: 'Morning brief', w: 'Weekdays 7:00 AM', kind: 'flow', streak: 12, on: 1, steps: ['a'], done: [], example: true, createdAt: 1 },
+        { id: 'old', n: 'Close', w: 'Weekdays 9:30 PM', kind: 'routine', streak: 8, on: 1, steps: ['a', 'b'], done: [0], createdAt: 1 },
+      ]);
+    },
+    `(() => { const f = getFlows(); return { n: f.length, days: f[0].days, tm: f[0].tm, done: doneToday(f[0]), streak: flowStreak(f[0]), w: f[0].w }; })()`,
+    true,
+  );
   check(
-    'flows-seeds',
-    out.length === 2 && out.every((f) => f.on === 1 && f.example === true),
-    JSON.stringify(out.map((f) => f.n)),
+    'flows-migrate',
+    out.n === 1 && JSON.stringify(out.days) === '[1,2,3,4,5]' && out.tm === '21:30' && out.done.length === 0 && out.streak === 0 && out.w === 'Weekdays · 9:30 PM',
+    JSON.stringify(out),
   );
 }
 {
   const { out } = run(
     flows,
     () => {},
-    `(() => { toggleFlowStep('brief', 0); const d1 = getFlows()[0].done; toggleFlowOn('brief'); const on = getFlows()[0].on; return { d1, on }; })()`,
+    `(() => {
+      const f = createFlow('R', 'routine', { days: [0,1,2,3,4,5,6], steps: ['a', 'b'] });
+      toggleFlowStep(f.id, 0);
+      const half = { d: doneToday(getFlow(f.id)), fin: isDoneToday(getFlow(f.id)) };
+      toggleFlowStep(f.id, 1);
+      const full = { fin: isDoneToday(getFlow(f.id)), s: flowStreak(getFlow(f.id)) };
+      const y = new Date(); y.setDate(y.getDate() - 1);
+      const ys = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
+      saveFlow({ ...getFlow(f.id), hist: [...getFlow(f.id).hist, ys] });
+      const two = flowStreak(getFlow(f.id));
+      const h = createFlow('H', 'habit');
+      toggleFlowToday(h.id);
+      const hs = flowStreak(getFlow(h.id));
+      const od = createFlow('Brain dump', 'flow');
+      return { half, full, two, hs, od: scheduleLabel(getFlow(od.id)), ods: flowStreak(getFlow(od.id)) };
+    })()`,
+    true,
   );
-  check('flows-toggle', JSON.stringify(out.d1) === '[0]' && out.on === 0, JSON.stringify(out));
+  check(
+    'flows-today-streak',
+    JSON.stringify(out.half.d) === '[0]' && out.half.fin === false && out.full.fin === true && out.full.s === 1 && out.two === 2 && out.hs === 1 && out.od === 'On demand' && out.ods === 0,
+    JSON.stringify(out),
+  );
 }
 
 // Guild: people + threads + requests + shared + market + assigned + groups,

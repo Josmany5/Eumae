@@ -9,7 +9,7 @@ import { useGoalAdd } from '../GoalAdd';
 import { sortMilestones, newMilestone } from '../../milestones';
 import { dueLabel } from '../../pages/GoalsPage';
 import { fmtShort, fmtTime, repLabel } from '../../quickadd';
-import { setFocus, onDataChange, dataChanged, askEumae, takeOfficeEdit, takeOfficeView, onOfficeEdit, keepFresh, discardFresh, type Focus } from '../../focus';
+import { setFocus, onDataChange, dataChanged, askEumae, takeOfficeEdit, takeOfficeView, onOfficeEdit, keepFresh, discardFresh, type Focus, type OfficeKind } from '../../focus';
 import { getEvent, saveEvent, ymd, importanceOf, IMPORTANCE_LABEL, EVENT_IMPORTANCE, EVENT_TYPES, type CalEvent, type EventType, type EventImportance } from '../../events';
 import { removeEvent, TYPE_LABEL } from '../QuickAdd';
 import { MilestonesEditor } from '../Milestones';
@@ -21,6 +21,7 @@ import { itemsOn, minsToTm } from '../../pages/CalendarPage';
 import { evKind } from './Timeline';
 import { isOverdue, hasEnded, daysLeft } from '../../due';
 import { AttendAsk } from './Attend';
+import { getFlow, saveFlow, deleteFlow, snapshotFlows, restoreFlows, toggleFlowStep, setFlowStep, toggleFlowToday, doneToday, isDoneToday, isScheduledOn, scheduleLabel, daysLabel, streakLabel, lastDone, todayYmd, fmt12, KIND_LABEL, type Flow, type FlowKind } from '../../flows';
 
 /** "Edit" from a row's ⋯ menu opens this tab already in edit mode. */
 
@@ -31,7 +32,7 @@ function useCancelFresh(): () => void {
   return () => { if (discardFresh()) closePanel(); };
 }
 
-function useOfficeEdit(k: 'task' | 'event' | 'goal' | 'project', id: string, start: () => void, view?: () => void) {
+function useOfficeEdit(k: OfficeKind, id: string, start: () => void, view?: () => void) {
   const ref = useRef(start);
   ref.current = start;
   const vref = useRef(view);
@@ -62,6 +63,7 @@ export function ItemTab({ focus, onView }: { focus: Focus; onView: (v: PanelView
   if (focus.k === 'day') return <DayTab day={focus.id} />;
   if (focus.k === 'goal') return <GoalTab focus={focus} onView={onView} />;
   if (focus.k === 'project') return <ProjectTab focus={focus} onView={onView} />;
+  if (focus.k === 'flow') return <FlowTab focus={focus} onView={onView} />;
   return focus.k === 'event' ? <EventTab focus={focus} onView={onView} /> : <TaskTab focus={focus} onView={onView} />;
 }
 
@@ -956,6 +958,289 @@ function ProjectTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) =>
           <span className="n">Eumae</span>
           <span>{total ? 'Want the next step, or a plan to the deadline?' : 'Nothing in here yet. Ask me to break it into phases and steps.'}</span>
           <button className="fact" onClick={() => ask(`Help me with my project "${p.n}" (${projectCountLabel(p)}${p.due ? ', deadline ' + p.due : ''}). What should I do next?`)}>Ask Eumae</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* A habit, routine or flow in its own office tab. The person runs it; this
+   tab keeps today's checks, the schedule and the steps. Read-only first;
+   Edit turns each row into an input in place (no form swap), Done saves with
+   the Undo pill. Start walks the steps one at a time. */
+function FlowTab({ focus, onView }: { focus: Focus; onView: (v: PanelView) => void }) {
+  const cancelFresh = useCancelFresh();
+  const { notify } = useNav();
+  const [draft, setDraft] = useState<Flow | null>(null);
+  const [newStep, setNewStep] = useState('');
+  /* Start mode: the step on screen, or 'end' for the wrap-up. */
+  const [run, setRun] = useState<number | 'end' | null>(null);
+  useEffect(() => {
+    setDraft(null);
+    setRun(null);
+  }, [focus.id]);
+  useOfficeEdit('flow', focus.id, () => {
+    const x = getFlow(focus.id);
+    if (!x) return;
+    setRun(null);
+    setDraft({ ...x, steps: [...x.steps], days: [...x.days] });
+  }, () => setDraft(null));
+  const ask = useAsk(onView, focus);
+  const [, setTick] = useState(0);
+  useEffect(() => onDataChange(() => setTick((n) => n + 1)), []);
+  const refresh = () => setTick((n) => n + 1);
+  const f = getFlow(focus.id);
+  if (!f) {
+    return (
+      <div className="oEmpty">
+        <span className="ft">That one is gone</span>
+        <p className="oIntro">It was deleted. Pick another one.</p>
+      </div>
+    );
+  }
+  const word = KIND_LABEL[f.kind].toLowerCase();
+  const editing = !!draft;
+  const e = draft ?? f;
+  const set = (p: Partial<Flow>) => setDraft({ ...(draft ?? f), ...p });
+  const habit = f.kind === 'habit';
+  const checks = doneToday(f);
+  const total = f.steps.length;
+  const streak = streakLabel(f);
+  const last = lastDone(f);
+  const todayOn = isScheduledOn(f, new Date());
+
+  const edit = () => {
+    setRun(null);
+    setDraft({ ...f, steps: [...f.steps], days: [...f.days] });
+  };
+  const done = () => {
+    if (!draft || !draft.n.trim()) return;
+    const before = f;
+    const steps = [...draft.steps, newStep].map((s) => s.trim()).filter(Boolean);
+    /* Steps that moved keep their check only if the text is the same. */
+    const keep = doneToday(f)
+      .map((i) => steps.indexOf(f.steps[i]))
+      .filter((i) => i >= 0);
+    const next: Flow = { ...draft, n: draft.n.trim().slice(0, 60), steps, done: keep, doneOn: keep.length ? todayYmd() : f.doneOn, example: false };
+    if (!next.tm) delete next.tm;
+    saveFlow(next);
+    keepFresh('flow', f.id);
+    setDraft(null);
+    setNewStep('');
+    dataChanged();
+    notify(`${KIND_LABEL[next.kind]} saved.`, { undo: () => { saveFlow(before); dataChanged(); } });
+  };
+  const del = () => {
+    const snap = snapshotFlows();
+    deleteFlow(f.id);
+    setFocus(null);
+    dataChanged();
+    notify(`${KIND_LABEL[f.kind]} deleted.`, {
+      undo: () => {
+        restoreFlows(snap);
+        dataChanged();
+        setFocus({ k: 'flow', id: f.id });
+      },
+    });
+  };
+  const toggle = (i: number) => {
+    toggleFlowStep(f.id, i);
+    refresh();
+    dataChanged();
+  };
+  const checkHabit = () => {
+    const before = f;
+    const was = isDoneToday(f);
+    toggleFlowToday(f.id);
+    refresh();
+    dataChanged();
+    if (!was) notify(`${f.n}: done for today.`, { undo: () => { saveFlow(before); dataChanged(); } });
+  };
+  const move = (i: number, d: -1 | 1) => {
+    const j = i + d;
+    if (j < 0 || j >= e.steps.length) return;
+    const s = [...e.steps];
+    [s[i], s[j]] = [s[j], s[i]];
+    set({ steps: s });
+  };
+
+  /* ── Start mode: one step at a time. ── */
+  if (run !== null && !editing && total) {
+    const fin = run === 'end';
+    const i = fin ? total - 1 : run;
+    const nextOpen = (from: number) => {
+      const now = doneToday(getFlow(f.id) ?? f);
+      for (let k = from; k < total; k++) if (!now.includes(k)) return k;
+      return 'end' as const;
+    };
+    if (fin) {
+      const all = checks.length >= total;
+      return (
+        <div className="itab">
+          <p className="fmeta itSub">{f.n}</p>
+          <h2 className="itT">{all ? 'All done' : `${checks.length} of ${total} done`}</h2>
+          <p className="oIntro">
+            {all
+              ? streak
+                ? `${streak}. Nice work.`
+                : 'Nice work. That counts for today.'
+              : 'Some steps are still open. Come back to them, or call it a day.'}
+          </p>
+          <div className="itActs">
+            <button className="pri" onClick={() => setRun(null)}>Close</button>
+            {!all ? <button onClick={() => setRun(nextOpen(0))}>Open steps</button> : null}
+          </div>
+        </div>
+      );
+    }
+    const isOn = checks.includes(i);
+    return (
+      <div className="itab">
+        <p className="fmeta itSub">
+          {f.n} · Step {i + 1} of {total}
+        </p>
+        <span className="gBar itBar">
+          <i style={{ width: `${Math.round((checks.length / total) * 100)}%` }} />
+        </span>
+        <h2 className={'itT' + (isOn ? ' tlDone' : '')} style={{ margin: '22px 0 6px' }}>
+          {f.steps[i]}
+        </h2>
+        <div className="itActs">
+          <button
+            className="pri"
+            onClick={() => {
+              setFlowStep(f.id, i, true);
+              dataChanged();
+              setRun(i + 1 < total ? i + 1 : 'end');
+            }}
+          >
+            Done
+          </button>
+          <button onClick={() => setRun(i + 1 < total ? i + 1 : 'end')}>Skip</button>
+          <button disabled={i === 0} onClick={() => setRun(i - 1)}>Back</button>
+        </div>
+        <button className="fact" onClick={() => setRun(null)}>Stop for now</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="itab">
+      <div className="itHead">
+        {editing ? (
+          <input className="itIn itTIn" aria-label="Name" value={e.n} onChange={(x) => set({ n: x.target.value })} />
+        ) : (
+          <h2 className="itT">{f.n}</h2>
+        )}
+        {editing ? <EditActs onDone={done} onCancel={() => { setDraft(null); setNewStep(''); cancelFresh(); }} /> : <ItemActs onEdit={edit} onDelete={del} />}
+      </div>
+      <p className="fmeta itSub">
+        {KIND_LABEL[f.kind]} · {scheduleLabel(f)}
+        {streak ? ' · ' + streak : ''}
+      </p>
+      {!habit && total > 0 && !editing ? (
+        <>
+          <span className="gBar itBar">
+            <i style={{ width: `${Math.round((checks.length / total) * 100)}%` }} />
+          </span>
+          <p className="fmeta itSub">
+            {checks.length}/{total} steps today{todayOn ? '' : ' · not on today’s schedule'}
+          </p>
+          <div className="itActs">
+            <button className="pri" onClick={() => {
+              const first = f.steps.findIndex((_, k) => !checks.includes(k));
+              setRun(first >= 0 ? first : 0);
+            }}>
+              {checks.length >= total ? 'Start again' : checks.length ? 'Continue' : 'Start'}
+            </button>
+          </div>
+        </>
+      ) : null}
+      {habit && !editing ? (
+        <div className="frow itStep cur" style={{ marginTop: 8 }}>
+          <button className={'itNum' + (isDoneToday(f) ? ' on' : '')} aria-label={isDoneToday(f) ? `Not done yet: ${f.n}` : `Done today: ${f.n}`} onClick={checkHabit}>
+            {isDoneToday(f) ? '✓' : ''}
+          </button>
+          <span className="ft">{isDoneToday(f) ? 'Done today' : todayOn ? 'Not done yet today' : 'Not on today’s schedule'}</span>
+        </div>
+      ) : null}
+      <KV
+        k="Kind"
+        v={KIND_LABEL[f.kind]}
+        edit={editing ? <Pick label="Kind" value={e.kind} options={(['habit', 'routine', 'flow'] as const).map((k) => [k, KIND_LABEL[k]] as [FlowKind, string])} onChange={(kind) => set({ kind })} /> : undefined}
+      />
+      <KV
+        k="Days"
+        v={daysLabel(f.kind, f.days)}
+        edit={
+          editing ? (
+            <span className="itPair">
+              <WeekDays days={e.days} onChange={(d) => set({ days: d ?? [] })} />
+            </span>
+          ) : undefined
+        }
+      />
+      {editing ? <p className="fmeta itSub">{e.days.length ? daysLabel(e.kind, e.days) : e.kind === 'flow' ? 'No days picked: on demand, whenever you need it.' : 'No days picked: every day.'}</p> : null}
+      <KV k="Time" v={f.tm ? fmt12(f.tm) : ''} edit={editing ? <TimeIn label="Time" value={e.tm ?? ''} onChange={(v) => set({ tm: v || undefined })} /> : undefined} />
+      {editing ? null : <KV k="Last done" v={last ? (last === todayYmd() ? 'Today' : fmtShort(last)) : ''} />}
+      {editing || !habit || total > 0 ? (
+        <>
+          <div className="flbl">
+            Steps{!editing && total ? <span>{checks.length}/{total} today</span> : null}
+          </div>
+          {(editing ? e.steps : f.steps).map((s, i) =>
+            editing ? (
+              <div key={i} className="frow itStep">
+                <span className="itNum">{i + 1}</span>
+                <input className="itIn itStepIn" aria-label={`Step ${i + 1}`} value={s} onChange={(x) => set({ steps: e.steps.map((y, j) => (j === i ? x.target.value : y)) })} />
+                <button className="fb gho" aria-label={`Move step ${i + 1} up`} disabled={i === 0} onClick={() => move(i, -1)}>
+                  ↑
+                </button>
+                <button className="fb gho" aria-label={`Move step ${i + 1} down`} disabled={i === e.steps.length - 1} onClick={() => move(i, 1)}>
+                  ↓
+                </button>
+                <button className="fb gho" aria-label={`Remove step ${i + 1}`} onClick={() => set({ steps: e.steps.filter((_, j) => j !== i) })}>
+                  ×
+                </button>
+              </div>
+            ) : (
+              <div key={i} className={'frow itStep' + (i === f.steps.findIndex((_, k) => !checks.includes(k)) ? ' cur' : '')}>
+                <button className={'itNum' + (checks.includes(i) ? ' on' : '')} aria-label={checks.includes(i) ? `Reopen ${s}` : `Done: ${s}`} onClick={() => toggle(i)}>
+                  {checks.includes(i) ? '✓' : i + 1}
+                </button>
+                <span className={'ft' + (checks.includes(i) ? ' tlDone' : '')}>{s}</span>
+              </div>
+            ),
+          )}
+          {editing ? (
+            <div className="frow itStep">
+              <span className="itNum">+</span>
+              <input
+                className="itIn itStepIn"
+                aria-label="Add a step"
+                placeholder="Add a step"
+                value={newStep}
+                onChange={(x) => setNewStep(x.target.value)}
+                onKeyDown={(x) => {
+                  if (x.key === 'Enter' && newStep.trim()) {
+                    set({ steps: [...e.steps, newStep.trim()] });
+                    setNewStep('');
+                  }
+                }}
+              />
+            </div>
+          ) : !total ? (
+            <p className="oIntro">No steps yet. Tap Edit to write them down.</p>
+          ) : null}
+        </>
+      ) : null}
+      {editing ? null : (
+        <div className="itEumae">
+          <span className="n">Eumae</span>
+          <span>You run this {word}. Want help shaping it? I can suggest steps or a better time.</span>
+          <button className="fact" onClick={() => ask(`Help me shape my ${word} "${f.n}" (${scheduleLabel(f)})${total ? `. Steps: ${f.steps.join('; ')}` : ''}. Suggest clearer steps or a better time. I run it myself.`)}>
+            Ask Eumae
+          </button>
         </div>
       )}
     </div>

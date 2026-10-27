@@ -34,7 +34,7 @@ export function QuickAdd({
   placeholder: string;
   /** The example, shown OUTSIDE the bar so it stays legible. */
   hint?: string;
-  kind: 'event' | 'task' | 'goal' | 'project';
+  kind: 'event' | 'task' | 'goal' | 'project' | 'flow';
   onAdd: (q: Quick) => void;
   onMore?: (q: Quick) => void;
   autoFocus?: boolean;
@@ -66,7 +66,7 @@ export function QuickAdd({
   }, [text, off, parse]);
 
   const chips: { f: Field; label: string }[] = [];
-  if (parsed.date) chips.push({ f: 'date', label: (kind === 'goal' ? 'By ' : '') + fmtShort(parsed.date) });
+  if (parsed.date && kind !== 'flow') chips.push({ f: 'date', label: (kind === 'goal' ? 'By ' : '') + fmtShort(parsed.date) });
   if (parsed.time && kind !== 'goal')
     chips.push({ f: 'time', label: fmtTime(parsed.time) + (parsed.end ? ' – ' + fmtTime(parsed.end) : '') });
   if (parsed.mins && kind === 'task') chips.push({ f: 'mins', label: parsed.mins + ' min' });

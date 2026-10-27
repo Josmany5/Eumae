@@ -14,8 +14,6 @@ import ChatPage, { GroupChatPage } from './ChatPage';
 import RequestsPage from './RequestsPage';
 import GuildSectionPage from './GuildSectionPage';
 import FlowsPage from './FlowsPage';
-import FlowPage from './FlowPage';
-import FlowEditPage from './FlowEditPage';
 import StudioItemPage from './StudioItemPage';
 import LibraryFolderPage from './LibraryFolderPage';
 import CoursePage from './CoursePage';
@@ -62,8 +60,9 @@ export const PAGES: Record<string, PageDef> = {
   greq: { title: 'Requests', page: RequestsPage },
   gsec: { title: '', page: GuildSectionPage },
   flows: { title: 'Flows', page: FlowsPage },
-  flow: { title: '', page: FlowPage },
-  flowedit: { title: '', page: FlowEditPage },
+  /* Old links: a flow opens in Eumae's office now (no separate page or form). */
+  flow: { title: 'Flows', page: FlowsPage },
+  flowedit: { title: 'Flows', page: FlowsPage },
   sitem: { title: '', page: StudioItemPage },
   libf: { title: 'Library', page: LibraryFolderPage },
   course: { title: '', page: CoursePage },

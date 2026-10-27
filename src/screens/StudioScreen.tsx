@@ -16,7 +16,7 @@ import {
 import { getFiles, type LibFile } from '../library';
 import { getThread } from '../threads';
 import { createProject, saveProject } from '../projects';
-import { createFlow, saveFlow } from '../flows';
+import { createFlow } from '../flows';
 import { Icon } from '../components/shell/icons';
 
 /* The Studio — the mockup's latest create layer, rebuilt as React.
@@ -80,10 +80,7 @@ export default function StudioScreen() {
         .map((x) => x.trim())
         .filter(Boolean);
       const t = templateOf(tpl);
-      const f = createFlow(pu || tpl);
-      saveFlow({
-        ...f,
-        kind: cat === 'Routine' ? 'routine' : 'flow',
+      createFlow(pu || tpl, cat === 'Routine' ? 'routine' : 'flow', {
         steps: steps.length ? steps : t ? [...t.s] : [],
       });
       notify(`${cat} created — brief sent to Chat.`);
