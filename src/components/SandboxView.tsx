@@ -5,7 +5,7 @@ import { useNav } from '../nav';
 import {
   getSbx, setCur, markSaved, lockHtml, openSbx, subscribeSbx, sbxVersion, type SbxItem,
 } from '../sandbox';
-import { addFileWith, saveEdit, snapshotLibrary, restoreLibrary } from '../library';
+import { addFileWith, saveEdit, setStatus, snapshotLibrary, restoreLibrary } from '../library';
 
 export function useSbx(): number {
   return useSyncExternalStore(subscribeSbx, sbxVersion);
@@ -83,6 +83,7 @@ export function SandboxView({ id }: { id: string }) {
     const wasV = item.savedV;
     let fid = item.fileId;
     if (fid && saveEdit(fid, item.title, v.html)) {
+      setStatus(fid, 'live');
       notify(`Saved v${vn} to Library`, {
         undo: () => {
           restoreLibrary(snap);

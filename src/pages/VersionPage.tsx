@@ -3,12 +3,14 @@
 
 import { useMemo } from 'react';
 import { useNav } from '../nav';
-import { getFiles, restoreVersion } from '../library';
+import { getFiles, restoreVersion, snapshotLibrary, restoreLibrary } from '../library';
+import { undoable } from '../undo';
+import { FileHero } from './ViewPage';
 import { renderMd } from '../md';
 import type { PageProps } from './index';
 
 export default function VersionPage({ arg }: PageProps) {
-  const { notify, back, go } = useNav();
+  const { notify, back } = useNav();
   const [id, v] = typeof arg === 'string' ? arg.split('|') : ['', ''];
   const f = getFiles().find((x) => x.id === id);
   const ent = f?.hist?.find((h) => String(h.v) === v);
@@ -22,18 +24,22 @@ export default function VersionPage({ arg }: PageProps) {
       <div className="screenT">
         {f.t} — v{v}
       </div>
-      <div className="md" style={{ fontSize: 17, lineHeight: 1.65, marginTop: 12 }}>
-        <span dangerouslySetInnerHTML={{ __html: html }} />
-      </div>
+      {f.k === 'DOC' || f.k === 'COURSE' || f.k === 'DIGEST' || f.k === 'LINK' ? (
+        <div className="md" style={{ fontSize: 17, lineHeight: 1.65, marginTop: 12 }}>
+          <span dangerouslySetInnerHTML={{ __html: html }} />
+        </div>
+      ) : (
+        <div style={{ marginTop: 12 }}>
+          <FileHero k={f.k} t={f.t} b={ent.b} />
+        </div>
+      )}
       <div className="s m">Version {v} — read-only. Current is v{f.v}.</div>
       <div className="btns">
         <button
           className="pri"
           onClick={() => {
-            const saved = restoreVersion(f.id, ent.v);
-            notify(saved ? `Restored as v${saved.v}.` : 'Nothing there.');
+            undoable(notify, `Restored v${ent.v} as v${f.v + 1}.`, snapshotLibrary, restoreLibrary, () => !!restoreVersion(f.id, ent.v));
             back();
-            setTimeout(() => go('sitem', f.id), 50);
           }}
         >
           Restore as v{f.v + 1}

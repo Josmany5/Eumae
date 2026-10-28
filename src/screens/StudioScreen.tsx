@@ -9,11 +9,17 @@ import {
   templateOf,
   categoryOf,
   buildBrief,
-  draftsOpen,
-  setDraftsOpen,
   queueBrief,
+  kindFor,
+  armDraft,
 } from '../studio';
-import { getFiles, type LibFile } from '../library';
+import { getFiles, addFileWith, setStatus, snapshotLibrary, restoreLibrary, type LibFile } from '../library';
+import { allSbx, removeSbx, restoreSbx, snapshotSbx, keepAsDraft, openSbx, type SbxItem } from '../sandbox';
+import { useSbx } from '../components/SandboxView';
+import { ItemMenu } from '../components/ItemMenu';
+import { rowTap } from '../rowTap';
+import { undoable } from '../undo';
+import { useMedia } from '../useMedia';
 import { getThread } from '../threads';
 import { createProject, saveProject } from '../projects';
 import { createFlow } from '../flows';
@@ -36,12 +42,13 @@ import { Icon } from '../components/shell/icons';
 type Walk = { cat: string | null; tpl: string | null };
 
 export default function StudioScreen() {
-  const { notify, go, goTab, newChat, currentThreadId } = useNav();
+  const { notify, go, goTab, newChat, currentThreadId, switchThread, openPanel } = useNav();
+  useSbx();
+  const wide = useMedia('(min-width:900px)');
   const [walk, setWalk] = useState<Walk>({ cat: null, tpl: null });
   const [variant, setVariant] = useState(0);
   const [purpose, setPurpose] = useState('');
   const [details, setDetails] = useState('');
-  const [showDrafts, setShowDrafts] = useState(() => draftsOpen());
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -54,11 +61,14 @@ export default function StudioScreen() {
   const made = files.filter((f) => f.st === 'draft');
   void tick;
   const published = files.filter((f) => f.st !== 'draft');
-
-  const toggleDrafts = () => {
-    const next = !showDrafts;
-    setShowDrafts(next);
-    setDraftsOpen(next);
+  /* Pages made in a chat that were never kept: they are drafts too. */
+  const loose = allSbx().filter((x) => !x.fileId || !files.some((f) => f.id === x.fileId));
+  const refresh = () => setTick((t) => t + 1);
+  const openLoose = (x: SbxItem) => {
+    if (x.threadId) switchThread(x.threadId);
+    else goTab('chat');
+    openSbx(x.id);
+    if (wide) openPanel('sandbox');
   };
 
   /* Make it in Chat — the mockup's goBuild8. Direct creates on the real
@@ -74,6 +84,14 @@ export default function StudioScreen() {
       const p = createProject((pu || tpl).slice(0, 48));
       saveProject({ ...p, d: de || templateOf(tpl)?.u || '' });
       notify('Project created — brief sent to Chat.');
+    } else if (kindFor(cat, tpl)) {
+      /* Everything else starts as a real Studio draft right now. The brief is
+         its first version; the page the chat makes becomes the next one. */
+      const lib = snapshotLibrary();
+      const f = addFileWith((pu || tpl).slice(0, 80), kindFor(cat, tpl)!, brief);
+      setStatus(f.id, 'draft');
+      armDraft(f.id);
+      notify('Draft started in Studio. Brief sent to Chat.', { undo: () => restoreLibrary(lib) });
     } else if (cat === 'Flow' || cat === 'Routine') {
       const steps = de
         .split(/[\n.;]/)
@@ -102,8 +120,9 @@ export default function StudioScreen() {
       <StudioRoot
         published={published}
         made={made}
-        showDrafts={showDrafts}
-        onToggleDrafts={toggleDrafts}
+        loose={loose}
+        onOpenLoose={openLoose}
+        onChange={refresh}
         onPickCat={(cat) => setWalk({ cat, tpl: null })}
         onPickTpl={(tpl) => {
           setWalk({ cat: categoryOf(tpl), tpl });
@@ -152,11 +171,12 @@ export default function StudioScreen() {
   );
 }
 
-function StudioRoot({ published, made, showDrafts, onToggleDrafts, onPickCat, onPickTpl, onOpen }: {
-  published: LibFile[]; made: LibFile[];
-  showDrafts: boolean; onToggleDrafts: () => void;
+function StudioRoot({ published, made, loose, onOpenLoose, onChange, onPickCat, onPickTpl, onOpen }: {
+  published: LibFile[]; made: LibFile[]; loose: SbxItem[];
+  onOpenLoose: (x: SbxItem) => void; onChange: () => void;
   onPickCat: (cat: string) => void; onPickTpl: (tpl: string) => void; onOpen: (f: LibFile) => void;
 }) {
+  const drafts = made.length + loose.length;
   return (
     <div>
       <div className="screenT dupT">Your studio</div>
@@ -175,53 +195,110 @@ function StudioRoot({ published, made, showDrafts, onToggleDrafts, onPickCat, on
           </button>
         ))}
       </div>
-      {made.length ? (
-        <>
-          <div className="row" style={{ marginTop: 14 }}>
-            <b style={{ fontSize: 14 }}>Drafts</b>
-            <span style={{ flex: 1 }} />
-            <button className="fb" onClick={onToggleDrafts}>
-              {showDrafts ? 'Hide' : 'Show ' + made.length}
-            </button>
-          </div>
-          {showDrafts ? (
-            <div className="card cardPad">
-              {made.map((f) => (
-                <StudioRow key={f.id} file={f} onOpen={onOpen} />
-              ))}
+      <div className="tkList" style={{ marginTop: 14 }}>
+        {drafts ? (
+          <section className="tkGroup">
+            <div className="sdiv tkH">
+              <span>Drafts</span>
+              <span className="fmeta">{drafts}</span>
             </div>
-          ) : null}
-        </>
-      ) : null}
-      {published.length ? (
-        <>
-          <h3 className="sec">Published - yours, in Library</h3>
-          <div className="card cardPad">
-            {published.map((f) => (
-              <StudioRow key={f.id} file={f} onOpen={onOpen} />
+            {made.map((f) => (
+              <StudioRow key={f.id} file={f} onOpen={onOpen} onChange={onChange} />
             ))}
-          </div>
-        </>
-      ) : null}
-      {!made.length && !published.length ? (
-        <div className="card s m">Nothing made yet. Make something new - it lands here.</div>
+            {loose.map((x) => (
+              <LooseRow key={x.id} item={x} onOpen={() => onOpenLoose(x)} onChange={onChange} />
+            ))}
+          </section>
+        ) : null}
+        {published.length ? (
+          <section className="tkGroup">
+            <div className="sdiv tkH">
+              <span>Published</span>
+              <span className="fmeta">{published.length}</span>
+            </div>
+            {published.map((f) => (
+              <StudioRow key={f.id} file={f} onOpen={onOpen} onChange={onChange} />
+            ))}
+          </section>
+        ) : null}
+      </div>
+      {!drafts && !published.length ? (
+        <div className="s m" style={{ marginTop: 14 }}>Nothing made yet. Make something new - it lands here.</div>
       ) : null}
     </div>
   );
 }
 
-function StudioRow({ file, onOpen }: { file: LibFile; onOpen: (f: LibFile) => void }) {
-  const vers = (file.hist?.length ?? 0) + 1;
+function ago(ms: number): string {
+  const mins = Math.max(0, Math.round((Date.now() - ms) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+const KIND_WORD: Record<string, string> = {
+  DOC: 'Document', PDF: 'PDF', IMG: 'Image', WEB: 'Page', WIDGET: 'Widget', GAME: 'Game',
+  LINK: 'Link', ROUTINE: 'Automation', COURSE: 'Course', DIGEST: 'Digest',
+};
+
+function StudioRow({ file, onOpen, onChange }: { file: LibFile; onOpen: (f: LibFile) => void; onChange: () => void }) {
+  const last = Math.max(file.createdAt, ...(file.hist ?? []).map((h) => h.at));
+  const open = () => onOpen(file);
   return (
-    <div className="li">
-      <div className="fi">{file.k.slice(0, 4)}</div>
-      <button className="g" style={{ textAlign: 'left' }} onClick={() => onOpen(file)}>
-        <div>{file.t}</div>
-        <div className="xs m">{file.k} · {file.st} · v{file.v}{vers > 1 ? ` · ${vers} versions` : ''}</div>
+    <div className="frow top tkRow gRow tapRow" onClick={rowTap(open)}>
+      <div className="ft">
+        <button className="tlT" onClick={open}>
+          <span>{file.t}</span>
+        </button>
+        <div className="fsub">{[KIND_WORD[file.k] || file.k, `v${file.v}`, ago(last)].join(' · ')}</div>
         <ProjectChip k="file" id={file.id} />
-      </button>
-      <span className={'tag ' + (file.st === 'draft' ? 'am' : 'gr')}>{file.st}</span>
-      <FileMenu file={file} openTo={() => onOpen(file)} />
+      </div>
+      <FileMenu file={file} openTo={open} onChange={onChange} />
+    </div>
+  );
+}
+
+/* A page from a chat that was never kept. Open goes to its chat; Keep makes
+   it a Studio draft; Delete throws the page away (the chat keeps its words). */
+function LooseRow({ item, onOpen, onChange }: { item: SbxItem; onOpen: () => void; onChange: () => void }) {
+  const { notify } = useNav();
+  const last = item.versions[item.versions.length - 1]?.at ?? item.createdAt;
+  return (
+    <div className="frow top tkRow gRow tapRow" onClick={rowTap(onOpen)}>
+      <div className="ft">
+        <button className="tlT" onClick={onOpen}>
+          <span>{item.title || 'Untitled page'}</span>
+        </button>
+        <div className="fsub">{['Page in a chat', `v${item.versions.length}`, ago(last), 'not kept yet'].join(' · ')}</div>
+      </div>
+      <ItemMenu
+        name={item.title || 'Untitled page'}
+        open={onOpen}
+        openLabel="Open in its chat"
+        extra={[
+          {
+            label: 'Keep as draft',
+            onClick: () => {
+              const lib = snapshotLibrary();
+              const sb = snapshotSbx();
+              if (keepAsDraft(item.id)) {
+                onChange();
+                notify('Kept as a draft.', {
+                  undo: () => {
+                    restoreLibrary(lib);
+                    restoreSbx(sb);
+                    onChange();
+                  },
+                });
+              }
+            },
+          },
+        ]}
+        onChange={onChange}
+        onDelete={() => undoable(notify, 'Page deleted.', snapshotSbx, restoreSbx, () => removeSbx(item.id), onChange)}
+      />
     </div>
   );
 }

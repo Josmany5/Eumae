@@ -4,7 +4,8 @@
 
 import { useState } from 'react';
 import { useNav } from '../nav';
-import { getFiles, getFavs, toggleFav, toggleStatus, folderOf } from '../library';
+import { getFiles, getFavs, toggleFav, toggleStatus, folderOf, restoreVersion, snapshotLibrary, restoreLibrary } from '../library';
+import { undoable } from '../undo';
 import { FileMenu, removeFile } from '../components/FileMenu';
 import { ProjectChip } from '../components/ItemMenu';
 import { queueBrief } from '../studio';
@@ -50,7 +51,8 @@ export default function StudioItemPage(_props: PageProps) {
         <button
           className="fb"
           onClick={() => {
-            notify(toggleFav(f.id) ? 'Starred.' : 'Unstarred.');
+            const on = toggleFav(f.id);
+            notify(on ? 'Added to Favorites.' : 'Removed from Favorites.', { undo: () => { toggleFav(f.id); refresh(); } });
             refresh();
           }}
         >
@@ -70,25 +72,38 @@ export default function StudioItemPage(_props: PageProps) {
         <span className="m">Version</span>
         <span>v{f.v} of {f.v}</span>
       </div>
-      <h3 className="sec">Versions</h3>
-      <div className="card cardPad">
-        {vers.map((x) => (
-          <div key={x.v} className="li">
-            <div className="g">
-              <div>
-                v{x.v}
-                {x.v === f.v ? <span className="tag gr">current</span> : null}
-              </div>
-              <div className="xs m">{(x.b || '').split('\n')[0].slice(0, 60)}</div>
-              <div className="xs m">{fmtEdited(x.at)}</div>
-            </div>
-            {x.v === f.v ? null : (
-              <button className="fb" onClick={() => go('ver', `${f.id}|${x.v}`)}>
-                View
-              </button>
-            )}
+      <div className="tkList" style={{ marginTop: 14 }}>
+        <section className="tkGroup">
+          <div className="sdiv tkH">
+            <span>Versions</span>
+            <span className="fmeta">{vers.length}</span>
           </div>
-        ))}
+          {vers.map((x) => (
+            <div key={x.v} className="frow top tkRow gRow">
+              <div className="ft">
+                <div className="tlT">
+                  <span>v{x.v}{x.v === f.v ? ' · current' : ''}</span>
+                </div>
+                <div className="fsub">{fmtEdited(x.at)}{x.b ? ' · ' + x.b.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) : ''}</div>
+              </div>
+              {x.v === f.v ? null : (
+                <>
+                  <button className="fb" onClick={() => go('ver', `${f.id}|${x.v}`)}>
+                    View
+                  </button>
+                  <button
+                    className="fb"
+                    onClick={() =>
+                      undoable(notify, `Restored v${x.v} as v${f.v + 1}.`, snapshotLibrary, restoreLibrary, () => !!restoreVersion(f.id, x.v), refresh)
+                    }
+                  >
+                    Restore
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+        </section>
       </div>
       <div className="btns gstick">
         {editable ? (
@@ -110,24 +125,20 @@ export default function StudioItemPage(_props: PageProps) {
         {f.st === 'draft' ? (
           <button
             className="gho"
-            onClick={() => {
-              toggleStatus(f.id);
-              notify(`Published to ${folderOf(f)}.`);
-              refresh();
-            }}
+            onClick={() =>
+              undoable(notify, `Published to ${folderOf(f)}.`, snapshotLibrary, restoreLibrary, () => !!toggleStatus(f.id), refresh)
+            }
           >
-            Publish to Library…
+            Publish to Library
           </button>
         ) : (
           <button
             className="gho"
-            onClick={() => {
-              toggleStatus(f.id);
-              notify('Unpublished.');
-              refresh();
-            }}
+            onClick={() =>
+              undoable(notify, 'Back in drafts.', snapshotLibrary, restoreLibrary, () => !!toggleStatus(f.id), refresh)
+            }
           >
-            Unpublish
+            Move back to drafts
           </button>
         )}
         <button

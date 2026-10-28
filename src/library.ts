@@ -294,6 +294,35 @@ export function toggleStatus(id: string): LibFile | null {
   return { ...next };
 }
 
+/** Set draft or live directly (a Sandbox save makes a draft live). */
+export function setStatus(id: string, st: 'live' | 'draft'): LibFile | null {
+  const s = load();
+  const f = s.files.find((x) => x.id === id);
+  if (!f) return null;
+  const next = { ...f, st };
+  save({ ...s, files: s.files.map((x) => (x.id === id ? next : x)) });
+  return { ...next };
+}
+
+/** A copy you own: same kind, body and folder, a fresh v1 draft with no history. */
+export function duplicateFile(id: string): LibFile | null {
+  const s = load();
+  const f = s.files.find((x) => x.id === id);
+  if (!f) return null;
+  const copy: LibFile = {
+    id: 'f' + Date.now().toString(36),
+    t: (f.t + ' copy').slice(0, 120),
+    k: f.k,
+    st: 'draft',
+    v: 1,
+    b: f.b,
+    fol8: f.fol8,
+    createdAt: Date.now(),
+  };
+  save({ ...s, files: [copy, ...s.files] });
+  return { ...copy };
+}
+
 export function bumpVersion(id: string): LibFile | null {
   const s = load();
   const f = s.files.find((x) => x.id === id);

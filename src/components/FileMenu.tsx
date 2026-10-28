@@ -10,6 +10,7 @@ import {
   toggleFav,
   toggleStatus,
   renameFile,
+  duplicateFile,
   trashFile,
   snapshotLibrary,
   restoreLibrary,
@@ -53,12 +54,21 @@ export function FileMenu({
           },
         },
         {
+          label: 'Duplicate',
+          onClick: () =>
+            undoable(notify, 'Duplicated as a draft.', snapshotLibrary, restoreLibrary, () => !!duplicateFile(file.id), onChange),
+        },
+        {
           label: file.st === 'draft' ? 'Publish' : 'Move back to drafts',
-          onClick: () => {
-            toggleStatus(file.id);
-            onChange?.();
-            notify(file.st === 'draft' ? 'Published.' : 'Back in drafts.');
-          },
+          onClick: () =>
+            undoable(
+              notify,
+              file.st === 'draft' ? 'Published to Library.' : 'Back in drafts.',
+              snapshotLibrary,
+              restoreLibrary,
+              () => !!toggleStatus(file.id),
+              onChange,
+            ),
         },
       ]}
       link={{ k: 'file', id: file.id }}

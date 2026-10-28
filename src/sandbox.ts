@@ -7,7 +7,11 @@
  * Wove didn't do: the frame gets a lock rule that blocks the network (a made
  * page never calls outside — the hosted-pages ruling, Oct 15), and the code is
  * pulled out of the reply, so chat shows one compact row instead of a wall of
- * html. Nothing goes to the Library until the person taps Save. */
+ * html. Nothing goes live in the Library until the person taps Save; a page
+ * Studio asked for is its Studio draft from the first version (syncDraft). */
+
+import { getFiles, saveEdit, addFileWith, setStatus, snapshotLibrary, restoreLibrary } from './library';
+import { takeArmedDraft } from './studio';
 
 export interface SbxVersion {
   html: string;
@@ -28,6 +32,7 @@ export interface SbxItem {
   savedV?: number;
   createdAt: number;
 }
+
 
 const KEY = 'eumae:sandbox';
 /* localStorage is ~5 MB for the whole app, and a page is often 10–30 KB. */
@@ -178,18 +183,23 @@ export function addFromReply(threadId: string | null, html: string, label: strin
   const items = load();
   const existing = items.find((x) => x.threadId === threadId);
   const v: SbxVersion = { html, label: label.slice(0, 80), at: Date.now() };
+  const lib = snapshotLibrary();
   if (existing) {
     const before = existing;
     const versions = [...existing.versions, v].slice(-MAX_VERSIONS);
-    const next: SbxItem = { ...existing, versions, cur: versions.length - 1, title: titleOfHtml(html) || existing.title };
+    let next: SbxItem = { ...existing, versions, cur: versions.length - 1, title: titleOfHtml(html) || existing.title };
+    next = syncDraft(next);
     save([next, ...items.filter((x) => x.id !== existing.id)]);
     return {
       item: next,
       isNew: false,
-      undo: () => save(load().map((x) => (x.id === before.id ? before : x))),
+      undo: () => {
+        restoreLibrary(lib);
+        save(load().map((x) => (x.id === before.id ? before : x)));
+      },
     };
   }
-  const item: SbxItem = {
+  let item: SbxItem = {
     id: 's' + Date.now().toString(36),
     threadId,
     title: titleOfHtml(html),
@@ -197,15 +207,55 @@ export function addFromReply(threadId: string | null, html: string, label: strin
     cur: 0,
     createdAt: Date.now(),
   };
+  /* A page Studio asked for is that Studio draft: link it, so Studio shows it. */
+  const armed = takeArmedDraft();
+  if (armed && getFiles().some((f) => f.id === armed)) item = syncDraft({ ...item, fileId: armed, savedV: undefined });
   save([item, ...items]);
   return {
     item,
     isNew: true,
     undo: () => {
       if (openId === item.id) openId = null;
+      restoreLibrary(lib);
       save(load().filter((x) => x.id !== item.id));
     },
   };
+}
+
+/* While the linked file is still a draft, each new page version is a new
+   version of the Studio draft too. A live file changes only on Save. */
+function syncDraft(item: SbxItem): SbxItem {
+  if (!item.fileId) return item;
+  const f = getFiles().find((x) => x.id === item.fileId);
+  if (!f || f.st !== 'draft') return item;
+  const html = item.versions[item.cur]?.html;
+  if (!html || html === f.b) return { ...item, savedV: item.cur + 1 };
+  return saveEdit(f.id, item.title || f.t, html) ? { ...item, savedV: item.cur + 1 } : item;
+}
+
+/** Every page made in a chat, newest first (Studio lists the unsaved ones). */
+export function allSbx(): SbxItem[] {
+  return load().slice();
+}
+
+export function restoreSbx(snap: SbxItem[]): void {
+  save(snap.map((x) => ({ ...x })));
+}
+
+/** Throw away a chat's page. The chat keeps its words. */
+export function removeSbx(id: string): void {
+  if (openId === id) openId = null;
+  save(load().filter((x) => x.id !== id));
+}
+
+/** Keep a chat's page as a Studio draft (not live yet). */
+export function keepAsDraft(id: string): string | null {
+  const it = load().find((x) => x.id === id);
+  if (!it || it.fileId) return it?.fileId ?? null;
+  const f = addFileWith(it.title || 'Untitled page', 'WEB', it.versions[it.cur]?.html || '');
+  setStatus(f.id, 'draft');
+  save(load().map((x) => (x.id === id ? { ...x, fileId: f.id, savedV: x.cur + 1 } : x)));
+  return f.id;
 }
 
 export function setCur(id: string, cur: number): void {

@@ -7,6 +7,8 @@
  * (projects, flows, library files). Chat handoff is the screen's job.
  */
 
+import type { LibKind } from './library';
+
 export const STUDIO_CATEGORIES: Record<string, string[]> = {
   Document: ["Résumé", "Essay", "Pitch deck", "Report", "Memo"],
   Webpage: ["Landing page", "Portfolio", "Invitation"],
@@ -30,6 +32,50 @@ export const STUDIO_CATEGORIES: Record<string, string[]> = {
   Email: ["Follow-up", "Intro", "Update"],
   Checklist: ["Morning routine", "Launch checklist", "Packing list"],
 };
+
+/* What kind of Studio item each category makes. Project/Flow/Routine make
+   their own real things instead, so they have no entry. */
+const KIND_FOR_CAT: Record<string, LibKind> = {
+  Document: 'DOC', Email: 'DOC', Checklist: 'DOC', Skill: 'DOC', Sheet: 'DOC',
+  Quiz: 'DOC', Flashcards: 'DOC',
+  Webpage: 'WEB', App: 'WEB', Form: 'WEB', Slides: 'WEB',
+  Widget: 'WIDGET', Chart: 'WIDGET',
+  Image: 'IMG', PDF: 'PDF',
+  Course: 'COURSE', Training: 'COURSE',
+  Automation: 'ROUTINE',
+};
+
+export function kindFor(cat: string, tpl: string): LibKind | null {
+  if (cat === 'App' && tpl === 'Game') return 'GAME';
+  return KIND_FOR_CAT[cat] ?? null;
+}
+
+/* The draft a Studio brief is making. Studio arms it; the first page that
+   chat's reply makes takes it (sandbox.addFromReply), so the page and the
+   Studio draft are one thing. Expires after 15 minutes so a stale one
+   never grabs an unrelated page. */
+const DRAFT_KEY = 'eumae:pendingDraft';
+
+export function armDraft(fileId: string): void {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ id: fileId, at: Date.now() }));
+  } catch {
+    /* Non-fatal. */
+  }
+}
+
+export function takeArmedDraft(): string | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    localStorage.removeItem(DRAFT_KEY);
+    const p = JSON.parse(raw);
+    if (p && typeof p.id === 'string' && Date.now() - Number(p.at) < 15 * 60 * 1000) return p.id;
+  } catch {
+    /* Fall through. */
+  }
+  return null;
+}
 
 export const STUDIO_CATEGORY_ORDER = Object.keys(STUDIO_CATEGORIES);
 
