@@ -139,7 +139,7 @@ export default function StudioScreen() {
       ) : null}
       <div className="scGTabs">
         {['All', ...GROUPS.map((g) => g.n)].map((n) => (
-          <button key={n} className={tabG === n ? 'on' : ''} onClick={() => setTabG(n)}>
+          <button key={n} className={tabG === n ? 'on' : ''} onClick={() => { setTabG(n); setFolded((f) => (n === 'All' ? [] : f.filter((x) => x !== n))); }}>
             {n} <span>{n === 'All' ? 21 : GROUPS.find((g) => g.n === n)?.kinds.length}</span>
           </button>
         ))}
