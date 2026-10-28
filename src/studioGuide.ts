@@ -23,7 +23,7 @@ export interface Opt {
   sw?: string[];
 }
 
-export type StepId = 'describe' | 'for' | 'purpose' | 'style' | 'colors' | 'length' | 'tone' | 'must';
+export type StepId = 'describe' | 'for' | 'purpose' | 'does' | 'style' | 'colors' | 'length' | 'tone' | 'must';
 
 export interface Step {
   id: StepId;
@@ -54,6 +54,8 @@ export interface Kind {
   soon?: boolean;
   templates: Template[];
   purpose: Opt[];
+  /** What it does: real functions or sections for this kind (his call, Oct 27). */
+  does: Opt[];
   length?: Opt[];
   must: Opt[];
   /** Kinds where look and color don't apply (an agent, a skill). */
@@ -130,6 +132,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Report', d: 'Findings and what to do next', preset: { purpose: 'Report results', must: ['Summary up top', 'Next steps'] } },
       { n: 'Memo', d: 'One decision, short and clear', preset: { purpose: 'Get a decision', length: '1 page' } },
     ],
+    does: [{ l: 'Has headings and sections' }, { l: 'Has a table' }, { l: 'Ready to print' }, { l: 'Easy to edit later' }, { l: 'Has a cover page' }, { l: 'Pulls in my notes' }],
     purpose: [{ l: 'Get hired' }, { l: 'Explain an idea' }, { l: 'Report results' }, { l: 'Get a decision' }, { l: 'Persuade someone' }],
     length: [{ l: '1 page' }, { l: '2 to 3 pages' }, { l: '5+ pages' }],
     must: [{ l: 'Summary up top' }, { l: 'Contact details' }, { l: 'Work history' }, { l: 'Skills' }, { l: 'Headings' }, { l: 'Next steps' }, { l: 'Sources' }],
@@ -141,6 +144,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Lesson deck', d: 'Teach one topic, step by step', preset: { purpose: 'Teach something', length: '10 slides' } },
       { n: 'Report deck', d: 'Results your boss can skim', preset: { for: 'A boss or client', purpose: 'Report results' } },
     ],
+    does: [{ l: 'Speaker notes' }, { l: 'Charts from my numbers' }, { l: 'One idea per slide' }, { l: 'Photos on most slides' }, { l: 'A demo slide' }, { l: 'Ends with a clear ask' }],
     purpose: [{ l: 'Raise money' }, { l: 'Win a client' }, { l: 'Teach something' }, { l: 'Report results' }, { l: 'Share a plan' }],
     length: [{ l: '5 slides' }, { l: '10 slides' }, { l: '15 slides' }, { l: '20+ slides' }],
     must: [{ l: 'The problem' }, { l: 'Your solution' }, { l: 'One big number' }, { l: 'Pricing' }, { l: 'Team' }, { l: 'The ask' }, { l: 'Contact slide' }],
@@ -152,6 +156,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Tracker sheet', d: 'Anything you count over time', preset: { purpose: 'Track progress' } },
       { n: 'Schedule', d: 'Who does what, when', preset: { purpose: 'Plan time' } },
     ],
+    does: [{ l: 'Adds up totals for me' }, { l: 'Sorts and filters' }, { l: 'Color warnings when over budget' }, { l: 'A chart tab' }, { l: 'Monthly tabs' }, { l: 'Formulas I can see' }],
     purpose: [{ l: 'Track money' }, { l: 'Track progress' }, { l: 'Plan time' }, { l: 'Compare options' }],
     length: [{ l: 'A few rows' }, { l: 'A month' }, { l: 'A year' }],
     must: [{ l: 'Totals' }, { l: 'Categories' }, { l: 'Dates' }, { l: 'A chart' }, { l: 'Notes column' }],
@@ -163,6 +168,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Training chart', d: 'Sessions and streaks', preset: { purpose: 'See my progress' } },
       { n: 'Focus chart', d: 'Where your hours went', preset: { purpose: 'See where time goes' } },
     ],
+    does: [{ l: 'Bars by week' }, { l: 'A line over time' }, { l: 'A pie of categories' }, { l: 'Filters by date' }, { l: 'Shows a goal line' }],
     purpose: [{ l: 'See my progress' }, { l: 'See where time goes' }, { l: 'Show someone results' }],
     length: [{ l: 'This week' }, { l: 'This month' }, { l: 'This year' }],
     must: [{ l: 'Labels' }, { l: 'A goal line' }, { l: 'Totals' }, { l: 'Compare to last time' }],
@@ -174,6 +180,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Rate sheet', d: 'What you charge, at a glance', preset: { for: 'Customers', purpose: 'Sell something', must: ['Prices', 'Contact details'] } },
       { n: 'One-pager', d: 'Your whole pitch on one page', preset: { purpose: 'Sell something', length: '1 page' } },
     ],
+    does: [{ l: 'Prints on one page' }, { l: 'Clickable links' }, { l: 'A QR code to my site' }, { l: 'Two-sided' }, { l: 'Fits a phone screen' }],
     purpose: [{ l: 'Sell something' }, { l: 'Inform people' }, { l: 'Print and hand out' }],
     length: [{ l: '1 page' }, { l: '2 pages' }, { l: 'Booklet' }],
     must: [{ l: 'Logo' }, { l: 'Prices' }, { l: 'Contact details' }, { l: 'Photos' }, { l: 'A QR code' }],
@@ -185,6 +192,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Survey', d: 'Ask a few questions, learn a lot', preset: { purpose: 'Get feedback' } },
       { n: 'Sign-up', d: 'Names and emails for a list or event', preset: { purpose: 'Sign people up' } },
     ],
+    does: [{ l: 'Required fields' }, { l: 'Shows answers in a table' }, { l: 'Thank-you screen' }, { l: 'Picks a date and time' }, { l: 'Upload a file' }, { l: 'Sends a copy to me' }],
     purpose: [{ l: 'Collect details' }, { l: 'Get feedback' }, { l: 'Sign people up' }, { l: 'Take bookings' }],
     length: [{ l: '3 questions' }, { l: '5 to 10 questions' }, { l: '10+ questions' }],
     must: [{ l: 'Name' }, { l: 'Email' }, { l: 'Phone' }, { l: 'Date picker' }, { l: 'Thank-you message' }],
@@ -196,6 +204,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Intro', d: 'Connect two people well', preset: { purpose: 'Introduce someone', length: 'Short' } },
       { n: 'Update', d: 'News for your team or clients', preset: { purpose: 'Share news' } },
     ],
+    does: [{ l: 'Has a clear ask' }, { l: 'Suggests times' }, { l: 'Attaches a link' }, { l: 'Follows up on a past chat' }, { l: 'Short enough for a phone' }],
     purpose: [{ l: 'Get a reply' }, { l: 'Introduce someone' }, { l: 'Share news' }, { l: 'Say thanks' }, { l: 'Ask for something' }],
     length: [{ l: 'Short' }, { l: 'Medium' }, { l: 'Long' }],
     must: [{ l: 'Subject line' }, { l: 'One clear ask' }, { l: 'A deadline' }, { l: 'Signature' }],
@@ -207,6 +216,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Tracker', d: 'Log something and see the trend', preset: { purpose: 'Track something' } },
       { n: 'Calculator', d: 'Put numbers in, get answers out', preset: { purpose: 'Work something out' } },
     ],
+    does: [{ l: 'Saves my entries' }, { l: 'Sends reminders' }, { l: 'Shows a chart' }, { l: 'Needs a sign-in' }, { l: 'Works offline' }, { l: 'Exports to a sheet' }, { l: 'Search and filters' }],
     purpose: [{ l: 'Track something' }, { l: 'Work something out' }, { l: 'Save time on a chore' }],
     length: SIZE,
     must: [{ l: 'Saves my entries' }, { l: 'A chart' }, { l: 'Works on my phone' }, { l: 'Big buttons' }],
@@ -218,6 +228,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Trivia', d: 'Questions on any topic', preset: { purpose: 'Learn while playing' } },
       { n: 'Puzzle', d: 'Logic, matching, sliding tiles', preset: { purpose: 'Have fun' } },
     ],
+    does: [{ l: 'Keeps score' }, { l: 'Gets harder each level' }, { l: 'Has a timer' }, { l: 'High-score list' }, { l: 'Two players' }, { l: 'Sound effects' }],
     purpose: [{ l: 'Have fun' }, { l: 'Learn while playing' }, { l: 'Play with friends' }],
     length: [{ l: '1 minute rounds' }, { l: '5 minute rounds' }, { l: 'Levels' }],
     must: [{ l: 'Score' }, { l: 'Timer' }, { l: 'Sound' }, { l: 'High score' }],
@@ -229,6 +240,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Portfolio', d: 'Your best work, nicely shown', preset: { purpose: 'Show my work' } },
       { n: 'Invitation', d: 'An event page with RSVP', preset: { for: 'Family and friends', purpose: 'Invite people' } },
     ],
+    does: [{ l: 'Contact form' }, { l: 'Booking or RSVP' }, { l: 'Menu or price list' }, { l: 'Map and hours' }, { l: 'Photo gallery' }, { l: 'Reviews' }, { l: 'Several pages' }],
     purpose: [{ l: 'Sell something' }, { l: 'Show my work' }, { l: 'Invite people' }, { l: 'Share info' }],
     length: [{ l: 'One screen' }, { l: 'One long page' }, { l: 'A few pages' }],
     must: [{ l: 'Photos' }, { l: 'A button to act' }, { l: 'Contact details' }, { l: 'Map' }, { l: 'RSVP' }, { l: 'Prices' }],
@@ -240,6 +252,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Timer', d: 'Countdowns and focus timers', preset: { purpose: 'Time something' } },
       { n: 'Habit tracker', d: 'Tick it off, keep the streak', preset: { purpose: 'Build a habit' } },
     ],
+    does: [{ l: 'Shows one big number' }, { l: 'Counts down' }, { l: 'Taps to log' }, { l: 'Shows a streak' }, { l: 'Updates every day' }],
     purpose: [{ l: 'Glance at something' }, { l: 'Time something' }, { l: 'Build a habit' }],
     length: SIZE,
     must: [{ l: 'One big number' }, { l: 'A streak' }, { l: 'A button' }],
@@ -251,6 +264,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Poster', d: 'An event or a message, big', preset: { purpose: 'Promote an event' } },
       { n: 'Logo', d: 'A mark for your name or business', preset: { purpose: 'Brand my business' } },
     ],
+    does: [{ l: 'Several versions to pick from' }, { l: 'Transparent background' }, { l: 'Text on the image' }, { l: 'Matches my brand' }],
     purpose: [{ l: 'Decorate something' }, { l: 'Promote an event' }, { l: 'Brand my business' }, { l: 'A gift' }],
     length: [{ l: 'Square' }, { l: 'Tall (phone)' }, { l: 'Wide (banner)' }, { l: 'Print size' }],
     must: [{ l: 'My name' }, { l: 'A date' }, { l: 'Transparent background' }, { l: 'A few versions' }],
@@ -262,6 +276,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Banner', d: 'Website or profile header', preset: { purpose: 'Brand my business', length: 'Wide (banner)' } },
       { n: 'Icon set', d: 'Matching icons for an app or site', preset: { purpose: 'Brand my business' } },
     ],
+    does: [{ l: 'A matching set' }, { l: 'Sizes for each platform' }, { l: 'Room for text' }, { l: 'Uses my logo' }],
     purpose: [{ l: 'Get attention' }, { l: 'Brand my business' }, { l: 'Announce something' }],
     length: [{ l: 'Square' }, { l: 'Tall (phone)' }, { l: 'Wide (banner)' }],
     must: [{ l: 'My logo' }, { l: 'A headline' }, { l: 'A call to action' }, { l: 'Matching set' }],
@@ -272,6 +287,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Mood board', d: 'The feel of an idea in one view', preset: { purpose: 'Plan a look' } },
       { n: 'Photo grid', d: 'Your photos, laid out nicely', preset: { purpose: 'Share memories' } },
     ],
+    does: [{ l: 'Uses my photos' }, { l: 'Captions under each' }, { l: 'A title on top' }, { l: 'Even grid' }, { l: 'Free layout' }],
     purpose: [{ l: 'Plan a look' }, { l: 'Share memories' }, { l: 'Pitch an idea' }],
     length: [{ l: '4 pictures' }, { l: '9 pictures' }, { l: '16+ pictures' }],
     must: [{ l: 'My photos' }, { l: 'Captions' }, { l: 'A title' }],
@@ -282,6 +298,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Photo album', d: 'Your photos, sorted and captioned' },
       { n: 'Trip recap', d: 'A trip told in pictures' },
     ],
+    does: [{ l: 'Sorts by date' }, { l: 'Captions' }, { l: 'A cover page' }, { l: 'Map of places' }],
     purpose: [{ l: 'Share memories' }, { l: 'Make a gift' }],
     must: [{ l: 'Captions' }, { l: 'Dates' }, { l: 'Map' }],
   },
@@ -291,6 +308,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Short clip', d: 'A quick video for social' },
       { n: 'Slideshow video', d: 'Photos and music, made into a video' },
     ],
+    does: [{ l: 'Music' }, { l: 'Captions' }, { l: 'Uses my photos' }, { l: 'Logo at the end' }],
     purpose: [{ l: 'Get attention' }, { l: 'Share memories' }, { l: 'Explain something' }],
     length: [{ l: '15 seconds' }, { l: '30 seconds' }, { l: '60 seconds' }],
     must: [{ l: 'Music' }, { l: 'Captions' }, { l: 'My logo' }],
@@ -302,6 +320,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Flyer', d: 'Print it, post it, hand it out', preset: { for: 'Customers', purpose: 'Promote an event' } },
       { n: 'Promo', d: 'A deal, a sale, a launch', preset: { for: 'Customers', purpose: 'Sell something' } },
     ],
+    does: [{ l: 'Headline and button' }, { l: 'Uses my photos' }, { l: 'Several sizes' }, { l: 'A price or deal' }, { l: 'A QR code' }],
     purpose: [{ l: 'Sell something' }, { l: 'Promote an event' }, { l: 'Grow followers' }],
     length: [{ l: 'Square' }, { l: 'Tall (phone)' }, { l: 'Letter (print)' }],
     must: [{ l: 'A headline' }, { l: 'Price or deal' }, { l: 'A call to action' }, { l: 'My logo' }, { l: 'Contact details' }],
@@ -313,6 +332,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Podcast outline', d: 'Topics, questions and timing', preset: { purpose: 'Run a show' } },
       { n: 'Speech', d: 'Words for a toast or a talk', preset: { purpose: 'Give a talk' } },
     ],
+    does: [{ l: 'Scene by scene' }, { l: 'Timing marks' }, { l: 'Lines for each speaker' }, { l: 'A strong hook' }, { l: 'Notes for visuals' }],
     purpose: [{ l: 'Explain something' }, { l: 'Run a show' }, { l: 'Give a talk' }, { l: 'Sell something' }],
     length: [{ l: '60 seconds' }, { l: '5 minutes' }, { l: '20+ minutes' }],
     must: [{ l: 'A strong opening' }, { l: 'A story' }, { l: 'A call to action' }, { l: 'Timing marks' }],
@@ -325,6 +345,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Inbox helper', d: 'Sorts and drafts replies' },
       { n: 'Shopper', d: 'Finds the best price for you' },
     ],
+    does: [{ l: 'Works on a schedule' }, { l: 'Asks before acting' }, { l: 'Sends a summary' }, { l: 'Searches the web' }],
     purpose: [{ l: 'Save me time' }, { l: 'Find things for me' }, { l: 'Watch something for me' }],
     must: [{ l: 'Asks before acting' }, { l: 'Daily summary' }],
   },
@@ -335,6 +356,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Site teardown', d: 'Reviews a website and says what to fix', preset: { purpose: 'Check something' } },
       { n: 'Morning researcher', d: 'Finds what matters each morning', preset: { purpose: 'Keep me informed' } },
     ],
+    does: [{ l: 'Follows my steps' }, { l: 'Writes in my voice' }, { l: 'Uses my examples' }, { l: 'Checks its work' }],
     purpose: [{ l: 'Save me time' }, { l: 'Check something' }, { l: 'Keep me informed' }],
     must: [{ l: 'My tone' }, { l: 'Examples' }, { l: 'Steps to follow' }, { l: 'What to avoid' }],
   },
@@ -345,6 +367,7 @@ export const KINDS: Record<string, Kind> = {
       { n: 'Follow-up flow', d: 'Reminds you who to get back to', preset: { purpose: 'Save me time' } },
       { n: 'Weekly review', d: 'What got done, what is next', preset: { purpose: 'Keep me on track' } },
     ],
+    does: [{ l: 'Runs every morning' }, { l: 'Watches for something' }, { l: 'Asks before acting' }, { l: 'Sends me a summary' }, { l: 'Adds tasks for me' }],
     purpose: [{ l: 'Keep me informed' }, { l: 'Save me time' }, { l: 'Keep me on track' }],
     length: [{ l: 'Every day' }, { l: 'Every week' }, { l: 'When something happens' }],
     must: [{ l: 'Asks before acting' }, { l: 'Sends me a summary' }, { l: 'Uses my calendar' }, { l: 'Uses my tasks' }],
@@ -366,7 +389,8 @@ export function stepsFor(kind: Kind, custom: boolean): Step[] {
     s.push({ id: 'describe', name: 'Describe it', q: `What ${kind.n.toLowerCase()} do you want?`, tip: 'Say it the way you would tell a friend. A sentence is plenty; the next steps fill in the rest.', opts: [] });
   }
   s.push({ id: 'for', name: "Who it's for", q: "Who's it for?", tip: 'Who reads or uses it changes everything: the words, the length, even the colors.', opts: FOR });
-  s.push({ id: 'purpose', name: 'Purpose', q: 'What should it do?', tip: 'One clear job beats three. Pick the main one; the rest can be details.', opts: kind.purpose });
+  s.push({ id: 'purpose', name: 'Purpose', q: "What's it for?", tip: 'One clear job beats three. Pick the main one; the rest can be details.', opts: kind.purpose });
+  s.push({ id: 'does', name: 'What it does', q: 'What should it do?', tip: 'Tick everything it needs to do, then type the real details: fields, rules, how it should work.', opts: kind.does, multi: true });
   if (!kind.noLook) {
     s.push({ id: 'style', name: 'Style', q: 'Pick a look', tip: 'Tap the one that feels closest. Eumae copies the feel, not the words.', opts: styles(kind.n) });
     s.push({ id: 'colors', name: 'Colors', q: 'Pick colors', tip: 'Two or three colors look best. Have a brand? Pick My brand colors and say them.', opts: COLORS });
@@ -395,6 +419,7 @@ export function briefOf(kind: Kind, tpl: Template | null, picks: Picks): string 
     line('What it is', picks.describe),
     line('For', picks.for),
     line('Purpose', picks.purpose),
+    line('What it does', picks.does),
     line('Style', styleOpt ? `${style} - ${styleOpt.d?.toLowerCase()}` : style),
     line('Colors', picks.colors),
     line('Length', picks.length),

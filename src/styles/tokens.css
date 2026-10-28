@@ -2545,3 +2545,64 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .sgShelves{ display:flex; gap:6px; margin-top:10px; }
 .sgShelf{ padding:4px 12px; border-radius:99px; border:1px solid var(--hair); color:var(--tx); font-size:calc(13px + var(--fsUp, 0px)); }
 .sgShelf.on{ background:var(--acsoft); color:var(--ac); border-color:var(--ac); font-weight:600; }
+
+/* Studio home (Oct 27, his A+C mix): group tabs, fold-up headings, flat kind rows. */
+.scGTabs{ display:flex; flex-wrap:wrap; gap:6px; margin:16px 0 2px; }
+.scGTabs button{ padding:5px 12px; border-radius:99px; background:var(--card); color:var(--tx); font-size:calc(13px + var(--fsUp, 0px)); }
+.scGTabs button span{ color:var(--mut); margin-left:2px; }
+.scGTabs button.on{ background:var(--acsoft); color:var(--ac); font-weight:600; }
+.scGH{ display:flex; align-items:baseline; gap:8px; width:100%; text-align:left; padding:16px 0 6px; font-weight:700; font-size:calc(15px + var(--fsUp, 0px)); color:var(--tx); }
+.scGH .m{ font-weight:500; font-size:calc(13px + var(--fsUp, 0px)); }
+.scCv{ width:14px; color:var(--mut); }
+.scKinds{ display:grid; grid-template-columns:1fr; gap:0 18px; }
+@media (min-width:600px){ .scKinds{ grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+@media (min-width:1100px){ .scKinds{ grid-template-columns:repeat(4, minmax(0, 1fr)); } }
+.scKind{ display:flex; gap:10px; align-items:center; text-align:left; padding:8px 6px; border-radius:10px; color:var(--tx); min-width:0; }
+.scKind:hover{ background:var(--card); }
+.scKIc{ flex:none; width:32px; height:32px; border-radius:9px; background:var(--acsoft); display:flex; align-items:center; justify-content:center; }
+.scKIc svg{ width:18px; height:18px; stroke:var(--ac); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.scKT{ display:flex; flex-direction:column; min-width:0; }
+.scKT b{ font-size:calc(15px + var(--fsUp, 0px)); display:flex; gap:6px; align-items:center; }
+.scKT .m{ font-size:calc(13px + var(--fsUp, 0px)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Studio chat: questions, spec and preview on one screen. */
+.scWrap{ display:block; }
+.scMain{ display:flex; flex-direction:column; height:calc(100dvh - 150px); min-height:420px; }
+@media (min-width:900px){
+  .scWrap{ display:grid; grid-template-columns:minmax(0, 1fr) minmax(340px, 44%); gap:24px; align-items:start; }
+  .scMain{ height:calc(100vh - 48px); }
+  .scSide{ position:sticky; top:8px; height:calc(100vh - 48px); overflow-y:auto; }
+}
+.scHead{ display:flex; gap:10px; align-items:center; padding-bottom:6px; }
+.scHeadT{ min-width:0; }
+.scTitle{ font-size:calc(20px + var(--fsUp, 0px)); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.scMsgs{ flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:8px 0 12px; }
+.scPills{ display:flex; flex-wrap:wrap; gap:8px; }
+.scPills .chip{ border:1px solid var(--hair); display:inline-flex; align-items:center; gap:4px; }
+.scPills .chip.on{ background:var(--acsoft); color:var(--ac); border-color:var(--ac); font-weight:600; }
+.scPills .scGo{ background:var(--ac); color:var(--acink); border-color:var(--ac); font-weight:600; }
+.scPills .scSkip{ color:var(--mut); }
+.scCmp{ flex:none; }
+.scSend{ padding:8px 16px; }
+.scPin{ display:block; width:100%; text-align:left; background:var(--card); border-radius:14px; padding:10px 14px; margin:4px 0 6px; color:var(--tx); }
+.scPinT{ display:flex; justify-content:space-between; }
+.scPinS{ display:block; font-size:calc(13px + var(--fsUp, 0px)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.scSheet{ position:fixed; inset:0; z-index:60; background:var(--bg); padding:14px 16px calc(14px + env(safe-area-inset-bottom)); overflow-y:auto; display:flex; flex-direction:column; }
+.scTabs{ display:flex; gap:18px; align-items:center; margin-bottom:12px; }
+.scTabs button{ color:var(--mut); font-weight:600; padding-bottom:4px; font-size:calc(15px + var(--fsUp, 0px)); }
+.scTabs button.on{ color:var(--tx); border-bottom:2px solid var(--ac); }
+.scTabs .scClose{ margin-left:auto; }
+.scSpec{ background:var(--card); border-radius:14px; padding:14px 16px; }
+.scSec{ margin-bottom:10px; }
+.scSecH{ font-weight:700; font-size:calc(14px + var(--fsUp, 0px)); color:var(--tx); margin-bottom:2px; }
+.scLine{ display:flex; gap:8px; align-items:baseline; padding:3px 0; }
+.scLineT{ text-align:left; color:var(--tx); flex:1; min-width:0; }
+button.scLineT:hover{ color:var(--ac); }
+.scX{ color:var(--mut); padding:0 4px; }
+.scAdd{ margin:8px 0 4px; display:flex; }
+.scFrame{ width:100%; height:calc(100vh - 140px); border:0; border-radius:12px; background:#fff; }
+.scSheet .scFrame{ height:calc(100dvh - 90px); }
+.scEmpty{ padding:24px 4px; }
+.scVer{ display:flex; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:10px 4px; color:var(--tx); }
+.scVer.on{ color:var(--ac); font-weight:600; }
+.scMake{ margin-left:auto; flex:none; padding:7px 16px; }
