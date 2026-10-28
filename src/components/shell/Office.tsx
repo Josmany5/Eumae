@@ -1,3 +1,4 @@
+import { StudioBuildTab } from '../StudioChat';
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Icon } from './icons';
 import type { TabId } from './TabBar';
@@ -791,7 +792,7 @@ export default function Office({ tab, open, view, onView, onClose, onToggle }: O
           ) : v === 'sandbox' ? (
             <SandboxTab />
           ) : v === 'build' ? (
-            <Empty title="Nothing to build yet" note="Pick something to make in Studio and its steps, preview and Eumae's tips show here." />
+            <StudioBuildTab />
           ) : v === 'details' ? (
             <Empty title="No file open" note="Open a file in the Library and its details show here: type, size, where it's used." />
           ) : v === 'notes' ? (

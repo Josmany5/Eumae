@@ -332,6 +332,15 @@ export function bumpVersion(id: string): LibFile | null {
   return { ...next };
 }
 
+/* Quiet update of a Studio draft's spec text and name while it is being
+ * spelled out: no version, nothing made yet. */
+export function setBody(id: string, t: string, b: string): void {
+  const s = load();
+  const f = s.files.find((x) => x.id === id);
+  if (!f || (f.b === b && f.t === t)) return;
+  save({ ...s, files: s.files.map((x) => (x.id === id ? { ...x, t: t.trim() || x.t, b } : x)) });
+}
+
 /* Real edit: new title + body, old body pushed to hist, version bumps —
  * the mockup's svEdit9. Returns the saved file. */
 export function saveEdit(id: string, t: string, b: string): LibFile | null {

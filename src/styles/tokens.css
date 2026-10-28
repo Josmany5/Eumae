@@ -2565,38 +2565,28 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .scKT b{ font-size:calc(15px + var(--fsUp, 0px)); display:flex; gap:6px; align-items:center; }
 .scKT .m{ font-size:calc(13px + var(--fsUp, 0px)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-/* Studio chat (mockups 24 + 25): chat, spec and preview on one screen. */
-.scWrap{ display:block; }
+/* Studio chat (mockups 26 + 27): questions in the chat, spec in the office. */
 .scMain{ display:flex; flex-direction:column; height:calc(100dvh - 190px); min-height:420px; }
-@media (min-width:900px){
-  .scWrap{ display:grid; grid-template-columns:minmax(0, 1fr) minmax(340px, 42%); gap:24px; align-items:start; }
-  .scMain{ height:calc(100vh - 110px); }
-  .scSide{ position:sticky; top:0; max-height:calc(100vh - 110px); overflow-y:auto; }
-}
+@media (min-width:900px){ .scMain{ height:calc(100vh - 110px); max-width:760px; } }
 .scMsgs{ flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:6px 0 12px; }
 .scTurn{ display:flex; flex-direction:column; gap:8px; }
-.scIdeasH{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); }
 .scPills{ display:flex; flex-wrap:wrap; gap:8px; }
 .scPills .chip{ border:1px solid var(--hair); }
 .scPills .chip.on{ background:var(--acsoft); color:var(--tx); border-color:var(--ac); }
-.scPills .scGo{ background:var(--ac); color:var(--acink); border-color:var(--ac); font-weight:600; }
+.scMakeRow{ margin:0; }
 .msg:not(.you) > .scBub{ width:auto; max-width:88%; }
-.scPin{ display:block; width:100%; text-align:left; background:var(--card); border-radius:14px; padding:10px 14px; margin:0 0 6px; color:var(--tx); flex:none; }
-.scPinT{ display:flex; justify-content:space-between; align-items:baseline; }
-.scPinS{ display:block; font-size:calc(13px + var(--fsUp, 0px)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
-.scSheet{ position:fixed; inset:0; z-index:60; background:var(--bg); padding:calc(10px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); overflow-y:auto; }
+.scPin{ display:flex; justify-content:space-between; align-items:baseline; width:100%; text-align:left; background:var(--card); border-radius:14px; padding:10px 14px; margin:0 0 6px; color:var(--tx); flex:none; }
+.scPrev{ display:block; width:100%; max-width:420px; text-align:left; background:var(--card); border-radius:14px; overflow:hidden; padding:0; color:var(--tx); }
+.scPrevF{ display:block; width:100%; height:220px; border:0; background:#fff; pointer-events:none; }
+.scPrevL{ display:flex; justify-content:space-between; gap:10px; padding:10px 14px; }
+.scSheet{ position:fixed; inset:0; z-index:60; background:var(--bg); padding:calc(10px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); }
 .scSheetBar{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-.scSheetT{ font-weight:700; font-size:calc(18px + var(--fsUp, 0px)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.scSeg{ margin-bottom:12px; }
-.scSpec{ background:var(--card); border-radius:14px; padding:14px 16px; }
-.scSec{ margin-bottom:12px; }
+.scSheetT{ flex:1; font-weight:700; font-size:calc(18px + var(--fsUp, 0px)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.scFrame{ width:100%; height:calc(100dvh - 90px); border:0; border-radius:12px; background:#fff; }
+.scSpecT{ font-weight:700; font-size:calc(17px + var(--fsUp, 0px)); margin-bottom:10px; }
+.scSec{ margin-bottom:14px; }
 .scSecH{ font-weight:700; font-size:calc(14px + var(--fsUp, 0px)); color:var(--tx); margin-bottom:2px; }
-.scLine{ display:block; width:100%; text-align:left; padding:4px 0; color:var(--tx); }
-button.scLine:hover{ color:var(--ac); }
-.scEditIn{ width:100%; padding:6px 8px; border-radius:8px; border:1px solid var(--ac); background:var(--bg); color:var(--tx); font:inherit; }
-.scAddReq{ color:var(--ac); font-weight:600; padding:4px 0; }
-.scFrame{ width:100%; height:calc(100vh - 170px); border:0; border-radius:12px; background:#fff; }
-.scSheet .scFrame{ height:calc(100dvh - 140px); }
-.scEmpty{ padding:24px 4px; }
-.scVer{ display:flex; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:10px 4px; color:var(--tx); }
+.scLine{ padding:3px 0; color:var(--tx); }
+.scLine.m{ color:var(--mut); }
+.scVer{ display:flex; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:8px 0; color:var(--tx); }
 .scVer.on{ color:var(--ac); font-weight:600; }
