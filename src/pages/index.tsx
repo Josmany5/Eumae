@@ -15,6 +15,7 @@ import RequestsPage from './RequestsPage';
 import GuildSectionPage from './GuildSectionPage';
 import FlowsPage from './FlowsPage';
 import StudioItemPage from './StudioItemPage';
+import StudioChatPage, { studioChatTitle } from './StudioChatPage';
 import LibraryFolderPage from './LibraryFolderPage';
 import CoursePage from './CoursePage';
 import CxSectionPage from './CxSectionPage';
@@ -35,6 +36,8 @@ export interface PageProps {
 
 export interface PageDef {
   title: string;
+  /** A title that depends on what was opened (the item's own name). */
+  titleOf?: (arg: unknown) => string;
   page: ComponentType<PageProps>;
 }
 
@@ -64,6 +67,7 @@ export const PAGES: Record<string, PageDef> = {
   flow: { title: 'Flows', page: FlowsPage },
   flowedit: { title: 'Flows', page: FlowsPage },
   sitem: { title: '', page: StudioItemPage },
+  schat: { title: 'Studio', titleOf: studioChatTitle, page: StudioChatPage },
   libf: { title: 'Library', page: LibraryFolderPage },
   course: { title: '', page: CoursePage },
   cxsec: { title: '', page: CxSectionPage },
@@ -78,6 +82,8 @@ export const PAGES: Record<string, PageDef> = {
   asn: { title: 'Assigned work', page: AssignedPage },
 };
 
-export function pageTitle(name: string): string {
-  return PAGES[name]?.title ?? name;
+export function pageTitle(name: string, arg?: unknown): string {
+  const d = PAGES[name];
+  if (d?.titleOf) return d.titleOf(arg) || d.title;
+  return d?.title ?? name;
 }

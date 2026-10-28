@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNav } from '../nav';
 import { GROUPS, KINDS, searchStudio, guessKind } from '../studioGuide';
 import { newSession, saveSession, sessionForFile } from '../studioChat';
-import { StudioChat } from '../components/StudioChat';
 import { getFiles, snapshotLibrary, restoreLibrary, type LibFile } from '../library';
 import { allSbx, removeSbx, restoreSbx, snapshotSbx, keepAsDraft, openSbx, type SbxItem } from '../sandbox';
 import { useSbx } from '../components/SandboxView';
@@ -23,32 +22,10 @@ import { Icon } from '../components/shell/icons';
  * spec and preview on one screen; nothing jumps to main Chat.
  * Data lives in studioGuide.ts. */
 
-type Walk = { at: 'home' } | { at: 'chat'; id: string };
-
-const OPEN_KEY = 'eumae:studioOpen';
-function openWalk(): Walk {
-  try {
-    const id = sessionStorage.getItem(OPEN_KEY);
-    return id ? { at: 'chat', id } : { at: 'home' };
-  } catch {
-    return { at: 'home' };
-  }
-}
-
 export default function StudioScreen() {
   const { notify, go, goTab, switchThread, openPanel } = useNav();
   useSbx();
   const wide = useMedia('(min-width:900px)');
-  const [walk, setWalkRaw] = useState<Walk>(openWalk);
-  const setWalk = (w: Walk) => {
-    try {
-      if (w.at === 'chat') sessionStorage.setItem(OPEN_KEY, w.id);
-      else sessionStorage.removeItem(OPEN_KEY);
-    } catch {
-      /* Fine: it just won't reopen after a tab switch. */
-    }
-    setWalkRaw(w);
-  };
   const [tabG, setTabG] = useState<string>('All');
   const [folded, setFolded] = useState<string[]>([]);
   const [tick, setTick] = useState(0);
@@ -83,17 +60,13 @@ export default function StudioScreen() {
     }
     const sess = newSession(kd, tpl, seed);
     saveSession(sess);
-    setWalk({ at: 'chat', id: sess.id });
+    go('schat', sess.id);
   };
   const openFile = (f: LibFile) => {
     const sess = sessionForFile(f.id);
-    if (sess) setWalk({ at: 'chat', id: sess.id });
+    if (sess) go('schat', sess.id);
     else go('sitem', f.id);
   };
-
-  if (walk.at === 'chat') {
-    return <StudioChat id={walk.id} onBack={() => { setWalk({ at: 'home' }); refresh(); }} />;
-  }
 
   const shown = tabG === 'All' ? GROUPS : GROUPS.filter((g) => g.n === tabG);
   return (

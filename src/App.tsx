@@ -408,6 +408,15 @@ export default function App() {
 
   const top = stack.length ? stack[stack.length - 1] : null;
   const def = top ? PAGES[top.page] : undefined;
+  /* A page whose title is its item's name (a Studio chat) re-reads it when the
+     item is renamed. Only a real change re-renders. */
+  const [, setLiveTitle] = useState('');
+  useEffect(() => {
+    if (!top || !def?.titleOf) return;
+    const f = () => setLiveTitle(def.titleOf!(top.arg));
+    window.addEventListener('eumae:studioChats', f);
+    return () => window.removeEventListener('eumae:studioChats', f);
+  }, [top, def]);
   const Screen = SCREENS[tab];
 
   // One handler for the rail and the drawer, so a row behaves the same
@@ -507,7 +516,7 @@ export default function App() {
   const [pillSel, setPillSel] = useState<string | null>(null);
   const saveCur = useCallback(() => {
     if (!curApp) return;
-    const t = stack.length ? pageTitle(stack[stack.length - 1].page) : LABELS[tab];
+    const t = stack.length ? pageTitle(stack[stack.length - 1].page, stack[stack.length - 1].arg) : LABELS[tab];
     setOpenApps((l) => [{ key: curApp, title: t, tab, stack }, ...l.filter((a) => a.key !== curApp)]);
   }, [curApp, stack, tab]);
   const goHome = useCallback(() => {
@@ -616,7 +625,7 @@ export default function App() {
     deskTiles.find((t) => 'tab' in t.to && t.to.tab === tab && (t.to.page ?? null) === root) ??
     deskTiles.find((t) => 'tab' in t.to && t.to.tab === tab && !t.to.page) ??
     null;
-  const winTitle = curTile?.n ?? (top ? pageTitle(top.page) : LABELS[tab]);
+  const winTitle = curTile?.n ?? (top ? pageTitle(top.page, top.arg) : LABELS[tab]);
   const openDesk = (t: Tile) => {
     const d = t.to;
     if ('soon' in d) {
@@ -695,7 +704,7 @@ export default function App() {
           ) : (
           <>
           <Header
-            title={top ? pageTitle(top.page) : LABELS[tab]}
+            title={top ? pageTitle(top.page, top.arg) : LABELS[tab]}
             onMenu={appMode && tab !== 'chat' ? undefined : () => setDrawerOpen(true)}
             onActivity={() => openPanel()}
             onBack={
@@ -776,7 +785,7 @@ export default function App() {
                   <button className="hb" onClick={back} aria-label="Back">
                     <Icon name="bk" />
                   </button>
-                  <div className="tt">{pageTitle(top.page)}</div>
+                  <div className="tt">{pageTitle(top.page, top.arg)}</div>
                   <div className="bbsp" />
                 </div>
                 <div className="pageBody">

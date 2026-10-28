@@ -2565,44 +2565,38 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .scKT b{ font-size:calc(15px + var(--fsUp, 0px)); display:flex; gap:6px; align-items:center; }
 .scKT .m{ font-size:calc(13px + var(--fsUp, 0px)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-/* Studio chat: questions, spec and preview on one screen. */
+/* Studio chat (mockups 24 + 25): chat, spec and preview on one screen. */
 .scWrap{ display:block; }
-.scMain{ display:flex; flex-direction:column; height:calc(100dvh - 150px); min-height:420px; }
+.scMain{ display:flex; flex-direction:column; height:calc(100dvh - 190px); min-height:420px; }
 @media (min-width:900px){
-  .scWrap{ display:grid; grid-template-columns:minmax(0, 1fr) minmax(340px, 44%); gap:24px; align-items:start; }
-  .scMain{ height:calc(100vh - 48px); }
-  .scSide{ position:sticky; top:8px; height:calc(100vh - 48px); overflow-y:auto; }
+  .scWrap{ display:grid; grid-template-columns:minmax(0, 1fr) minmax(340px, 42%); gap:24px; align-items:start; }
+  .scMain{ height:calc(100vh - 110px); }
+  .scSide{ position:sticky; top:0; max-height:calc(100vh - 110px); overflow-y:auto; }
 }
-.scHead{ display:flex; gap:10px; align-items:center; padding-bottom:6px; }
-.scHeadT{ min-width:0; }
-.scTitle{ font-size:calc(20px + var(--fsUp, 0px)); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.scMsgs{ flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:8px 0 12px; }
+.scMsgs{ flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:6px 0 12px; }
+.scTurn{ display:flex; flex-direction:column; gap:8px; }
+.scIdeasH{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); }
 .scPills{ display:flex; flex-wrap:wrap; gap:8px; }
-.scPills .chip{ border:1px solid var(--hair); display:inline-flex; align-items:center; gap:4px; }
-.scPills .chip.on{ background:var(--acsoft); color:var(--ac); border-color:var(--ac); font-weight:600; }
+.scPills .chip{ border:1px solid var(--hair); }
+.scPills .chip.on{ background:var(--acsoft); color:var(--tx); border-color:var(--ac); }
 .scPills .scGo{ background:var(--ac); color:var(--acink); border-color:var(--ac); font-weight:600; }
-.scPills .scSkip{ color:var(--mut); }
-.scCmp{ flex:none; }
-.scSend{ padding:8px 16px; }
-.scPin{ display:block; width:100%; text-align:left; background:var(--card); border-radius:14px; padding:10px 14px; margin:4px 0 6px; color:var(--tx); }
-.scPinT{ display:flex; justify-content:space-between; }
+.msg:not(.you) > .scBub{ width:auto; max-width:88%; }
+.scPin{ display:block; width:100%; text-align:left; background:var(--card); border-radius:14px; padding:10px 14px; margin:0 0 6px; color:var(--tx); flex:none; }
+.scPinT{ display:flex; justify-content:space-between; align-items:baseline; }
 .scPinS{ display:block; font-size:calc(13px + var(--fsUp, 0px)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
-.scSheet{ position:fixed; inset:0; z-index:60; background:var(--bg); padding:14px 16px calc(14px + env(safe-area-inset-bottom)); overflow-y:auto; display:flex; flex-direction:column; }
-.scTabs{ display:flex; gap:18px; align-items:center; margin-bottom:12px; }
-.scTabs button{ color:var(--mut); font-weight:600; padding-bottom:4px; font-size:calc(15px + var(--fsUp, 0px)); }
-.scTabs button.on{ color:var(--tx); border-bottom:2px solid var(--ac); }
-.scTabs .scClose{ margin-left:auto; }
+.scSheet{ position:fixed; inset:0; z-index:60; background:var(--bg); padding:calc(10px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom)); overflow-y:auto; }
+.scSheetBar{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.scSheetT{ font-weight:700; font-size:calc(18px + var(--fsUp, 0px)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.scSeg{ margin-bottom:12px; }
 .scSpec{ background:var(--card); border-radius:14px; padding:14px 16px; }
-.scSec{ margin-bottom:10px; }
+.scSec{ margin-bottom:12px; }
 .scSecH{ font-weight:700; font-size:calc(14px + var(--fsUp, 0px)); color:var(--tx); margin-bottom:2px; }
-.scLine{ display:flex; gap:8px; align-items:baseline; padding:3px 0; }
-.scLineT{ text-align:left; color:var(--tx); flex:1; min-width:0; }
-button.scLineT:hover{ color:var(--ac); }
-.scX{ color:var(--mut); padding:0 4px; }
-.scAdd{ margin:8px 0 4px; display:flex; }
-.scFrame{ width:100%; height:calc(100vh - 140px); border:0; border-radius:12px; background:#fff; }
-.scSheet .scFrame{ height:calc(100dvh - 90px); }
+.scLine{ display:block; width:100%; text-align:left; padding:4px 0; color:var(--tx); }
+button.scLine:hover{ color:var(--ac); }
+.scEditIn{ width:100%; padding:6px 8px; border-radius:8px; border:1px solid var(--ac); background:var(--bg); color:var(--tx); font:inherit; }
+.scAddReq{ color:var(--ac); font-weight:600; padding:4px 0; }
+.scFrame{ width:100%; height:calc(100vh - 170px); border:0; border-radius:12px; background:#fff; }
+.scSheet .scFrame{ height:calc(100dvh - 140px); }
 .scEmpty{ padding:24px 4px; }
 .scVer{ display:flex; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:10px 4px; color:var(--tx); }
 .scVer.on{ color:var(--ac); font-weight:600; }
-.scMake{ margin-left:auto; flex:none; padding:7px 16px; }
