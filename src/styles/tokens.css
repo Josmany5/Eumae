@@ -2486,3 +2486,38 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .flPvHead{ justify-content:flex-start; gap:12px; align-items:center; }
 .flPvAdd{ margin-top:16px; }
 .flPvWhy{ margin:4px 0 6px; font-size:calc(15px + var(--fsUp, 0px)); color:var(--tx); line-height:1.4; }
+
+/* Studio guided flow (Oct 27): template tiles, step row, picks, brief card. */
+.sgTpls{ display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; margin-top:14px; }
+@media (min-width:900px){ .sgTpls{ grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); } }
+.sgTpl{ display:flex; flex-direction:column; gap:4px; text-align:left; padding:10px; border-radius:12px; background:var(--card); border:1px solid var(--hair); color:var(--tx); }
+.sgTpl:hover{ background:var(--card2); }
+.sgTpl .m{ font-size:calc(13px + var(--fsUp, 0px)); }
+.sgTplThumb{ height:96px; border-radius:8px; margin-bottom:6px; padding:12px; font-weight:700; font-size:calc(15px + var(--fsUp, 0px)); background:var(--card2); color:var(--tx); display:flex; align-items:flex-end; }
+.sgT0{ background:var(--acsoft); color:var(--ac); }
+.sgT1{ background:var(--card3); }
+.sgCustom .sgTplThumb{ background:none; border:1px dashed var(--hair); color:var(--mut); justify-content:center; align-items:center; font-size:28px; font-weight:400; }
+.sgWrap{ display:block; }
+@media (min-width:900px){ .sgWrap{ display:grid; grid-template-columns:minmax(0, 1fr) 340px; gap:28px; align-items:start; } }
+.sgSteps{ display:flex; flex-wrap:wrap; gap:4px 14px; margin:12px 0 18px; }
+.sgSteps button{ color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); padding:2px 0; }
+.sgSteps button.done{ color:var(--tx); }
+.sgSteps button.on{ color:var(--ac); font-weight:700; }
+.sgQ{ font-size:calc(20px + var(--fsUp, 0px)); font-weight:650; margin-bottom:4px; }
+.sgChips{ display:flex; flex-wrap:wrap; gap:8px; }
+.sgChips .chip{ border:1px solid var(--hair); display:inline-flex; align-items:center; gap:4px; }
+.sgChips .chip.on{ background:var(--acsoft); color:var(--ac); border-color:var(--ac); font-weight:600; }
+.sgSw{ display:inline-block; width:14px; height:14px; border-radius:50%; margin-right:2px; }
+.sgStyles{ display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; }
+@media (min-width:900px){ .sgStyles{ grid-template-columns:repeat(3, 1fr); } }
+.sgStyle{ display:flex; flex-direction:column; gap:3px; text-align:left; padding:10px; border-radius:12px; border:1px solid var(--hair); color:var(--tx); }
+.sgStyle.on{ border:2px solid var(--ac); padding:9px; }
+.sgStyle .m{ font-size:calc(13px + var(--fsUp, 0px)); }
+.sgThumb{ height:88px; border-radius:8px; padding:12px; font-weight:800; margin-bottom:6px; }
+.sgOther{ display:flex; gap:8px; align-items:center; margin-top:12px; max-width:560px; }
+.sgSide{ margin-top:22px; }
+@media (min-width:900px){ .sgSide{ margin-top:0; position:sticky; top:12px; } }
+.sgCard{ background:var(--card); border-radius:14px; padding:16px; margin-bottom:14px; }
+.sgCardT{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
+.sgTipB{ color:var(--ac); }
+.sgHit{ width:100%; text-align:left; }

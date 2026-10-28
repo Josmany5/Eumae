@@ -1,18 +1,21 @@
 import { FileMenu } from '../components/FileMenu';
 import { ProjectChip } from '../components/ItemMenu';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNav } from '../nav';
+import { queueBrief, armDraft } from '../studio';
 import {
-  STUDIO_CATEGORIES,
-  STUDIO_CATEGORY_ORDER,
-  STUDIO_CATEGORY_ICONS,
-  templateOf,
-  categoryOf,
-  buildBrief,
-  queueBrief,
-  kindFor,
-  armDraft,
-} from '../studio';
+  GROUPS,
+  KINDS,
+  stepsFor,
+  briefOf,
+  searchStudio,
+  groupOfKind,
+  guessKind,
+  type Kind,
+  type Template,
+  type Picks,
+  type StepId,
+} from '../studioGuide';
 import { getFiles, addFileWith, setStatus, snapshotLibrary, restoreLibrary, type LibFile } from '../library';
 import { allSbx, removeSbx, restoreSbx, snapshotSbx, keepAsDraft, openSbx, type SbxItem } from '../sandbox';
 import { useSbx } from '../components/SandboxView';
@@ -21,34 +24,28 @@ import { rowTap } from '../rowTap';
 import { undoable } from '../undo';
 import { useMedia } from '../useMedia';
 import { getThread } from '../threads';
-import { createProject, saveProject } from '../projects';
-import { createFlow } from '../flows';
 import { Icon } from '../components/shell/icons';
 
-/* The Studio — the mockup's latest create layer, rebuilt as React.
+/* Studio = discovery (his call, Oct 27, 9:42 PM). Chat is where you just make
+ * things; Studio shows what's possible and helps you get specific first.
  *
- * Root ("Your studio", studioRoot12): Published section (→ Library) +
- * Drafts with Show/Hide (drOpen10, persisted) + 12 category rows (TY8 with
- * counts). Picking a category walks the gallery: category → template list
- * (TY8[sCat]) → template detail (TPL8: explainer + starter variants +
- * "good one" checklist + purpose/details → Make it in Chat). sCat/stS/sTpl
- * live in screen state — the walk resets on tab switch, like the mockup.
- *
- * Make it in Chat (goBuild8): Project/Flow/Routine create directly on the
- * real stores AND queue the brief to Chat; everything else just queues the
- * brief. Chat takes the brief once on arrival and sends it.
- */
+ * Walk: home (make box, Drafts, Published, the 4 groups) -> a group's kinds
+ * -> a kind's templates (Custom first) -> the guided steps (one question at a
+ * time, real example picks, brief filling in live, Eumae's tip) -> Make it,
+ * which starts a Studio draft and opens a fresh Chat with the full brief.
+ * Data lives in studioGuide.ts. */
 
-type Walk = { cat: string | null; tpl: string | null };
+type Walk =
+  | { at: 'home' }
+  | { at: 'group'; group: string }
+  | { at: 'kind'; kind: string }
+  | { at: 'guide'; kind: string; tpl: string | null; seed?: string };
 
 export default function StudioScreen() {
   const { notify, go, goTab, newChat, currentThreadId, switchThread, openPanel } = useNav();
   useSbx();
   const wide = useMedia('(min-width:900px)');
-  const [walk, setWalk] = useState<Walk>({ cat: null, tpl: null });
-  const [variant, setVariant] = useState(0);
-  const [purpose, setPurpose] = useState('');
-  const [details, setDetails] = useState('');
+  const [walk, setWalk] = useState<Walk>({ at: 'home' });
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -58,8 +55,8 @@ export default function StudioScreen() {
   }, []);
 
   const files = getFiles();
-  const made = files.filter((f) => f.st === 'draft');
   void tick;
+  const made = files.filter((f) => f.st === 'draft');
   const published = files.filter((f) => f.st !== 'draft');
   /* Pages made in a chat that were never kept: they are drafts too. */
   const loose = allSbx().filter((x) => !x.fileId || !files.some((f) => f.id === x.fileId));
@@ -71,142 +68,125 @@ export default function StudioScreen() {
     if (wide) openPanel('sandbox');
   };
 
-  /* Make it in Chat — the mockup's goBuild8. Direct creates on the real
-     stores, brief queued for Chat either way. */
-  const build = () => {
-    const tpl = walk.tpl;
-    if (!tpl) return;
-    const cat = categoryOf(tpl) ?? walk.cat ?? '';
-    const brief = buildBrief(tpl, variant, purpose, details);
-    const pu = purpose.trim();
-    const de = details.trim();
-    if (cat === 'Project') {
-      const p = createProject((pu || tpl).slice(0, 48));
-      saveProject({ ...p, d: de || templateOf(tpl)?.u || '' });
-      notify('Project created — brief sent to Chat.');
-    } else if (kindFor(cat, tpl)) {
-      /* Everything else starts as a real Studio draft right now. The brief is
-         its first version; the page the chat makes becomes the next one. */
-      const lib = snapshotLibrary();
-      const f = addFileWith((pu || tpl).slice(0, 80), kindFor(cat, tpl)!, brief);
-      setStatus(f.id, 'draft');
-      armDraft(f.id);
-      notify('Draft started in Studio. Brief sent to Chat.', { undo: () => restoreLibrary(lib) });
-    } else if (cat === 'Flow' || cat === 'Routine') {
-      const steps = de
-        .split(/[\n.;]/)
-        .map((x) => x.trim())
-        .filter(Boolean);
-      const t = templateOf(tpl);
-      createFlow(pu || tpl, cat === 'Routine' ? 'routine' : 'flow', {
-        steps: steps.length ? steps : t ? [...t.s] : [],
-      });
-      notify(`${cat} created — brief sent to Chat.`);
+  const pickKind = (k: string) => {
+    const kd = KINDS[k];
+    if (kd?.soon) {
+      notify(`${kd.n} is coming soon. It needs the backend first.`);
+      return;
     }
+    setWalk({ at: 'kind', kind: k });
+  };
+
+  /* Make it: a real Studio draft now (the brief is v1, the chat's page becomes
+     the next versions), then a fresh chat with the whole brief. */
+  const make = (kind: Kind, tpl: Template | null, picks: Picks) => {
+    const brief = briefOf(kind, tpl, picks);
+    const title = (typeof picks.describe === 'string' && picks.describe.trim()) || (tpl ? tpl.n : kind.n);
+    const lib = snapshotLibrary();
+    const f = addFileWith(title.slice(0, 80), kind.lib, brief);
+    setStatus(f.id, 'draft');
+    armDraft(f.id);
     queueBrief(brief);
-    setWalk({ cat: null, tpl: null });
-    setVariant(0);
-    setPurpose('');
-    setDetails('');
-    /* A brief always lands in an empty chat (his call, Oct 20): the chat you
-       were in stays as it was, and a new one opens with the brief sent. */
+    notify('Draft started in Studio. Brief sent to Chat.', { undo: () => restoreLibrary(lib) });
+    setWalk({ at: 'home' });
     const cur = currentThreadId ? getThread(currentThreadId) : undefined;
     if (cur && cur.messages.length > 0) newChat();
     else goTab('chat');
   };
 
-  if (!walk.cat) {
+  if (walk.at === 'group') {
+    const g = GROUPS.find((x) => x.n === walk.group);
+    if (!g) return null;
     return (
-      <StudioRoot
-        published={published}
-        made={made}
-        loose={loose}
-        onOpenLoose={openLoose}
-        onChange={refresh}
-        onPickCat={(cat) => setWalk({ cat, tpl: null })}
-        onPickTpl={(tpl) => {
-          setWalk({ cat: categoryOf(tpl), tpl });
-          setVariant(0);
-          setPurpose('');
-          setDetails('');
-        }}
-        onOpen={(f) => go('sitem', f.id)}
-      />
+      <div>
+        <BackBar onBack={() => setWalk({ at: 'home' })} />
+        <div className="xs m">Studio › {g.n}</div>
+        <div className="screenT">{g.n}</div>
+        <div className="s m">{g.d}</div>
+        <div className="stGrid" style={{ marginTop: 14 }}>
+          {g.kinds.map((k) => {
+            const kd = KINDS[k];
+            return (
+              <button key={k} className="stTile" onClick={() => pickKind(k)}>
+                <Icon name={kd.icon} />
+                <span className="stName">
+                  {kd.n} {kd.soon ? <span className="tag am">Soon</span> : null}
+                </span>
+                <span className="stSub">{kd.d}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     );
   }
-  if (!walk.tpl) {
-    return (
-      <CategoryView
-        cat={walk.cat}
-        onBack={() => setWalk({ cat: null, tpl: null })}
-        onPickCat={(cat) => setWalk({ cat, tpl: null })}
-        onPickTpl={(tpl) => {
-          setWalk({ cat: walk.cat, tpl });
-          setVariant(0);
-          setPurpose('');
-          setDetails('');
-        }}
-      />
-    );
-  }
-  const t = templateOf(walk.tpl);
-  if (!t) {
-    setWalk({ cat: walk.cat, tpl: null });
-    return null;
-  }
-  return (
-    <TemplateView
-      name={walk.tpl}
-      cat={walk.cat}
-      variant={variant}
-      onVariant={setVariant}
-      purpose={purpose}
-      onPurpose={setPurpose}
-      details={details}
-      onDetails={setDetails}
-      onBack={() => setWalk({ cat: categoryOf(walk.tpl!) ?? walk.cat, tpl: null })}
-      onBuild={build}
-      onLearn={() => go('lesson', walk.tpl)}
-    />
-  );
-}
 
-function StudioRoot({ published, made, loose, onOpenLoose, onChange, onPickCat, onPickTpl, onOpen }: {
-  published: LibFile[]; made: LibFile[]; loose: SbxItem[];
-  onOpenLoose: (x: SbxItem) => void; onChange: () => void;
-  onPickCat: (cat: string) => void; onPickTpl: (tpl: string) => void; onOpen: (f: LibFile) => void;
-}) {
-  const drafts = made.length + loose.length;
+  if (walk.at === 'kind') {
+    const kd = KINDS[walk.kind];
+    if (!kd) return null;
+    const g = groupOfKind(kd.n);
+    return (
+      <div>
+        <BackBar onBack={() => setWalk(g ? { at: 'group', group: g.n } : { at: 'home' })} />
+        <div className="xs m">Studio › {g?.n} › {kd.n}</div>
+        <div className="screenT">{kd.n}</div>
+        <div className="s m">Start from one of these, or make your own.</div>
+        <div className="sgTpls">
+          <button className="sgTpl sgCustom" onClick={() => setWalk({ at: 'guide', kind: kd.n, tpl: null })}>
+            <span className="sgTplThumb">+</span>
+            <b>Custom</b>
+            <span className="m">Describe your own {kd.n.toLowerCase()}</span>
+          </button>
+          {kd.templates.map((t, i) => (
+            <button key={t.n} className="sgTpl" onClick={() => setWalk({ at: 'guide', kind: kd.n, tpl: t.n })}>
+              <span className={'sgTplThumb sgT' + (i % 3)}>{t.n}</span>
+              <b>{t.n}</b>
+              <span className="m">{t.d}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (walk.at === 'guide') {
+    const kd = KINDS[walk.kind];
+    if (!kd) return null;
+    const tpl = walk.tpl ? kd.templates.find((t) => t.n === walk.tpl) ?? null : null;
+    return (
+      <Guide
+        key={kd.n + '|' + (tpl?.n ?? 'custom') + '|' + (walk.seed ?? '')}
+        kind={kd}
+        tpl={tpl}
+        seed={walk.seed}
+        onBack={() => setWalk(walk.seed !== undefined ? { at: 'home' } : { at: 'kind', kind: kd.n })}
+        onMake={(p) => make(kd, tpl, p)}
+        onAsk={() => openPanel('eumae')}
+      />
+    );
+  }
+
   return (
     <div>
       <div className="screenT dupT">Your studio</div>
-      <div className="s m">Everything you have made - drafts, published, every version.</div>
-      <div className="btns">
-        <button className="pri" onClick={() => onPickCat("__gallery__")}>Make something new</button>
-      </div>
-      <TemplateSearch onPickTpl={onPickTpl} />
-      <h3 className="sec">What can I make?</h3>
-      <div className="stGrid">
-        {STUDIO_CATEGORY_ORDER.map((cat) => (
-          <button key={cat} className="stTile" onClick={() => onPickCat(cat)}>
-            <Icon name={STUDIO_CATEGORY_ICONS[cat] || 'pls'} />
-            <span className="stName">{cat}</span>
-            <span className="stSub">{STUDIO_CATEGORIES[cat].length} kinds</span>
-          </button>
-        ))}
-      </div>
+      <div className="s m">See what you can make, get specific, and Eumae helps along the way.</div>
+      <MakeBox
+        onKind={pickKind}
+        onTpl={(k, t) => setWalk({ at: 'guide', kind: k, tpl: t })}
+        onFree={(text) => setWalk({ at: 'guide', kind: guessKind(text), tpl: null, seed: text })}
+      />
       <div className="tkList" style={{ marginTop: 14 }}>
-        {drafts ? (
+        {made.length + loose.length ? (
           <section className="tkGroup">
             <div className="sdiv tkH">
               <span>Drafts</span>
-              <span className="fmeta">{drafts}</span>
+              <span className="fmeta">{made.length + loose.length}</span>
             </div>
             {made.map((f) => (
-              <StudioRow key={f.id} file={f} onOpen={onOpen} onChange={onChange} />
+              <StudioRow key={f.id} file={f} onOpen={(x) => go('sitem', x.id)} onChange={refresh} />
             ))}
             {loose.map((x) => (
-              <LooseRow key={x.id} item={x} onOpen={() => onOpenLoose(x)} onChange={onChange} />
+              <LooseRow key={x.id} item={x} onOpen={() => openLoose(x)} onChange={refresh} />
             ))}
           </section>
         ) : null}
@@ -217,14 +197,222 @@ function StudioRoot({ published, made, loose, onOpenLoose, onChange, onPickCat, 
               <span className="fmeta">{published.length}</span>
             </div>
             {published.map((f) => (
-              <StudioRow key={f.id} file={f} onOpen={onOpen} onChange={onChange} />
+              <StudioRow key={f.id} file={f} onOpen={(x) => go('sitem', x.id)} onChange={refresh} />
             ))}
           </section>
         ) : null}
       </div>
-      {!drafts && !published.length ? (
-        <div className="s m" style={{ marginTop: 14 }}>Nothing made yet. Make something new - it lands here.</div>
+      <h3 className="sec">What can I make?</h3>
+      <div className="stGrid">
+        {GROUPS.map((g) => (
+          <button key={g.n} className="stTile" onClick={() => setWalk({ at: 'group', group: g.n })}>
+            <Icon name={g.icon} />
+            <span className="stName">{g.n}</span>
+            <span className="stSub">{g.kinds.join(' · ')}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* The box at the top: type what you want. Matches show as you type; Enter or
+   the last row starts from scratch with your words as the description. */
+function MakeBox({ onKind, onTpl, onFree }: {
+  onKind: (k: string) => void; onTpl: (k: string, t: string) => void; onFree: (text: string) => void;
+}) {
+  const [q, setQ] = useState('');
+  const hits = useMemo(() => searchStudio(q), [q]);
+  const t = q.trim();
+  return (
+    <div style={{ marginTop: 12 }}>
+      <input
+        className="lib2-search"
+        style={{ width: '100%', maxWidth: 560, padding: '12px 14px' }}
+        placeholder="What do you want to make?"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && t) onFree(t);
+          if (e.key === 'Escape') setQ('');
+        }}
+        aria-label="What do you want to make?"
+      />
+      {t ? (
+        <div className="tkList" style={{ maxWidth: 560, marginTop: 6 }}>
+          {hits.map((h) => (
+            <button
+              key={h.kind + (h.tpl ?? '')}
+              className="frow tkRow sgHit"
+              onClick={() => (h.tpl ? onTpl(h.kind, h.tpl) : onKind(h.kind))}
+            >
+              <span className="tlT"><span>{h.tpl ?? h.kind}</span></span>
+              <span className="fmeta">{h.tpl ? h.kind : 'Kind'}</span>
+            </button>
+          ))}
+          <button className="frow tkRow sgHit" onClick={() => onFree(t)}>
+            <span className="tlT"><span>Start “{t}” from scratch</span></span>
+            <span className="fmeta">Custom</span>
+          </button>
+        </div>
       ) : null}
+    </div>
+  );
+}
+
+/* The guided steps: one question at a time, picks from real examples, a
+   Something else box on every step, the brief filling in live, Eumae's tip. */
+function Guide({ kind, tpl, seed, onBack, onMake, onAsk }: {
+  kind: Kind; tpl: Template | null; seed?: string;
+  onBack: () => void; onMake: (p: Picks) => void; onAsk: () => void;
+}) {
+  const custom = !tpl;
+  const steps = useMemo(() => stepsFor(kind, custom), [kind, custom]);
+  const [picks, setPicks] = useState<Picks>(() => ({ ...(tpl?.preset ?? {}), ...(seed ? { describe: seed } : {}) }));
+  const [i, setI] = useState(() => (seed ? Math.min(1, steps.length - 1) : 0));
+  const [other, setOther] = useState('');
+  const step = steps[i];
+  const g = groupOfKind(kind.n);
+  const val = picks[step.id];
+  const isOn = (l: string) => (Array.isArray(val) ? val.includes(l) : val === l);
+
+  const choose = (l: string) => {
+    setPicks((p) => {
+      if (step.multi) {
+        const cur = Array.isArray(p[step.id]) ? (p[step.id] as string[]) : [];
+        return { ...p, [step.id]: cur.includes(l) ? cur.filter((x) => x !== l) : [...cur, l] };
+      }
+      return { ...p, [step.id]: p[step.id] === l ? undefined : l };
+    });
+  };
+  const addOther = () => {
+    const x = other.trim();
+    if (!x) return;
+    if (step.multi) {
+      setPicks((p) => {
+        const cur = Array.isArray(p[step.id]) ? (p[step.id] as string[]) : [];
+        return { ...p, [step.id]: cur.includes(x) ? cur : [...cur, x] };
+      });
+    } else setPicks((p) => ({ ...p, [step.id]: x }));
+    setOther('');
+  };
+  const goStep = (n: number) => {
+    setOther('');
+    setI(Math.max(0, Math.min(steps.length - 1, n)));
+  };
+  const last = i === steps.length - 1;
+  const show = (id: StepId) => {
+    const v = picks[id];
+    return Array.isArray(v) ? v.join(', ') : v || '';
+  };
+
+  return (
+    <div className="sgWrap">
+      <div className="sgMain">
+        <BackBar onBack={onBack} />
+        <div className="xs m">Studio › {g?.n} › {kind.n}{tpl ? ' › ' + tpl.n : ' › Custom'}</div>
+        <div className="screenT">{tpl ? tpl.n : 'Custom ' + kind.n.toLowerCase()}</div>
+        <div className="sgSteps">
+          {steps.map((st, n) => (
+            <button
+              key={st.id}
+              className={n === i ? 'on' : show(st.id) ? 'done' : ''}
+              onClick={() => goStep(n)}
+            >
+              {show(st.id) && n !== i ? '✓ ' : `${n + 1} `}
+              {st.name}
+            </button>
+          ))}
+        </div>
+        <div className="sgQ">{step.q}</div>
+        {step.id === 'describe' ? (
+          <textarea
+            className="sinput"
+            style={{ minHeight: 90, display: 'block', width: '100%', maxWidth: 560, font: 'inherit', resize: 'vertical' }}
+            placeholder={`A ${kind.n.toLowerCase()} for...`}
+            value={typeof picks.describe === 'string' ? picks.describe : ''}
+            onChange={(e) => setPicks((p) => ({ ...p, describe: e.target.value }))}
+            aria-label="Describe it"
+          />
+        ) : (
+          <>
+            <div className="m s" style={{ marginBottom: 10 }}>
+              {step.multi ? 'Tick all that fit.' : 'Tap one.'} Or write your own.
+            </div>
+            {step.id === 'style' ? (
+              <div className="sgStyles">
+                {step.opts.map((o) => (
+                  <button key={o.l} className={'sgStyle' + (isOn(o.l) ? ' on' : '')} onClick={() => choose(o.l)}>
+                    <span className="sgThumb" style={{ background: o.thumb?.bg, color: o.thumb?.fg }}>{o.thumb?.t}</span>
+                    <b>{o.l}</b>
+                    <span className="m">{o.d}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="sgChips">
+                {step.opts.map((o) => (
+                  <button key={o.l} className={'chip' + (isOn(o.l) ? ' on' : '')} onClick={() => choose(o.l)}>
+                    {o.sw ? o.sw.map((c) => <i key={c} className="sgSw" style={{ background: c }} />) : null}
+                    {o.l}
+                  </button>
+                ))}
+                {Array.isArray(val)
+                  ? val.filter((v) => !step.opts.some((o) => o.l === v)).map((v) => (
+                      <button key={v} className="chip on" onClick={() => choose(v)}>{v}</button>
+                    ))
+                  : typeof val === 'string' && val && !step.opts.some((o) => o.l === val) ? (
+                      <button className="chip on" onClick={() => choose(val)}>{val}</button>
+                    ) : null}
+              </div>
+            )}
+            <div className="sgOther">
+              <input
+                className="lib2-search"
+                placeholder="Something else..."
+                value={other}
+                onChange={(e) => setOther(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') addOther();
+                }}
+                aria-label="Something else"
+              />
+              {other.trim() ? <button className="fb" onClick={addOther}>Add</button> : null}
+            </div>
+          </>
+        )}
+        <div className="btns">
+          {last ? (
+            <button className="pri" onClick={() => onMake(picks)}>Make it</button>
+          ) : (
+            <button className="pri" onClick={() => goStep(i + 1)}>Next: {steps[i + 1].name}</button>
+          )}
+          {i > 0 ? <button className="gho" onClick={() => goStep(i - 1)}>Back</button> : null}
+          {!last ? <button className="gho" onClick={() => onMake(picks)}>Skip the rest, make it now</button> : null}
+        </div>
+      </div>
+      <div className="sgSide">
+        <div className="sgCard">
+          <div className="sgCardT">Your brief, so far</div>
+          <div className="kv"><span className="m">Kind</span><span>{tpl ? `${kind.n} · ${tpl.n}` : kind.n}</span></div>
+          {steps.map((st) => (
+            <div key={st.id} className="kv">
+              <span className="m">{st.name}</span>
+              <span className={show(st.id) ? '' : 'm'}>{show(st.id) || '—'}</span>
+            </div>
+          ))}
+          <div className="btns">
+            <button className="pri" onClick={() => onMake(picks)}>Make it</button>
+          </div>
+        </div>
+        <div className="sgCard">
+          <div className="sgCardT">Eumae</div>
+          <div><b className="sgTipB">Tip:</b> {step.tip}</div>
+          <div className="btns">
+            <button className="fb" onClick={onAsk}>Ask Eumae about it</button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -303,52 +491,6 @@ function LooseRow({ item, onOpen, onChange }: { item: SbxItem; onOpen: () => voi
   );
 }
 
-/* "Make something new" lands on the gallery - the mockup's "What can I
-   make?" state. The gallery is the category list; picking one walks in. */
-function GalleryView({ onBack, onPickCat }: { onBack: () => void; onPickCat: (cat: string) => void }) {
-  return (
-    <div>
-      <BackBar onBack={onBack} />
-      <div className="screenT">What can I make?</div>
-      <div className="s m">Browse what Eumae can make. See it first - then build it in Chat.</div>
-      <h3 className="sec">Can make</h3>
-      <div className="stGrid">
-      {STUDIO_CATEGORY_ORDER.map((cat) => (
-        <button key={cat} className="stTile" onClick={() => onPickCat(cat)}>
-          <Icon name={STUDIO_CATEGORY_ICONS[cat] || 'pls'} />
-          <span className="stName">{cat}</span>
-          <span className="stSub">{STUDIO_CATEGORIES[cat].join(' · ')}</span>
-        </button>
-      ))}
-      </div>
-    </div>
-  );
-}
-
-function CategoryView({ cat, onBack, onPickTpl, onPickCat }: {
-  cat: string; onBack: () => void; onPickTpl: (tpl: string) => void; onPickCat: (cat: string) => void;
-}) {
-  /* Gallery pseudo-category: show the picker, not a template list. Picking a
-     category walks INTO it (cat), it is not a template - wiring it to
-     onPickTpl bounced every tap back to the gallery. */
-  if (cat === '__gallery__') return <GalleryView onBack={onBack} onPickCat={onPickCat} />;
-  return (
-    <div>
-      <BackBar onBack={onBack} />
-      <div className="screenT">{cat}</div>
-      <div className="s m">Kinds of {cat.toLowerCase()} Eumae can make.</div>
-      <div className="card cardPad tplList">
-        {(STUDIO_CATEGORIES[cat] || []).map((tpl) => (
-          <button key={tpl} className="sr" onClick={() => onPickTpl(tpl)}>
-            <span className="g">{tpl}</span>
-            <span className="ch">›</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function BackBar({ onBack }: { onBack: () => void }) {
   return (
     <div className="backbar">
@@ -360,116 +502,3 @@ function BackBar({ onBack }: { onBack: () => void }) {
   );
 }
 
-function TemplateView({ name, cat, variant, onVariant, purpose, onPurpose, details, onDetails, onBack, onBuild, onLearn }: {
-  name: string; cat: string;
-  variant: number; onVariant: (i: number) => void;
-  purpose: string; onPurpose: (s: string) => void;
-  details: string; onDetails: (s: string) => void;
-  onBack: () => void; onBuild: () => void; onLearn: () => void;
-}) {
-  const t = templateOf(name);
-  if (!t) return null;
-  return (
-    <div>
-      <BackBar onBack={onBack} />
-      <div className="screenT">{name}</div>
-      <div className="s m">{t.u}</div>
-      <div className="tplSplit">
-      <div>
-      {t.v.map((v, i) => (
-        <button
-          key={v[0] + v[1]}
-          className="card"
-          style={variant === i ? { border: '1.5px solid var(--ac)' } : undefined}
-          onClick={() => onVariant(i)}
-        >
-          <div className="xs m" style={{ marginBottom: 6 }}>{v[0]} template</div>
-          <div style={{ fontSize: 19, fontWeight: 700 }}>{v[1]}</div>
-          {v.slice(2).map((l) => (
-            <div key={l} style={{ marginTop: 4 }}>{l}</div>
-          ))}
-          <div style={{ marginTop: 8 }}>{variant === i ? <span className="tag">Selected</span> : null}</div>
-        </button>
-      ))}
-      </div>
-      <div>
-      <div className="card">
-        <b>How a good one is built</b>
-        <ul className="st">
-          {t.s.map((s) => (
-            <li key={s}>{s}</li>
-          ))}
-        </ul>
-      </div>
-      <div className="card">
-        <b>Define it first</b>
-        <div className="s m">Answer what you can - the more Eumae knows up front, the closer the first try lands.</div>
-        <input
-          className="sinput"
-          placeholder="What is it for?"
-          value={purpose}
-          onChange={(e) => onPurpose(e.target.value)}
-          style={{ margin: '10px 0 8px', display: 'block' }}
-          aria-label="What is it for?"
-        />
-        <textarea
-          className="sinput"
-          placeholder="Anything it must include - names, numbers, steps..."
-          value={details}
-          onChange={(e) => onDetails(e.target.value)}
-          style={{ minHeight: 70, display: 'block', font: 'inherit', resize: 'vertical' }}
-          aria-label="Anything it must include"
-        />
-      </div>
-      </div>
-      </div>
-      <div className="btns">
-        <button className="pri" onClick={onBuild}>Make it in Chat</button>
-        <button className="gho" onClick={onLearn}>Learn what makes a good one</button>
-      </div>
-      <div className="xs m" style={{ marginTop: 6 }}>Category: {cat}</div>
-    </div>
-  );
-}
-
-/* Search every template by name, category, or what it is for. */
-function TemplateSearch({ onPickTpl }: { onPickTpl: (tpl: string) => void }) {
-  const [q, setQ] = useState('');
-  const term = q.trim().toLowerCase();
-  const hits = term
-    ? STUDIO_CATEGORY_ORDER.flatMap((cat) =>
-        STUDIO_CATEGORIES[cat]
-          .filter((t) =>
-            (t + ' ' + cat + ' ' + (templateOf(t)?.u ?? '')).toLowerCase().includes(term),
-          )
-          .map((t) => ({ t, cat })),
-      ).slice(0, 8)
-    : [];
-  return (
-    <div style={{ marginTop: 12 }}>
-      <input
-        className="lib2-search"
-        style={{ width: '100%', maxWidth: 420, padding: '10px 12px' }}
-        placeholder="Search templates - résumé, budget, quiz..."
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        aria-label="Search templates"
-      />
-      {term ? (
-        <div className="card cardPad" style={{ marginTop: 8 }}>
-          {hits.length ? (
-            hits.map(({ t, cat }) => (
-              <button key={cat + t} className="sr" onClick={() => onPickTpl(t)}>
-                <span className="g">{t}</span>
-                <span className="xs m">{cat}</span>
-                <span className="ch">›</span>
-              </button>
-            ))
-          ) : (
-            <div className="s m">No template matches. Try a broader word.</div>
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
-}
