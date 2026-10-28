@@ -2521,3 +2521,4 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .sgCardT{ font-size:calc(13px + var(--fsUp, 0px)); color:var(--mut); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
 .sgTipB{ color:var(--ac); }
 .sgHit{ width:100%; text-align:left; }
+.btns .chip{ border:1px solid var(--hair); } .btns .chip.on{ background:var(--acsoft); color:var(--ac); border-color:var(--ac); font-weight:600; }

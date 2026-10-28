@@ -47,6 +47,7 @@ export default function StudioScreen() {
   const wide = useMedia('(min-width:900px)');
   const [walk, setWalk] = useState<Walk>({ at: 'home' });
   const [tick, setTick] = useState(0);
+  const [shelf, setShelf] = useState<'drafts' | 'pub' | null>(null);
 
   useEffect(() => {
     const onFocus = () => setTick((t) => t + 1);
@@ -175,43 +176,57 @@ export default function StudioScreen() {
         onTpl={(k, t) => setWalk({ at: 'guide', kind: k, tpl: t })}
         onFree={(text) => setWalk({ at: 'guide', kind: guessKind(text), tpl: null, seed: text })}
       />
-      <div className="tkList" style={{ marginTop: 14 }}>
-        {made.length + loose.length ? (
-          <section className="tkGroup">
-            <div className="sdiv tkH">
-              <span>Drafts</span>
-              <span className="fmeta">{made.length + loose.length}</span>
-            </div>
-            {made.map((f) => (
-              <StudioRow key={f.id} file={f} onOpen={(x) => go('sitem', x.id)} onChange={refresh} />
-            ))}
-            {loose.map((x) => (
-              <LooseRow key={x.id} item={x} onOpen={() => openLoose(x)} onChange={refresh} />
-            ))}
-          </section>
-        ) : null}
-        {published.length ? (
-          <section className="tkGroup">
-            <div className="sdiv tkH">
-              <span>Published</span>
-              <span className="fmeta">{published.length}</span>
-            </div>
-            {published.map((f) => (
-              <StudioRow key={f.id} file={f} onOpen={(x) => go('sitem', x.id)} onChange={refresh} />
-            ))}
-          </section>
-        ) : null}
+      <div className="btns" style={{ marginTop: 12 }}>
+        <button className={'chip' + (shelf === 'drafts' ? ' on' : '')} onClick={() => setShelf(shelf === 'drafts' ? null : 'drafts')}>
+          Drafts · {made.length + loose.length}
+        </button>
+        <button className={'chip' + (shelf === 'pub' ? ' on' : '')} onClick={() => setShelf(shelf === 'pub' ? null : 'pub')}>
+          Published · {published.length}
+        </button>
       </div>
-      <h3 className="sec">What can I make?</h3>
-      <div className="stGrid">
-        {GROUPS.map((g) => (
-          <button key={g.n} className="stTile" onClick={() => setWalk({ at: 'group', group: g.n })}>
-            <Icon name={g.icon} />
-            <span className="stName">{g.n}</span>
-            <span className="stSub">{g.kinds.join(' · ')}</span>
-          </button>
-        ))}
-      </div>
+      {shelf ? (
+        <div className="tkList" style={{ marginTop: 8 }}>
+          {shelf === 'drafts' ? (
+            made.length + loose.length ? (
+              <>
+                {made.map((f) => (
+                  <StudioRow key={f.id} file={f} onOpen={(x) => go('sitem', x.id)} onChange={refresh} />
+                ))}
+                {loose.map((x) => (
+                  <LooseRow key={x.id} item={x} onOpen={() => openLoose(x)} onChange={refresh} />
+                ))}
+              </>
+            ) : (
+              <div className="s m">No drafts yet.</div>
+            )
+          ) : published.length ? (
+            published.map((f) => (
+              <StudioRow key={f.id} file={f} onOpen={(x) => go('sitem', x.id)} onChange={refresh} />
+            ))
+          ) : (
+            <div className="s m">Nothing published yet.</div>
+          )}
+        </div>
+      ) : null}
+      {GROUPS.map((g) => (
+        <section key={g.n}>
+          <h3 className="sec">{g.n}</h3>
+          <div className="stGrid">
+            {g.kinds.map((k) => {
+              const kd = KINDS[k];
+              return (
+                <button key={k} className="stTile" onClick={() => pickKind(k)}>
+                  <Icon name={kd.icon} />
+                  <span className="stName">
+                    {kd.n} {kd.soon ? <span className="tag am">Soon</span> : null}
+                  </span>
+                  <span className="stSub">{kd.d}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
