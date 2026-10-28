@@ -99,9 +99,30 @@ const BLOCK = /```html[^\n]*\n([\s\S]*?)```/gi;
 export function extractHtml(text: string): { html: string | null; rest: string } {
   let html: string | null = null;
   for (const m of text.matchAll(BLOCK)) if (m[1].includes('<')) html = m[1].trim();
-  if (!html) return { html: null, rest: text };
-  const rest = text.replace(BLOCK, '').replace(/\n{3,}/g, '\n\n').trim();
+  if (html) {
+    const rest = text.replace(BLOCK, '').replace(/\n{3,}/g, '\n\n').trim();
+    return { html, rest };
+  }
+  /* The model sometimes skips the fence and writes the page bare (Oct 28, his
+     screenshot: the code printed in chat and never reached the sandbox). A bare
+     document still counts: from <!doctype or <html to </html>, or to the end
+     when the reply was cut off. */
+  const at = rawStart(text);
+  if (at < 0) return { html: null, rest: text };
+  const tail = text.slice(at);
+  const end = tail.search(/<\/html>/i);
+  html = (end >= 0 ? tail.slice(0, end + 7) : tail).replace(/```\s*$/, '').trim();
+  const after = end >= 0 ? tail.slice(end + 7) : '';
+  if (!/<body|<\/html>/i.test(html) || html.length < 200) return { html: null, rest: text };
+  const before = text.slice(0, at).replace(/```[a-z]*\s*$/i, '').replace(/(here is|here's)[^\n]*:\s*$/i, '');
+  const rest = (before + '\n' + after.replace(/^\s*```/, '')).replace(/\n{3,}/g, '\n\n').trim();
   return { html, rest };
+}
+
+/** Where a bare (unfenced) html document starts, or -1. */
+function rawStart(text: string): number {
+  const m = text.search(/<!doctype html|<html[\s>]/i);
+  return m;
 }
 
 /** While a reply is still arriving: hide the code, finished or not. */
@@ -109,6 +130,8 @@ export function hideHtmlWhileStreaming(text: string): { text: string; making: bo
   const done = text.replace(BLOCK, '');
   const open = done.search(/```html/i);
   if (open >= 0) return { text: done.slice(0, open).trim(), making: true };
+  const raw = rawStart(done);
+  if (raw >= 0) return { text: done.slice(0, raw).replace(/```[a-z]*\s*$/i, '').trim(), making: true };
   return { text: done, making: done.length !== text.length };
 }
 
