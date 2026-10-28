@@ -456,9 +456,8 @@ export default function NoteViewPage({ arg }: PageProps) {
       {/* No page chrome of its own: the shell's header/backbar is the one way
           back. The face is the sheet; the one line above it carries the
           note's project and its ⋯. */}
+      <ProjectChip k="note" id={id} />
       <div className="noteTop">
-        <ProjectChip k="note" id={id} />
-        <span className="g" />
         <ItemMenu
           name={shownTitle}
           extra={[

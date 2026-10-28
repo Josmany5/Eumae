@@ -1665,8 +1665,14 @@ textarea.dlgField{ resize:vertical; font:inherit; font-size:calc(15px + var(--fs
 .imWrap > :first-child{ flex:1; min-width:0; }
 .msName{ background:none; color:var(--tx); text-align:left; padding:4px 0; font-size:calc(15px + var(--fsUp, 0px)); }
 .msRow input.g{ margin:0; padding:8px 10px; }
-.noteTop{ display:flex; align-items:center; gap:8px; padding:8px 16px 0 24px; }
-.noteTop .g{ flex:1; }
+/* The note's ⋯ floats in the top-right corner instead of taking a row of
+   its own, so the writing starts at the top of the page (his call, Oct 27).
+   The project chip only takes a line when the note has a project. */
+.noteClean{ position:relative; }
+.noteTop{ position:absolute; top:0; right:4px; z-index:5; }
+.noteClean > .pjChip{ margin:4px 24px 6px; align-self:flex-start; }
+.noteClean .ndoc{ padding-top:0; }
+.noteClean .ndoc .ntitle{ padding-right:36px; }
 /* Project page */
 .imBtn.pjAddBtn{ width:auto; padding:0 14px; font-size:calc(15px + var(--fsUp, 0px)); font-weight:600; color:var(--ac); }
 .pjDescBtn{ display:block; background:none; color:var(--mut); font-size:calc(15px + var(--fsUp, 0px)); text-align:left; padding:4px 0; line-height:1.45; }
