@@ -2569,6 +2569,9 @@ select.itIn{ text-align-last:right; padding-right:8px; }
    chat, spec in the office. Fills the page like Chat fills its tab. */
 .pageBody:has(> .scChat){ display:flex; flex-direction:column; padding:0; overflow:hidden; }
 .pageBody > .scChat{ flex:1; min-height:0; }
+/* Same sizes as Chat: Studio's page bump (--fsUp:1px on phone) made its
+   composer a size bigger than Chat's. */
+#mn .scChat, #mn .scChat *{ --fsUp:0px; }
 .scChat .chatScroll{ padding:12px 16px; }
 .scChat .msgCol{ max-width:88%; gap:8px; }
 .scChat .chips{ justify-content:flex-start; }
