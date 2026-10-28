@@ -176,11 +176,11 @@ export default function StudioScreen() {
         onTpl={(k, t) => setWalk({ at: 'guide', kind: k, tpl: t })}
         onFree={(text) => setWalk({ at: 'guide', kind: guessKind(text), tpl: null, seed: text })}
       />
-      <div className="btns" style={{ marginTop: 12 }}>
-        <button className={'chip' + (shelf === 'drafts' ? ' on' : '')} onClick={() => setShelf(shelf === 'drafts' ? null : 'drafts')}>
+      <div className="sgShelves">
+        <button className={'sgShelf' + (shelf === 'drafts' ? ' on' : '')} onClick={() => setShelf(shelf === 'drafts' ? null : 'drafts')}>
           Drafts · {made.length + loose.length}
         </button>
-        <button className={'chip' + (shelf === 'pub' ? ' on' : '')} onClick={() => setShelf(shelf === 'pub' ? null : 'pub')}>
+        <button className={'sgShelf' + (shelf === 'pub' ? ' on' : '')} onClick={() => setShelf(shelf === 'pub' ? null : 'pub')}>
           Published · {published.length}
         </button>
       </div>

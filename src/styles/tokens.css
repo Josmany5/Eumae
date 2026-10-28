@@ -2541,3 +2541,7 @@ select.itIn{ text-align-last:right; padding-right:8px; }
   .stTile .stSub{ font-size:13px; }
   .sgTplThumb{ height:80px; }
 }
+/* Drafts / Published: small pills (his call). */
+.sgShelves{ display:flex; gap:6px; margin-top:10px; }
+.sgShelf{ padding:4px 12px; border-radius:99px; border:1px solid var(--hair); color:var(--tx); font-size:calc(13px + var(--fsUp, 0px)); }
+.sgShelf.on{ background:var(--acsoft); color:var(--ac); border-color:var(--ac); font-weight:600; }
