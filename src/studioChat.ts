@@ -131,9 +131,9 @@ export function questionsFor(kind: Kind, custom: boolean): Q[] {
   const st = Object.fromEntries(stepsFor(kind, custom).map((x) => [x.id, x]));
   const qs: Q[] = [];
   const add = (q: Q | null) => q && qs.push(q);
-  if (st.describe) add({ id: 'describe', q: `What ${kind.n.toLowerCase()} do you want? Say it the way you'd tell a friend.`, sec: 'is', opts: [] });
-  add({ id: 'does', q: 'What should it do? Pick any, or say it your way.', sec: 'does', opts: st.does?.opts ?? [], multi: true });
-  add({ id: 'content', q: "What's it about, or what goes in it? Type it, paste a link, or attach files.", sec: 'content', opts: [] });
+  if (st.describe) add({ id: 'describe', q: `What ${kind.n.toLowerCase()} do you want?`, sec: 'is', opts: [] });
+  add({ id: 'does', q: 'What should it do?', sec: 'does', opts: st.does?.opts ?? [], multi: true });
+  add({ id: 'content', q: "What's it about?", sec: 'content', opts: [] });
   add(st.for ? { id: 'for', q: "Who's it for?", sec: 'is', pre: 'For', opts: st.for.opts } : null);
   add(st.purpose ? { id: 'purpose', q: "What's the main goal?", sec: 'is', pre: 'Goal', opts: st.purpose.opts } : null);
   add(st.style ? { id: 'style', q: 'How should it look?', sec: 'look', pre: 'Style', opts: st.style.opts } : null);
@@ -143,7 +143,7 @@ export function questionsFor(kind: Kind, custom: boolean): Q[] {
   add(st.must?.opts.length ? { id: 'must', q: 'Anything it must include?', sec: 'content', opts: st.must.opts, multi: true } : null);
   add({
     id: 'else',
-    q: 'Anything else? Rules, how it should work, sign-in, saving, reminders, offline. Say it, or tap Nothing else.',
+    q: 'Anything else it needs?',
     sec: 'details',
     opts: [{ l: 'Nothing else' }],
   });
@@ -212,7 +212,7 @@ function ask(s: Session, lead: string): Session {
   return {
     ...s,
     ticked: [],
-    msgs: [...s.msgs, { id: mid(), who: 'e', text: say("That covers it. The spec is in my office. Add anything else here, or tap Make it."), make: true }],
+    msgs: [...s.msgs, { id: mid(), who: 'e', text: say("That covers it. Add anything else, or make it."), make: true }],
   };
 }
 
@@ -240,7 +240,7 @@ export function answer(s: Session, text: string, files: Ref[] = []): Session {
   const refs = [...s.refs, ...files.filter((f) => !s.refs.some((r) => r.label === f.label)).map(({ label, icon, uploadId }) => ({ label, icon, uploadId }))];
   if (!q) {
     if (words) spec = push(spec, 'details', [words]);
-    return { ...s, spec, refs, msgs: [...msgs, { id: mid(), who: 'e', text: 'Added to the spec. Anything else, or Make it?', make: true }] };
+    return { ...s, spec, refs, msgs: [...msgs, { id: mid(), who: 'e', text: 'Added. Anything else?', make: true }] };
   }
   if (q.multi) spec = push(spec, q.sec, s.ticked);
   if (words && !(q.id === 'else' && /^nothing else$/i.test(words))) {

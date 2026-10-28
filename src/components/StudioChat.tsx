@@ -175,7 +175,7 @@ export function StudioChat({ id }: { id: string }) {
     const live = m.id === lastE?.id && !m.streaming && !busy;
     if (m.start && !s.started) {
       return (
-        <div className="scPills">
+        <div className="chips scPills">
           {kd.templates.map((t) => (
             <button key={t.n} className="chip" onClick={() => put(startWith(now(), t.n))} title={t.d}>{t.n}</button>
           ))}
@@ -198,7 +198,7 @@ export function StudioChat({ id }: { id: string }) {
     const q = m.qid && s.queue[0] === m.qid ? questionOf(s, m.qid) : undefined;
     if (q) {
       return (
-        <div className="scPills">
+        <div className="chips scPills">
           {q.opts.map((o) =>
             q.multi ? (
               <button key={o.l} className={'chip' + (s.ticked.includes(o.l) ? ' on' : '')} onClick={() => put(tick(now(), o.l))}>{o.l}</button>
@@ -220,7 +220,7 @@ export function StudioChat({ id }: { id: string }) {
     }
     if (m.chips?.length && page) {
       return (
-        <div className="scPills">
+        <div className="chips scPills">
           {m.chips.map((c) => (
             <button key={c} className="chip" onClick={() => build(c)}>{c}</button>
           ))}
@@ -232,28 +232,29 @@ export function StudioChat({ id }: { id: string }) {
 
   const count = lineCount(s);
   return (
-    <div className="scMain">
-      {!wide && s.started ? (
-        <button className="scPin" onClick={() => openPanel('build')}>
-          <b>Spec · {count} {count === 1 ? 'line' : 'lines'}</b>
-          <span className="m">In the office ›</span>
-        </button>
-      ) : null}
-      <div className="scMsgs" ref={scroller}>
-        {s.msgs.map((m) => (
-          <div key={m.id} className="scTurn">
-            <div className={'msg' + (m.who === 'u' ? ' you' : '')}>
-              <div className="bubble scBub">{m.who === 'e' ? <EText text={m.text} streaming={m.streaming} /> : m.text}</div>
+    <div className="chat scChat">
+      <div className="chatScroll" ref={scroller}>
+        <div className="thread">
+          {!wide && s.started ? (
+            <div className="chips scSpecChip">
+              <button className="chip" onClick={() => openPanel('build')}>
+                Spec · {count} {count === 1 ? 'line' : 'lines'} ›
+              </button>
             </div>
-            {under(m)}
-          </div>
-        ))}
+          ) : null}
+          {s.msgs.map((m) => (
+            <div key={m.id} className={`msg ${m.who === 'u' ? 'you' : 'eumae'}`}>
+              <div className="msgCol">
+                <div className="bubble">{m.who === 'e' ? <EText text={m.text} streaming={m.streaming} /> : m.text}</div>
+                {under(m)}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-      <Composer
-        onSend={(t) => send(t)}
-        busy={() => busy}
-        placeholder={!s.started ? 'Or tell Eumae your idea…' : page ? 'Tell Eumae what to change…' : 'Tell Eumae anything…'}
-      />
+      <div className="chatFoot">
+        <Composer onSend={(t) => send(t)} busy={() => busy} />
+      </div>
       {full && page ? (
         <div className="scSheet">
           <div className="scSheetBar">
