@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav';
-import { getNote, saveNote, startSession, type Note } from '../notes';
+import { deleteNote, getNote, noteText, saveNote, titleOf, type Note } from '../notes';
 import { ItemMenu, ProjectChip } from '../components/ItemMenu';
 import { exportNote, removeNote } from './NotesPage';
 import type { PageProps } from './index';
@@ -81,6 +81,9 @@ function FormatBar({ editorRef, onInput }: { editorRef: React.RefObject<HTMLDivE
   );
 }
 
+let discardTimer = 0;
+let discardId = '';
+
 /* A session divider: hairline date + time, not editable, never saved into the
    body — rendered from `sessions`, so the ribbon can never duplicate. */
 function sessionDivider(ts: number): HTMLElement {
@@ -90,6 +93,7 @@ function sessionDivider(ts: number): HTMLElement {
   const label = document.createElement('span');
   label.textContent = fmtDay(ts) + ' \u00b7 ' + fmtTime(ts);
   d.appendChild(label);
+  d.dataset.ts = String(ts);
   return d;
 }
 
@@ -97,7 +101,10 @@ export default function NoteViewPage({ arg }: PageProps) {
   const { back, notify } = useNav();
   const [, setTick] = useState(0);
   const id = typeof arg === 'string' ? arg : '';
-  const [note, setNote] = useState<Note | null>(null);
+  /* Read on the first render, not in the effect: the editor only mounts once
+     a note is in state, so a note set from the effect left the ref empty and
+     the open note painted blank. */
+  const [note, setNote] = useState<Note | null>(() => getNote(id) ?? null);
   const editorRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<number | null>(null);
   const loadedId = useRef('');
@@ -109,31 +116,32 @@ export default function NoteViewPage({ arg }: PageProps) {
   /* Open once: record the visit, paint the one document. Saves thereafter
      never repaint — the DOM is the source of truth while typing. */
   useEffect(() => {
+    /* A StrictMode remount (or a quick re-open) must not lose the note the
+       last unmount was about to discard as empty. */
+    if (discardTimer && discardId === id) window.clearTimeout(discardTimer);
     const n = getNote(id);
     if (!n) {
       back();
       return;
     }
-    const withSession = startSession(n);
-    setNote(withSession);
+    /* Opening is not editing: nothing is saved here, so a look never moves
+       the note to the top of the list or changes its date. */
+    setNote(n);
     const host = editorRef.current;
-    if (host && loadedId.current !== withSession.id) {
-      loadedId.current = withSession.id;
-      /* Body first (title line included), session ribbon after the text.
-         Dedupe: a migrated body may already carry `.nsess` dividers from the
-         pre-migration entries — those are history, kept once, never doubled. */
-      const seen = new Set<number>();
-      host.innerHTML = withSession.body || '';
-      host.querySelectorAll('.nsess').forEach((d) => {
-        const ts = Number((d as HTMLElement).dataset.ts);
-        if (ts) seen.add(ts);
-      });
+    if (host && loadedId.current !== n.id) {
+      loadedId.current = n.id;
+      host.innerHTML = n.body || '';
       ensureTitle(host);
-      for (const ts of [...withSession.sessions].sort((a, b) => a - b)) {
-        if (seen.has(ts)) continue;
-        const d = sessionDivider(ts);
-        d.dataset.ts = String(ts);
-        host.appendChild(d);
+      /* Session ribbon: dividers live INSIDE the body, where the writing
+         after them starts. Coming back after an hour drafts one at the end
+         with a fresh line under it; it only saves if you type there
+         (onInput drops a divider with nothing after it). */
+      const hasText = noteText(n).length > 0;
+      if (hasText && Date.now() - n.updatedAt > 60 * 60 * 1000) {
+        host.appendChild(sessionDivider(Date.now()));
+        const line = document.createElement('div');
+        line.innerHTML = '<br>';
+        host.appendChild(line);
       }
       syncEmpty(host);
       placeCaretAtEnd(host);
@@ -147,6 +155,15 @@ export default function NoteViewPage({ arg }: PageProps) {
         writeBody(id, pendingBody.current);
         pendingBody.current = null;
       }
+      loadedId.current = '';
+      /* Tapping + and backing out leaves nothing behind: an empty note is
+         dropped on the way out (deferred a tick so a remount can keep it). */
+      discardId = id;
+      discardTimer = window.setTimeout(() => {
+        const left = getNote(id);
+        if (left && !noteText(left)) deleteNote(id);
+        discardTimer = 0;
+      }, 0);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -172,7 +189,7 @@ export default function NoteViewPage({ arg }: PageProps) {
        title helper class is chrome too — strip it before save so a reload
        never persists a duplicate. */
     const clone = host.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll('.nsess').forEach((d) => d.remove());
+    dropEmptyDividers(clone);
     clone.querySelectorAll('.ntitle').forEach((t) => t.classList.remove('ntitle'));
     const body = clone.innerHTML;
     pendingBody.current = body;
@@ -199,6 +216,23 @@ export default function NoteViewPage({ arg }: PageProps) {
       node instanceof Element
         ? node.closest('.ntitle')
         : node?.parentElement?.closest('.ntitle');
+    const inCheck =
+      node instanceof Element ? node.closest('li.ncheck') : node?.parentElement?.closest('li.ncheck');
+    if (e.key === 'Enter' && inCheck && !e.shiftKey) {
+      /* The browser copies the row's classes onto the new row, so a new
+         item under a ticked one arrived already ticked. */
+      window.setTimeout(() => {
+        const s2 = window.getSelection();
+        const a = s2?.anchorNode;
+        const li = a instanceof Element ? a.closest('li') : a?.parentElement?.closest('li');
+        if (li && li !== inCheck && host.contains(li)) {
+          li.classList.add('ncheck');
+          li.classList.remove('done');
+        }
+        onInput();
+      }, 0);
+      return;
+    }
     if (e.key === 'Enter' && titleEl && !e.shiftKey) {
       e.preventDefault();
       const line = document.createElement('div');
@@ -263,10 +297,26 @@ export default function NoteViewPage({ arg }: PageProps) {
   const onChecklistTap = (e: React.MouseEvent) => {
     const li = (e.target as HTMLElement).closest('li.ncheck');
     if (!li) return;
+    /* Only the circle ticks. Tapping the words places the caret, as it
+       should; before, any tap on the row flipped it. */
+    if (e.clientX - li.getBoundingClientRect().left > 30) return;
     e.preventDefault();
     li.classList.toggle('done');
     onInput();
   };
+
+  /* Paste as plain text: copied web text carried its own fonts and colors
+     (black text vanished on the dark theme). */
+  const onPaste = (e: React.ClipboardEvent) => {
+    const text = e.clipboardData.getData('text/plain');
+    if (!text) return;
+    e.preventDefault();
+    document.execCommand('insertText', false, text);
+    onInput();
+  };
+
+  const current = getNote(id);
+  const shownTitle = current ? titleOf(current) : 'this note';
 
   return (
     <div className="page noteClean">
@@ -277,7 +327,7 @@ export default function NoteViewPage({ arg }: PageProps) {
         <ProjectChip k="note" id={id} />
         <span className="g" />
         <ItemMenu
-          name={note.title || 'this note'}
+          name={shownTitle}
           extra={[
             {
               label: 'Export',
@@ -306,6 +356,7 @@ export default function NoteViewPage({ arg }: PageProps) {
         onInput={onInput}
         onKeyDown={onKeyDown}
         onClick={onChecklistTap}
+        onPaste={onPaste}
       />
       <FormatBar editorRef={editorRef} onInput={onInput} />
     </div>
@@ -360,14 +411,25 @@ function ensureTitle(host: HTMLElement): void {
 function writeBody(id: string, body: string, text?: string): void {
   const latest = getNote(id);
   if (!latest) return;
-  const plain = text ?? body.replace(/<[^>]+>/g, ' ').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
-  const firstBlock = body
-    .replace(/<div class="nsess"[^>]*><\/div>/g, '\n')
-    .replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\xa0/g, ' ')
-    .split('\n')[0]
-    ?.trim() ?? '';
-  const title = (firstBlock || plain).slice(0, 80) || 'Untitled';
+  void text;
+  /* The same reader the list uses, so the stored title always matches the
+     row (the old split on newlines took the whole document). */
+  const title = titleOf({ ...latest, body });
   saveNote({ ...latest, body, title });
+}
+
+/* A divider with no writing after it (before the next divider or the end)
+   is a visit that wrote nothing there: never saved. */
+function dropEmptyDividers(root: HTMLElement): void {
+  const kids = Array.from(root.children);
+  kids.forEach((el, i) => {
+    if (!el.classList.contains('nsess')) return;
+    let text = '';
+    for (let j = i + 1; j < kids.length && !kids[j].classList.contains('nsess'); j++) {
+      text += kids[j].textContent ?? '';
+    }
+    if (!text.replace(/\u00a0/g, ' ').trim()) el.remove();
+  });
 }
 
 function syncEmpty(host: HTMLElement): void {

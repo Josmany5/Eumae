@@ -28,7 +28,16 @@ export function removeNote(id: string, notify: (m: string, o?: NotifyOpts) => vo
 import type { PageProps } from './index';
 
 function fmtShort(ts: number): string {
-  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const d = new Date(ts);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+  });
 }
 
 /* One row: swipe left for Export + Delete on touch, icon buttons on desktop.
@@ -47,6 +56,8 @@ function NoteRow({
   onChange: () => void;
 }) {
   const startX = useRef(0);
+  const startY = useRef(0);
+  const swiping = useRef<boolean | null>(null);
   const liveDx = useRef(0);
   const [shownDx, setShownDx] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -54,11 +65,19 @@ function NoteRow({
 
   const onTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    swiping.current = null;
     liveDx.current = 0;
     setDragging(true);
   };
   const onTouchMove = (e: React.TouchEvent) => {
     const delta = e.touches[0].clientX - startX.current;
+    const dy = e.touches[0].clientY - startY.current;
+    /* Decide once per touch: scrolling the list never slides a row. */
+    if (swiping.current === null && (Math.abs(delta) > 8 || Math.abs(dy) > 8)) {
+      swiping.current = Math.abs(delta) > Math.abs(dy);
+    }
+    if (!swiping.current) return;
     liveDx.current = delta < 0 ? Math.max(delta, -140) : 0;
     setShownDx(liveDx.current);
   };
@@ -73,7 +92,7 @@ function NoteRow({
   /* Title reads off the first block (titleOf) - the row and the save share
      the one function, so the two can never disagree again. */
   const title = titleOf(note);
-  const preview = previewOf(note) || fmtShort(note.updatedAt);
+  const preview = previewOf(note);
 
   /* One row, two doors. Mobile swipes the face left to reveal the colored
      pair behind it; desktop hovers to reveal a ghost pair pinned inside the
@@ -120,7 +139,7 @@ function NoteRow({
       >
         <span className="g">
           <span className="noteTitle">{title || 'Untitled'}</span>
-          <span className="notePreview">{preview}</span>
+          {preview && <span className="notePreview">{preview}</span>}
           <ProjectChip k="note" id={note.id} />
         </span>
         <span className="drDate">{fmtShort(note.updatedAt)}</span>
@@ -169,6 +188,11 @@ export default function NotesPage(_: PageProps) {
           </svg>
         </button>
       </div>
+      {notes.length === 0 && (
+        <div className="empty">
+          No notes yet. Tap + to start one.
+        </div>
+      )}
       {notes.map((n) => (
           <NoteRow
             key={n.id}
