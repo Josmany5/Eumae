@@ -20,16 +20,52 @@ function fmtTime(ts: number): string {
   });
 }
 
-/* The format bar: docked above the keyboard, Apple Notes' Aa row. The
-   floating pill fought the OS selection callout (copy/paste vs format,
-   stacked on iOS) and covered the words being styled. A docked row ends both:
-   selection stays the OS's, formatting stays ours, and the words stay visible
-   above it. Always mounted while the note is open - one thumb row, room for
-   fonts + sizes later. */
-function FormatBar({ editorRef, onInput }: { editorRef: React.RefObject<HTMLDivElement | null>; onInput: () => void }) {
+/* The format bar, slim: Aa, Checklist, Bullets, Eumae. Aa slides up the
+   format sheet (styles, marks, lists + indent, highlight, the note's font),
+   Apple Notes' way. The sheet stays open while you style, so several taps
+   land in a row; Aa again or the X closes it. */
+type NoteFont = 'default' | 'serif' | 'mono';
+
+const HL = ['hl1', 'hl2', 'hl3', 'hl4'] as const;
+/* execCommand can only paint a background colour; these sentinels mark what
+   it painted so we swap it for a class that follows the theme. */
+const SENT = ['rgb(1, 2, 3)', 'rgb(1, 2, 4)', 'rgb(1, 2, 5)', 'rgb(1, 2, 6)', 'rgb(1, 2, 7)'];
+
+function FormatBar({
+  editorRef,
+  onInput,
+  font,
+  setFont,
+}: {
+  editorRef: React.RefObject<HTMLDivElement | null>;
+  onInput: () => void;
+  font: NoteFont;
+  setFont: (f: NoteFont) => void;
+}) {
+  const { openPanel } = useNav();
+  const [sheet, setSheet] = useState(false);
+  const [on, setOn] = useState<Record<string, boolean>>({});
+
+  /* Light up B / I / U / S for wherever the caret sits. */
+  useEffect(() => {
+    const read = () => {
+      const host = editorRef.current;
+      const sel = window.getSelection();
+      if (!host || !sel?.anchorNode || !host.contains(sel.anchorNode)) return;
+      const st: Record<string, boolean> = {};
+      for (const c of ['bold', 'italic', 'underline', 'strikeThrough']) {
+        try { st[c] = document.queryCommandState(c); } catch { st[c] = false; }
+      }
+      setOn(st);
+    };
+    document.addEventListener('selectionchange', read);
+    return () => document.removeEventListener('selectionchange', read);
+  }, [editorRef]);
+
   const cmd = (name: string) => {
     editorRef.current?.focus();
     document.execCommand(name);
+    try { setOn((o) => ({ ...o, [name]: document.queryCommandState(name) })); } catch { /* */ }
     onInput();
   };
   const block = (tag: string) => {
@@ -60,23 +96,113 @@ function FormatBar({ editorRef, onInput }: { editorRef: React.RefObject<HTMLDivE
     }
     onInput();
   };
+  /* i = 0..3 paints a highlight, -1 clears it. */
+  const highlight = (i: number) => {
+    const host = editorRef.current;
+    if (!host) return;
+    host.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+    const s = i < 0 ? SENT[4] : SENT[i];
+    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand('hiliteColor', false, s);
+    document.execCommand('styleWithCSS', false, 'false');
+    host.querySelectorAll<HTMLElement>('[style]').forEach((el) => {
+      const bg = el.style.backgroundColor;
+      const k = SENT.indexOf(bg);
+      if (k < 0) return;
+      el.style.backgroundColor = '';
+      if (!el.getAttribute('style')) el.removeAttribute('style');
+      /* Inner highlights give way to the new one. */
+      el.querySelectorAll('mark').forEach((m) => m.replaceWith(...Array.from(m.childNodes)));
+      const outer = el.parentElement?.closest('mark');
+      if (k === 4) {
+        if (outer && host.contains(outer)) outer.replaceWith(...Array.from(outer.childNodes));
+        if (el.tagName === 'SPAN' && !el.attributes.length) el.replaceWith(...Array.from(el.childNodes));
+        return;
+      }
+      const m = document.createElement('mark');
+      m.className = HL[k];
+      m.append(...Array.from(el.childNodes));
+      if (el.tagName === 'SPAN' && !el.attributes.length) el.replaceWith(m);
+      else el.appendChild(m);
+    });
+    onInput();
+  };
 
-  const btn = (label: React.ReactNode, name: string, act: () => void) => (
-    <button onMouseDown={(e) => { e.preventDefault(); act(); }} onClick={(e) => e.preventDefault()} aria-label={name} title={name}>{label}</button>
+  const btn = (label: React.ReactNode, name: string, act: () => void, lit = false) => (
+    <button
+      className={lit ? 'on' : undefined}
+      onMouseDown={(e) => { e.preventDefault(); act(); }}
+      onClick={(e) => e.preventDefault()}
+      aria-label={name}
+      title={name}
+    >
+      {label}
+    </button>
   );
 
+  const icCheck = <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="4" y="4" width="16" height="16" rx="8" /><path d="M8.5 12.5l2.5 2.5 4.5-5.5" /></svg>;
+  const icBul = <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="5" cy="6" r="1.2" fill="currentColor" /><circle cx="5" cy="12" r="1.2" fill="currentColor" /><circle cx="5" cy="18" r="1.2" fill="currentColor" /></svg>;
+  const icNum = <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 7h11M9 12h11M9 17h11" /><path d="M4 6.5v-1l1.2 1M4 12h1.5M4 17c.8 0 1.3-.5 1.3-1.2 0-.6-.4-1-1-1.1.5-.1.9-.5.9-1 0-.6-.4-1-1.2-1" /></svg>;
+  const icOut = <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 6h9M11 12h9M11 18h9M7 9l-3 3 3 3" /></svg>;
+  const icIn = <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 6h9M11 12h9M11 18h9M4 9l3 3-3 3" /></svg>;
+
   return (
-    <div className="nbar">
-      {btn('Title', 'Title', () => block('h1'))}
-      {btn('Body', 'Body', () => block('p'))}
-      <span className="nfmtSep" />
-      {btn(<b>B</b>, 'Bold', () => cmd('bold'))}
-      {btn(<i>I</i>, 'Italic', () => cmd('italic'))}
-      {btn(<u>U</u>, 'Underline', () => cmd('underline'))}
-      <span className="nfmtSep" />
-      {btn(<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="4" y="4" width="16" height="16" rx="8" /><path d="M8.5 12.5l2.5 2.5 4.5-5.5" /></svg>, 'Checklist', () => list('check'))}
-      {btn(<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="5" cy="6" r="1.2" fill="currentColor" /><circle cx="5" cy="12" r="1.2" fill="currentColor" /><circle cx="5" cy="18" r="1.2" fill="currentColor" /></svg>, 'Bullets', () => list('ul'))}
-      {btn(<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 7h11M9 12h11M9 17h11" /><path d="M4 6.5v-1l1.2 1M4 12h1.5M4 17c.8 0 1.3-.5 1.3-1.2 0-.6-.4-1-1-1.1.5-.1.9-.5.9-1 0-.6-.4-1-1.2-1" /></svg>, 'Numbers', () => list('ol'))}
+    <div className="nbarWrap">
+      {sheet && (
+        <div className="nsheet" onMouseDown={(e) => e.preventDefault()}>
+          <div className="nsheetHead">
+            <span>Format</span>
+            <button className="hb" onClick={() => setSheet(false)} aria-label="Close format">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
+          </div>
+          <div className="nsRow nsStyles">
+            {btn(<span className="nsT">Title</span>, 'Title', () => block('h1'))}
+            {btn(<span className="nsH">Heading</span>, 'Heading', () => block('h2'))}
+            {btn(<span className="nsS">Subheading</span>, 'Subheading', () => block('h3'))}
+            {btn('Body', 'Body', () => block('div'))}
+            {btn(<span className="nsM">Mono</span>, 'Monospace', () => block('pre'))}
+          </div>
+          <div className="nsRow">
+            {btn(<b>B</b>, 'Bold', () => cmd('bold'), on.bold)}
+            {btn(<i>I</i>, 'Italic', () => cmd('italic'), on.italic)}
+            {btn(<u>U</u>, 'Underline', () => cmd('underline'), on.underline)}
+            {btn(<s>S</s>, 'Strikethrough', () => cmd('strikeThrough'), on.strikeThrough)}
+            <span className="nfmtSep" />
+            {btn(icNum, 'Numbers', () => list('ol'))}
+            {btn(icOut, 'Indent less', () => cmd('outdent'))}
+            {btn(icIn, 'Indent more', () => cmd('indent'))}
+          </div>
+          <div className="nsRow">
+            <span className="nsLab">Highlight</span>
+            {HL.map((c, i) => btn(<span className={'nsDot ' + c} />, 'Highlight ' + (i + 1), () => highlight(i)))}
+            {btn(<span className="nsDot nsNone" />, 'No highlight', () => highlight(-1))}
+          </div>
+          <div className="nsRow">
+            <span className="nsLab">Note font</span>
+            {(['default', 'serif', 'mono'] as NoteFont[]).map((f) =>
+              btn(
+                <span className={'nsF nf-' + f}>{f === 'default' ? 'Default' : f === 'serif' ? 'Serif' : 'Mono'}</span>,
+                'Font ' + f,
+                () => setFont(f),
+                font === f,
+              ),
+            )}
+          </div>
+        </div>
+      )}
+      <div className="nbar">
+        {btn(<span className="nsAa">Aa</span>, 'Format', () => setSheet((v) => !v), sheet)}
+        {btn(icCheck, 'Checklist', () => list('check'))}
+        {btn(icBul, 'Bullets', () => list('ul'))}
+        {btn(
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /></svg>,
+          'Ask Eumae',
+          () => openPanel('eumae'),
+        )}
+      </div>
     </div>
   );
 }
@@ -112,6 +238,13 @@ export default function NoteViewPage({ arg }: PageProps) {
      window used to drop the final keystrokes, because unmount cleared the
      timer before it fired and the list then showed the pre-save note. */
   const pendingBody = useRef<string | null>(null);
+  const [font, setFontState] = useState<NoteFont>(() => getNote(id)?.font ?? 'default');
+  const setFont = (f: NoteFont) => {
+    setFontState(f);
+    const n = getNote(id);
+    /* Font alone is not an edit: keep the note's place and date in the list. */
+    if (n) saveNote({ ...n, font: f }, { keepDate: true });
+  };
 
   /* Open once: record the visit, paint the one document. Saves thereafter
      never repaint — the DOM is the source of truth while typing. */
@@ -349,7 +482,7 @@ export default function NoteViewPage({ arg }: PageProps) {
       </div>
       <div
         ref={editorRef}
-        className="ndoc"
+        className={"ndoc" + (font !== "default" ? " nf-" + font : "")}
         contentEditable
         suppressContentEditableWarning
         data-placeholder="New note"
@@ -358,7 +491,7 @@ export default function NoteViewPage({ arg }: PageProps) {
         onClick={onChecklistTap}
         onPaste={onPaste}
       />
-      <FormatBar editorRef={editorRef} onInput={onInput} />
+      <FormatBar editorRef={editorRef} onInput={onInput} font={font} setFont={setFont} />
     </div>
   );
 }

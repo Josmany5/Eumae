@@ -25,6 +25,8 @@ export interface Note {
   createdAt: number;
   updatedAt: number;
   ownerId: string;
+  /** The whole note's typeface, picked in the format sheet. */
+  font?: 'default' | 'serif' | 'mono';
   /** Pre-migration shape carried `entries` + `sortNewFirst` — kept optional so
    *  stored notes still parse, then migrated to body+sessions on load. */
   entries?: NoteEntry[];
@@ -130,7 +132,7 @@ export function titleOf(note: Note): string {
   /* First CONTENT block: session dividers (.nsess) are chrome, and a migrated
      body leads with one - matching it would title every migrated note '' and
      fall back to the stale stored title. Walk blocks until one has text. */
-  const re = /<(?:div|p|h1|h2|li)([^>]*)>([\s\S]*?)(?=<\/(?:div|p|h1|h2)|<li|<ul|<ol|$)/gi;
+  const re = /<(?:div|p|h1|h2|h3|pre|li)([^>]*)>([\s\S]*?)(?=<\/(?:div|p|h1|h2|h3|pre)|<li|<ul|<ol|$)/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(body)) !== null) {
     if (/nsess/.test(m[1])) continue;
@@ -147,7 +149,7 @@ export function titleOf(note: Note): string {
    to the date. */
 export function previewOf(note: Note): string {
   const body = typeof note.body === 'string' ? note.body : '';
-  const re = /<(?:div|p|h1|h2|li)([^>]*)>([\s\S]*?)(?=<\/(?:div|p|h1|h2)|<li|<ul|<ol|$)/gi;
+  const re = /<(?:div|p|h1|h2|h3|pre|li)([^>]*)>([\s\S]*?)(?=<\/(?:div|p|h1|h2|h3|pre)|<li|<ul|<ol|$)/gi;
   const texts: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(body)) !== null) {
@@ -166,10 +168,10 @@ export function getNote(id: string): Note | undefined {
   return load().find((n) => n.id === id);
 }
 
-export function saveNote(note: Note): void {
+export function saveNote(note: Note, opts?: { keepDate?: boolean }): void {
   const notes = load();
   const i = notes.findIndex((n) => n.id === note.id);
-  const updated = { ...note, updatedAt: Date.now() };
+  const updated = opts?.keepDate ? { ...note } : { ...note, updatedAt: Date.now() };
   if (i >= 0) notes[i] = updated;
   else notes.push(updated);
   save(notes);
