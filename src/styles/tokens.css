@@ -2522,3 +2522,22 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .sgTipB{ color:var(--ac); }
 .sgHit{ width:100%; text-align:left; }
 .btns .chip{ border:1px solid var(--hair); } .btns .chip.on{ background:var(--acsoft); color:var(--ac); border-color:var(--ac); font-weight:600; }
+
+/* HIS CALL (Oct 27, 10:04 PM): no grey headings anywhere; section titles use the main text color. */
+.ds, .sec, .dayLine, .sourcesHead, .stGroup, .pGrp, .daySep, .daySep span, .mDow, .flbl, .sdiv, .hdH, .pjKindH, .hmSecT, .sgCardT, .tkH span:first-child{ color:var(--tx); }
+
+/* Studio search hits: plain rows (the shared task-row grid crushed them on phone). */
+.sgHits{ max-width:560px; margin-top:6px; }
+.sgHit{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; width:100%; text-align:left; padding:12px 2px; color:var(--tx); font-size:calc(15px + var(--fsUp, 0px)); }
+.sgHit span:last-child{ flex:none; color:var(--mut); font-size:calc(13px + var(--fsUp, 0px)); }
+.sgHit:hover{ background:var(--card2); }
+
+/* Desktop kind cards a size smaller (his call). */
+@media (min-width:900px){
+  .stGrid{ grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)) !important; gap:10px; }
+  .stTile{ min-height:96px; padding:12px 14px; row-gap:4px; }
+  .stTile svg{ width:20px; height:20px; margin-bottom:2px; }
+  .stTile .stName{ font-size:15px; }
+  .stTile .stSub{ font-size:13px; }
+  .sgTplThumb{ height:80px; }
+}

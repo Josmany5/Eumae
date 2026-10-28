@@ -254,20 +254,20 @@ function MakeBox({ onKind, onTpl, onFree }: {
         aria-label="What do you want to make?"
       />
       {t ? (
-        <div className="tkList" style={{ maxWidth: 560, marginTop: 6 }}>
+        <div className="sgHits">
           {hits.map((h) => (
             <button
               key={h.kind + (h.tpl ?? '')}
-              className="frow tkRow sgHit"
+              className="sgHit"
               onClick={() => (h.tpl ? onTpl(h.kind, h.tpl) : onKind(h.kind))}
             >
-              <span className="tlT"><span>{h.tpl ?? h.kind}</span></span>
-              <span className="fmeta">{h.tpl ? h.kind : 'Kind'}</span>
+              <span>{h.tpl ?? h.kind}</span>
+              <span>{h.tpl ? h.kind : 'Kind'}</span>
             </button>
           ))}
-          <button className="frow tkRow sgHit" onClick={() => onFree(t)}>
-            <span className="tlT"><span>Start “{t}” from scratch</span></span>
-            <span className="fmeta">Custom</span>
+          <button className="sgHit" onClick={() => onFree(t)}>
+            <span>Start “{t}” from scratch</span>
+            <span>Custom</span>
           </button>
         </div>
       ) : null}
