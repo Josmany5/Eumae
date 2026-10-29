@@ -22,13 +22,17 @@ globalThis.localStorage = {
   removeItem: (k) => {
     delete store[k];
   },
+  get length() {
+    return Object.keys(store).length;
+  },
+  key: (i) => Object.keys(store)[i] ?? null,
 };
 
 const out = buildSync({
   stdin: {
     contents: `export * from './src/eumae/dispatcher'; export { REGISTRY, humanTimes } from './src/eumae/registry'; export { resolveDate, resolveTime } from './src/eumae/when'; export { guessesIn } from './src/eumae/guess'; export { check, toGemini } from './src/eumae/schema';
       export { getTasks, getTask } from './src/tasks'; export { getEvents, saveEvent, ymd } from './src/events'; export { getGoals, goalOf, goalLinkedIds } from './src/goals';
-      export { getProjects, linkedIds } from './src/projects'; export { getNotes, titleOf } from './src/notes'; export { parseEvent } from './src/chat';`,
+      export { getProjects, linkedIds } from './src/projects'; export { getNotes, titleOf } from './src/notes'; export { parseEvent } from './src/chat'; export { getLists, addList } from './src/tasks'; export { getThreads, saveThread, getCurrentThreadId, setCurrentThreadId } from './src/threads';`,
     resolveDir: new URL('..', import.meta.url).pathname,
     loader: 'ts',
   },
@@ -293,6 +297,43 @@ const stage = (calls, heard = "") => {
   check('guess-event-place', /place \(Saggio\)/.test(G('create_events', e, { events: [{ date: 'friday', start: '7 pm' }] }, 'dinner friday at 7 pm')[0] ?? ''));
   const r = stage([{ name: 'create_tasks', args: { tasks: [{ title: 'Draft intro', estimate: 45 }] } }], 'draft the intro');
   check('guess-in-response', r.res[0].ok && r.res[0].response.you_added?.[0] === 'Draft intro: about 45 min', JSON.stringify(r.res[0].response));
+}
+
+// Wave 2a: lists, subtasks, one-day moves, chats.
+{
+  const l = M.addList('Errands2');
+  M.executePlan(stage([{ name: 'rename_list', args: { list: 'Errands2', name: 'Shop' } }]).plan);
+  check('w2-rename-list', M.getLists().some((x) => x.id === l.id && x.n === 'Shop'));
+  check('w2-main-list-kept', !stage([{ name: 'delete_list', args: { list: M.getLists()[0].id } }]).res[0].ok);
+  M.executePlan(stage([{ name: 'delete_list', args: { list: 'Shop' } }]).plan);
+  check('w2-delete-list', !M.getLists().some((x) => x.id === l.id));
+
+  M.executePlan(stage([{ name: 'create_tasks', args: { tasks: [{ title: 'Pack', subtasks: ['a', 'b', 'c'] }] } }]).plan);
+  const tk = M.getTasks().find((x) => x.t === 'Pack');
+  M.executePlan(stage([{ name: 'edit_subtasks', args: { task_id: tk.id, rename: [{ index: 0, title: 'A' }], tick: [1], remove: [0, 2] } }]).plan);
+  const tk2 = M.getTask(tk.id);
+  check('w2-subtasks', tk2.sub.length === 1 && tk2.sub[0].t === 'b' && tk2.sub[0].d === 1, JSON.stringify(tk2.sub));
+  check('w2-subtask-bad-index', !stage([{ name: 'edit_subtasks', args: { task_id: tk.id, remove: [5] } }]).res[0].ok);
+
+  const ev = M.saveEvent({ d: today, tm: '07:00', t: 'Run', rep: { f: 'daily' } });
+  M.executePlan(stage([{ name: 'move_one_day', args: { event_id: ev.id, date: d(2), to_date: d(3), to_time: '18:00' } }]).plan);
+  const series = M.getEvents().find((x) => x.id === ev.id);
+  check('w2-move-one-day', series.skip?.includes(d(2)) && M.getEvents().some((x) => x.t === 'Run' && x.d === d(3) && x.tm === '18:00' && !x.rep));
+
+  const now = Date.now() - 3600_000;
+  M.saveThread({ id: 'tOld', title: 'Old chat', createdAt: now, updatedAt: now, messages: [{ id: 1, role: 'you', text: 'hi', ts: now }] });
+  M.saveThread({ id: 'tCur', title: 'Current', createdAt: now, updatedAt: now, messages: [{ id: 1, role: 'you', text: 'hi', ts: now }] });
+  M.setCurrentThreadId('tCur');
+  const lc = M.dispatch([{ name: 'list_chats', args: {} }], M.newPlan())[0];
+  check('w2-list-chats', lc.ok && lc.response.data.chats.some((c) => c.id === 'tOld'));
+  check('w2-no-delete-current', !stage([{ name: 'delete_chats', args: { ids: ['tCur'] } }]).res[0].ok);
+  M.saveThread({ id: 'tOff', title: 'Console', createdAt: now, updatedAt: now, messages: [{ id: 1, role: 'you', text: 'hi', ts: now }], from: 'Console' });
+  localStorage.setItem('eumae:office:console', 'tOff');
+  check('w2-no-delete-open-office', !stage([{ name: 'delete_chats', args: { ids: ['tOff'] } }]).res[0].ok);
+  const dp = stage([{ name: 'delete_chats', args: { ids: ['tOld'] } }]).plan;
+  check('w2-delete-chat-danger', dp.steps[0]?.danger === true);
+  M.executePlan(dp);
+  check('w2-delete-chat', !M.getThreads().some((x) => x.id === 'tOld'));
 }
 
 if (failures.length) {

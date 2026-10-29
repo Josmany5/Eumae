@@ -24,6 +24,10 @@ import { getGoals, saveGoal, createGoal, deleteGoal, goalPct, goalCount, isActiv
 import { getProjects, getProject, saveProject, createProject, deleteProject, linkItem, unlinkItem, projectOf, linkedIds, projectCountLabel, type LinkKind } from '../projects';
 import { getNotes, getNote, saveNote, createNote, deleteNote, titleOf, noteText } from '../notes';
 import { newMilestone, type Milestone } from '../milestones';
+import { renameList, deleteList, renameSubtask, deleteSubtask } from '../tasks';
+import { setAttendance, rescheduleOccurrence, occursOn } from '../events';
+import { setProjectDone, setPinnedProjectId, getPinnedProjectId, setLinkMilestone } from '../projects';
+import { getThreads, getThread, saveThread, deleteThread, downloadThread, getCurrentThreadId, threadsChanged } from '../threads';
 
 export type Risk = 'read' | 'write' | 'danger';
 export type ItemKind = 'task' | 'event' | 'goal' | 'project' | 'note';
@@ -32,8 +36,8 @@ const LINKABLE: readonly LinkKind[] = ['task', 'event', 'goal', 'note'];
 
 /** One line on the plan card: what kind of thing, what happens to it. */
 export interface PlanLine {
-  kind: 'Task' | 'Event' | 'Goal' | 'Project' | 'Note' | 'List' | 'Subtask' | 'Checklist line' | 'Milestone' | 'Phase' | 'Link';
-  verb: 'Create' | 'Edit' | 'Complete' | 'Reopen' | 'Tick' | 'Untick' | 'Remove' | 'Move' | 'Add' | 'Log' | 'Link' | 'Unlink' | 'Delete' | 'Skip';
+  kind: 'Task' | 'Event' | 'Goal' | 'Project' | 'Note' | 'List' | 'Subtask' | 'Checklist line' | 'Milestone' | 'Phase' | 'Link' | 'Chat' | 'Attendance';
+  verb: 'Create' | 'Edit' | 'Complete' | 'Reopen' | 'Tick' | 'Untick' | 'Remove' | 'Move' | 'Add' | 'Log' | 'Link' | 'Unlink' | 'Delete' | 'Skip' | 'Rename' | 'Mark' | 'Pin';
   text: string;
   detail?: string;
   /** What Eumae filled in herself, in plain words ("due date, 30 min"). */
@@ -1218,6 +1222,296 @@ const goalLinks: Action[] = [
   },
 ];
 
+
+/* ─────────────── Wave 2a: lists, subtasks, events, projects, chats ─────────────── */
+
+function listById(v: unknown) {
+  const want = String(v ?? '').trim().toLowerCase();
+  return getLists().find((x) => x.id.toLowerCase() === want || x.n.toLowerCase() === want);
+}
+const subIdx = (d: string) => list(d, num('Subtask index from read_item subtasks.', { min: 0, max: 99, integer: true }), { maxItems: 50 });
+/* A chat Eumae may be talking in must never be deleted from under it: the
+   reply would write it straight back. That is the open Chat thread, or a
+   thread an office tab has open (keys eumae:office:<tab>, Office.tsx). */
+function busyChat(id: string): boolean {
+  if (id === getCurrentThreadId()) return true;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('eumae:office:') && localStorage.getItem(k) === id) return true;
+    }
+  } catch {
+    /* storage blocked */
+  }
+  return false;
+}
+const chatTitle = (id: string) => getThread(id)?.title;
+const noChat = (id: string) => `No chat with id "${id}". Find it with list_chats; never guess one.`;
+
+const wave2: Action[] = [
+  {
+    name: 'rename_list',
+    risk: 'write',
+    description: 'Rename a task list (by its id or current name).',
+    params: obj({ list: s('The list: id or current name.'), name: s('New name.', { max: 40 }) }, ['list', 'name']),
+    verify: (a) => {
+      if (!listById(a.list)) return `No task list "${a.list}". Lists: ${getLists().map((l) => l.n).join(', ')}.`;
+      if (!a.name.trim()) return 'name is empty.';
+      if (getLists().some((l) => l.n.toLowerCase() === a.name.trim().toLowerCase() && l.id !== listById(a.list)!.id)) return `A list named "${a.name}" already exists.`;
+      return null;
+    },
+    preview: (a) => [{ kind: 'List', verb: 'Rename', text: listById(a.list)?.n ?? a.list, detail: `to ${a.name.trim()}` }],
+    run: (a) => {
+      const l = listById(a.list);
+      if (!l) return { ok: false, summary: 'List not found', error: `No list "${a.list}".` };
+      renameList(l.id, a.name);
+      return { ok: true, summary: `Renamed list "${l.n}" to "${a.name.trim()}"` };
+    },
+  },
+  {
+    name: 'delete_list',
+    risk: 'danger',
+    description: 'Delete a task list. Its tasks are kept and move to the first list. The first list can never be deleted. Only when clearly asked.',
+    params: obj({ list: s('The list: id or current name.') }, ['list']),
+    verify: (a) => {
+      const l = listById(a.list);
+      if (!l) return `No task list "${a.list}". Lists: ${getLists().map((x) => x.n).join(', ')}.`;
+      if (getLists()[0]?.id === l.id) return `"${l.n}" is the main list and can't be deleted.`;
+      return null;
+    },
+    preview: (a) => {
+      const l = listById(a.list);
+      const n = l ? getTasks().filter((t) => (t.list ?? 'inbox') === l.id).length : 0;
+      return [{ kind: 'List', verb: 'Delete', text: l?.n ?? a.list, detail: n ? `${plural(n, 'task')} move to ${getLists()[0]?.n}` : undefined }];
+    },
+    run: (a) => {
+      const l = listById(a.list);
+      if (!l || !deleteList(l.id)) return { ok: false, summary: 'List not deleted', error: 'That list could not be deleted.' };
+      return { ok: true, summary: `Deleted list "${l.n}"` };
+    },
+  },
+  {
+    name: 'edit_subtasks',
+    risk: 'write',
+    description: 'Change a task\'s existing subtasks by index from read_item: rename, tick done, untick, or remove. (To add new ones, use add_subtasks.)',
+    params: obj(
+      {
+        task_id: s('Task id.'),
+        rename: list('Subtasks to rename.', obj({ index: num('Subtask index.', { min: 0, max: 99, integer: true }), title: s('New title.', { max: 200 }) }, ['index', 'title']), { maxItems: 50 }),
+        tick: subIdx('Subtask indexes to mark done.'),
+        untick: subIdx('Subtask indexes to mark not done.'),
+        remove: subIdx('Subtask indexes to remove.'),
+      },
+      ['task_id'],
+    ),
+    verify: (a) => {
+      const t = getTask(a.task_id);
+      if (!t) return missing('task', a.task_id);
+      const n = (t.sub ?? []).length;
+      const all = [...(a.rename ?? []).map((r: Args) => r.index), ...(a.tick ?? []), ...(a.untick ?? []), ...(a.remove ?? [])];
+      if (!all.length) return 'Nothing to change: give rename, tick, untick or remove.';
+      const bad = all.find((i: number) => i >= n);
+      if (bad !== undefined) return `Subtask ${bad} doesn't exist (the task has ${plural(n, 'subtask')}, index from 0). Read the task with read_item first.`;
+      return null;
+    },
+    preview: (a) => {
+      const t = getTask(a.task_id);
+      const sub = t?.sub ?? [];
+      const on = `on ${t?.t ?? a.task_id}`;
+      return [
+        ...(a.rename ?? []).map((r: Args) => ({ kind: 'Subtask' as const, verb: 'Rename' as const, text: sub[r.index]?.t ?? `step ${r.index}`, detail: join(`to ${r.title.trim()}`, on) })),
+        ...(a.tick ?? []).map((i: number) => ({ kind: 'Subtask' as const, verb: 'Tick' as const, text: sub[i]?.t ?? `step ${i}`, detail: on })),
+        ...(a.untick ?? []).map((i: number) => ({ kind: 'Subtask' as const, verb: 'Untick' as const, text: sub[i]?.t ?? `step ${i}`, detail: on })),
+        ...(a.remove ?? []).map((i: number) => ({ kind: 'Subtask' as const, verb: 'Remove' as const, text: sub[i]?.t ?? `step ${i}`, detail: on })),
+      ];
+    },
+    run: (a) => {
+      const t = getTask(a.task_id);
+      if (!t) return { ok: false, summary: 'Task not found', error: missing('task', a.task_id) };
+      for (const r of a.rename ?? []) renameSubtask(t.id, r.index, r.title);
+      const tick = new Set<number>(a.tick ?? []);
+      const untick = new Set<number>(a.untick ?? []);
+      const cur = getTask(t.id)!;
+      if (tick.size || untick.size) saveTask({ ...cur, sub: (cur.sub ?? []).map((x, i) => (tick.has(i) ? { ...x, d: 1 as const } : untick.has(i) ? { ...x, d: 0 as const } : x)) });
+      /* Highest index first, so removing one never shifts the next. */
+      for (const i of [...new Set<number>(a.remove ?? [])].sort((x, y) => y - x)) deleteSubtask(t.id, i);
+      return { ok: true, summary: `Updated subtasks on "${t.t}"`, touched: [{ kind: 'task', id: t.id, title: t.t }] };
+    },
+  },
+  {
+    name: 'mark_attendance',
+    risk: 'write',
+    description: 'Record whether the person went to an event on a day: attended yes, no, or clear to undo the answer.',
+    params: obj({ event_id: s('Event id.'), date: date('The day of the event (for a repeating event, which day).'), attended: s('yes, no, or clear.', { enum: ['yes', 'no', 'clear'] }) }, ['event_id', 'date', 'attended']),
+    verify: (a) => {
+      const e = getEvent(a.event_id);
+      if (!e) return missing('event', a.event_id);
+      if (!occursOn(e, a.date)) return `"${e.t}" doesn't happen on ${a.date}.`;
+      return null;
+    },
+    preview: (a) => [{ kind: 'Attendance', verb: 'Mark', text: getEvent(a.event_id)?.t ?? a.event_id, detail: join(fmtDate(a.date), a.attended === 'clear' ? 'clear answer' : a.attended === 'yes' ? 'went' : "didn't go") }],
+    run: (a) => {
+      const e = getEvent(a.event_id);
+      if (!e) return { ok: false, summary: 'Event not found', error: missing('event', a.event_id) };
+      setAttendance(e.id!, a.date, a.attended === 'clear' ? null : a.attended);
+      return { ok: true, summary: `Marked "${e.t}" on ${a.date}: ${a.attended}`, touched: [{ kind: 'event', id: e.id!, title: e.t }] };
+    },
+  },
+  {
+    name: 'move_one_day',
+    risk: 'write',
+    description: 'Move just ONE day of a repeating event to another date or time; the rest of the series stays. (For a one-off event or the whole series, use reschedule.)',
+    params: obj({ event_id: s('Repeating event id.'), date: date('The day being moved.'), to_date: date('The new day.'), to_time: time('New start time, or leave out to keep it.') }, ['event_id', 'date', 'to_date']),
+    verify: (a) => {
+      const e = getEvent(a.event_id);
+      if (!e) return missing('event', a.event_id);
+      if (!e.rep) return `"${e.t}" doesn't repeat. Use reschedule instead.`;
+      if (!occursOn(e, a.date)) return `"${e.t}" doesn't happen on ${a.date}.`;
+      return null;
+    },
+    preview: (a) => [{ kind: 'Event', verb: 'Move', text: getEvent(a.event_id)?.t ?? a.event_id, detail: join(`only ${fmtDate(a.date)}`, `to ${fmtDate(a.to_date)}`, a.to_time && fmtTime(a.to_time)) }],
+    run: (a) => {
+      const e = getEvent(a.event_id);
+      if (!e) return { ok: false, summary: 'Event not found', error: missing('event', a.event_id) };
+      skipOccurrence(e.id!, a.date);
+      const moved = rescheduleOccurrence(e.id!, a.to_date, a.to_time ?? '');
+      return moved ? { ok: true, summary: `Moved "${e.t}" on ${a.date} to ${a.to_date}`, touched: [{ kind: 'event', id: moved.id!, title: moved.t }] } : { ok: false, summary: 'Not moved', error: 'That day could not be moved.' };
+    },
+  },
+  {
+    name: 'set_project_done',
+    risk: 'write',
+    description: 'Mark a project finished, or open it again with done false.',
+    params: obj({ id: s('Project id.'), done: bool('true = finished (default), false = reopen.') }, ['id']),
+    verify: (a) => (getProject(a.id) ? null : missing('project', a.id)),
+    preview: (a) => [{ kind: 'Project', verb: a.done === false ? 'Reopen' : 'Complete', text: getProject(a.id)?.n ?? a.id }],
+    run: (a) => {
+      const p = getProject(a.id);
+      if (!p) return { ok: false, summary: 'Project not found', error: missing('project', a.id) };
+      setProjectDone(p.id, a.done !== false);
+      return { ok: true, summary: `${a.done === false ? 'Reopened' : 'Finished'} project "${p.n}"`, touched: [{ kind: 'project', id: p.id, title: p.n }] };
+    },
+  },
+  {
+    name: 'pin_project',
+    risk: 'write',
+    description: 'Pin a project so it shows as the main project on Console.',
+    params: obj({ id: s('Project id.') }, ['id']),
+    verify: (a) => (!getProject(a.id) ? missing('project', a.id) : getPinnedProjectId() === a.id ? `"${getProject(a.id)!.n}" is already pinned.` : null),
+    preview: (a) => [{ kind: 'Project', verb: 'Pin', text: getProject(a.id)?.n ?? a.id }],
+    run: (a) => {
+      const p = getProject(a.id);
+      if (!p) return { ok: false, summary: 'Project not found', error: missing('project', a.id) };
+      setPinnedProjectId(p.id);
+      return { ok: true, summary: `Pinned project "${p.n}"`, touched: [{ kind: 'project', id: p.id, title: p.n }] };
+    },
+  },
+  {
+    name: 'set_phase',
+    risk: 'write',
+    description: 'Put an item that is already in a project under one of that project\'s phases (milestone id from read_item), or under none with phase "".',
+    params: obj({ project: s('Project id.'), kind: s('Item kind.', { enum: LINKABLE }), id: s('Item id.'), phase: s('Phase (milestone) id, or "" for none.') }, ['project', 'kind', 'id', 'phase']),
+    verify: (a) => {
+      const p = getProject(a.project);
+      if (!p) return missing('project', a.project);
+      if (!exists(a.kind, a.id)) return missing(a.kind, a.id);
+      if (!(p.links ?? []).some((l) => l.k === a.kind && l.id === a.id)) return `That ${a.kind} isn't in "${p.n}". Put it in with link_to_project first.`;
+      if (a.phase && !(p.ms ?? []).some((m) => m.id === a.phase)) return `No phase "${a.phase}" on "${p.n}". Read the project for its phase ids.`;
+      return null;
+    },
+    preview: (a) => {
+      const p = getProject(a.project);
+      const ph = (p?.ms ?? []).find((m) => m.id === a.phase);
+      return [{ kind: 'Phase', verb: 'Link', text: titleOfKind(a.kind, a.id) ?? a.id, detail: ph ? `→ ${ph.t}` : 'no phase' }];
+    },
+    run: (a) => {
+      setLinkMilestone(a.project, a.kind, a.id, a.phase || null);
+      const p = getProject(a.project)!;
+      return { ok: true, summary: `Set the phase for ${a.kind} "${titleOfKind(a.kind, a.id)}"`, touched: [{ kind: 'project', id: p.id, title: p.n }] };
+    },
+  },
+  {
+    name: 'list_chats',
+    risk: 'read',
+    description: 'List the person\'s saved chats, newest first, with ids, titles, where each started and when it was last used. Optional words to filter titles.',
+    params: obj({ query: s('Words to look for in chat titles.'), limit: num('How many, default 30.', { min: 1, max: 100, integer: true }) }),
+    run: (a) => {
+      const q = String(a.query ?? '').trim().toLowerCase();
+      const rows = getThreads()
+        .filter((t) => !q || t.title.toLowerCase().includes(q))
+        .map((t) => ({ id: t.id, title: t.title, where: t.from ?? 'Chat', last_used: new Date(t.updatedAt).toISOString().slice(0, 10), messages: t.messages.length, this_chat: t.id === getCurrentThreadId() || undefined }));
+      const n = a.limit ?? 30;
+      return { ok: true, summary: `Listed ${plural(Math.min(n, rows.length), 'chat')}`, data: { chats: rows.slice(0, n), more: Math.max(0, rows.length - n) } };
+    },
+  },
+  {
+    name: 'read_chat',
+    risk: 'read',
+    description: 'Read the recent messages of one saved chat by id (from list_chats).',
+    params: obj({ id: s('Chat id.'), last: num('How many recent messages, default 20.', { min: 1, max: 60, integer: true }) }, ['id']),
+    verify: (a) => (getThread(a.id) ? null : noChat(a.id)),
+    run: (a) => {
+      const t = getThread(a.id)!;
+      const msgs = t.messages.slice(-(a.last ?? 20)).map((m) => ({ who: m.role === 'you' ? 'person' : 'eumae', text: m.text.length > 1500 ? m.text.slice(0, 1500) + '…' : m.text }));
+      return { ok: true, summary: `Read chat "${t.title}"`, data: { id: t.id, title: t.title, where: t.from ?? 'Chat', messages: msgs } };
+    },
+  },
+  {
+    name: 'rename_chat',
+    risk: 'write',
+    description: 'Rename a saved chat.',
+    params: obj({ id: s('Chat id.'), title: s('New title.', { max: 80 }) }, ['id', 'title']),
+    verify: (a) => (!getThread(a.id) ? noChat(a.id) : !a.title.trim() ? 'title is empty.' : null),
+    preview: (a) => [{ kind: 'Chat', verb: 'Rename', text: chatTitle(a.id) ?? a.id, detail: `to ${a.title.trim()}` }],
+    run: (a) => {
+      const t = getThread(a.id);
+      if (!t) return { ok: false, summary: 'Chat not found', error: noChat(a.id) };
+      saveThread({ ...t, title: a.title.trim().slice(0, 80), updatedAt: t.updatedAt });
+      threadsChanged();
+      return { ok: true, summary: `Renamed chat "${t.title}" to "${a.title.trim()}"` };
+    },
+  },
+  {
+    name: 'delete_chats',
+    risk: 'danger',
+    description: 'Delete saved chats by id (from list_chats). Only when clearly asked. The chat you are talking in right now can\'t be deleted this way; the person can delete it from its ⋯ menu.',
+    params: obj({ ids: list('Chat ids.', s('Chat id.'), { minItems: 1, maxItems: 100 }) }, ['ids']),
+    verify: (a) => {
+      for (const id of a.ids) {
+        if (!getThread(id)) return noChat(id);
+        if (busyChat(id)) return `"${chatTitle(id)}" is open right now (this chat or an office chat), so it can't be deleted from here. Tell the person to delete it from its ⋯ menu.`;
+      }
+      return null;
+    },
+    preview: (a) => a.ids.map((id: string) => ({ kind: 'Chat', verb: 'Delete', text: chatTitle(id) ?? id })),
+    run: (a) => {
+      let n = 0;
+      for (const id of a.ids as string[]) {
+        if (!getThread(id) || busyChat(id)) continue;
+        deleteThread(id);
+        n++;
+      }
+      threadsChanged();
+      return { ok: true, summary: `Deleted ${plural(n, 'chat')}` };
+    },
+  },
+  {
+    name: 'download_chat',
+    risk: 'read',
+    description: 'Download one saved chat to the person\'s device as a text file. Only when they ask for it.',
+    params: obj({ id: s('Chat id.') }, ['id']),
+    verify: (a) => (getThread(a.id) ? null : noChat(a.id)),
+    run: (a) => {
+      try {
+        downloadThread(a.id);
+      } catch {
+        return { ok: false, summary: 'Download failed', error: 'The download could not start here.' };
+      }
+      return { ok: true, summary: `Downloaded chat "${chatTitle(a.id)}"` };
+    },
+  },
+];
+
 /* ───────────────────────── removes ───────────────────────── */
 
 const removes: Action[] = [
@@ -1268,7 +1562,7 @@ const removes: Action[] = [
   },
 ];
 
-export const REGISTRY: readonly Action[] = [...reads, ...creates, ...changes, ...goalLinks, ...removes];
+export const REGISTRY: readonly Action[] = [...reads, ...creates, ...changes, ...goalLinks, ...wave2, ...removes];
 
 const BY_NAME = new Map(REGISTRY.map((a) => [a.name, a]));
 export function getAction(name: string): Action | undefined {
