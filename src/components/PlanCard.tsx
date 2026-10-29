@@ -110,7 +110,7 @@ export function PlanCard({ plan, onChange, notify, area = 'Chat' }: { plan: Plan
         <div className="flbl">Plan · {count} {count === 1 ? 'change' : 'changes'}</div>
         {lines.map((l, i) => (
           <div key={i} className="eumaeLine">
-            <span className={`eumaeKind${l.verb === 'Delete' || l.verb === 'Skip' ? ' danger' : ''}`}>
+            <span className={`eumaeKind${l.verb === 'Delete' || l.verb === 'Skip' || l.verb === 'Empty' ? ' danger' : ''}`}>
               {l.verb} {l.kind.toLowerCase()}
             </span>
             <span className="eumaeTxt">

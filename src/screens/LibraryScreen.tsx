@@ -8,6 +8,7 @@ import {
   LIB_VIEWS, TYPE_TABS, TYPE_FILTERS,
   liveOnly, folderOf,
   type LibFile, type LibView, type LibSortKey, type LibKind,
+  LIBRARY_EVENT,
 } from '../library';
 import { TrashPane } from '../components/shell/FileDetail';
 import { removeUploadUndoable, listUploads, uploadData, type Upload } from '../uploads';
@@ -65,7 +66,11 @@ export default function LibraryScreen({ initial }: { initial?: Sel }) {
   useEffect(() => {
     const onFocus = () => refresh();
     window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    window.addEventListener(LIBRARY_EVENT, onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener(LIBRARY_EVENT, onFocus);
+    };
   }, []);
 
   const files = useMemo(() => getFiles(), [tick]);

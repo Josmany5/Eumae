@@ -98,6 +98,10 @@ export interface LibState {
 }
 
 const KEY = 'eumae:library';
+/** Fired after every save, so an open Library redraws when Eumae changes it. */
+export const LIBRARY_EVENT = 'eumae:library-changed';
+/* Unique even when several files are made in the same millisecond. */
+const newId = () => 'f' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
 let cache: LibState | null = null;
 function isHistRow(h: unknown): h is { v: number; b: string; at: number } {
   if (!h || typeof h !== 'object') return false;
@@ -184,6 +188,7 @@ function save(s: LibState): void {
   } catch {
     /* Storage full - in-memory still works. */
   }
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(LIBRARY_EVENT));
 }
 
 /* Readers - copies out, like dash.ts. */
@@ -244,7 +249,7 @@ export function addFolder(name: string): string {
 export function addFile(t: string, k: LibKind, folder?: string): LibFile {
   const s = load();
   const f: LibFile = {
-    id: 'f' + Date.now().toString(36),
+    id: newId(),
     t: t.trim() || 'Untitled',
     k,
     st: 'draft',
@@ -310,7 +315,7 @@ export function duplicateFile(id: string): LibFile | null {
   const f = s.files.find((x) => x.id === id);
   if (!f) return null;
   const copy: LibFile = {
-    id: 'f' + Date.now().toString(36),
+    id: newId(),
     t: (f.t + ' copy').slice(0, 120),
     k: f.k,
     st: 'draft',
@@ -396,7 +401,7 @@ export function restoreTrash(index: number): boolean {
   if (!row) return false;
   const kind = (LIB_KINDS as string[]).includes(row.k) ? (row.k as LibKind) : 'DOC';
   const f: LibFile = {
-    id: 'f' + Date.now().toString(36),
+    id: newId(),
     t: row.t,
     k: kind,
     st: 'draft',
@@ -465,6 +470,25 @@ export function restoreLibrary(snap: LibState): void {
 export function emptyTrash(): void {
   const s = load();
   save({ ...s, trash: [] });
+}
+
+/** Folders a file can be moved into: yours plus the plain built-ins
+ *  (Projects, Classroom and Shared draw from elsewhere). */
+export const SPECIAL_FOLDERS = ['Projects', 'Classroom', 'Shared'];
+export function movableFolders(): string[] {
+  return allFolders().filter((f) => !SPECIAL_FOLDERS.includes(f));
+}
+
+/** File a document under a folder, or back under its kind folder with ''. */
+export function moveFile(id: string, folder: string): LibFile | null {
+  const s = load();
+  const f = s.files.find((x) => x.id === id);
+  if (!f) return null;
+  const { fol8: _old, ...rest } = f;
+  void _old;
+  const next: LibFile = folder ? { ...rest, fol8: folder } : rest;
+  save({ ...s, files: s.files.map((x) => (x.id === id ? next : x)) });
+  return { ...next };
 }
 
 export function fileUpload(id: string, folder: string): void {

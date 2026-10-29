@@ -27,6 +27,7 @@ import { newMilestone, type Milestone } from '../milestones';
 import { renameList, deleteList, renameSubtask, deleteSubtask } from '../tasks';
 import { setAttendance, rescheduleOccurrence, occursOn } from '../events';
 import { setProjectDone, setPinnedProjectId, getPinnedProjectId, setLinkMilestone } from '../projects';
+import { getFiles, getFavs, getTrash, allFolders, getFolders, folderOf, folderPrefs, setFolderPrefs, addFile, setBody, setStatus, renameFile, saveEdit, duplicateFile, toggleFav, restoreVersion, moveFile, movableFolders, trashFile, restoreTrash, emptyTrash, addFolder, renameFolder, deleteFolder, LIB_KINDS, BUILT_IN_FOLDERS, type LibFile } from '../library';
 import { getThreads, getThread, saveThread, deleteThread, downloadThread, getCurrentThreadId, threadsChanged } from '../threads';
 
 export type Risk = 'read' | 'write' | 'danger';
@@ -36,8 +37,8 @@ const LINKABLE: readonly LinkKind[] = ['task', 'event', 'goal', 'note'];
 
 /** One line on the plan card: what kind of thing, what happens to it. */
 export interface PlanLine {
-  kind: 'Task' | 'Event' | 'Goal' | 'Project' | 'Note' | 'List' | 'Subtask' | 'Checklist line' | 'Milestone' | 'Phase' | 'Link' | 'Chat' | 'Attendance';
-  verb: 'Create' | 'Edit' | 'Complete' | 'Reopen' | 'Tick' | 'Untick' | 'Remove' | 'Move' | 'Add' | 'Log' | 'Link' | 'Unlink' | 'Delete' | 'Skip' | 'Rename' | 'Mark' | 'Pin';
+  kind: 'Task' | 'Event' | 'Goal' | 'Project' | 'Note' | 'List' | 'Subtask' | 'Checklist line' | 'Milestone' | 'Phase' | 'Link' | 'Chat' | 'Attendance' | 'File' | 'Folder' | 'Trash' | 'Version';
+  verb: 'Create' | 'Edit' | 'Complete' | 'Reopen' | 'Tick' | 'Untick' | 'Remove' | 'Move' | 'Add' | 'Log' | 'Link' | 'Unlink' | 'Delete' | 'Skip' | 'Rename' | 'Mark' | 'Pin' | 'Duplicate' | 'Restore' | 'Empty' | 'Favorite' | 'Unfavorite' | 'Set';
   text: string;
   detail?: string;
   /** What Eumae filled in herself, in plain words ("due date, 30 min"). */
@@ -1512,6 +1513,296 @@ const wave2: Action[] = [
   },
 ];
 
+/* ───────────────────────── wave 2b: Library ───────────────────────── */
+
+const fileById = (id: string): LibFile | undefined => getFiles().find((f) => f.id === id);
+const noFile = (id: string) => `No file with id "${id}". Find it with list_files; never guess one.`;
+const folderIn = (name: string) => allFolders().find((f) => f.toLowerCase() === String(name).trim().toLowerCase());
+const fileRow = (f: LibFile) => ({ id: f.id, title: f.t, kind: f.k, status: f.st, version: f.v, folder: folderOf(f), favorite: getFavs().includes(f.id) || undefined, made: new Date(f.createdAt).toISOString().slice(0, 10) });
+const ids = (d: string) => list(d, s('File id.'), { minItems: 1, maxItems: 100 });
+const fileVerify = (a: Args) => {
+  for (const id of a.ids) if (!fileById(id)) return noFile(id);
+  return null;
+};
+const fileLines = (verb: PlanLine['verb'], detail?: string) => (a: Args) => a.ids.map((id: string) => ({ kind: 'File' as const, verb, text: fileById(id)?.t ?? id, detail }));
+
+const libraryTools: Action[] = [
+  {
+    name: 'list_files',
+    risk: 'read',
+    description: 'List Library files (docs, pages, widgets, links, routines...) with ids, plus the folders and what is in the trash. Optional filters.',
+    params: obj({ query: s('Words to look for in file titles.'), folder: s('Only files in this folder.'), kind: s('Only this kind.', { enum: LIB_KINDS }), favorites: bool('Only favorites.') }),
+    run: (a) => {
+      const q = String(a.query ?? '').trim().toLowerCase();
+      const fol = a.folder ? folderIn(a.folder) ?? a.folder : '';
+      const favs = getFavs();
+      const rows = getFiles()
+        .filter((f) => (!q || f.t.toLowerCase().includes(q)) && (!fol || folderOf(f) === fol) && (!a.kind || f.k === a.kind) && (!a.favorites || favs.includes(f.id)))
+        .map(fileRow);
+      return {
+        ok: true,
+        summary: `Listed ${plural(rows.length, 'file')}`,
+        data: { files: rows.slice(0, 100), more: Math.max(0, rows.length - 100), folders: allFolders().map((f) => ({ name: f, yours: getFolders().includes(f) || undefined })), trash: getTrash().map((t, i) => ({ index: i, title: t.t, kind: t.k })) },
+      };
+    },
+  },
+  {
+    name: 'read_file',
+    risk: 'read',
+    description: 'Read one Library file: its text and its older versions.',
+    params: obj({ id: s('File id.') }, ['id']),
+    verify: (a) => (fileById(a.id) ? null : noFile(a.id)),
+    run: (a) => {
+      const f = fileById(a.id)!;
+      const body = f.b.length > 6000 ? f.b.slice(0, 6000) + '…' : f.b;
+      return { ok: true, summary: `Read file "${f.t}"`, data: { ...fileRow(f), body, versions: (f.hist ?? []).map((h) => ({ version: h.v, saved: new Date(h.at).toISOString().slice(0, 10) })) } };
+    },
+  },
+  {
+    name: 'create_files',
+    risk: 'write',
+    description: 'Make new Library files (a document, a link, a routine write-up...). Each starts as a draft unless status is live. For a visual page, widget or game, use the Sandbox instead.',
+    params: obj(
+      {
+        files: list(
+          'Files to make.',
+          obj({ title: s('File name.', { max: 120 }), kind: s('Kind (DOC for a document).', { enum: LIB_KINDS }), body: s('What it says.', { max: 20000 }), folder: s('Folder to put it in, or leave out for its kind folder.'), status: s('draft (default) or live.', { enum: ['draft', 'live'] }) }, ['title', 'kind']),
+          { minItems: 1, maxItems: 30 },
+        ),
+      },
+      ['files'],
+    ),
+    verify: (a) => {
+      for (const f of a.files) {
+        if (!f.title.trim()) return 'A file needs a title.';
+        if (f.folder && !movableFolders().some((x) => x.toLowerCase() === f.folder.trim().toLowerCase())) return `No folder "${f.folder}" to put files in. Folders: ${movableFolders().join(', ')}. Make it with create_folders first.`;
+      }
+      return null;
+    },
+    preview: (a) => a.files.map((f: Args) => ({ kind: 'File' as const, verb: 'Create' as const, text: f.title.trim(), detail: join(f.kind, f.folder && `in ${folderIn(f.folder) ?? f.folder}`, f.status === 'live' ? 'live' : 'draft') })),
+    run: (a) => {
+      for (const f of a.files as Args[]) {
+        const made = addFile(f.title, f.kind, f.folder ? folderIn(f.folder) : undefined);
+        if (f.body) setBody(made.id, made.t, f.body);
+        if (f.status === 'live') setStatus(made.id, 'live');
+      }
+      return { ok: true, summary: `Made ${plural(a.files.length, 'file')}` };
+    },
+  },
+  {
+    name: 'rename_file',
+    risk: 'write',
+    description: 'Rename a Library file. Only the name changes; no new version.',
+    params: obj({ id: s('File id.'), title: s('New name.', { max: 120 }) }, ['id', 'title']),
+    verify: (a) => (!fileById(a.id) ? noFile(a.id) : !a.title.trim() ? 'title is empty.' : null),
+    preview: (a) => [{ kind: 'File', verb: 'Rename', text: fileById(a.id)?.t ?? a.id, detail: `to ${a.title.trim()}` }],
+    run: (a) => {
+      const f = fileById(a.id);
+      return f && renameFile(f.id, a.title) ? { ok: true, summary: `Renamed file "${f.t}" to "${a.title.trim()}"` } : { ok: false, summary: 'Not renamed', error: noFile(a.id) };
+    },
+  },
+  {
+    name: 'edit_file',
+    risk: 'write',
+    description: 'Change what a Library file says. Saves a NEW version; the old text stays in its history (restore_version brings it back). Give the whole new text, not a piece. Read it with read_file first.',
+    params: obj({ id: s('File id.'), body: s('The whole new text.', { max: 20000 }), title: s('New name too, or leave out.', { max: 120 }) }, ['id', 'body']),
+    verify: (a) => (fileById(a.id) ? null : noFile(a.id)),
+    preview: (a) => {
+      const f = fileById(a.id);
+      return [{ kind: 'File', verb: 'Edit', text: f?.t ?? a.id, detail: join(f && `saves v${f.v + 1}`, a.title?.trim() && `renamed ${a.title.trim()}`) }];
+    },
+    run: (a) => {
+      const f = fileById(a.id);
+      const n = f && saveEdit(f.id, a.title ?? f.t, a.body);
+      return n ? { ok: true, summary: `Saved "${n.t}" as v${n.v}` } : { ok: false, summary: 'Not saved', error: noFile(a.id) };
+    },
+  },
+  {
+    name: 'duplicate_files',
+    risk: 'write',
+    description: 'Copy Library files. Each copy is a fresh v1 draft named "... copy".',
+    params: obj({ ids: ids('Files to copy.') }, ['ids']),
+    verify: fileVerify,
+    preview: fileLines('Duplicate'),
+    run: (a) => {
+      for (const id of a.ids) duplicateFile(id);
+      return { ok: true, summary: `Copied ${plural(a.ids.length, 'file')}` };
+    },
+  },
+  {
+    name: 'favorite_files',
+    risk: 'write',
+    description: 'Star files as favorites, or unstar them with on false.',
+    params: obj({ ids: ids('Files.'), on: bool('true = favorite (default), false = unfavorite.') }, ['ids']),
+    verify: fileVerify,
+    preview: (a) => fileLines(a.on === false ? 'Unfavorite' : 'Favorite')(a),
+    run: (a) => {
+      const on = a.on !== false;
+      for (const id of a.ids) if (getFavs().includes(id) !== on) toggleFav(id);
+      return { ok: true, summary: `${on ? 'Favorited' : 'Unfavorited'} ${plural(a.ids.length, 'file')}` };
+    },
+  },
+  {
+    name: 'set_file_status',
+    risk: 'write',
+    description: 'Make files live (shown everywhere) or draft (only in Studio and All).',
+    params: obj({ ids: ids('Files.'), status: s('live or draft.', { enum: ['live', 'draft'] }) }, ['ids', 'status']),
+    verify: fileVerify,
+    preview: (a) => fileLines('Set', a.status)(a),
+    run: (a) => {
+      for (const id of a.ids) setStatus(id, a.status);
+      return { ok: true, summary: `Set ${plural(a.ids.length, 'file')} to ${a.status}` };
+    },
+  },
+  {
+    name: 'restore_version',
+    risk: 'write',
+    description: 'Bring back an older version of a file (version numbers from read_file). The current text is kept in history.',
+    params: obj({ id: s('File id.'), version: num('Version number.', { min: 1, integer: true }) }, ['id', 'version']),
+    verify: (a) => {
+      const f = fileById(a.id);
+      if (!f) return noFile(a.id);
+      if (!(f.hist ?? []).some((h) => h.v === a.version)) return `"${f.t}" has no saved v${a.version}. Versions: ${(f.hist ?? []).map((h) => h.v).join(', ') || 'none'}.`;
+      return null;
+    },
+    preview: (a) => [{ kind: 'Version', verb: 'Restore', text: fileById(a.id)?.t ?? a.id, detail: `v${a.version}` }],
+    run: (a) => {
+      const n = restoreVersion(a.id, a.version);
+      return n ? { ok: true, summary: `Restored v${a.version} of "${n.t}"` } : { ok: false, summary: 'Not restored', error: 'That version could not be restored.' };
+    },
+  },
+  {
+    name: 'move_files',
+    risk: 'write',
+    description: 'Move files into a folder, or back to their kind folder with folder "".',
+    params: obj({ ids: ids('Files.'), folder: s('Folder name, or "" for the kind folder.') }, ['ids', 'folder']),
+    verify: (a) => fileVerify(a) ?? (a.folder && !movableFolders().some((x) => x.toLowerCase() === a.folder.trim().toLowerCase()) ? `Can't move files into "${a.folder}". Folders: ${movableFolders().join(', ')}.` : null),
+    preview: (a) => fileLines('Move', a.folder ? `to ${folderIn(a.folder) ?? a.folder}` : 'to its kind folder')(a),
+    run: (a) => {
+      const to = a.folder ? folderIn(a.folder)! : '';
+      for (const id of a.ids) moveFile(id, to);
+      return { ok: true, summary: `Moved ${plural(a.ids.length, 'file')}${to ? ` to ${to}` : ''}` };
+    },
+  },
+  {
+    name: 'trash_files',
+    risk: 'danger',
+    description: 'Move files to the trash. Only when clearly asked. They can come back (as drafts) with restore_from_trash until the trash is emptied.',
+    params: obj({ ids: ids('Files.') }, ['ids']),
+    verify: fileVerify,
+    preview: fileLines('Delete', 'to trash'),
+    run: (a) => {
+      for (const id of a.ids) trashFile(id);
+      return { ok: true, summary: `Moved ${plural(a.ids.length, 'file')} to the trash` };
+    },
+  },
+  {
+    name: 'restore_from_trash',
+    risk: 'write',
+    description: 'Bring files back from the trash (index from list_files). They come back as drafts.',
+    params: obj({ indexes: list('Trash indexes.', num('Index.', { min: 0, max: 999, integer: true }), { minItems: 1, maxItems: 100 }) }, ['indexes']),
+    verify: (a) => {
+      const n = getTrash().length;
+      const bad = a.indexes.find((i: number) => i >= n);
+      return bad !== undefined ? `Nothing at trash index ${bad} (the trash has ${plural(n, 'file')}). Check list_files.` : null;
+    },
+    preview: (a) => a.indexes.map((i: number) => ({ kind: 'File' as const, verb: 'Restore' as const, text: getTrash()[i]?.t ?? `trash ${i}`, detail: 'as a draft' })),
+    run: (a) => {
+      /* Highest first, so one restore never shifts the next. */
+      const order = [...new Set<number>(a.indexes)].sort((x, y) => y - x);
+      for (const i of order) restoreTrash(i);
+      return { ok: true, summary: `Restored ${plural(order.length, 'file')} from the trash` };
+    },
+  },
+  {
+    name: 'empty_trash',
+    risk: 'danger',
+    description: 'Empty the Library trash for good. Only when clearly asked; it can be undone right after from the card, but not later.',
+    params: obj({}),
+    verify: () => (getTrash().length ? null : 'The trash is already empty.'),
+    preview: () => [{ kind: 'Trash', verb: 'Empty', text: 'Library trash', detail: plural(getTrash().length, 'file') }],
+    run: () => {
+      const n = getTrash().length;
+      emptyTrash();
+      return { ok: true, summary: `Emptied the trash (${plural(n, 'file')})` };
+    },
+  },
+  {
+    name: 'create_folders',
+    risk: 'write',
+    description: 'Make new Library folders.',
+    params: obj({ names: list('Folder names.', s('Name.', { max: 40 }), { minItems: 1, maxItems: 20 }) }, ['names']),
+    verify: (a) => {
+      for (const n of a.names) {
+        if (!n.trim()) return 'A folder needs a name.';
+        if (folderIn(n)) return `A folder named "${folderIn(n)}" already exists.`;
+      }
+      return null;
+    },
+    preview: (a) => a.names.map((n: string) => ({ kind: 'Folder' as const, verb: 'Create' as const, text: n.trim() })),
+    run: (a) => {
+      for (const n of a.names) addFolder(n);
+      return { ok: true, summary: `Made ${plural(a.names.length, 'folder')}` };
+    },
+  },
+  {
+    name: 'rename_folder',
+    risk: 'write',
+    description: 'Rename a folder the person made (built-in folders can\'t be renamed). Its files go with it.',
+    params: obj({ folder: s('Current name.'), name: s('New name.', { max: 40 }) }, ['folder', 'name']),
+    verify: (a) => {
+      const f = folderIn(a.folder);
+      if (!f) return `No folder "${a.folder}".`;
+      if (BUILT_IN_FOLDERS.includes(f)) return `"${f}" is built in and can't be renamed.`;
+      if (!a.name.trim()) return 'name is empty.';
+      const clash = folderIn(a.name);
+      if (clash && clash !== f) return `A folder named "${clash}" already exists.`;
+      return null;
+    },
+    preview: (a) => [{ kind: 'Folder', verb: 'Rename', text: folderIn(a.folder) ?? a.folder, detail: `to ${a.name.trim()}` }],
+    run: (a) => {
+      const f = folderIn(a.folder)!;
+      const r = renameFolder(f, a.name);
+      return r === 'Folder renamed.' ? { ok: true, summary: `Renamed folder "${f}" to "${a.name.trim()}"` } : { ok: false, summary: 'Not renamed', error: r };
+    },
+  },
+  {
+    name: 'delete_folder',
+    risk: 'danger',
+    description: 'Delete a folder the person made. Its files are kept and go back to their kind folders. Only when clearly asked.',
+    params: obj({ folder: s('Folder name.') }, ['folder']),
+    verify: (a) => {
+      const f = folderIn(a.folder);
+      if (!f) return `No folder "${a.folder}".`;
+      if (BUILT_IN_FOLDERS.includes(f)) return `"${f}" is built in and can't be deleted.`;
+      return null;
+    },
+    preview: (a) => {
+      const f = folderIn(a.folder) ?? a.folder;
+      const n = getFiles().filter((x) => x.fol8 === f).length;
+      return [{ kind: 'Folder', verb: 'Delete', text: f, detail: n ? `${plural(n, 'file')} kept, back in their kind folders` : undefined }];
+    },
+    run: (a) => {
+      const f = folderIn(a.folder)!;
+      return deleteFolder(f) ? { ok: true, summary: `Deleted folder "${f}"` } : { ok: false, summary: 'Not deleted', error: 'That folder could not be deleted.' };
+    },
+  },
+  {
+    name: 'set_folder_view',
+    risk: 'write',
+    description: 'Change how a folder looks: icons or list, and sort by name, date or kind, up or down.',
+    params: obj({ folder: s('Folder name.'), view: s('icon or list.', { enum: ['icon', 'list'] }), sort: s('name, date or kind.', { enum: ['name', 'date', 'kind'] }), dir: s('asc or desc.', { enum: ['asc', 'desc'] }) }, ['folder']),
+    verify: (a) => (!folderIn(a.folder) ? `No folder "${a.folder}".` : !a.view && !a.sort && !a.dir ? 'Nothing to change: give view, sort or dir.' : null),
+    preview: (a) => [{ kind: 'Folder', verb: 'Set', text: folderIn(a.folder) ?? a.folder, detail: join(a.view && `${a.view} view`, a.sort && `sort by ${a.sort}`, a.dir && (a.dir === 'asc' ? 'A to Z / oldest first' : 'Z to A / newest first')) }],
+    run: (a) => {
+      const f = folderIn(a.folder)!;
+      const was = folderPrefs(f);
+      setFolderPrefs(f, { view: a.view ?? was.view, sort: a.sort ?? was.sort, dir: a.dir ?? was.dir });
+      return { ok: true, summary: `Changed how "${f}" looks` };
+    },
+  },
+];
+
 /* ───────────────────────── removes ───────────────────────── */
 
 const removes: Action[] = [
@@ -1562,7 +1853,7 @@ const removes: Action[] = [
   },
 ];
 
-export const REGISTRY: readonly Action[] = [...reads, ...creates, ...changes, ...goalLinks, ...wave2, ...removes];
+export const REGISTRY: readonly Action[] = [...reads, ...creates, ...changes, ...goalLinks, ...wave2, ...libraryTools, ...removes];
 
 const BY_NAME = new Map(REGISTRY.map((a) => [a.name, a]));
 export function getAction(name: string): Action | undefined {

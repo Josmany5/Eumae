@@ -32,7 +32,7 @@ const out = buildSync({
   stdin: {
     contents: `export * from './src/eumae/dispatcher'; export { REGISTRY, humanTimes } from './src/eumae/registry'; export { resolveDate, resolveTime } from './src/eumae/when'; export { guessesIn } from './src/eumae/guess'; export { check, toGemini } from './src/eumae/schema';
       export { getTasks, getTask } from './src/tasks'; export { getEvents, saveEvent, ymd } from './src/events'; export { getGoals, goalOf, goalLinkedIds } from './src/goals';
-      export { getProjects, linkedIds } from './src/projects'; export { getNotes, titleOf } from './src/notes'; export { parseEvent } from './src/chat'; export { getLists, addList } from './src/tasks'; export { getThreads, saveThread, getCurrentThreadId, setCurrentThreadId } from './src/threads';`,
+      export { getProjects, linkedIds } from './src/projects'; export { getNotes, titleOf } from './src/notes'; export { parseEvent } from './src/chat'; export { getLists, addList } from './src/tasks'; export { getThreads, saveThread, getCurrentThreadId, setCurrentThreadId } from './src/threads'; export { getFiles, getFavs, getTrash, allFolders, folderOf, folderPrefs } from './src/library';`,
     resolveDir: new URL('..', import.meta.url).pathname,
     loader: 'ts',
   },
@@ -334,6 +334,48 @@ const stage = (calls, heard = "") => {
   check('w2-delete-chat-danger', dp.steps[0]?.danger === true);
   M.executePlan(dp);
   check('w2-delete-chat', !M.getThreads().some((x) => x.id === 'tOld'));
+}
+
+// Wave 2b: Library files and folders.
+{
+  const P = (calls) => stage(calls).plan;
+  M.executePlan(P([{ name: 'create_folders', args: { names: ['Pitches'] } }]));
+  check('w2b-folder', M.allFolders().includes('Pitches'));
+  M.executePlan(P([{ name: 'create_files', args: { files: [{ title: 'Deck A', kind: 'DOC', body: 'one', folder: 'pitches' }, { title: 'Deck B', kind: 'DOC' }] } }]));
+  const a = M.getFiles().find((f) => f.t === 'Deck A');
+  const b = M.getFiles().find((f) => f.t === 'Deck B');
+  check('w2b-create-two', a && b && a.id !== b.id && M.folderOf(a) === 'Pitches' && a.b === 'one' && a.st === 'draft');
+  const lf = M.dispatch([{ name: 'list_files', args: { folder: 'Pitches' } }], M.newPlan())[0];
+  check('w2b-list', lf.ok && lf.response.data.files.length === 1 && lf.response.data.files[0].id === a.id);
+  check('w2b-bad-folder', !stage([{ name: 'create_files', args: { files: [{ title: 'x', kind: 'DOC', folder: 'Nope' }] } }]).res[0].ok);
+  M.executePlan(P([{ name: 'edit_file', args: { id: a.id, body: 'two' } }]));
+  const a2 = M.getFiles().find((f) => f.id === a.id);
+  check('w2b-edit-version', a2.v === 2 && a2.b === 'two' && a2.hist?.some((h) => h.v === 1 && h.b === 'one'));
+  M.executePlan(P([{ name: 'restore_version', args: { id: a.id, version: 1 } }]));
+  check('w2b-restore-version', M.getFiles().find((f) => f.id === a.id).b === 'one');
+  check('w2b-bad-version', !stage([{ name: 'restore_version', args: { id: a.id, version: 9 } }]).res[0].ok);
+  M.executePlan(P([{ name: 'favorite_files', args: { ids: [a.id] } }, { name: 'set_file_status', args: { ids: [a.id], status: 'live' } }, { name: 'move_files', args: { ids: [b.id], folder: 'Pitches' } }]));
+  check('w2b-fav-live-move', M.getFavs().includes(a.id) && M.getFiles().find((f) => f.id === a.id).st === 'live' && M.folderOf(M.getFiles().find((f) => f.id === b.id)) === 'Pitches');
+  check('w2b-no-move-special', !stage([{ name: 'move_files', args: { ids: [b.id], folder: 'Shared' } }]).res[0].ok);
+  M.executePlan(P([{ name: 'set_folder_view', args: { folder: 'Pitches', view: 'icon', sort: 'date' } }]));
+  check('w2b-folder-view', M.folderPrefs('Pitches').view === 'icon' && M.folderPrefs('Pitches').sort === 'date');
+  check('w2b-builtin-folder-kept', !stage([{ name: 'delete_folder', args: { folder: 'Documents' } }]).res[0].ok);
+  const tp = P([{ name: 'trash_files', args: { ids: [b.id] } }]);
+  check('w2b-trash-danger', tp.steps[0]?.danger === true);
+  const done = M.executePlan(tp);
+  check('w2b-trash', !M.getFiles().some((f) => f.id === b.id) && M.getTrash().some((t) => t.t === 'Deck B'));
+  M.undoPlan(done);
+  check('w2b-undo-library', M.getFiles().some((f) => f.id === b.id));
+  M.executePlan(P([{ name: 'trash_files', args: { ids: [b.id] } }]));
+  const ti = M.getTrash().findIndex((t) => t.t === 'Deck B');
+  M.executePlan(P([{ name: 'restore_from_trash', args: { indexes: [ti] } }]));
+  check('w2b-restore-trash', M.getFiles().some((f) => f.t === 'Deck B' && f.st === 'draft'));
+  M.executePlan(P([{ name: 'rename_folder', args: { folder: 'Pitches', name: 'Decks' } }]));
+  check('w2b-rename-folder', M.allFolders().includes('Decks') && M.folderOf(M.getFiles().find((f) => f.id === a.id)) === 'Decks');
+  M.executePlan(P([{ name: 'delete_folder', args: { folder: 'Decks' } }]));
+  check('w2b-delete-folder-keeps-files', !M.allFolders().includes('Decks') && M.getFiles().some((f) => f.id === a.id));
+  M.executePlan(P([{ name: 'empty_trash', args: {} }]));
+  check('w2b-empty-trash', M.getTrash().length === 0);
 }
 
 if (failures.length) {

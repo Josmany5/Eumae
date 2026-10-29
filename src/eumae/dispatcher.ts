@@ -23,6 +23,7 @@ import { snapshotEvents, restoreEvents } from '../events';
 import { snapshotGoals, restoreGoals } from '../goals';
 import { snapshotProjects, restoreProjects } from '../projects';
 import { snapshotNotes, restoreNotes } from '../notes';
+import { snapshotLibrary, restoreLibrary } from '../library';
 
 export interface ToolCall {
   name: string;
@@ -261,10 +262,11 @@ interface AllSnap {
   g: ReturnType<typeof snapshotGoals>;
   p: ReturnType<typeof snapshotProjects>;
   n: ReturnType<typeof snapshotNotes>;
+  l: ReturnType<typeof snapshotLibrary>;
 }
 
 function snapshotAll(): AllSnap {
-  return { t: snapshotTasks(), e: snapshotEvents(), g: snapshotGoals(), p: snapshotProjects(), n: snapshotNotes() };
+  return { t: snapshotTasks(), e: snapshotEvents(), g: snapshotGoals(), p: snapshotProjects(), n: snapshotNotes(), l: snapshotLibrary() };
 }
 
 function restoreAll(s: AllSnap): void {
@@ -273,6 +275,7 @@ function restoreAll(s: AllSnap): void {
   restoreGoals(s.g);
   restoreProjects(s.p);
   restoreNotes(s.n);
+  restoreLibrary(s.l);
 }
 
 /** Undo snapshots live here, by plan id, for this session. A plan's Undo
