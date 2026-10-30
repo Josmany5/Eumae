@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { expandPrompt, isAppPrompt } from './_prompts.js';
+import { composePrompt } from './_prompts.js';
 
 /* Google's Chirp 3: HD locales (cloud.google.com/text-to-speech/docs/chirp3-hd,
    read 2026-10-20). The client's list is src/voiceLang.ts. */
@@ -314,18 +314,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { action, data } = req.body as { action: string; data: Record<string, unknown> };
 
     if (action === 'chat') {
-      const { systemPrompt, conversationHistory, message, attachments, functionDeclarations } = data as {
-        systemPrompt: string;
+      const { conversationHistory, message, attachments, functionDeclarations } = data as {
+        prompt?: unknown;
         conversationHistory?: ChatMessage[];
         message: string;
         attachments?: unknown;
         functionDeclarations?: unknown[];
         model?: string;
       };
-      /* Eumae's instructions live on the server (api/_prompts.ts): the app
-         sends markers, and a prompt that is not the app's is refused, so the
-         endpoint cannot be borrowed with someone's own instructions. */
-      if (!isAppPrompt(systemPrompt)) {
+      /* Eumae's instructions are composed here (api/_prompts.ts) from a spec of
+         choices — base, mode, role, language, the person's clock, and the app's
+         data for this turn. A request that is not one of those is refused, so
+         the endpoint cannot be borrowed with someone's own instructions. */
+      const prompt = composePrompt((data as { prompt?: unknown }).prompt);
+      if (!prompt) {
         return res.status(400).json({ error: 'Unsupported request' });
       }
       /* The fallback is the table's own `auto` entry rather than a copy of it: a
@@ -342,7 +344,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
-            buildGeminiBody(expandPrompt(systemPrompt), message, conversationHistory, attachments, functionDeclarations, tail)
+            buildGeminiBody(prompt, message, conversationHistory, attachments, functionDeclarations, tail)
           ),
         }
       );
@@ -377,18 +379,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (action === 'chatStream') {
-      const { systemPrompt, conversationHistory, message, attachments, functionDeclarations } = data as {
-        systemPrompt: string;
+      const { conversationHistory, message, attachments, functionDeclarations } = data as {
+        prompt?: unknown;
         conversationHistory?: ChatMessage[];
         message: string;
         attachments?: unknown;
         functionDeclarations?: unknown[];
         model?: string;
       };
-      /* Eumae's instructions live on the server (api/_prompts.ts): the app
-         sends markers, and a prompt that is not the app's is refused, so the
-         endpoint cannot be borrowed with someone's own instructions. */
-      if (!isAppPrompt(systemPrompt)) {
+      /* Eumae's instructions are composed here (api/_prompts.ts) from a spec of
+         choices — base, mode, role, language, the person's clock, and the app's
+         data for this turn. A request that is not one of those is refused, so
+         the endpoint cannot be borrowed with someone's own instructions. */
+      const prompt = composePrompt((data as { prompt?: unknown }).prompt);
+      if (!prompt) {
         return res.status(400).json({ error: 'Unsupported request' });
       }
       /* The fallback is the table's own `auto` entry rather than a copy of it: a
@@ -405,7 +409,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
-            buildGeminiBody(expandPrompt(systemPrompt), message, conversationHistory, attachments, functionDeclarations, tail)
+            buildGeminiBody(prompt, message, conversationHistory, attachments, functionDeclarations, tail)
           ),
         }
       );

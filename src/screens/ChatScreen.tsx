@@ -519,12 +519,12 @@ export default function ChatScreen() {
       withPlanNotes(history ?? msgs),
       custom,
     );
-    /* The chat's page, so an edit changes that code rather than a memory of it. */
+    /* The chat's page, so an edit changes that code rather than a memory of it.
+       All three of these ride as this turn's app context, which the server
+       places after Eumae's instructions (api/_prompts.ts). */
     const sbx = sandboxContext(threadId);
-    if (sbx) body.data.systemPrompt += sbx;
     const thing = wantsAThing(text);
-    if (thing) body.data.systemPrompt += thingHint(thing);
-    body.data.systemPrompt += saidNoHint(text);
+    body.data.prompt.context = [sbx, thing ? thingHint(thing) : '', saidNoHint(text)].filter(Boolean).join('');
 
     /* Two ids from one counter — the turn, and the reply it is
        waiting for — so the reply can still be found in the list while pieces of

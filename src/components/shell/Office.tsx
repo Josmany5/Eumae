@@ -316,12 +316,15 @@ function EumaeTab({ tab }: { tab: TabId }) {
       history.map((m) => (m.plan ? { ...m, text: `${m.text}\n\n${planNote(m.plan)}` } : m)),
       null,
     );
-    body.data.systemPrompt += `\n\n${role.prompt}${tab === 'console' ? consoleContext() : ''}${focusContext()}`;
+    /* Which room asked, and what that room can see: the Console adds its state
+       and the focus card, every room carries the focus card. Only the four
+       rooms with a persona have a name on the server side. */
+    if (ROLE[tab]) body.data.prompt.room = tab as 'console' | 'studio' | 'library' | 'classroom';
+    const ctx = `${tab === 'console' ? consoleContext() : ''}${focusContext()}`;
     /* Same rule as Chat: a "make me a thing" ask gets a page, not a project card.
        A bare no is a no (Oct 20: "no" came back as a 300-line page). */
     const thing = wantsAThing(q);
-    if (thing) body.data.systemPrompt += thingHint(thing);
-    body.data.systemPrompt += saidNoHint(q);
+    body.data.prompt.context = [ctx, thing ? thingHint(thing) : '', saidNoHint(q)].filter(Boolean).join('');
     const mine: Msg = { id: msgId(), role: 'you', text: q, ts: Date.now() };
     const replyId = msgId();
     const put = (reply: string, streaming: boolean, extra: Partial<Msg> = {}, prior: Msg[] = history) =>

@@ -8,11 +8,10 @@
 
 import { humanTimes } from './registry';
 import { streamChat, type Reply } from '../chat';
-import { BASE_PROMPT, type ApiChatBody } from '../request';
+import type { ApiChatBody } from '../request';
 import { continuePlan, declarations, dispatch, newPlan, type Plan } from './dispatcher';
-import { EUMAE_PROMPT, currentState } from './prompt';
+import { currentState } from './prompt';
 import { THING_TURN } from '../sandbox';
-import { languageLast } from '../voiceLang';
 import type { Opened } from './registry';
 
 const MAX_ROUNDS = 6;
@@ -32,23 +31,24 @@ export interface EumaeReply extends Reply {
 
 type Part = Record<string, unknown>;
 
-/** Swap the old "I can't touch the app" opening for Eumae's real prompt, and
- *  add the fresh state block. Directives and the timestamp stay as they were. */
-/** Last word in every prompt: mode, role and skill set tone and depth only.
- *  Without this, Build's "return one html code block" outranked the tools. */
-const TOOLS_WIN = '\u27E6tools_win\u27E7'; // words in api/_prompts.ts
-
+/** Swap the plain opening for Eumae's own, and hand over the fresh state block.
+ *
+ *  The settings (mode, role, thinking, language, the clock) already travel as
+ *  values in `prompt`, so nothing here has to be parsed back out of prose. The
+ *  server composes the instructions and puts this context after them. */
 export function withEumae(body: ApiChatBody, where: string): ApiChatBody {
-  const sp = body.data.systemPrompt;
-  const rest = sp.startsWith(BASE_PROMPT) ? sp.slice(BASE_PROMPT.length) : '\n\n' + sp;
+  const spec = body.data.prompt;
+  /* The state of the app first — the tools talk about it — then whatever the
+     room put in for this turn (a page's code, a hint). */
+  const context = currentState(where) + (spec.context ?? '');
   return {
     ...body,
     /* A "make me a thing" turn gets no tools: with them on the table, a game
        brief came back as a Create project card (Oct 20). */
     data: {
       ...body.data,
-      systemPrompt: languageLast(EUMAE_PROMPT + currentState(where) + rest + TOOLS_WIN),
-      functionDeclarations: rest.includes(THING_TURN) ? [] : declarations(),
+      prompt: { ...spec, base: 'eumae', context },
+      functionDeclarations: (spec.context ?? '').includes(THING_TURN) ? [] : declarations(),
     },
   };
 }

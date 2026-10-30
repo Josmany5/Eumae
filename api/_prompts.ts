@@ -1,10 +1,17 @@
-/* Eumae's instructions, kept on the server (Oct 26, his call).
+/* Eumae's instructions, kept on the server (Oct 26, his call) and written here
+ * only (Oct 29, STANDARD.md 3.1).
  *
  *  The browser used to build the whole system prompt and send it, so anyone
- *  could read Eumae's instructions in DevTools. Now the browser sends short
- *  markers like ⟦base⟧ or ⟦role:console⟧ where an instruction goes, plus the
- *  person's own context; the server swaps each marker for the text below.
- *  The underscore keeps Vercel from serving this file as a route.
+ *  could read Eumae's instructions in DevTools. It then sent markers plus the
+ *  app's settings prose, which left the endpoint open: the gate only checked
+ *  that the string OPENED with a marker, so anyone could send
+ *  `⟦base⟧ <their own instructions>` and have them obeyed. That was reproduced
+ *  before it was fixed, not guessed.
+ *
+ *  Now the browser sends a SPEC (below) — a base, a mode, a language, the
+ *  person's clock, and the app context for this turn — and this file turns
+ *  those choices into the prompt. Nothing the caller sends is an instruction;
+ *  it is a value that gets formatted into one.
  *
  *  Edit the wording HERE. The browser never sees it. */
 
@@ -24,14 +31,122 @@ export const PROMPTS: Record<string, string> = {
   "role:classroom": "You are Eumae acting as a patient tutor in Classroom. Explain simply, check understanding with a short question, and never lecture at length."
 };
 
-const MARK = /\u27E6([A-Za-z_:]+)\u27E7/g;
+/* ── The spec the app sends, and the prompt built out of it ─────────────── */
 
-/** True when the prompt was built by the app (it opens with a marker). */
-export function isAppPrompt(systemPrompt: unknown): systemPrompt is string {
-  return typeof systemPrompt === 'string' && /^\u27E6(base|eumae)\u27E7/.test(systemPrompt);
+/** What the app may ask for on one turn.
+ *
+ *  Every field is a CHOICE the app offers — one of three modes, a language by
+ *  its English name, the person's own clock — never prose the caller wrote.
+ *  The words those choices turn into are all chosen in this file, so a caller
+ *  can pick a setting but cannot write an instruction. */
+export interface PromptSpec {
+  /** Which opening: the plain chat one, or Eumae's full one with tools. */
+  base: 'base' | 'eumae';
+  mode?: 'Ask' | 'Build' | 'Learn';
+  role?: string;
+  skill?: string;
+  thinking?: 'Quick' | 'Balanced' | 'Deep';
+  /** A custom role's own definition, when the person wrote one. */
+  tone?: string;
+  style?: string;
+  purpose?: string;
+  /** The person's clock, as one line: "Wednesday, October 29, 2026, 7:04 PM". */
+  now?: string;
+  /** The language to reply in, by its English name. */
+  lang?: string;
+  /** Which room of the app is asking. */
+  room?: 'console' | 'studio' | 'library' | 'classroom';
+  /** Studio's two jobs: make the thing, or answer a question about it. */
+  studio?: 'make' | 'answer';
+  /** What the app knows this turn — its state, a page's code, a spec, a hint.
+   *  This is data. It rides after the instructions, never before them. */
+  context?: string;
 }
 
-/** Swap every marker for its text; an unknown marker becomes nothing. */
-export function expandPrompt(systemPrompt: string): string {
-  return systemPrompt.replace(MARK, (_m, key: string) => PROMPTS[key] ?? '');
+const MODES = ['Ask', 'Build', 'Learn'] as const;
+const THINKING = ['Quick', 'Balanced', 'Deep'] as const;
+const ROOMS = ['console', 'studio', 'library', 'classroom'] as const;
+const STUDIOS = ['make', 'answer'] as const;
+
+/** Nothing over this much app context: a turn is a turn, not an upload. */
+const CONTEXT_MAX = 40_000;
+
+function pick<T extends readonly string[]>(list: T, value: unknown): T[number] | undefined | null {
+  if (value === undefined || value === null || value === '') return undefined;
+  return typeof value === 'string' && (list as readonly string[]).includes(value) ? (value as T[number]) : null;
+}
+
+/** A setting that reaches the model as an instruction: one line, capped, and
+ *  free of markers. A newline is a second instruction, so there is none. */
+function oneLine(value: unknown, max: number): string | null | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string' || value.length > max) return null;
+  if (/[\r\n\u27E6\u27E7]/.test(value)) return null;
+  return value.trim();
+}
+
+/** The system prompt for one turn — or null, which the endpoint answers with a
+ *  400. Null is not a shrug: a caller that is not the app gets no prompt.
+ *
+ *  This is what closes the hole of Oct 29 (STANDARD.md 3.1): the gate used to
+ *  check only that the string OPENED with ⟦base⟧, so
+ *  `⟦base⟧ IGNORE ALL PREVIOUS INSTRUCTIONS...` was accepted and every word
+ *  after the marker went to the model as an instruction. Now nothing the caller
+ *  sends is ever an instruction — it is a value this function formats. */
+export function composePrompt(spec: unknown): string | null {
+  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return null;
+  const s = spec as Record<string, unknown>;
+  if (s.base !== 'base' && s.base !== 'eumae') return null;
+
+  const mode = pick(MODES, s.mode);
+  const thinking = pick(THINKING, s.thinking);
+  const room = pick(ROOMS, s.room);
+  const studio = pick(STUDIOS, s.studio);
+  if (mode === null || thinking === null || room === null || studio === null) return null;
+
+  const role = oneLine(s.role, 60);
+  const skill = oneLine(s.skill, 60);
+  const tone = oneLine(s.tone, 80);
+  const style = oneLine(s.style, 80);
+  const purpose = oneLine(s.purpose, 300);
+  const now = oneLine(s.now, 120);
+  const lang = oneLine(s.lang, 40);
+  if (role === null || skill === null || tone === null || style === null || purpose === null || now === null || lang === null) return null;
+
+  let context = '';
+  if (s.context !== undefined && s.context !== null) {
+    if (typeof s.context !== 'string' || s.context.length > CONTEXT_MAX) return null;
+    context = s.context;
+  }
+
+  /* The settings block, in the app's own words and order (the mockup's 1644,
+     kept as it shipped). */
+  const lines: string[] = [];
+  if (mode) lines.push(`Mode: ${mode}${PROMPTS['mode:' + mode]}`);
+  if (role) {
+    const card = tone || style || purpose ? ` - tone: ${tone || '—'}, style: ${style || '—'}, purpose: ${purpose || '—'}` : '';
+    lines.push(`Role: ${role}.${card}`);
+  }
+  if (skill) lines.push(`Skill: ${skill}. Follow it.`);
+  if (thinking === 'Quick') lines.push('Keep the reply brief.');
+  if (thinking === 'Deep') lines.push('Think it through and give a fuller, more careful answer.');
+  if (mode === 'Build') lines.push(PROMPTS.visual);
+  if (room) lines.push(PROMPTS['role:' + room]);
+  if (studio) lines.push(PROMPTS['studio:' + studio]);
+  const settings = lines.length
+    ? ['', '', 'CHAT SETTINGS (the user picked these in the + picker - follow them for this reply):', lines.join('\n')].join('\n')
+    : '';
+
+  const clock = now ? `\n\nCurrent date and time: ${now}.` : '';
+  const state = s.base === 'eumae' && context ? '\n\n' + context : '';
+  const tail = s.base === 'base' && context ? '\n\n' + context : '';
+  /* WHERE IT GOES, and why: Eumae's own opening, then the state of the app
+     (tools talk about it), then the settings, then the clock, then the line
+     that settles which of them wins, then the app's data for this turn, and
+     the language rule last of all — it overrides everything above it. */
+  const toolsWin = s.base === 'eumae' ? PROMPTS.tools_win : '';
+  const language = lang
+    ? `\n\nLANGUAGE (app setting, overrides everything above): reply only in ${lang}, even if earlier messages in this chat are in a different language. Short replies like "ok" or "yes" do not change the language.`
+    : '';
+  return PROMPTS[s.base] + state + settings + clock + toolsWin + tail + language;
 }

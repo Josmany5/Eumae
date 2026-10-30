@@ -49,6 +49,7 @@
     "check:roles": "node checks/roles.mjs",
     "check:quickadd": "node checks/quickadd.mjs",
     "check:eumae": "node checks/eumae.mjs",
+    "check:prompt": "node checks/prompt.mjs",
     "check:all": "node checks/all.mjs"
   },
   "type": "module",

@@ -114,7 +114,8 @@ export function StudioChat({ id }: { id: string }) {
     put({ ...base, msgs: [...base.msgs, { id: mid(), who: 'u', text: q }, { id: replyId, who: 'e', text: '', streaming: true }] });
     setBusy(true);
     const body = toApiBody(buildRequest(turn, [], q), [], null);
-    body.data.systemPrompt += '\n\n\u27E6studio:answer\u27E7' + sandboxContext(thread);
+    body.data.prompt.studio = 'answer';
+    body.data.prompt.context = sandboxContext(thread);
     void streamChat(body, (t) => {
       const x = getSession(s.id);
       if (x) saveSession({ ...x, msgs: x.msgs.map((m) => (m.id === replyId ? { ...m, text: t } : m)) });
@@ -137,8 +138,14 @@ export function StudioChat({ id }: { id: string }) {
     put(base);
     setBusy(true);
     const body = toApiBody(buildRequest(turn, change ? att : files, change ?? briefOfSession(base)), [], null);
-    body.data.systemPrompt +=
-      '\n\n\u27E6visual\u27E7' + (change ? '\n\u27E6role:studio\u27E7' + sandboxContext(thread) + `\n\n# THE SPEC\n${briefOfSession(base)}` : '\n\u27E6studio:make\u27E7');
+    /* A change is Studio talking again about the page it already made; a fresh
+       build is Studio's Make it, with the spec it gathered as the context. */
+    if (change) {
+      body.data.prompt.room = 'studio';
+      body.data.prompt.context = sandboxContext(thread) + `\n\n# THE SPEC\n${briefOfSession(base)}`;
+    } else {
+      body.data.prompt.studio = 'make';
+    }
     const fresh = getSession(s.id);
     if (fresh?.fileId && !page) armDraft(fresh.fileId);
     void streamChat(body, (t) => {

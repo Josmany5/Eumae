@@ -1,4 +1,4 @@
-import { replyLanguageLine, replyLanguageNudge } from './voiceLang';
+import { replyLanguageNudge, storedVoiceLang } from './voiceLang';
 import type { Mode, Model, Ref, Turn } from './nav';
 import type { CustomRole } from './roles';
 
@@ -6,65 +6,55 @@ import type { CustomRole } from './roles';
  *
  *  Two ends meet here and neither of them owns the shape on its own. The `+`
  *  menu writes the turn (nav.ts), and the server reads a body of
- *  `{ action, data }` (api/ai.ts:178). The third end is the mockup, and it is
- *  the reason none of this is guesswork — it builds exactly this at line 1872:
+ *  `{ action, data }` (api/ai.ts:178). The third end is the mockup, which
+ *  built the settings block this shape grew out of (1644-1661).
  *
- *    {action:"chatStream",data:{systemPrompt:PROMPT+directives(),
- *     conversationHistory:hist,message:apiMsg,functionDeclarations:TOOLS}}
+ *  Since Oct 29 the five settings travel as FIVE VALUES, not as prose: the
+ *  server composes the CHAT SETTINGS block itself (api/_prompts.ts), because a
+ *  prompt the client can write is a prompt a caller can write. What crosses the
+ *  wire is a spec of choices (`PromptSpec` below) plus the app's context for
+ *  this turn. The one setting the server has a field of its own for, `model`,
+ *  travels as a *key* into the server's table (`lite` / `best`), not as the
+ *  label the chip shows.
  *
- *  Which settles the one thing worth settling: the five settings do *not*
- *  travel as five fields. They travel as prose — `directives()` (mockup 1644)
- *  turns them into a block appended to the system prompt — and the single
- *  setting the server has a field for, `model`, travels as a *key* into the
- *  server's own table (`lite` / `best`), not as the label the chip shows.
- *  Writing that down, once, is this module's whole job. Phase 6 calls it;
- *  §5 check 6 is what keeps it true until then.
+ *  Writing that down, once, is this module's whole job.
  */
 
-/** The base instruction, prepended to the settings block. Since Oct 26 its
- *  words live on the server (api/_prompts.ts); this is the marker for them.
+/** What the app tells the server about this turn's instructions.
  *
- *  The mockup's own paragraph (1626) names the owner and calls him "the person
- *  building it". This repo is public and carries no real name (§3), so the
- *  paragraph is written fresh: same job, nobody's name in it, and the same
- *  admission — that this thread cannot yet see or change anything inside the
- *  app, so a request to do so is answered plainly instead of faked. */
-export const BASE_PROMPT = '\u27E6base\u27E7';
-
-/** What each mode asks for. The mockup's clauses (1647) are one short sentence
- *  each and this keeps that length — but the three are now three different
- *  *jobs* rather than three tones, because the two that were thin were failing in
- *  ways the owner met (2026-10-08):
+ *  The words are Eumae's, and they live on the server (api/_prompts.ts,
+ *  composePrompt). This side sends the CHOICES the person made — the opening,
+ *  the mode, the role and its definition, the language, their clock — plus the
+ *  app's data for this turn. It used to send a prompt string with markers in
+ *  it, which meant the endpoint obeyed whatever came after the first marker:
+ *  a caller could write their own instructions and have them followed
+ *  (STANDARD.md 3.1, reproduced before it was fixed).
  *
- *   - Ask answered the question and then, sometimes, made something. Nothing
- *     asked it to; the always-on line below did (it used to be pushed on every
- *     reply), which is how a question about a country came back with a page.
- *   - Build dropped the code into the chat and left it there: a wall of html with
- *     the guide somewhere inside it, when what a person wants first is what was
- *     made and how to use it. This clause says which comes first. It cannot yet
- *     say where the thing should *land* — nothing renders an artifact (§7), so
- *     the code block is still the only way a built thing leaves a reply, and that
- *     is a gap in the app rather than a shortcoming of this sentence.
- *   - Learn taught in fragments — a fact, then another fact, then an idea nobody
- *     asked for. The shape below is a lesson, in the order a lesson goes, and the
- *     last line is what keeps it on the subject that was asked about.
- */
-const MODE_CLAUSE: Record<Mode, string> = {
-  Ask: '\u27E6mode:Ask\u27E7',
-  Build: '\u27E6mode:Build\u27E7',
-  Learn: '\u27E6mode:Learn\u27E7',
-};
-
-/** Studio's premise (mockup 1655), and since 2026-10-08 Build's alone.
- *
- *  It used to be pushed onto every reply, and that is where the trouble started:
- *  "return it as one complete html code block" is an instruction to make
- *  something, and it was being given on every turn — including in Ask and Learn,
- *  where nobody had asked for a thing to be made. The sentence is Studio's, so it
- *  now travels only with the mode that builds for it. It stays in that mode
- *  because it is what makes a built thing land in one shape instead of five, and
- *  one shape is what makes it findable later, when something renders it (§7). */
-const VISUAL = '\u27E6visual\u27E7';
+ *  `context` is the one free-text field: what the app knows this turn (the page
+ *  being edited, a spec, a hint). It is data, and the server places it after
+ *  the instructions, never before them. */
+export interface PromptSpec {
+  /** Which opening: the plain chat one, or Eumae's full one with tools. */
+  base: 'base' | 'eumae';
+  mode?: Mode;
+  role?: string;
+  skill?: string;
+  thinking?: 'Quick' | 'Balanced' | 'Deep';
+  /** A custom role's own definition, when the person wrote one. */
+  tone?: string;
+  style?: string;
+  purpose?: string;
+  /** The person's clock, as one line: "Wednesday, October 29, 2026, 7:04 PM". */
+  now?: string;
+  /** The language to reply in, by its English name. */
+  lang?: string;
+  /** Which room of the app is asking. */
+  room?: 'console' | 'studio' | 'library' | 'classroom';
+  /** Studio's two jobs: make the thing, or answer a question about it. */
+  studio?: 'make' | 'answer';
+  /** What the app knows this turn — its state, a page's code, a spec, a hint. */
+  context?: string;
+}
 
 /** How this one message was asked: the chat's turn, plus the two things that
  *  belong to the message rather than to the chat — what was attached, and what
@@ -81,49 +71,6 @@ export function buildRequest(turn: Turn, refs: readonly Ref[], text: string): Tu
   return { ...turn, refs: [...refs], text };
 }
 
-/** The settings block from `directives()` (mockup 1644-1661), transcribed word
- *  for word — including its hyphen — with one substitution: the mockup wrote
- *  "him", and this repo cannot know who is typing.
- *
- *  Two deliberate departures, both because the model should be told less that
- *  is not true:
- *   - `role: ''` is Default (the Role section in `AddSheet.tsx`). The mockup keeps the literal
- *     string and tells the model "Role: Default." anyway (1648-1650); an empty
- *     role describes nothing a persona needs to be told, so no line is sent —
- *     the same reason its own chip hides Default (1270).
- *   - the skill line drops the skill's own description, which the mockup
- *     appends when there is one (1652). No skill exists yet, so there is no
- *     description to carry; the sentence itself still says "Follow it." */
-export function directives(req: TurnRequest, custom?: CustomRole | null): string {
-  const lines = [`Mode: ${req.mode}${MODE_CLAUSE[req.mode]}`];
-  if (req.role) {
-    /* Custom roles carry their definition — the mockup's directives()
-       looks the role up and appends tone/style/purpose. Built-ins travel
-       as the name alone. */
-    const extra =
-      custom && [custom.tone, custom.style, custom.purpose].some(Boolean)
-        ? ` - tone: ${custom.tone || '—'}, style: ${custom.style || '—'}, purpose: ${custom.purpose || '—'}`
-        : '';
-    lines.push(`Role: ${req.role}.${extra}`);
-  }
-  if (req.skill) lines.push(`Skill: ${req.skill}. Follow it.`);
-  /* Balanced asks for nothing extra — the mockup only speaks up for the two
-     ends (1653), which is what makes Balanced the default rather than a third
-     instruction. */
-  if (req.thinking === 'Quick') lines.push('Keep the reply brief.');
-  if (req.thinking === 'Deep') lines.push('Think it through and give a fuller, more careful answer.');
-  /* The premise only where it can be acted on: Build is the mode that makes a
-     thing, so it is the mode that is told what shape to make it in. Every other
-     mode gets a clause that fits what it is for (above), rather than a standing
-     invitation to start building. */
-  if (req.mode === 'Build') lines.push(VISUAL);
-  return [
-    '',
-    '',
-    'CHAT SETTINGS (the user picked these in the + picker - follow them for this reply):',
-    lines.join('\n'),
-  ].join('\n');
-}
 
 /** The label the chip shows is *not* the key the server reads.
  *
@@ -209,7 +156,7 @@ export function historyOf(
 export interface ApiChatBody {
   action: 'chatStream';
   data: {
-    systemPrompt: string;
+    prompt: PromptSpec;
     conversationHistory: WireMessage[];
     message: string;
     attachments?: Attachment[];
@@ -234,9 +181,11 @@ export interface ApiChatBody {
  *  image?" (1863) — which we do not need yet, because the composer will not send
  *  an empty field at all (Composer.tsx:101 disables Send on empty text). */
 /** The moment this request leaves the phone, in the person's own words' frame:
- *  the date, the time, and their timezone. Every request carries it, so the
- *  model always knows what "now", "tonight" and "tomorrow" mean for them. */
-function timeStamp(): string {
+ *  the date, the time, and their timezone — ONE line, because the server puts
+ *  it into the prompt as "Current date and time: …" and a setting that carries
+ *  a newline is a second instruction hiding in a setting. Every request carries
+ *  it, so the model always knows what "now", "tonight" and "tomorrow" mean. */
+function clockLine(): string {
   const now = new Date();
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const date = now.toLocaleDateString(undefined, {
@@ -246,7 +195,7 @@ function timeStamp(): string {
     day: 'numeric',
   });
   const time = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  return `\n\nCurrent date and time: ${date}, ${time} (${tz}).`;
+  return `${date}, ${time} (${tz})`;
 }
 
 /** Items added from the office's Context tab ride under the message as text. */
@@ -267,7 +216,20 @@ export function toApiBody(
   return {
     action: 'chatStream',
     data: {
-      systemPrompt: BASE_PROMPT + directives(req, customRole) + timeStamp() + replyLanguageLine(),
+      prompt: {
+        base: 'base',
+        mode: req.mode,
+        thinking: req.thinking,
+        ...(req.role ? { role: req.role } : {}),
+        ...(req.skill ? { skill: req.skill } : {}),
+        /* A custom role's definition rides with its name, as before; a built-in
+           role travels as the name alone (customRole is null for those). */
+        ...(customRole && customRole.tone ? { tone: customRole.tone } : {}),
+        ...(customRole && customRole.style ? { style: customRole.style } : {}),
+        ...(customRole && customRole.purpose ? { purpose: customRole.purpose } : {}),
+        now: clockLine(),
+        lang: storedVoiceLang().english,
+      },
       conversationHistory: historyOf(history),
       message: req.text + ctxBlock(req.refs) + replyLanguageNudge(),
       ...(attachments.length ? { attachments } : {}),
