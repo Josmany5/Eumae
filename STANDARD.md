@@ -137,6 +137,14 @@ with no markers in it, and the app's context is placed *after* the instructions.
 Anything else answers 400. The exploit in this section is now a case in
 `checks/prompt.mjs`, so it cannot come back quietly.
 
+**One thing the rewrite nearly lost, found 2026-10-29.** Studio used to append the
+"one complete page, nothing loaded from outside" rules itself, because the mode
+picker defaults to Ask and only Build asks for them. Moving that decision to the
+server therefore dropped them from every Studio build — and the sandbox really has
+no network, so a page loading a CDN script fails with no error. Studio now sends
+`visual: true` and the composer emits those rules once, whether from the flag or
+from Build. Five check cases hold it.
+
 **What is still yours.** In Supabase: Authentication → Sign In / Providers → Email →
 turn *Allow new users to sign up* off (or require email confirmation). That is a
 dashboard switch, not code, so it could not be done here. Until it is off, a

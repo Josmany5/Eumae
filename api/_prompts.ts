@@ -58,6 +58,12 @@ export interface PromptSpec {
   room?: 'console' | 'studio' | 'library' | 'classroom';
   /** Studio's two jobs: make the thing, or answer a question about it. */
   studio?: 'make' | 'answer';
+  /** The shape rules for something the person will USE — one complete page,
+   *  nothing loaded from outside. Set by Studio, which builds pages whatever
+   *  mode the picker happens to be on; `mode: 'Build'` asks for them too, and
+   *  this is a flag rather than a string so the caller still cannot write an
+   *  instruction. Emitted once even when both ask. */
+  visual?: boolean;
   /** What the app knows this turn — its state, a page's code, a spec, a hint.
    *  This is data. It rides after the instructions, never before them. */
   context?: string;
@@ -104,6 +110,8 @@ export function composePrompt(spec: unknown): string | null {
   const studio = pick(STUDIOS, s.studio);
   if (mode === null || thinking === null || room === null || studio === null) return null;
 
+  if (s.visual !== undefined && typeof s.visual !== 'boolean') return null;
+
   const role = oneLine(s.role, 60);
   const skill = oneLine(s.skill, 60);
   const tone = oneLine(s.tone, 80);
@@ -130,7 +138,10 @@ export function composePrompt(spec: unknown): string | null {
   if (skill) lines.push(`Skill: ${skill}. Follow it.`);
   if (thinking === 'Quick') lines.push('Keep the reply brief.');
   if (thinking === 'Deep') lines.push('Think it through and give a fuller, more careful answer.');
-  if (mode === 'Build') lines.push(PROMPTS.visual);
+  /* The premise wherever it can be acted on: Build is the mode that makes a
+     thing, and Studio makes one whatever the mode is. Once, not twice — v1
+     appended it a second time from Studio on top of the mode's own line. */
+  if (mode === 'Build' || s.visual === true) lines.push(PROMPTS.visual);
   if (room) lines.push(PROMPTS['role:' + room]);
   if (studio) lines.push(PROMPTS['studio:' + studio]);
   const settings = lines.length

@@ -142,9 +142,11 @@ export function StudioChat({ id }: { id: string }) {
        build is Studio's Make it, with the spec it gathered as the context. */
     if (change) {
       body.data.prompt.room = 'studio';
+      body.data.prompt.visual = true;
       body.data.prompt.context = sandboxContext(thread) + `\n\n# THE SPEC\n${briefOfSession(base)}`;
     } else {
       body.data.prompt.studio = 'make';
+      body.data.prompt.visual = true;
     }
     const fresh = getSession(s.id);
     if (fresh?.fileId && !page) armDraft(fresh.fileId);

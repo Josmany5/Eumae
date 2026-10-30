@@ -52,6 +52,10 @@ export interface PromptSpec {
   room?: 'console' | 'studio' | 'library' | 'classroom';
   /** Studio's two jobs: make the thing, or answer a question about it. */
   studio?: 'make' | 'answer';
+  /** Ask for the shape rules of a thing to use — one complete page, nothing
+   *  loaded from outside. Studio sets it (it builds pages whatever mode the
+   *  picker is on); the server adds its own words. */
+  visual?: boolean;
   /** What the app knows this turn — its state, a page's code, a spec, a hint. */
   context?: string;
 }

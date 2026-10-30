@@ -101,6 +101,30 @@ ok(withCtx.indexOf(M.PROMPTS.base) === 0, 'the instructions still come first');
 ok(withCtx.indexOf('TASKS: 3 open.') > withCtx.indexOf('CHAT SETTINGS'), "the app's context comes after the settings");
 ok(withCtx.indexOf('TASKS: 3 open.') < withCtx.indexOf('LANGUAGE (app setting'), 'and before the language rule, which stays last');
 
+/* ── 4b. Studio builds get the shape rules whatever mode the picker is on ──
+ *  The sandbox runs in a locked frame with no network, so a page that loads a
+ *  CDN script breaks with no error. v1 of this composer only added the rules
+ *  for `mode: 'Build'`, and the picker defaults to Ask — so a Studio build lost
+ *  them. Studio now says `visual: true`; this is what keeps that true. */
+const SHAPE = M.PROMPTS.visual.slice(0, 40);
+ok(
+  M.composePrompt({ base: 'eumae', mode: 'Ask', visual: true })?.includes(SHAPE),
+  'a Studio build with the picker on Ask still gets the shape rules',
+);
+ok(
+  M.composePrompt({ base: 'base', mode: 'Build' })?.includes(SHAPE),
+  'Build mode gets them by itself, as before',
+);
+ok(
+  M.composePrompt({ base: 'base', mode: 'Build', visual: true })?.split(SHAPE).length === 2,
+  'asked twice, said once',
+);
+ok(
+  M.composePrompt({ base: 'base', mode: 'Ask' })?.includes(SHAPE) === false,
+  'and a plain Ask turn does not get them',
+);
+ok(M.composePrompt({ base: 'base', visual: 'yes please' }) === null, 'a visual that is not a flag is refused');
+
 /* ── 5. What the app actually sends is a spec, never prose ───────────────── */
 const body = M.toApiBody({ mode: 'Build', role: 'Coach', skill: '', thinking: 'Deep', model: 'Auto', refs: [], text: 'hi' }, []);
 ok(typeof body.data.prompt === 'object' && body.data.prompt !== null, 'the body carries a prompt spec');
