@@ -45,16 +45,38 @@ function sanitizeAttachments(attachments: unknown): { inlineData: { mimeType: st
 
 /* Per-account usage cap. Each server instance counts requests per signed-in
    account over a rolling window. Generous on purpose: normal use never meets
-   it. A shared, database-backed count comes with the database. */
+   it. A shared, database-backed count comes with the database (STANDARD.md 3.9).
+
+   The map used to be emptied wholesale once it passed 5000 callers — so at that
+   size the limiter wiped itself and handed everybody a fresh allowance, which is
+   the one moment it mattered most. Now stale callers are dropped first, and only
+   if the map is still full do the oldest quiet ones go. */
 const LIMIT = 120;
 const WINDOW_MS = 10 * 60 * 1000;
+const MAX_CALLERS = 5000;
 const hits = new Map<string, number[]>();
+
+function prune(now: number): void {
+  for (const [key, times] of hits) {
+    const live = times.filter((t) => now - t < WINDOW_MS);
+    if (!live.length) hits.delete(key);
+    else if (live.length !== times.length) hits.set(key, live);
+    if (hits.size <= MAX_CALLERS) return;
+  }
+  /* Still full of callers who are all inside their window: give up the oldest
+     counters, not every counter. */
+  for (const key of hits.keys()) {
+    if (hits.size <= MAX_CALLERS) break;
+    hits.delete(key);
+  }
+}
+
 function overLimit(id: string): boolean {
   const now = Date.now();
   const list = (hits.get(id) ?? []).filter((t) => now - t < WINDOW_MS);
   list.push(now);
   hits.set(id, list);
-  if (hits.size > 5000) hits.clear();
+  if (hits.size > MAX_CALLERS) prune(now);
   return list.length > LIMIT;
 }
 
@@ -114,6 +136,9 @@ function toolModel(modelId: string, functionDeclarations: unknown[] | undefined)
   const tools = Array.isArray(functionDeclarations) && functionDeclarations.length > 0;
   return tools && /^gemini-2\./.test(modelId) ? MODEL_IDS.lite : modelId;
 }
+
+/* The largest request this endpoint will even look at. */
+const MAX_BODY_BYTES = 6 * 1024 * 1024;
 
 interface ChatMessage {
   role: string;
@@ -286,6 +311,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  /* A ceiling on the request itself, checked before anything is forwarded: a
+     turn carries text and, at most, a few images as base64, and anything far
+     past that is not a turn (STANDARD.md 3.8). Vercel's own limit is smaller
+     still, so this is the belt to that pair of braces. */
+  const declared = Number(req.headers['content-length'] ?? 0);
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+    return res.status(413).json({ error: 'That request is too large.' });
+  }
+
   // The lock: every action requires a signed-in caller. Unsigned calls are
   // rejected before the API key is ever touched.
   let callerId: string | null;
@@ -311,10 +345,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { action, data } = req.body as { action: string; data: Record<string, unknown> };
+    /* What arrived may not be a body at all — a form post, a bare string, a
+       JSON array. Destructuring those used to throw and come back as a 500
+       "something went wrong on the server", which blames us for a caller's
+       mistake (STANDARD.md 3.10). A body that is not `{ action, data }` is a
+       400, said plainly. */
+    const raw: unknown = req.body;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return res.status(400).json({ error: 'Unsupported request' });
+    }
+    const { action, data } = raw as { action?: unknown; data?: unknown };
+    if (typeof action !== 'string' || !data || typeof data !== 'object' || Array.isArray(data)) {
+      return res.status(400).json({ error: 'Unsupported request' });
+    }
+    const body = data as Record<string, unknown>;
 
     if (action === 'chat') {
-      const { conversationHistory, message, attachments, functionDeclarations } = data as {
+      const { conversationHistory, message, attachments, functionDeclarations } = body as {
         prompt?: unknown;
         conversationHistory?: ChatMessage[];
         message: string;
@@ -326,7 +373,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
          choices — base, mode, role, language, the person's clock, and the app's
          data for this turn. A request that is not one of those is refused, so
          the endpoint cannot be borrowed with someone's own instructions. */
-      const prompt = composePrompt((data as { prompt?: unknown }).prompt);
+      const prompt = composePrompt((body as { prompt?: unknown }).prompt);
       if (!prompt) {
         return res.status(400).json({ error: 'Unsupported request' });
       }
@@ -334,9 +381,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
          literal here is a second thing to remember to change, and one was
          sitting on this line until checks/models.mjs went looking for it. It is
          also what a request with no model at all gets, which is Auto. */
-      const picked = MODEL_IDS[(data as { model?: string }).model || ''] || MODEL_IDS.auto;
+      const picked = MODEL_IDS[(body as { model?: string }).model || ''] || MODEL_IDS.auto;
       const modelId = toolModel(picked, functionDeclarations);
-      const tail = (data as { tail?: unknown }).tail;
+      const tail = (body as { tail?: unknown }).tail;
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GEMINI_API_KEY}`,
@@ -379,7 +426,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (action === 'chatStream') {
-      const { conversationHistory, message, attachments, functionDeclarations } = data as {
+      const { conversationHistory, message, attachments, functionDeclarations } = body as {
         prompt?: unknown;
         conversationHistory?: ChatMessage[];
         message: string;
@@ -391,7 +438,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
          choices — base, mode, role, language, the person's clock, and the app's
          data for this turn. A request that is not one of those is refused, so
          the endpoint cannot be borrowed with someone's own instructions. */
-      const prompt = composePrompt((data as { prompt?: unknown }).prompt);
+      const prompt = composePrompt((body as { prompt?: unknown }).prompt);
       if (!prompt) {
         return res.status(400).json({ error: 'Unsupported request' });
       }
@@ -399,9 +446,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
          literal here is a second thing to remember to change, and one was
          sitting on this line until checks/models.mjs went looking for it. It is
          also what a request with no model at all gets, which is Auto. */
-      const picked = MODEL_IDS[(data as { model?: string }).model || ''] || MODEL_IDS.auto;
+      const picked = MODEL_IDS[(body as { model?: string }).model || ''] || MODEL_IDS.auto;
       const modelId = toolModel(picked, functionDeclarations);
-      const tail = (data as { tail?: unknown }).tail;
+      const tail = (body as { tail?: unknown }).tail;
 
       const geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`,
@@ -575,7 +622,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (action === 'speak') {
-      const { text, voice = 'female', voiceGender, rate, lang } = data as {
+      const { text, voice = 'female', voiceGender, rate, lang } = body as {
         text: string;
         voice?: string;
         voiceGender?: string;
@@ -684,7 +731,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
        on its own terms — it threw the provider's own text at a 500. */
 
     if (action === 'generateImage') {
-      const { prompt, aspectRatio, images } = (data || {}) as {
+      const { prompt, aspectRatio, images } = body as {
         prompt?: string;
         aspectRatio?: string;
         images?: { mimeType?: string; data?: string }[];
