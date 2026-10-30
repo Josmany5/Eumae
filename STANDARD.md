@@ -105,8 +105,12 @@ that is *not* a bug is in Part 4, with its own plan. Both are staged in Part 5.
 Each item was **confirmed by running something**, not by reading and guessing.
 The small print is where to look, for whoever does the work.
 
+**Progress.** 2026-10-29: 3.1 (the gate), 3.3, 3.4, 3.5 and three of 3.7 are done
+and pushed. 3.2 is half done and says so. 3.6 and the rest of 3.7 are Stage 1.
+Every finished item carries a dated note saying what changed.
+
 ### 3.1 The front door is open — anyone can sign up and use your AI key
-- [ ] **Fixed**
+- [x] **The gate: fixed 2026-10-29** · **signups: still open — five minutes of yours**
 
 **What it is.** Signing up is public, and the app checks that a message "came from
 Eumae" only by looking at the first word of it. Everything after that first word
@@ -124,8 +128,23 @@ instruction text itself from a fixed set. Anything not in that set is refused.
 stranger cannot create an account at all.
 <sub>`api/ai.ts:328,391` · `api/_prompts.ts:30-37` — the comment above both claims this is impossible; it is not.</sub>
 
+**What changed, 2026-10-29.** The app no longer sends sentences. It sends a *spec*:
+which opening, which mode, which role, how deep, the language by name, your clock,
+which room is asking, and the app's context for that turn (`src/request.ts`). The
+server writes the instructions out of those values (`api/_prompts.ts`,
+`composePrompt`): every setting is a short enum, every free value must be one line
+with no markers in it, and the app's context is placed *after* the instructions.
+Anything else answers 400. The exploit in this section is now a case in
+`checks/prompt.mjs`, so it cannot come back quietly.
+
+**What is still yours.** In Supabase: Authentication → Sign In / Providers → Email →
+turn *Allow new users to sign up* off (or require email confirmation). That is a
+dashboard switch, not code, so it could not be done here. Until it is off, a
+stranger who finds the URL can still make an account and spend your key — with
+Eumae's own instructions now, but on your bill.
+
 ### 3.2 The spending limit is a decoy
-- [ ] **Fixed**
+- [ ] **Half fixed, 2026-10-29** — it no longer wipes itself; it is still per-instance
 
 **What it is.** The limiter keeps its counts in each server instance's memory. On
 Vercel there are many instances, so the real limit is "120 requests × however
@@ -135,8 +154,16 @@ thing is emptied — wiping every user's count, including a bad user's.
 requires deleting a row.
 <sub>`api/ai.ts:49-59`</sub>
 
+**What changed, 2026-10-29.** The counter no longer empties the whole map once it
+passes 5,000 callers — which used to hand everybody, including whoever was abusing
+it, a fresh allowance at the exact moment it mattered. Stale callers are dropped
+first now, and only after that the oldest quiet ones. That closes the *self-wipe*.
+It does not close the real gap: each server instance still counts alone, so the
+honest ceiling is still 120 requests times however many instances exist. A count
+that everyone shares needs a table, and tables are Stage 2 (4.3). Still open.
+
 ### 3.3 After 8pm the dashboard forgets today
-- [ ] **Fixed**
+- [x] **Fixed 2026-10-29**
 
 **What it is.** One date calculation asks the world clock (UTC) instead of your
 clock. In New York at 9:30pm, "today" comes back as **tomorrow**. Proved:
@@ -147,8 +174,14 @@ empty, and things Eumae says it did are dated a day ahead.
 the wrong one impossible to type again.
 <sub>`src/components/shell/widgets.tsx:64` · also `src/eumae/registry.ts:359,1443,1521,1558`</sub>
 
+**What changed, 2026-10-29.** All five sites now use the app's own local-date helper
+(`ymd`) instead of the world clock. There is no `toISOString` left anywhere in
+`src/`. The second half of "done when" — a rule that makes the wrong call impossible
+to type again — needs ESLint, which is Stage 1, so it lands as a one-line rule there
+rather than as a habit now.
+
 ### 3.4 Three of your 25 safety checks are dead or lying
-- [ ] **Fixed**
+- [x] **Fixed 2026-10-29**
 
 **What it is.** `check:stores` and `check:roles` cannot run at all — they crash
 before the first test, because the files they check grew imports the test harness
@@ -161,8 +194,16 @@ stops being trusted, and then nobody runs any of them.
 `npm run check:all` runs every check in the repo.
 <sub>`checks/stores.mjs`, `checks/roles.mjs`, `checks/dash.mjs` · `src/dash.ts:90` is the truth the check should match</sub>
 
+**What changed, 2026-10-29.** `check:stores` and `check:roles` now *bundle* what they
+test (esbuild `buildSync`) instead of transforming one file in place, so the
+`require('./tasks')` that killed them cannot come back the next time a store grows an
+import. `check:dash` asserts the real Oct 18 layout, and it now also covers the
+one-time migration and the links-based project percentage. `npm run check:all` runs
+every check in `package.json` — there are 26 now, and the list is read from
+`package.json`, not typed out by hand, so a new check is covered the day it lands.
+
 ### 3.5 The green light is lying
-- [ ] **Fixed**
+- [x] **Fixed 2026-10-29**
 
 **What it is.** The build system (GitHub Actions) runs 14 of the 25 checks. The
 11 it skips are exactly the ones covering the Console, Library, Studio, Classroom
@@ -170,6 +211,12 @@ and the data stores — and that is exactly where 3.4's failures are hiding.
 **Done when.** CI runs every check, and a pull request cannot be merged green
 while any of them is red.
 <sub>`.github/workflows/ci.yml` — missing: stores, roles, dash, gdash, library, studio, classroom, tasks, events, quickadd</sub>
+
+**What changed, 2026-10-29.** `ci.yml` now runs `npm run check:all` after the
+typecheck and the build, with `GEMINI_API_KEY` passed in from the repository secret.
+The first full run also turned up something the old list had hidden: `check:models`
+had never run in CI at all, and it needs a key, so it now reports SKIP when there is
+none instead of failing or, worse, being quietly left out.
 
 ### 3.6 Storage fills up and saves vanish without a word
 - [ ] **Fixed**
@@ -186,14 +233,18 @@ bigger storage (IndexedDB — the uploads feature already proves the pattern).
 <sub>`src/threads.ts:104` · `src/tasks.ts:103` · `src/sandbox.ts:58` · `src/dash.ts:106`</sub>
 
 ### 3.7 Smaller things, same list
-- [ ] **`speak` fails with the wrong error** — read-aloud requires the chat key
-  present even though it uses a different service. **Done when** it names the
-  service that is actually missing. <sub>`api/ai.ts:306-311`</sub>
-- [ ] **No ceiling on message size** — one signed-in user can post megabytes per
-  request. **Done when** a body cap is enforced at the door. <sub>`api/ai.ts:380`</sub>
-- [ ] **A malformed request blames the server** — you get "something went wrong on
-  the server" where the truth is "that request was malformed". **Done when** bad
-  input answers 400, not 500. <sub>`api/ai.ts:314`</sub>
+- [x] **`speak` fails with the wrong error** — read-aloud required the chat key to
+  be present even though it uses a different service. **Fixed 2026-10-29:** each
+  action now asks for the key it needs, so a missing speech key says read-aloud is
+  not set up on this server instead of naming the chat key.
+  <sub>`api/ai.ts:306-311`</sub>
+- [x] **No ceiling on message size** — one signed-in user could post megabytes per
+  request. **Fixed 2026-10-29:** anything over 6 MB answers 413 before a byte is
+  forwarded. <sub>`api/ai.ts:380`</sub>
+- [x] **A malformed request blames the server** — a form post or a bare string came
+  back as "something went wrong on the server" where the truth was "that request
+  was malformed". **Fixed 2026-10-29:** a body that is not `{ action, data }`
+  answers 400 and says so. <sub>`api/ai.ts:314`</sub>
 - [ ] **`src/store/` is a ghost** — an empty skeleton wired into the app with
   nothing using it, left over from a plan that did not land. **Done when** it is
   deleted or real. <sub>`src/store/store.tsx`, `main.tsx`</sub>
@@ -307,7 +358,8 @@ a lost laptop costs you nothing.
 
 ### 4.4 Testing — **C− → B**
 
-**Plain.** You already wrote 25 checks by hand, which is more than most people at
+**Plain.** You already wrote 25 checks by hand (26 since 2026-10-29), which is more
+than most people at
 this stage — and three of them are currently dead or lying (3.4), and the robot
 only runs 14 of them (3.5). So the grade is not about effort; it is about the fact
 that the safety net has holes nobody is told about.
@@ -317,7 +369,7 @@ that the safety net has holes nobody is told about.
 code they cover, can test things that need a screen (clicking, dialogs, focus),
 and fails loudly. That is a half-day of setup, once, and it pays back on every
 change after.
-- [ ] Stage 0: the three broken checks fixed and all 25 in CI
+- [x] Stage 0: the three broken checks fixed and every check in CI — 2026-10-29
 - [ ] Stage 1: Vitest installed; the 25 checks ported (they were written in a shape
       that ports nearly as-is — the pure logic is already separated from the UI)
 - [ ] Coverage reported, not enforced at first. Once it reads above ~50%, add a rule
@@ -423,29 +475,44 @@ and are the reason Stage 0 and Stage 1 exist.
 Ordered by **what unblocks what**, not by what is fun. Every stage ends in a state
 that is safe to show someone. Nothing in a later stage depends on a later stage.
 
-### Stage 0 — Shut the doors  *(about 2 days)*
+### Stage 0 — Shut the doors  *(done 2026-10-29, one item left)*
 The app can be used by strangers right now, and they can spend your money.
 Nothing else should happen first, because every day this waits is a day of risk
 you are choosing.
 
 **Grades this raises:** Security B− → B+, CI/CD C+ → B+.
-1. 3.1 prompt gate + closed/confirmed signups
-2. 3.2 real spending limit + body cap
-3. 3.3 the date bug (it takes 30 minutes and it is embarrassing)
-4. 3.4 + 3.5 fix the three checks and make CI run all 25
-5. Security headers + the single-page-app rewrite in `vercel.json`
+1. [x] 3.1 the prompt gate — 2026-10-29 · **closed/confirmed signups: still yours**
+       (it is a Supabase dashboard switch; see 3.1)
+2. [x] the body cap — 2026-10-29
+2b. [ ] 3.2 the shared spending limit — still per-instance; it moves to the database
+        in Stage 2, and 3.2 says so plainly
+3. [x] 3.3 the date bug (it took 30 minutes and it was embarrassing) — 2026-10-29
+4. [x] 3.4 + 3.5 the three checks fixed, and CI runs every check — 2026-10-29
+5. [x] Security headers + the single-page-app rewrite in `vercel.json` — 2026-10-29
+
+**How it went.** Five commits, one per item, each with the reason in the message.
+The one thing that was left out on purpose is a Content-Security-Policy: the app's
+own origins (Supabase, the sandbox frame, blob previews) are not written down
+anywhere yet, and a CSP guessed at would break the app rather than protect it. That
+belongs in Stage 1, where the list can be read off the code instead of guessed.
 
 **Done when:** a stranger who finds the URL can do nothing, and the green light on
-GitHub means something.
+GitHub means something. *Almost:* the green light is honest now, and the endpoint
+can no longer be borrowed — but until signups are switched off in Supabase, a
+stranger can still make an account.
 
 ### Stage 1 — Make it trustworthy  *(about a week)*
 Now that nobody can break in, make sure you *know* when something breaks.
+
+*Carried over from Stage 0: a Content-Security-Policy. It needs the app's real
+origin list — Supabase, the sandbox frame, blob previews — read off the code first.
+Guessing at it would break the app instead of protecting it.*
 
 **Grades this raises:** Observability D → B+, Testing C− → B, Repo hygiene B− → B+.
 6. Error reporting (Sentry) + an uptime ping + a request id on every call
 7. A linter (ESLint + Prettier) in CI — this is also what makes the date bug
    un-repeatable, and it retires the ten orphan comments in 3.7
-8. A real test runner (Vitest) built from the 25 checks you already have —
+8. A real test runner (Vitest) built from the 26 checks you already have —
    the logic is already separated well enough to port them nearly as they are
 9. 3.6 storage: tell the user when it is full, prune on purpose, move the two
    heavy stores to IndexedDB

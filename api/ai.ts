@@ -45,7 +45,7 @@ function sanitizeAttachments(attachments: unknown): { inlineData: { mimeType: st
 
 /* Per-account usage cap. Each server instance counts requests per signed-in
    account over a rolling window. Generous on purpose: normal use never meets
-   it. A shared, database-backed count comes with the database (STANDARD.md 3.9).
+   it. A shared, database-backed count comes with the database (STANDARD.md 3.2).
 
    The map used to be emptied wholesale once it passed 5000 callers — so at that
    size the limiter wiped itself and handed everybody a fresh allowance, which is
@@ -313,7 +313,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   /* A ceiling on the request itself, checked before anything is forwarded: a
      turn carries text and, at most, a few images as base64, and anything far
-     past that is not a turn (STANDARD.md 3.8). Vercel's own limit is smaller
+     past that is not a turn (STANDARD.md 3.7, "No ceiling on message size"). Vercel's own limit is smaller
      still, so this is the belt to that pair of braces. */
   const declared = Number(req.headers['content-length'] ?? 0);
   if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
@@ -340,15 +340,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   const GOOGLE_CLOUD_TTS_KEY = process.env.GOOGLE_CLOUD_TTS_KEY;
 
-  if (!GEMINI_API_KEY) {
-    return res.status(500).json({ error: 'Gemini API key not configured' });
-  }
-
   try {
     /* What arrived may not be a body at all — a form post, a bare string, a
        JSON array. Destructuring those used to throw and come back as a 500
        "something went wrong on the server", which blames us for a caller's
-       mistake (STANDARD.md 3.10). A body that is not `{ action, data }` is a
+       mistake (STANDARD.md 3.7, "A malformed request blames the server"). A body that is not `{ action, data }` is a
        400, said plainly. */
     const raw: unknown = req.body;
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -359,6 +355,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Unsupported request' });
     }
     const body = data as Record<string, unknown>;
+
+    /* Each action needs its own key. This used to demand the CHAT key before
+       looking at the action at all, so read-aloud answered "Gemini API key not
+       configured" on a deploy whose speech key was the one missing — pointing
+       whoever reads the log at the wrong service (STANDARD.md 3.7). */
+    if (action !== 'speak' && !GEMINI_API_KEY) {
+      return res.status(500).json({ error: 'Gemini API key not configured' });
+    }
 
     if (action === 'chat') {
       const { conversationHistory, message, attachments, functionDeclarations } = body as {
