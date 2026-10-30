@@ -8,7 +8,7 @@
  */
 
 import { getTasks, toggleTask, checkCount } from '../../tasks';
-import { dayEvents } from '../../events';
+import { dayEvents, ymd } from '../../events';
 import { getGoals, goalPct, goalCount, isActiveGoal } from '../../goals';
 import { getPinnedProject, linkedIds, projectPercent, projectCountLabel, type Project } from '../../projects';
 import { listUploads } from '../../uploads';
@@ -61,7 +61,10 @@ function QuickToday({ refresh }: { refresh: () => void }) {
 }
 
 function QuickWeek() {
-  const evs = dayEvents(new Date().toISOString().slice(0, 10));
+  /* Local day, not the world clock: `toISOString()` rolls over to tomorrow at
+     8pm in New York, which made every evening's events vanish from this
+     widget (STANDARD.md 3.3). */
+  const evs = dayEvents(ymd(new Date()));
   return (
     <>
       {evs.slice(0, 4).map((e, i) => (

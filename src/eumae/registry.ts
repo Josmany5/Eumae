@@ -356,7 +356,7 @@ const reads: Action[] = [
         rows = getProjects().map((p) => ({ id: p.id, name: p.n, description: p.d, due: p.due, items: (p.links ?? []).length }));
       } else {
         const only = inProject('note');
-        rows = getNotes().filter((n) => !only || only.has(n.id)).map((n) => ({ id: n.id, title: titleOf(n), updated: new Date(n.updatedAt).toISOString().slice(0, 10) }));
+        rows = getNotes().filter((n) => !only || only.has(n.id)).map((n) => ({ id: n.id, title: titleOf(n), updated: ymd(new Date(n.updatedAt)) }));
       }
       return { ok: true, summary: `Listed ${plural(rows.length, a.kind)}`, data: { items: rows.slice(0, 50), more: Math.max(0, rows.length - 50) } };
     },
@@ -1440,7 +1440,7 @@ const wave2: Action[] = [
       const q = String(a.query ?? '').trim().toLowerCase();
       const rows = getThreads()
         .filter((t) => !q || t.title.toLowerCase().includes(q))
-        .map((t) => ({ id: t.id, title: t.title, where: t.from ?? 'Chat', last_used: new Date(t.updatedAt).toISOString().slice(0, 10), messages: t.messages.length, this_chat: t.id === getCurrentThreadId() || undefined }));
+        .map((t) => ({ id: t.id, title: t.title, where: t.from ?? 'Chat', last_used: ymd(new Date(t.updatedAt)), messages: t.messages.length, this_chat: t.id === getCurrentThreadId() || undefined }));
       const n = a.limit ?? 30;
       return { ok: true, summary: `Listed ${plural(Math.min(n, rows.length), 'chat')}`, data: { chats: rows.slice(0, n), more: Math.max(0, rows.length - n) } };
     },
@@ -1518,7 +1518,7 @@ const wave2: Action[] = [
 const fileById = (id: string): LibFile | undefined => getFiles().find((f) => f.id === id);
 const noFile = (id: string) => `No file with id "${id}". Find it with list_files; never guess one.`;
 const folderIn = (name: string) => allFolders().find((f) => f.toLowerCase() === String(name).trim().toLowerCase());
-const fileRow = (f: LibFile) => ({ id: f.id, title: f.t, kind: f.k, status: f.st, version: f.v, folder: folderOf(f), favorite: getFavs().includes(f.id) || undefined, made: new Date(f.createdAt).toISOString().slice(0, 10) });
+const fileRow = (f: LibFile) => ({ id: f.id, title: f.t, kind: f.k, status: f.st, version: f.v, folder: folderOf(f), favorite: getFavs().includes(f.id) || undefined, made: ymd(new Date(f.createdAt)) });
 const ids = (d: string) => list(d, s('File id.'), { minItems: 1, maxItems: 100 });
 const fileVerify = (a: Args) => {
   for (const id of a.ids) if (!fileById(id)) return noFile(id);
@@ -1555,7 +1555,7 @@ const libraryTools: Action[] = [
     run: (a) => {
       const f = fileById(a.id)!;
       const body = f.b.length > 6000 ? f.b.slice(0, 6000) + '…' : f.b;
-      return { ok: true, summary: `Read file "${f.t}"`, data: { ...fileRow(f), body, versions: (f.hist ?? []).map((h) => ({ version: h.v, saved: new Date(h.at).toISOString().slice(0, 10) })) } };
+      return { ok: true, summary: `Read file "${f.t}"`, data: { ...fileRow(f), body, versions: (f.hist ?? []).map((h) => ({ version: h.v, saved: ymd(new Date(h.at)) })) } };
     },
   },
   {
