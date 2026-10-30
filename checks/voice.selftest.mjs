@@ -70,6 +70,32 @@ check(
 );
 
 check(
+  'fails when a page still arriving is spoken line by line',
+  failing(
+    source.replace(
+      'const speakable = open < 0 ? noCode : noCode.slice(0, open);',
+      'const speakable = noCode;',
+    ),
+  ),
+  [
+    'voice: a page still arriving is held back, never read aloud',
+    'voice: once the page closes, the words after it are spoken again',
+  ],
+);
+
+check(
+  'fails when an empty piece is sent to the voice server',
+  failing(source.replace('  if (!piece.trim()) return;\n', '')),
+  ['voice: an empty piece is dropped, never sent — a 400 there stops the reading'],
+);
+
+check(
+  'fails when the sentence cutter throws instead of cutting',
+  failing(source.replace('const parts = speakable.match(', 'const parts = speaker.match(')),
+  ['voice: a page still arriving is held back, never read aloud'],
+);
+
+check(
   'says so when the function it lifts has been renamed',
   failing(source.replace('export function chunks', 'export function chunkz')),
   ['the function can be lifted out and called'],

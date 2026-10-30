@@ -114,6 +114,16 @@ export function mid(): string {
   return 'm' + Date.now().toString(36) + n;
 }
 
+/** An item's own id. The counter is not decoration: `'sc' + Date.now()` gave two
+ *  items made in the same millisecond the same id, and the second one silently
+ *  overwrote the first one's saved flow — the same collision `mid` already
+ *  avoids for messages. */
+let sn = 0;
+function sid(): string {
+  sn += 1;
+  return 'sc' + Date.now().toString(36) + sn;
+}
+
 /** "slides", "a tracker", "an app". */
 export function a(kindName: string): string {
   const k = kindName.toLowerCase();
@@ -156,7 +166,7 @@ export function questionOf(s: Session, qid?: string): Q | undefined {
 
 export function newSession(kind: Kind, tpl?: string | null, seed?: string): Session {
   const s: Session = {
-    id: 'sc' + Date.now().toString(36),
+    id: sid(),
     kind: kind.n,
     tpl: null,
     started: false,
@@ -273,10 +283,22 @@ export function briefOfSession(s: Session): string {
   return `Make ${a(s.kind)} from this spec. Build exactly what it says; where it is silent, choose what fits best.\n\n${parts.join('\n\n')}`;
 }
 
-/** After a build: is this a question about it (answer it) or a change (rebuild)? */
+/** After a build: is this a question about it (answer it) or a change (rebuild)?
+ *
+ *  "Can you make it bigger?" is a change asked politely, and it used to be
+ *  answered as a question — her reply explained the button instead of changing
+ *  it, and the page stayed as it was. So a request that opens politely is judged
+ *  by the verb that follows: a change verb means rebuild, whatever the question
+ *  mark says. A real question ("Can you explain why it's blue?") keeps its
+ *  answer. */
+const POLITE_ASK = /^(?:can|could|would|will)\s+you\s+(?:please\s+)?/;
+const CHANGE_VERB =
+  /^(?:make|change|add|remove|delete|drop|move|set|put|update|replace|rename|turn|swap|use|give|include|fix|resize|increase|decrease|shorten|lengthen|enlarge|shrink|centre|center|switch|rewrite|redo|bold|tidy)\b/;
 export function isQuestion(text: string): boolean {
   const t = text.trim().toLowerCase();
-  return /\?$/.test(t) || /^(what|why|how|which|who|where|when|is|are|does|do|can|could|would|should|will)\b/.test(t);
+  const bare = t.replace(POLITE_ASK, '');
+  if (CHANGE_VERB.test(bare)) return false;
+  return /\?$/.test(t) || /^(what|why|how|which|who|where|when|is|are|does|do|can|could|would|should|will)\b/.test(bare);
 }
 
 /** Change ideas after a build. */

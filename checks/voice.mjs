@@ -90,6 +90,14 @@ export function lift(source) {
   return transformSync(code, { loader: 'ts', format: 'cjs' }).code;
 }
 
+/** `splitStream` decides which sentences exist at all, so a page that is still
+ *  arriving has to be judged there and not only in `chunks`. It is not exported
+ *  — the `export` is added to the snippet so esbuild hands it back. */
+export function liftStream(source) {
+  const code = snippet(source, 'splitStream').replace(/^function /, 'export function ');
+  return transformSync(code, { loader: 'ts', format: 'cjs' }).code;
+}
+
 /** Google's Chirp 3: HD voices for US English and the gender each one is listed
  *  with — the voice list on cloud.google.com/text-to-speech/docs/chirp3-hd, read
  *  2026-10-08. Written out here rather than fetched: a check that needs a network
@@ -284,6 +292,46 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     JSON.stringify(fenced),
   );
 
+  /* ── The voice itself is not touched ───────────────────────────────────────
+     Dropping code from the words must not change the words. Every piece is one
+     request to the voice server, and the clip that comes back is what you hear —
+     so if the pieces for a reply with no code in it are the pieces they always
+     were, the sound with no code in it is the sound it always was: same voice,
+     same rate, same language, no seam added or removed. Written as the pieces
+     themselves rather than as a rule, because a rule would pass on any cut. */
+  const prose = 'Your resume is ready. I put your two design jobs first.';
+  const spoken = chunks(prose);
+  judge(
+    'chunks: a reply with no code in it is cut exactly as it was before',
+    spoken.length === 1 && spoken[0] === prose,
+    JSON.stringify(spoken),
+  );
+  const sentence = chunks('Would you like the dates to match LinkedIn?');
+  judge(
+    'chunks: one sentence is one request, word for word',
+    sentence.length === 1 && sentence[0] === 'Would you like the dates to match LinkedIn?',
+    JSON.stringify(sentence),
+  );
+
+  /* ── Nothing empty is ever asked to be spoken ──────────────────────────────
+     A page that is only markup has no words in it, so `chunks` answers with the
+     empty string — and the server turns `""` into a 400 from Google, which the
+     player treats as a refusal and stops the whole run on. So the piece has to
+     be dropped before it is fetched, and that guard is a line in voice.ts that
+     nothing else would notice going missing. */
+  const onlyMarkup = chunks('```html\n<p>x</p>\n```');
+  judge(
+    'voice: a page with no words in it asks for no audio',
+    onlyMarkup.every((piece) => !piece.trim()),
+    JSON.stringify(onlyMarkup),
+  );
+  const player = snippet(source, 'enqueuePiece');
+  judge(
+    'voice: an empty piece is dropped, never sent — a 400 there stops the reading',
+    /if \(!piece\.trim\(\)\) return;/.test(player) && player.indexOf('if (!piece.trim()) return;') < player.indexOf('fetchClip'),
+    'enqueuePiece, which must skip a piece with nothing to say',
+  );
+
   const long = 'Sentence number one is here. '.repeat(200);
   const pieces = chunks(long);
   const longest = Math.max(...pieces.map((piece) => piece.length));
@@ -292,6 +340,56 @@ export function verdicts(source, voices = VOICES, server = SERVER, settings = SE
     pieces.length > 1 && longest <= limitOf(source) && pieces.join('') === long,
     `pieces=${pieces.length} longest=${longest}`,
   );
+
+  /* ── A page still arriving ─────────────────────────────────────────────────
+     Read-aloud is fed while the reply streams. A closed fence is dropped above,
+     but a page that is still being written has no closing fence yet — and each
+     line of html ends in a break, so every line qualified as a sentence. That is
+     how her voice read `<!doctype html>` out loud while a page was being made:
+     the fence was only recognised once the closing marker arrived, by which
+     point the code had already been queued. So the opener is held back with the
+     tail, and both halves of that are judged here. */
+  let stream = null;
+  let streamError = '';
+  try {
+    const host = { exports: {} };
+    new Function('module', 'exports', liftStream(source))(host, host.exports);
+    stream = host.exports.splitStream;
+  } catch (error) {
+    streamError = String((error && error.message) || error);
+  }
+  if (typeof stream !== 'function') {
+    judge(
+      'voice: a page still arriving is held back, never read aloud',
+      false,
+      streamError || 'splitStream lifted, but it never came back',
+    );
+  } else {
+    /* A cutter that has been broken into throwing must fail this check, not
+       escape it: a check that crashes says nothing about what it looked at. */
+    try {
+      const first = stream('Made it.\n```html\n<!doctype html>\n<html>\n<h1>Hi');
+      const heard = first.complete.join(' ');
+      judge(
+        'voice: a page still arriving is held back, never read aloud',
+        heard.includes('Made it.') && !/<|doctype|html/i.test(heard) && first.tail.startsWith('```html'),
+        JSON.stringify(first),
+      );
+      const closed = stream(first.tail + '\n</h1>\n```\n\nTap the card to open it.');
+      const after = closed.complete.join(' ');
+      judge(
+        'voice: once the page closes, the words after it are spoken again',
+        !/<|doctype|h1/i.test(after) && after.includes('Tap the card to open it.'),
+        JSON.stringify(closed),
+      );
+    } catch (error) {
+      judge(
+        'voice: a page still arriving is held back, never read aloud',
+        false,
+        String((error && error.message) || error),
+      );
+    }
+  }
 
   /* ── The table ─────────────────────────────────────────────────────────────
      Lifted and called rather than pattern-matched: it is a table, and the claims

@@ -196,7 +196,11 @@ function suspendAudio(): void {
  *  and pieces are glued back together so none exceeds `CHUNK_MAX` bytes. */
 export function chunks(text: string): string[] {
   const bytes = (s: string) => new TextEncoder().encode(s).length;
-  const parts = text.replace(/```[\s\S]*?```/g, ' ').match(/[^.!?\n]+[.!?\n]*/g) ?? [text];
+  const noCode = text.replace(/```[\s\S]*?```/g, ' ');
+  /* A fence that has not closed yet, cut to the end. It is a thing still being
+     written, so there is still nothing in it to hear — and a cut-off reply ends
+     inside one. Without this, a page that never closes would be read out. */
+  const parts = noCode.replace(/```[\s\S]*$/, ' ').match(/[^.!?\n]+[.!?\n]*/g) ?? [text];
   const out: string[] = [];
   let current = '';
   for (const part of parts) {
@@ -211,10 +215,19 @@ export function chunks(text: string): string[] {
 
 /** Split streaming text into complete sentences, holding the incomplete tail
  *  back for the next feed. A sentence is complete when it ends in `.`, `!`,
- *  `?` or a line break. */
+ *  `?` or a line break.
+ *
+ *  A fence that has not closed yet is held back with it, opener and all: a page
+ *  streams one line at a time, every line ends in a break, and each line would
+ *  otherwise be a sentence — so her voice read `<!doctype html>` out loud while
+ *  the page was being made. Holding the opener keeps the next feed inside the
+ *  fence too, so nothing written between the two markers is ever spoken. */
 function splitStream(text: string): { complete: string[]; tail: string } {
-  const clean = text.replace(/```[\s\S]*?```/g, ' ');
-  const parts = clean.match(/[^.!?\n]+[.!?\n]*/g) ?? [];
+  const noCode = text.replace(/```[\s\S]*?```/g, ' ');
+  const open = noCode.indexOf('```');
+  const speakable = open < 0 ? noCode : noCode.slice(0, open);
+  const held = open < 0 ? '' : noCode.slice(open);
+  const parts = speakable.match(/[^.!?\n]+[.!?\n]*/g) ?? [];
   const complete: string[] = [];
   let tail = '';
   for (let i = 0; i < parts.length; i++) {
@@ -226,7 +239,7 @@ function splitStream(text: string): { complete: string[]; tail: string } {
       tail = part;
     }
   }
-  return { complete, tail };
+  return { complete, tail: tail + held };
 }
 
 /** One sentence about a failed read, once per run. */
@@ -394,6 +407,13 @@ function beginRun(say?: (m: string) => void, voice?: string): number {
  *  still playing. The chain plays the decoded buffers strictly in order, so by
  *  the time a piece is due its buffer is ready and there is no seam. */
 function enqueuePiece(piece: string, id: number): void {
+  /* Nothing to say. `chunks` answers a piece with no words of its own (a page
+     that is all markup, an empty tail) with one empty string, and asking the
+     voice server for audio of "" is a 400 from Google — which lands on the
+     refusal path and *stops the whole run*. So a build reply ended with "Read
+     aloud failed. Try again." instead of simply going quiet over the code.
+     Silence is the right answer to nothing; skip it. */
+  if (!piece.trim()) return;
   const clipP = tokenP.then((t) => fetchClip(piece, t));
   const bufP: Promise<AudioBuffer | null> = clipP.then((c) => {
     if (!c.bytes) return null;
