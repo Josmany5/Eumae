@@ -3,19 +3,33 @@
  *
  * The checks/library.mjs pattern. No browser, no network.
  */
-import { readFileSync } from 'node:fs';
-import { transformSync } from 'esbuild';
+import { buildSync } from 'esbuild';
+import { fileURLToPath } from 'node:url';
 
-function loadMod(path) {
-  const src = readFileSync(new URL(path, import.meta.url), 'utf8');
-  return transformSync(src, { loader: 'ts', format: 'cjs' }).code
-    .replace(/^export (function|const|let|interface|type|async function) /gm, '$1 ')
-    .replace(/^export \{[^}]*\};?/gm, '')
-    .replace(/^export default /gm, '');
+/* One module (or several, sharing a scope), imports included.
+ *
+ *  This used to be `transformSync` on a single file plus an `export` strip,
+ *  which only works for a file with no imports. request.ts imports voiceLang,
+ *  so the check emitted `require('./voiceLang')` — no `require` exists in an
+ *  eval scope — and then roles.ts grew imports of its own (STANDARD.md 3.4). */
+function loadMod(...specs) {
+  const resolveDir = fileURLToPath(new URL('.', import.meta.url));
+  const contents = specs.map((s) => `export * from '${s}';`).join('\n');
+  const r = buildSync({
+    stdin: { contents, loader: 'ts', resolveDir },
+    bundle: true,
+    format: 'cjs',
+    platform: 'node',
+    write: false,
+    logLevel: 'silent',
+  });
+  return r.outputFiles[0].text;
 }
 
-const roles = loadMod('../src/roles.ts');
-const request = loadMod('../src/request.ts');
+const roles = loadMod('../src/roles');
+/* Both in one bundle, one scope — the directives line needs the role the
+   store just saved. */
+const both = loadMod('../src/roles', '../src/request');
 
 const failures = [];
 const check = (name, cond, detail) => {
@@ -27,7 +41,11 @@ const check = (name, cond, detail) => {
   }
 };
 
-function run(js, setup, body, extra) {
+/* Run a bundle once in a scope holding our fake localStorage, then hand the
+   body its exports as plain names — the same shape the old strip-the-export
+   eval gave it. esbuild's CommonJS output returns its exports on
+   `module.exports`. */
+function scope(js, setup) {
   const store = {};
   const localStorage = {
     getItem: (k) => (k in store ? store[k] : null),
@@ -36,22 +54,23 @@ function run(js, setup, body, extra) {
   };
   setup(store);
   const mod = { exports: {} };
-  const fn = new Function('module', 'exports', 'localStorage', js + '; return (' + body + ');');
-  return { out: fn(mod, mod.exports, localStorage), store };
+  const load = new Function('module', 'exports', 'localStorage', js + '\nreturn module.exports;');
+  const ns = load(mod, mod.exports, localStorage);
+  const names = Object.keys(ns).filter((k) => /^[A-Za-z_$][\w$]*$/.test(k));
+  return {
+    ns,
+    store,
+    eval: (body) => new Function('ns', 'localStorage', `const {${names.join(', ')}} = ns; return (${body});`)(ns, localStorage),
+  };
+}
+
+function run(js, setup, body) {
+  const s = scope(js, setup);
+  return { out: s.eval(body), store: s.store };
 }
 
 function runBoth(setup, body) {
-  const store = {};
-  const localStorage = {
-    getItem: (k) => (k in store ? store[k] : null),
-    setItem: (k, v) => { store[k] = String(v); },
-    removeItem: (k) => { delete store[k]; },
-  };
-  setup(store);
-  const js = roles + '\n' + request;
-  const mod = { exports: {} };
-  const fn = new Function('module', 'exports', 'localStorage', js + '; return (' + body + ');');
-  return { out: fn(mod, mod.exports, localStorage), store };
+  return run(both, setup, body);
 }
 
 // 1. Empty store, save + find round-trip, blank name defaults.

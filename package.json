@@ -48,7 +48,8 @@
     "check:classroom": "node checks/classroom.mjs",
     "check:roles": "node checks/roles.mjs",
     "check:quickadd": "node checks/quickadd.mjs",
-    "check:eumae": "node checks/eumae.mjs"
+    "check:eumae": "node checks/eumae.mjs",
+    "check:all": "node checks/all.mjs"
   },
   "type": "module",
   "version": "0.1.0"

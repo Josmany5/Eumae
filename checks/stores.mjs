@@ -5,23 +5,37 @@
  * storage-only TypeScript with no imports). No browser, no network.
  * Exit codes: 0 everything holds, 1 something does not.
  */
-import { readFileSync } from 'node:fs';
-import { transformSync } from 'esbuild';
+import { buildSync } from 'esbuild';
+import { fileURLToPath } from 'node:url';
 
+/* One module, imports included.
+ *
+ *  This used to be `transformSync` on a single file plus an `export` strip,
+ *  which only works for a file with no imports. The day goals.ts began
+ *  importing tasks.ts, the transform emitted `require('./tasks')`, there is no
+ *  `require` in an eval scope, and the whole check died silently (it was also
+ *  red in CI). Bundling inlines the imports, so the checks keep working as the
+ *  stores grow (STANDARD.md 3.4). */
 function loadMod(path) {
-  const src = readFileSync(new URL(path, import.meta.url), 'utf8');
-  return transformSync(src, { loader: 'ts', format: 'cjs' }).code
-    .replace(/^export (function|const|let|interface|type|async function) /gm, '$1 ')
-    .replace(/^export \{[^}]*\};?/gm, '')
-    .replace(/^export default /gm, '');
+  const r = buildSync({
+    entryPoints: [fileURLToPath(new URL(path, import.meta.url))],
+    bundle: true,
+    format: 'cjs',
+    platform: 'node',
+    write: false,
+    logLevel: 'silent',
+  });
+  return r.outputFiles[0].text;
 }
 
 const failures = [];
+let passed = 0;
 const check = (name, cond, detail) => {
   if (!cond) {
     failures.push(name);
     console.log(`FAIL  ${name}${detail ? ` — ${detail}` : ''}`);
   } else {
+    passed++;
     console.log(`PASS  ${name}`);
   }
 };
@@ -39,9 +53,17 @@ function run(js, setup, body, realDate = false) {
   };
   setup(store);
   const fakeDate = { now: () => 5000 };
+  const clock = realDate ? Date : fakeDate;
   const mod = { exports: {} };
-  const fn = new Function('module', 'exports', 'localStorage', 'Date', `${js}; return (${body});`);
-  return { out: fn(mod, mod.exports, localStorage, realDate ? Date : fakeDate), store };
+  /* The bundle runs once, in a scope holding our fake localStorage and clock;
+     esbuild's CommonJS output hands its exports back on `module.exports`. */
+  const load = new Function('module', 'exports', 'localStorage', 'Date', `${js}\nreturn module.exports;`);
+  const ns = load(mod, mod.exports, localStorage, clock);
+  /* The body then gets those exports as plain names — the same shape the old
+     strip-the-export-keyword eval handed it. */
+  const names = Object.keys(ns).filter((k) => /^[A-Za-z_$][\w$]*$/.test(k));
+  const fn = new Function('ns', 'localStorage', 'Date', `const {${names.join(', ')}} = ns; return (${body});`);
+  return { out: fn(ns, localStorage, clock), store };
 }
 
 const goals = loadMod('../src/goals.ts');
@@ -74,7 +96,25 @@ const guild = loadMod('../src/guild.ts');
   );
   check('projects-seeds', out.n === 2, JSON.stringify(out.n));
   check('projects-pin', out.pin && out.pin.id === 'w1', JSON.stringify(out.pin && out.pin.id));
-  check('projects-status', out.st === 'active' && out.pc === 60, JSON.stringify({ st: out.st, pc: out.pc }));
+  /* Oct 21: progress comes from the project's own links, never the old sample
+     counts on the seed row (w1 still carries ts:5, dn:3 — reading those would
+     say 60). A seed with no links is 0, plainly. */
+  check('projects-status', out.st === 'active' && out.pc === 0, JSON.stringify({ st: out.st, pc: out.pc }));
+}
+
+// Projects: percent and label count linked tasks only — done ones, live ones.
+{
+  const { out } = run(
+    projects,
+    (store) => {
+      store['eumae:tasks'] = JSON.stringify([
+        { id: 'ta', t: 'Write the brief', d: 1, createdAt: 1 },
+        { id: 'tb', t: 'Book the room', d: 0, createdAt: 1 },
+      ]);
+    },
+    `(() => { const p = { id: 'pz', n: 'Launch', d: '', ts: 9, dn: 9, createdAt: 1, links: [{ k: 'task', id: 'ta' }, { k: 'task', id: 'tb' }, { k: 'task', id: 'gone' }] }; saveProject(p); const got = getProject('pz'); return { pc: projectPercent(got), label: projectCountLabel(got) }; })()`,
+  );
+  check('projects-percent-links', out.pc === 50 && out.label === '1 of 2 steps', JSON.stringify(out));
 }
 
 // Flows (habits / routines / flows): starts empty (starters are offered, not
@@ -202,4 +242,4 @@ if (failures.length) {
   console.error(`stores: ${failures.length} failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log('all 11 passed');
+console.log(`all ${passed} passed`);
