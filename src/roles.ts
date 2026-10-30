@@ -1,9 +1,10 @@
 /* Custom roles: how Eumae shows up for a chat — tone, style, purpose.
  *
  * The mockup's S.roles9 + ROLE9: roles are saved, the active one is the
- * turn's `role`, and request.ts renders the active custom role into the
- * prompt (directives()). Built-ins (Default/Coach/Teacher/Sparring
- * partner) need no row — only custom ones live here.
+ * turn's `role`, and request.ts sends that role — with its definition — to the
+ * server, which writes the Role line (api/_prompts.ts, composePrompt). Built-ins
+ * (Default/Coach/Teacher/Sparring partner) need no row — only custom ones live
+ * here.
  *
  * Migration note (AGENTS 4.16): localStorage-only like every other store;
  * Supabase sync later, same pattern as threads/notes.

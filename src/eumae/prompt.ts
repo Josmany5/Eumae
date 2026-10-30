@@ -14,9 +14,6 @@ import { getGoals, isActiveGoal } from '../goals';
 import { getProjects } from '../projects';
 import { getNotes } from '../notes';
 
-/** Since Oct 26 the words live on the server (api/_prompts.ts). */
-export const EUMAE_PROMPT = '\u27E6eumae\u27E7';
-
 /** Fresh every turn, after the stable block. */
 export function currentState(where: string): string {
   const now = new Date();
