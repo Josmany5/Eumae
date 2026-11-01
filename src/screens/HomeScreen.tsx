@@ -4,12 +4,17 @@ import type { TabId } from '../components/shell/TabBar';
 import type { PanelView } from '../nav';
 import { getTasks } from '../tasks';
 import { isOverdue } from '../due';
+import { allSbx } from '../sandbox';
+import { useSbx } from '../components/SandboxView';
 
 /** Where a tile goes: a tab (plus an optional page on it), the office, or Soon. */
 export type HomeDest =
   | { tab: TabId; page?: string; arg?: unknown }
   | { office: PanelView }
   | { settings: true }
+  /* A page Eumae made, opened from its tile (his ask, Oct 29: a widget you
+     asked for is a new app on this screen, not a line in a chat log). */
+  | { sbx: string }
   | { soon: string };
 
 export interface Tile {
@@ -95,9 +100,24 @@ function greeting(now: Date): string {
 
 export default function HomeScreen({ onOpen, onSearch }: { onOpen: (d: HomeDest, name: string) => void; onSearch: () => void }) {
   const now = new Date();
+  /* Re-render when a page is made in chat, so it is on this screen by the time
+     they close the Sandbox. */
+  useSbx();
   const overdue = getTasks().filter((t) => !t.d && isOverdue(t, now)).length;
 
-  const sections = homeSections(overdue);
+  /* What they made, above everything: the point of this screen is that the
+     thing you asked for is an app here, one tap away. Six is what fits a
+     phone's grid without turning it into a list. */
+  const made = allSbx();
+  const madeSection: Section | null = made.length
+    ? {
+        n: 'Made by you',
+        sp: 'studio',
+        tiles: made.slice(0, 6).map((x) => ({ n: x.title || 'Untitled', icon: 'zap', to: { sbx: x.id } })),
+      }
+    : null;
+
+  const sections = madeSection ? [madeSection, ...homeSections(overdue)] : homeSections(overdue);
 
   return (
     <div className="hm">

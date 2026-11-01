@@ -456,6 +456,414 @@ came from, what it would touch, what is still open.
 
 ---
 
+## What the last round of fixes turned up (filed 2026-10-29 — none agreed yet)
+
+Read out of the code while fixing read-aloud and the Studio flow, and checked
+against the owner's PDF of the same day (*Eumae: Everything Left to Build*), so
+nothing here repeats it. Each entry carries the PDF's own three words —
+**Agreed**, **Idea**, **Open** — so the two lists read alike: **Idea** is
+something only talked about, **Open** is a decision of his that is pending.
+Nothing in this block is a commitment until he says a word and it lands in
+`AGENTS.md` §6. His own list — the twelve sections of that PDF — is transcribed
+in the section below it, because most of it had no entry here at all.
+
+## I33 — One id maker (Idea)
+
+- **From:** Cline, 2026-10-29 — a Studio item's id was `'sc' + Date.now()`, so
+  two items made in the same millisecond got one id, and `saveSession` deletes
+  by id before writing: the second silently erased the first. A message id
+  already carried a counter for the same reason (`ChatScreen.tsx:146` says so in
+  a comment) and Settings invents a third shape (`Settings.tsx:493`, time plus
+  `Math.random()`).
+- **Says:** ids come from one place — `newId(prefix)` in a new `src/ids.ts`,
+  time plus a module counter, no randomness — used by threads, messages, Studio
+  sessions and items, saved links and log rows. A check makes ten thousand in a
+  loop and asserts they are all different, and greps the tree for `Date.now()`
+  used as a key.
+- **Touches:** `src/studioChat.ts`, `src/screens/ChatScreen.tsx`,
+  `src/threads.ts`, `src/components/settings/Settings.tsx`, new `src/ids.ts`,
+  `checks/`.
+- **Open:** nothing — the prefixes stay, so ids already in a browser keep
+  reading the same.
+
+## I34 — The Studio brief is written four times (Open)
+
+- **From:** Cline, 2026-10-29, reading `src/studioChat.ts` to fix a change
+  request that got answered in prose instead of obeyed.
+- **Says:** one question is declared in four places — the `StepId` union
+  (`studioGuide.ts:26`), `stepsFor` (`:391`), `questionsFor`
+  (`studioChat.ts:140`, rebuilt from `stepsFor` by hand in its `add` list), and
+  its Skip label in a ternary inside `skip()` (`:268`). Adding a question means
+  four edits and three of them fail silently: the pill shows, Skip leaves a blank
+  heading in the brief, the spec loses a line. One table of question objects,
+  read by all four, ends the class.
+- **Touches:** `src/studioGuide.ts`, `src/studioChat.ts`;
+  `checks/studiochat.mjs`, which now covers the flow end to end, so the
+  refactor has a net under it.
+- **Open:** whether the table is one array with `StepId` derived from it, or the
+  order stays in `stepsFor` and only ids and labels move.
+
+## I35 — Change an answer without starting over (Idea)
+
+- **From:** the owner's still-open decision "Brief card or one question at a
+  time", plus today's read: `ask()` only ever moves forward.
+- **Says:** every answered question is already in `spec`, so make each step
+  tappable while the flow waits — reopening one re-asks that question alone,
+  keeps everything else and re-derives the brief. The step pills should also
+  survive while she answers; today they leave the screen with the reply.
+- **Touches:** `src/components/StudioChat.tsx`, `src/studioChat.ts` (`ask`,
+  `push`, `spec`).
+- **Open:** whether reopening a question invalidates the ones that depended on
+  it (kind decides length) or only rewrites its own line.
+
+## I36 — One way to fail (Idea)
+
+- **From:** Cline, 2026-10-29 — an empty piece of text reached `/api/ai`, Google
+  answered 400, and the refusal path stopped the entire read-aloud with "Read
+  aloud failed. Try again."
+- **Says:** every async path fails in the same shape: what happened, what was
+  kept, and a retry that retries only the part that broke. "Try again." alone is
+  the shape to avoid — it names neither cause nor scope, so the only thing a
+  person can do is guess. The three refusals already sit together
+  (`api/ai.ts:20-22`); this makes them honest about scope, not more numerous.
+- **Touches:** `api/ai.ts`, `src/voice.ts` (`speak`'s refusal path),
+  `ChatScreen.tsx`.
+- **Open:** whether a failed step joins the plan card's receipt, so half a job
+  is visibly half a job.
+
+## I37 — Speed is a number, not a feeling (Idea)
+
+- **From:** Cline, 2026-10-29 — `api/ai.ts:712` measures `serverMs` and
+  `googleMs` for every spoken sentence and returns them; nothing in `src/` reads
+  them (`grep -rn timing src/` comes back with one unrelated word in
+  `studioGuide.ts`).
+- **Says:** log them with the turn (first token, first sound, total), show the
+  median in Settings → Logs beside the rows that are already there, and hold a
+  budget in a check so a slow path is caught by a number instead of by the owner
+  noticing. Today nothing in this repo can answer "did it get slower".
+- **Touches:** `api/ai.ts`, `src/voice.ts` (`fetchClip`), `src/log.ts`,
+  `Settings.tsx`.
+- **Open:** what the budget is (first sound under 1.5s is the guess), and whether
+  the number is his alone or shown to everyone.
+
+## I38 — Every reply remembers how it was made (Idea)
+
+- **From:** Cline, 2026-10-29 — "which prompt produced that?" is unanswerable
+  from a stored message; `Msg` carries no stamp (`threads.ts:7`).
+- **Says:** stamp each AI message with `{ promptVersion, model, mode, role,
+  skill, thinking, voiceLocale }` at the one place `buildRequest` already knows
+  all of it. Bumping the prompt becomes a version bump, and a screenshot becomes
+  evidence.
+- **Touches:** `src/threads.ts` (`Msg`), `src/request.ts`, `ChatScreen.tsx`.
+- **Open:** whether the stamp is visible under a reply or debug-only. Showing it
+  is not the fake-control problem — it is a read-out.
+
+## I39 — Read out what changed, not the page (Idea)
+
+- **From:** the owner's question today — "what happens if she says more after a
+  code block?" — and the shape of a rebuild: the page changes and the voice has
+  nothing worth saying about it.
+- **Says:** after a make or a change, one spoken sentence per change ("moved the
+  header up, cards are two across, the blue is darker") instead of reading the
+  page or describing it. On any reply over ~150 words, read the first three lines
+  and offer the rest ("want the details?").
+- **Touches:** `src/voice.ts`, `src/studioChat.ts`, `src/request.ts` (the reply
+  shape the model is asked for).
+- **Open:** whether the change list is the model's own one-line summary or a diff
+  computed here — the diff is honest, the summary is cheaper.
+
+## I40 — The voice says when it can't speak your language (Open)
+
+- **From:** Cline, 2026-10-29 — `api/ai.ts:638` reads
+  `CHIRP_LOCALES.has(lang) ? lang : 'en-US'`, so a reply in a language with no
+  Chirp voice is read aloud in English and nobody is told.
+- **Says:** either map a fallback voice per language (the table belongs beside
+  `voices.ts`) or say it plainly in Settings: "your language has no spoken voice
+  yet; English will read it". Silently switching languages is the one outcome
+  that reads as a bug to the person hearing it.
+- **Touches:** `api/ai.ts`, `src/voiceLang.ts`, `src/voices.ts`, `Settings.tsx`.
+- **Open:** one setting drives three things — what the recogniser hears, what the
+  voice speaks, what language she replies in — so whether "how I talk" and "how I
+  sound" should become two rows in Settings is his call.
+
+## I41 — Quiet read-aloud is a rule, not an accident (Idea)
+
+- **From:** Cline, 2026-10-29 — a page is no longer read aloud, but only because
+  of a fence rule inside `splitStream`; nothing states the policy, so the next
+  person to touch it can undo it by accident.
+- **Says:** three written rules in place of one: prose yes; code, tables and URLs
+  no; a long reply reads short. A long-press on the speaker button offers "read
+  everything" for the times he does want the whole thing.
+- **Touches:** `src/voice.ts` (`splitStream`, `chunks`), the speaker button in
+  `ChatScreen.tsx`.
+- **Open:** the word count that makes a reply "long", and whether the override is
+  per reply or a setting.
+
+## I42 — The thread paints one row, not every row (Idea)
+
+- **From:** `ChatScreen.tsx:588` — every streamed chunk runs
+  `setMsgs(m => m.map(...))` across the whole thread.
+- **Says:** stream into the streaming row alone. Measure a 100-message thread on
+  a phone before and after, so the change has a number to beat rather than a
+  feeling to win.
+- **Touches:** `ChatScreen.tsx`.
+- **Open:** the before number.
+
+## I43 — A bug report in one tap (Idea)
+
+- **From:** the owner's testing loop — a deploy, a screenshot, a message; the
+  evidence for one bug lives in three places and half of it is gone by the time
+  he writes it down.
+- **Says:** "Copy what happened" in Settings → Logs and in a reply's menu: the
+  last N log rows, the turn stamp (I38), the message text and the settings that
+  were on — as plain markdown, no real names (the §7 rule), ready to paste into a
+  chat. No account, no upload.
+- **Touches:** `src/log.ts`, `Settings.tsx`, `ChatScreen.tsx`.
+- **Open:** what belongs in it; whether it also opens a prefilled issue.
+
+## The owner's list, transcribed (his PDF, 2026-10-29)
+
+The twelve sections of `Eumae-Left-to-Build.pdf`, filed as he wrote them and in
+his order — "roughly in the order I'd build it", his words, and built things left
+out. His legend has three states — **Agreed** (he said yes), **Idea** (only talked
+about), **Open** (a decision of his is pending) — and he marks them inline where
+they matter; where an item carries no mark it is left unmarked here rather than
+guessed at. Nothing added, nothing re-worded into a claim he did not make. These
+are the candidates for `AGENTS.md` §8's phases, behind the queue above.
+
+## I44 — The pages Eumae cannot act on (his §1, tools)
+
+- **From:** PDF §1 — "Eumae can do everything you can" (unmarked in the PDF).
+- **Says:** his count, 57 actions exist today — tasks, events, goals, projects,
+  notes, lists, subtasks, chats and the whole Library, all through the plan card
+  with Undo. Still to add — and the app already supports these, Eumae just cannot
+  reach them yet — page by page: **Flows** (create, edit steps, check off a step,
+  mark done today, turn on or off, delete, add a starter flow, show a streak);
+  **Console layout** (add, remove, move and resize a widget; add, rename and
+  remove a page; make a project its own page); **Studio** (start a make, answer
+  the brief, skip a question, make it, ask for a change, open a draft);
+  **Classroom** (mark a lesson done, show course progress, check a quiz answer);
+  **Guild** (assign, reassign, rename and delete work; message a person or group,
+  draft first; answer a request; share and unshare with permissions; create or
+  leave a group; remove a person); **Settings and getting around** (save or delete
+  a role, turn Home or Desk on and off, change voice, speed or reply language, go
+  to any screen or tab, undo the last change).
+- **Touches:** the action registry under `src/eumae/`, the plan card and its Undo
+  rows, and one tool group per screen.
+- **Open:** none from him — except that "start a new chat" is skipped on purpose
+  and uploading stays paperclip-only.
+
+## I45 — The backend he has to switch on (his §2)
+
+- **From:** PDF §2, "the big one" — the section that is as much his move as a
+  build.
+- **Says:** the tables are written (`001_core.sql`) — **Open:** he runs it, then I
+  hook it up. Sign-in required once data is saved per person (**Open**, he is
+  recommended yes). Works offline, then syncs across devices, moving everything
+  off the browser's storage. Back up and restore everything; export all his data.
+  Invite a tester or teammate. Housekeeping: make the repo private and move the AI
+  prompts to the server (**Open**), stop saving big images inside chats.
+- **Touches:** `api/ai.ts`, `src/auth.ts`, what `src/store/` reads and writes, the
+  export and wipe paths in `Settings.tsx`, `.env.example`.
+- **Open:** four of these are his call, not work — the script, sign-in, repo
+  private with prompts on the server, and how far "export all your data" goes.
+- **Note:** the pieces that are mine are already queued — I33's ids matter once
+  rows come out of a server, and the "big images" half is the body cap
+  `STANDARD.md` already enforces. What is new is offline-then-sync,
+  backup/restore, and a tester account.
+
+## I46 — The harness, in his words (his §3)
+
+- **From:** PDF §3, "Eumae's brain".
+- **Says:** a router that decides each turn whether you are talking, asking or
+  making something (**Agreed in talk, not built**) — it is what stops an unrelated
+  message turning into "page v2". A per-turn ticket: what you are looking at,
+  recent messages and a summary, so it stops dumping the whole page every turn.
+  Tools limited to the screen you are on, then a plan, a check after it acts, and
+  a trace of what it did. Test sets ("golden evals") so changes do not break it.
+  Per-action switches — "always ask" or "just do it" (Logbook, Permissions). A
+  "Thinking" label, "Thought for Xs", and a steps trace.
+- **Touches:** `api/ai.ts` (the turn), `src/eumae/` (tool scoping and the check),
+  `Settings.tsx` (the switches), the chip row (the Thinking label and its
+  seconds).
+- **Open:** none stated — the router is the one item in this list he has already
+  said yes to.
+- **Note:** this is I24, I25 and I29 in his words. The router is I25's verdict,
+  the ticket is the compaction I29 assumes, the switches are I29's C07. What is
+  genuinely new is **golden evals** as a standing set — I37 measures one reply,
+  not a suite — and the **Thinking label** with elapsed seconds, which nothing on
+  screen shows today.
+
+## I47 — Memory, as he describes it (his §4)
+
+- **From:** PDF §4.
+- **Says:** remember something, edit it, forget it, show what Eumae knows. Memory
+  kept as readable documents, with "Keep this?" cards. Search by meaning across
+  memory and items. A behavior profile learned with his OK — three to five starter
+  questions, resettable.
+- **Touches:** the Memory screen and its store, `api/ai.ts` for the profile turn.
+- **Open:** none stated.
+- **Note:** I30 and I32 decide where memory lives and what loads; this decides
+  what he sees and can correct. The resettable profile is what keeps this inside
+  his §7 privacy rule — that should be written as a rule, not left as a feature.
+
+## I48 — Desk and the engine (his §5)
+
+- **From:** PDF §5, "Eumae takes initiative".
+- **Says:** Desk: post a suggestion, accept or dismiss it, search the Logbook. A
+  server timer and jobs, so Eumae can work while the app is closed. Watcher:
+  notices things and sends proposals to the Desk. A morning plan ("Today we're
+  doing this") and change updates. A weekly receipt: loops closed, time saved,
+  money recovered. Push notifications. Automations: "when this, do that",
+  reminders at a time, checks on a schedule, with pause, run now and history.
+  Nightly scorecards so it learns what he ignores.
+- **Touches:** a job runner in `api/`, the Desk screen, `src/log.ts` (proposals
+  and their dismissal), `vercel.json` (`maxDuration` is already 60).
+- **Open:** none stated — but this is the largest block in his list and none of it
+  exists: the Desk is a screen with no engine behind it.
+- **Note:** `VISION.md:124` and `:220` already describe the watcher → gate →
+  teller chain in prose, and `STANDARD.md:585` parks push with the later
+  integrations. The design was written down; the queue entry was not.
+
+## I49 — The Closer (his §6)
+
+- **From:** PDF §6 — the section that had no entry in this file at all until now.
+- **Says:** a promise tracker — who, reference number, deadline, follow-up when
+  late. Dread kits: a script, the questions to ask, his info, a two-minute start,
+  an outcome log. Prep cards for errands only a person can do. A fresh-start
+  button. A queue that runs when the app opens.
+- **Touches:** a new screen plus the tasks/projects the rest of the app already
+  has; the queue-on-open is `src/log.ts` plus a boot hook.
+- **Open:** none stated. Where it lives — its own screen or a widget on Home — is
+  a question he has not been asked.
+
+## I50 — Studio makes real files (his §7)
+
+- **From:** PDF §7 — the second section that had no entry here at all.
+- **Says:** style thumbnails and color swatches in the guided steps. A brief card
+  instead of one question at a time (**Idea, not approved**). Eumae's own skill
+  per kind — document, slides, sheet. Real exports: PowerPoint, Word, Excel and
+  PDF. Generate images, SVG logos and icons. Forms, widgets and apps built from
+  blocks; games and webpages as HTML. Video, album and agent kinds as backend jobs
+  (shown as Soon today). A skill library in Library: edit, versions, his
+  preferences, one starter skill per category. A Studio lookbook: real examples
+  per style, Use this, Clone. Save any command as a recipe, schedule or button.
+- **Touches:** `src/studioChat.ts` and `studioGuide.ts` (the steps and the brief),
+  the export path (new — nothing writes `.pptx`/`.docx`/`.xlsx` today), Library's
+  version store, `src/eumae/` for recipe-as-command.
+- **Open:** **the brief card is his decision** — one card or one question at a
+  time, which is the same fork the Studio flow already stands on (I34's missing
+  single table is what makes either cheap). "Real exports" also needs a decision
+  about what a `.pptx` is allowed to look like when we generate it with no
+  template.
+- **Note:** I17 covers image generation and I18/I19 cover the prompt and the card,
+  so only those overlap; the exports, the skill library, the lookbook and recipes
+  are all new. But the exports are not a surprise: `STANDARD.md` Part 6 ("Not
+  now, on purpose", lines 585–587) already parks "the PDF/Doc/Slides forge"
+  there — this section is what would move it out.
+
+## I51 — Documents and viewers (his §8)
+
+- **From:** PDF §8.
+- **Says:** one rich doc editor everywhere — page view, outline, word count,
+  versions, PDF and Word export. A viewer per file type: PDF with pages and zoom,
+  images, webpages, links, routine, course and digest cards. "Ask Eumae to
+  summarize" on any file; share to Guild. A Notes upgrade: search, pins, date
+  groups, @links, photos, voice, brain-dump mode, spotting action items (**Idea;
+  the toolbar shipped**).
+- **Touches:** the doc and note editors, the Library preview, `api/ai.ts` for the
+  summarize call.
+- **Open:** none stated. The Notes upgrade is the one item he marks as Idea while
+  saying the toolbar half is already live.
+
+## I52 — Home and custom apps (his §9)
+
+- **From:** PDF §9.
+- **Says:** the phone opens on Eumae's own apps home (**Idea, after YC**, his call
+  Oct 23). Add, remove, move and resize Home widgets; add, remove and reorder app
+  tiles; new Home pages; wallpaper and theme. Eumae rebuilds Home for a job ("set
+  me up for exam week") and tidies it, with his approval. Apps made in Studio:
+  install to Home, update, remove, keep their own data, publish or share. Split
+  Office in apps mode — Desk and Memory tiles, a chat per app, a preview sheet
+  when a task is tapped (**Idea**). Small laptops: the app fills the screen,
+  slimmer icons, a dock that hides, a sidebar that shrinks to icons (**Open**).
+  Hosted pages with one safe bridge, publish permissions and a kill switch. A
+  self-improving harness: proposals with evidence, approve, snapshot, rollback.
+- **Touches:** the Home screen and Console layout, Studio's output kinds, the rail
+  and tabbar (small laptops), `src/` auth and permissions for hosted pages.
+- **Open:** three, all his: apps-home after YC, the Office split, and the
+  small-laptop layout. The last one is already on §8's decision list.
+- **Note:** hosted pages and the self-improving harness are the two items with
+  real security weight — both want a rule in `STANDARD.md` before code, the way
+  the §7 privacy rule was written first.
+
+## I53 — Outside Eumae, with Eumae as the go-between (his §10)
+
+- **From:** PDF §10.
+- **Says:** search the web and read pages. Email: read once connected, send with a
+  draft first. Sync an outside calendar (Calendar, then Gmail, Drive, Slack). Bank
+  data, read-only through Plaid. Capture from anywhere: share sheet, forwarded
+  email, screenshot, voice note. Website errands in a cloud browser.
+- **Touches:** `api/` integrations and their keys, the share sheet (a mobile
+  target that does not exist yet), `.env.example`.
+- **Open:** none stated, but the order matters and he gave it: web and email
+  first, calendar next, bank last. Each one is a credential question before it is
+  a code question.
+- **Note:** the share sheet is already parked in `STANDARD.md` Part 6 with push
+  and the forge (lines 585–587), and `src/` has no mobile target to hang one on —
+  so "capture from anywhere" is a build, not a setting.
+
+## I54 — Guild and teams (his §11)
+
+- **From:** PDF §11.
+- **Says:** pick members when making a group. People first: a person page,
+  Requests tabs, a shared work list. Teams for family, friends and employers —
+  shared projects, requests, hand-offs, roles, caregiving. A systems library:
+  share your systems (never your memory), with "life event" starter kits.
+- **Touches:** the Guild screen, the person page, sharing and permissions in
+  `src/`, the Library's share path.
+- **Open:** none stated.
+- **Note:** "never your memory" is the same line as the §7 privacy rule and should
+  be read as part of it — a systems library that could leak memory would break it.
+
+## I55 — The smaller fixes he is still waiting on (his §12)
+
+- **From:** PDF §12.
+- **Says:** tasks and goals have no read-only view yet (a tap opens the form). The
+  person page's "Linked" still shows the first three files. Some old 12px text
+  left in places. The phone's ⋮ menu in the Drawer is untested. QuickAdd "More" on
+  iPhone closes before the tap lands. Phases shown like the Timeline spine on a
+  project (**Idea**). Marking an event attended before it ends (**Idea**). A
+  widget size picker S/M/L/XL with even grid spacing; a "+ New page" sheet with
+  starter templates. Classroom's create sheet (title, type, source, audience).
+  Dead code cleanup — about 18 unused bits.
+- **Touches:** the task and goal forms, the person page, `QuickAdd.tsx` (285 lines
+  today — `AGENTS.md`'s file table still says 466), the Console grid, the Drawer,
+  Classroom.
+- **Open:** none stated — these are all his observations from using it, which
+  makes them the most reliable items in this section.
+- **Note:** two are outright bugs rather than ideas (QuickAdd's tap and the
+  untested Drawer menu) and belong in `AGENTS.md` §7's known-gaps list when they
+  are picked up, not left only here.
+
+## I56 — The seven decisions still waiting on him (his closing list)
+
+- **From:** PDF, "Decisions waiting on you" — his own list, and the gate in front
+  of most of the section above.
+- **Says:** (1) run the database script so the backend can start; (2) is sign-in
+  required (he is recommended yes); (3) make the repo private and move prompts to
+  the server; (4) the wedge — people who outgrew their tools, ADHD-ish, or local
+  owners; (5) brief card or one question at a time in Studio; (6) the small-laptop
+  layout fix; (7) do AI-only things also get a manual path (a blank course, a
+  blank doc)?
+- **Open:** all seven, by definition.
+- **Note:** **Never, by design** — sign out, deleting an account, payments. He
+  closed the list with that line, and it is the most load-bearing sentence in the
+  file: three things this app will not grow. It should be quoted in `STANDARD.md`
+  as a non-goal so a future reader does not build them for completeness's sake.
+
+---
+
 ## Reversals and changes of mind
 
 - **2026-10-06 — the chip.** First: "only mode and role shows as chips". Minutes
@@ -484,3 +892,17 @@ came from, what it would touch, what is still open.
    wait until the bleed is dead, because every new source multiplies it until
    then. I20 save_link is the first tool on the loop; I30 memory after; the
    I28 catch-up list orders behind the slice.
+7. **What today's fixes turned up — I33–I43 (2026-10-29, none agreed).** I33, I34
+   and I42 are cheap and ride along with whichever phase next touches those
+   files. I36, I38 and I43 pay for themselves the first time something breaks on
+   a deploy he is testing. I35, I39, I40 and I41 wait on a word from him — and
+   I40 is the only one of the eleven that is a lie the app tells today: English
+   reading a reply that is not in English, with nobody saying so.
+8. **His own list — I44–I56, transcribed verbatim (2026-10-29).** Not next: the
+   queue behind `AGENTS.md` §8's phases, and §8's order still rules. It argues for
+   the backend switch-on early rather than late, because I48's jobs and I52's
+   hosted pages are the two items that must run unattended — and unattended work
+   needs a deploy that fails loudly, which is §8's error boundary and monitoring.
+   I56's seven decisions gate most of the list, and two of the sections he cares
+   most about, The Closer (I49) and real exports (I50), are among the cheapest
+   things in it.

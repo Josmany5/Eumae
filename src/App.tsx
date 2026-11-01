@@ -29,6 +29,8 @@ import { boot, saveNav } from './boot';
 import { logEv } from './log';
 import { saveUpload, uploadData } from './uploads';
 import HomeScreen, { homeSections, type HomeDest, type Tile } from './screens/HomeScreen';
+import { openSbx, getSbx } from './sandbox';
+import { FullScreen } from './components/SandboxView';
 import { homeOn, deskOn, isPhone, HOME_EVENT } from './home';
 import { DeskBar, DeskIcons, Dock, WinBar } from './components/shell/Desk';
 import { HomeHandle, AppSwitcher } from './components/shell/AppSwitch';
@@ -150,6 +152,9 @@ export default function App() {
      arrow on a top-level screen comes back here. */
   const [homeEnabled, setHomeEnabled] = useState(homeOn);
   const [showHome, setShowHome] = useState(() => homeOn() && isPhone());
+  /* A page made in chat, opened full screen from its Home tile (a phone has no
+     room for the panel). Desktop opens the panel instead. */
+  const [sbxFull, setSbxFull] = useState<string | null>(null);
   /* Desktop Home (Oct 26): opt-in, wide screens only. */
   const [deskEnabled, setDeskEnabled] = useState(deskOn);
   const [wide, setWide] = useState(() => !isPhone());
@@ -574,6 +579,16 @@ export default function App() {
         setSettingsOpen(true);
         return;
       }
+      /* A page they made: the Sandbox panel over the app, wherever they are.
+         Nothing to resume — the page is the destination. */
+      if ('sbx' in d) {
+        setShowHome(false);
+        setCurApp(null);
+        openSbx(d.sbx);
+        if (isPhone()) setSbxFull(d.sbx);
+        else openPanel('sandbox');
+        return;
+      }
       setShowHome(false);
       setCurApp('office' in d ? null : name ?? null);
       if ('office' in d) {
@@ -638,6 +653,12 @@ export default function App() {
     }
     if ('office' in d) {
       openPanel(d.office);
+      return;
+    }
+    if ('sbx' in d) {
+      openSbx(d.sbx);
+      openPanel('sandbox');
+      setWinHidden(false);
       return;
     }
     goTab(d.tab);
@@ -842,9 +863,19 @@ export default function App() {
         <input id="file-input" ref={fileRef} type="file" onChange={onFile} hidden />
 
         <Toast toast={toast} onDone={() => setToast(null)} />
+
+        {/* The full-screen page a Home tile opened (phone). FullScreen is a
+            portal with its own close button and Escape; a missing item (deleted
+            in chat) simply closes it. */}
+        {sbxFull ? <SbxFullById id={sbxFull} onClose={() => setSbxFull(null)} /> : null}
       </div>
     </NavContext.Provider>
   );
+}
+
+function SbxFullById({ id, onClose }: { id: string; onClose: () => void }) {
+  const item = getSbx(id);
+  return item ? <FullScreen item={item} onClose={onClose} /> : null;
 }
 
 /** Every Home tile, flat, for the desktop window's title and dock. */

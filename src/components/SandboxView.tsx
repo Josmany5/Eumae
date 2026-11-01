@@ -30,7 +30,7 @@ export function SbxFrame({ html, title, className }: { html: string; title: stri
   return <iframe ref={ref} title={title} srcDoc={lockHtml(html)} sandbox="allow-scripts" className={className ?? 'sbxFrame'} />;
 }
 
-function FullScreen({ item, onClose }: { item: SbxItem; onClose: () => void }) {
+export function FullScreen({ item, onClose }: { item: SbxItem; onClose: () => void }) {
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
