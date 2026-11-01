@@ -6,7 +6,7 @@ import { useMedia } from '../../useMedia';
 import { speak, voiceLangChanged } from '../../voice';
 import { DEFAULT_SPEED, DEFAULT_VOICE, SPEEDS, VOICES, voiceById } from '../../voices';
 import { DEFAULT_VOICE_LANG, VOICE_LANGS, voiceLangByCode } from '../../voiceLang';
-import { createAccount, emailLink, signIn, signOutUser, useAuth } from '../../auth';
+import { createAccount, emailLink, keepAccount, signIn, signInGuest, signOutUser, useAuth } from '../../auth';
 import { ItemMenu, ConfirmDialog } from '../ItemMenu';
 import type { NotifyOpts } from '../../nav';
 
@@ -363,7 +363,10 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
   /* What both cards show. The signed-in address is whatever Supabase holds; the
      placeholder only covers the state before there is one. */
   const accountName = account.email ? account.email.split('@')[0] || account.email : ACCOUNT.name;
-  const accountEmail = account.email ?? ACCOUNT.email;
+  /* A guest is signed in and has no address, so the card says the true thing
+     rather than the placeholder it used to show for somebody with no session at
+     all — "Not signed in" would be wrong about a guest in both halves. */
+  const accountEmail = account.email ?? (account.guest ? 'Guest — this device only' : ACCOUNT.email);
   const accountInitial = accountName.slice(0, 1).toUpperCase();
   const signedIn = account.status === 'signed-in';
 
@@ -829,7 +832,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
                 <span className="m">Signed in as</span>
                 <span>
                   {signedIn
-                    ? account.email
+                    ? account.email ?? 'Guest — no account yet'
                     : account.status === 'checking'
                       ? 'Checking…'
                       : account.status === 'unconfigured'
@@ -850,11 +853,70 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
                 without VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY — both belong in the
                 deployment's environment, and a build reads them as it is built.
               </div>
+            ) : signedIn && account.guest ? (
+              /* A guest is signed in — the AI answers — and has no way back in.
+                 So this pane is not "sign out" with a footnote: it offers the
+                 one thing that turns a guest into an account, on the same user
+                 id, with nothing already made being orphaned. */
+              <>
+                <div className="card">
+                  <b>Keep this work</b>
+                  <div className="s m" style={{ marginTop: 4, marginBottom: 8 }}>
+                    You are here as a guest: Eumae answers, and everything you make lives in this
+                    browser. Add an email and a password and it becomes an account — same work, and a
+                    way back in from anywhere.
+                  </div>
+                  <input
+                    className="sinput"
+                    type="email"
+                    id="guest-email"
+                    name="email"
+                    value={email}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    aria-label="Email"
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <input
+                    className="sinput"
+                    type="password"
+                    id="guest-password"
+                    name="password"
+                    value={password}
+                    placeholder="Choose a password"
+                    autoComplete="new-password"
+                    aria-label="Choose a password"
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <div className="btns">
+                    <button
+                      className="pri"
+                      disabled={busy || !email.trim() || password.length < 6}
+                      onClick={() => attempt(() => keepAccount(email, password), 'That is your account now')}
+                    >
+                      Keep my account
+                    </button>
+                  </div>
+                  {note ? <div className="s m">{note}</div> : null}
+                </div>
+                <div className="btns">
+                  <button className="gho danger" onClick={signOut}>Sign out</button>
+                </div>
+                <div className="s m">
+                  Signing out leaves the work on this device but ends the guest session, and a new guest
+                  session is a new account — so keep the account first if you want to come back to it.
+                  Password resets, two-factor and a list of active sessions are not built yet.
+                </div>
+              </>
             ) : signedIn ? (
               <>
                 <div className="btns">
                   <button className="gho danger" onClick={signOut}>Sign out</button>
                 </div>
+                {/* The guest pane's success sentence lands here: keeping the
+                    account ends the guest state, so the branch that renders
+                    that note has just been replaced by this one. */}
+                {note ? <div className="s m">{note}</div> : null}
                 <div className="s m">
                   Resetting a password by email, two-factor and a list of active sessions are not
                   built yet. No password is stored on this device: the session is kept by Supabase in
@@ -863,6 +925,26 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
               </>
             ) : (
               <>
+                {/* The demo door, and the first thing a person should see: the
+                    one control that makes the server answer without asking
+                    anyone to invent a password at a demo's start. */}
+                <div className="card">
+                  <b>Just looking?</b>
+                  <div className="s m" style={{ marginTop: 4, marginBottom: 8 }}>
+                    Continue as a guest and Eumae answers right away. Everything you make stays in
+                    this browser, and an email can be added later without losing any of it.
+                  </div>
+                  <div className="btns">
+                    <button
+                      className="pri"
+                      disabled={busy}
+                      onClick={() => attempt(() => signInGuest(), 'Signed in as a guest')}
+                    >
+                      Continue as guest
+                    </button>
+                  </div>
+                </div>
+                {note ? <div className="s m">{note}</div> : null}
                 <div className="card">
                   <input
                     className="sinput"
@@ -911,7 +993,6 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
                     </button>
                   </div>
                 </div>
-                {note ? <div className="s m">{note}</div> : null}
                 <div className="s m">
                   Eumae's server answers a signed-in person and nobody else — that check is the first
                   thing it does, before it reads any key. So this is the one screen that turns the AI

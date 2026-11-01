@@ -55,6 +55,16 @@ export type AuthStatus = 'unconfigured' | 'checking' | 'signed-out' | 'signed-in
 export interface AuthState {
   status: AuthStatus;
   email: string | null;
+  /** True when the session is an anonymous one — a real Supabase user with a
+   *  real id and a real token, but no email and nothing to sign back in with.
+   *
+   *  This is a separate flag rather than "signed in but no email" because a
+   *  session without an email used to mean *signed out* (`apply` below derived
+   *  the state from `session.user.email`), and that made the guest door
+   *  impossible: the person would sign in and the screen would say they had
+   *  not. The server never cared — it reads `user.id` (`api/ai.ts:91-93`) — so
+   *  the only thing that had to change was this file's idea of who is here. */
+  guest: boolean;
 }
 
 /* Read once at module load: Vite replaces these with string literals when it
@@ -64,8 +74,8 @@ const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const configured = Boolean(URL_ && KEY);
 
 let state: AuthState = configured
-  ? { status: 'checking', email: null }
-  : { status: 'unconfigured', email: null };
+  ? { status: 'checking', email: null, guest: false }
+  : { status: 'unconfigured', email: null, guest: false };
 
 const listeners = new Set<() => void>();
 let loading: Promise<SupabaseClient | null> | null = null;
@@ -90,11 +100,21 @@ function set(next: AuthState): void {
 /** Settle the state from a session, or from the absence of one.
  *
  *  `unconfigured` is never overwritten: with no project to sign in to,
- *  "signed out" would be a wrong answer to the question being asked. */
+ *  "signed out" would be a wrong answer to the question being asked.
+ *
+ *  A session with a user and no email is a guest, not a signed-out person —
+ *  see `AuthState.guest`. `is_anonymous` is the library's own word for it and
+ *  is preferred when present; the email check is the fallback, so an older
+ *  session shape cannot be mistaken for an empty one. */
 function apply(session: Session | null): void {
   if (!configured) return;
-  const email = session?.user?.email ?? null;
-  set(email ? { status: 'signed-in', email } : { status: 'signed-out', email: null });
+  if (!session?.user) {
+    set({ status: 'signed-out', email: null, guest: false });
+    return;
+  }
+  const email = session.user.email ?? null;
+  const anon = (session.user as { is_anonymous?: boolean }).is_anonymous === true;
+  set({ status: 'signed-in', email, guest: anon || !email });
 }
 
 /** The one client, made on first use rather than at import — a server render
@@ -194,6 +214,56 @@ export async function createAccount(email: string, password: string): Promise<st
   apply(data.session);
   return null;
 }
+
+/** The front door for somebody who has not decided to make an account.
+ *
+ *  Anonymous sign-in is Supabase's own: the project issues a real user with a
+ *  real id and a real token, stored and refreshed exactly like a password
+ *  session, so nothing downstream — `accessToken`, the server's `getUser`
+ *  check, the voice layer — needs to know the difference. What it is not is a
+ *  way back in: no email, no password, so the browser holding the session is
+ *  the whole account until `keepAccount` below gives it one.
+ *
+ *  It has to be switched on per project (Authentication → Providers →
+ *  Anonymous sign-ins). A project with it off answers with its own sentence
+ *  about anonymous sign-ins, which is not a wrong password and not a network
+ *  failure — so it gets named rather than passed through as a mystery. */
+export async function signInGuest(): Promise<string | null> {
+  const supabase = await auth();
+  if (!supabase) return 'This build has no sign-in configured.';
+  const { data, error } = await supabase.auth.signInAnonymously();
+  if (error) {
+    if (/anonymous/i.test(error.message)) {
+      return 'Guest sign-in is switched off for this project. Turn on anonymous sign-ins in Supabase, then try again.';
+    }
+    return message(error);
+  }
+  if (!data.session) return 'No session came back. Try again.';
+  apply(data.session);
+  return null;
+}
+
+/** Give a guest a way back in, without making them start over.
+ *
+ *  Supabase links the email and password onto the *same* user the guest
+ *  session already belongs to, which is the point: the id the server sees does
+ *  not change, so nothing they made as a guest is orphaned. With confirmation
+ *  on — the default — the address is not confirmed yet, and saying "you have an
+ *  account" then would be a lie the next sign-in would expose. So the answer is
+ *  keyed on what the session actually holds afterwards, not on the request
+ *  having been accepted. */
+export async function keepAccount(email: string, password: string): Promise<string | null> {
+  const supabase = await auth();
+  if (!supabase) return 'This build has no sign-in configured.';
+  const { error } = await supabase.auth.updateUser({ email: email.trim(), password });
+  if (error) return message(error);
+  const { data } = await supabase.auth.getSession();
+  apply(data.session);
+  const user = data.session?.user;
+  if (user?.email && user.email_confirmed_at) return null;
+  return 'Check your email to confirm the address. Until you do, this is still a guest account and the work still lives on this device.';
+}
+
 
 /** Email a sign-in link instead of using a password. The redirect has to be this
  *  page's own address, so it is read from `window` here rather than configured
