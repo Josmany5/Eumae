@@ -2402,13 +2402,13 @@ select.itIn{ text-align-last:right; padding-right:8px; }
 .hmSec{ margin-top:18px; }
 .hmSecT{ display:flex; align-items:center; gap:8px; font-size:16px; font-weight:600; color:var(--mut); margin-bottom:12px; }
 .hmDot{ width:9px; height:9px; border-radius:50%; }
-.hmGrid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:16px 8px; }
-.hmTile{ display:flex; flex-direction:column; align-items:center; gap:7px; background:none; border:0; padding:0; color:var(--tx); }
+.hmGrid{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:16px 8px; }
+.hmTile{ display:flex; flex-direction:column; align-items:center; gap:7px; background:none; border:0; padding:0; color:var(--tx); min-width:0; }
 .hmTile.soon{ opacity:.45; }
 .hmIc{ position:relative; width:64px; height:64px; border-radius:18px; display:flex; align-items:center; justify-content:center; }
 .hmIc svg{ width:28px; height:28px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 .hmDate{ font-size:26px; font-weight:700; }
-.hmN{ font-size:14px; white-space:nowrap; }
+.hmN{ font-size:14px; line-height:1.25; text-align:center; max-width:100%; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .hmSoon{ margin-top:-4px; font-size:13px; color:var(--mut); }
 .hmBadge{ position:absolute; top:-6px; right:-6px; min-width:22px; height:22px; padding:0 6px; border-radius:11px;
   background:var(--rd); color:#fff; font-style:normal; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; }
