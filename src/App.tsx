@@ -733,6 +733,7 @@ export default function App() {
           <Header
             title={top ? pageTitle(top.page, top.arg) : LABELS[tab]}
             onMenu={appMode && tab !== 'chat' ? undefined : () => setDrawerOpen(true)}
+            onHome={homeEnabled ? goHome : undefined}
             onActivity={() => openPanel()}
             onBack={
               appMode
@@ -777,38 +778,16 @@ export default function App() {
               })}
             </nav>
           ) : null}
-          {tab === 'console' && (!top || CON_PAGES.some((c) => c.page === top.page)) ? (
-            /* Phone: Console's sub-pages as one scrolling row under the
-               header. A shortcut; the Drawer keeps the full list. */
-            <nav className="conBar" aria-label="Console pages">
-              {CON_PAGES.map((c) => {
-                const on = c.page ? top?.page === c.page : !top;
-                return (
-                  <button
-                    key={c.label}
-                    className={on ? 'on' : ''}
-                    aria-current={on ? 'page' : undefined}
-                    onClick={() => {
-                      setStack(c.page ? [{ page: c.page }] : []);
-                      /* Home mode: the window becomes the page you moved to, so
-                         its tile and the switcher name it right. */
-                      if (appMode && curApp !== c.label) {
-                        setOpenApps((l) => l.filter((x) => x.key !== curApp && x.key !== c.label));
-                        setCurApp(c.label);
-                      }
-                    }}
-                  >
-                    {c.label}
-                  </button>
-                );
-              })}
-            </nav>
-          ) : null}
           <main id="mn" className={`tab-${tab}`}>
             {top ? (
               <div className="pageWrap">
                 {/* Mobile uses the header's back button; this bar is desktop-only. */}
                 <div className="backbar">
+                  {homeEnabled ? (
+                    <button className="hb" onClick={goHome} aria-label="Home">
+                      <Icon name="hm" />
+                    </button>
+                  ) : null}
                   <button className="hb" onClick={back} aria-label="Back">
                     <Icon name="bk" />
                   </button>

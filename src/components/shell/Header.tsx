@@ -6,6 +6,9 @@ interface HeaderProps {
   title: string;
   /** Set while a sub-page is pushed: the menu button becomes a back button. */
   onBack?: () => void;
+  /** Set only while the home screen is toggled on: a Home button sits at the
+   * top-left, beside Back or Menu, and goes straight to the home screen. */
+  onHome?: () => void;
 }
 
 function MenuIcon() {
@@ -26,7 +29,7 @@ export function EumaeIcon() {
   );
 }
 
-export default function Header({ onMenu, onActivity, title, onBack }: HeaderProps) {
+export default function Header({ onMenu, onActivity, title, onBack, onHome }: HeaderProps) {
   return (
     <header className="hd">
       {onBack ? (
@@ -40,6 +43,11 @@ export default function Header({ onMenu, onActivity, title, onBack }: HeaderProp
       ) : (
         <span className="hb" aria-hidden="true" />
       )}
+      {onHome ? (
+        <button className="hb" onClick={onHome} aria-label="Home">
+          <Icon name="hm" />
+        </button>
+      ) : null}
       <div className="t">{title}</div>
       <button className="hb hbEumae" onClick={onActivity} aria-label="Eumae's office" title="Eumae's office">
         <EumaeIcon />

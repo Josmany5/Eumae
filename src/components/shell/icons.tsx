@@ -24,6 +24,7 @@ const PATHS: Record<string, JSX.Element> = {
   img: <><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="9" cy="9" r="2" /><path d="M21 15l-5-5-9 9" /></>,
   mic: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>,
   bk: <path d="M15 6l-6 6 6 6" />,
+  hm: <path d="M4 11l8-7 8 7M6 9.5V20h12V9.5" />,
   up: <path d="M12 19V5M5 12l7-7 7 7" />,
   /* Scroll-to-latest — the mirror of `up`, same stroke. Centered over the
      composer in its own circle, so it reads as furniture rather than text. */
