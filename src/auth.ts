@@ -81,6 +81,11 @@ const listeners = new Set<() => void>();
 let loading: Promise<SupabaseClient | null> | null = null;
 let started = false;
 
+/* Guest state for this page load. See `guestSession` for what each one stops. */
+let guestRefused = false;
+let guestTried = false;
+let guestPending: Promise<Session | null> | null = null;
+
 function snapshot(): AuthState {
   return state;
 }
@@ -149,24 +154,89 @@ async function auth(): Promise<SupabaseClient | null> {
   return loading;
 }
 
-/** Read the stored session, once. Called from `useAuth`'s effect, never at
- *  import. */
+/** Is this page load arriving from an emailed link — or from a failed one?
+ *
+ *  Supabase reads a session out of the URL itself (`detectSessionInUrl`), and
+ *  that read is not finished at the moment this file asks. Creating a guest
+ *  then would put a brand-new account on top of the one the link is carrying,
+ *  so a URL with auth parameters in it is never a moment to make one. */
+function fromAuthLink(): boolean {
+  /* No `window` is the §5 server render: there is nobody to be. */
+  if (typeof window === 'undefined') return true;
+  const url = window.location.search + window.location.hash;
+  return /(access_token|refresh_token|error_description|error=|code=)/.test(url);
+}
+
+/** A guest session, made without being asked for.
+ *
+ *  This app has no sign-in page and no sign-up page: it opens and it works. The
+ *  door is `signInAnonymously`, so the first person to load the build already
+ *  has a real Supabase user and a real token by the time they type anything —
+ *  which is what `api/ai.ts:91-93` asks for and the only thing it asks for. The
+ *  Settings pane's "Continue as guest" button stays as the manual version of
+ *  this, for the one moment this helper declines.
+ *
+ *  Three things stop it, and each one is a wrong answer it would otherwise give:
+ *
+ *  - `guestRefused`, set by `signOutUser`. Signing out and being handed a new
+ *    guest a millisecond later would make the button a lie. It lives for this
+ *    page load only: a reload — which is how the app comes back after Delete
+ *    everything — is a fresh start, and a fresh guest.
+ *  - `fromAuthLink`, above.
+ *  - `guestTried`, so a project with anonymous sign-ins switched off is asked
+ *    once rather than on every request. The Settings pane names that case.
+ *
+ *  `guestPending` is the dedupe: chat and read-aloud both ask for a token, and
+ *  two calls in flight would otherwise create two anonymous users with the
+ *  second silently replacing the first. */
+async function guestSession(supabase: SupabaseClient): Promise<Session | null> {
+  if (guestRefused || fromAuthLink()) return null;
+  if (!guestPending && !guestTried) {
+    guestTried = true;
+    guestPending = supabase.auth
+      .signInAnonymously()
+      .then(({ data, error }) => {
+        if (error || !data.session) return null;
+        apply(data.session);
+        return data.session;
+      })
+      .catch(() => null)
+      .finally(() => {
+        guestPending = null;
+      });
+  }
+  return guestPending;
+}
+
+
+/** Read the stored session, once — and, when there is none, arrive as a guest.
+ *  Called from `useAuth`'s effect, never at import.
+ *
+ *  Settings mounts with the shell, so this runs shortly after the app's first
+ *  paint: a returning person is signed in (or still the same guest) before they
+ *  can reach a text box, and a new one is a guest before they type. Nothing has
+ *  to wait for it — `accessToken` makes the same call if a request gets there
+ *  first. */
 async function begin(): Promise<void> {
   if (started) return;
   started = true;
   const supabase = await auth();
   if (!supabase) return;
-  supabase.auth
-    .getSession()
-    .then(({ data }) => {
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data.session) {
       /* Only if nothing has answered already — a sign-in that happened while
          this was in flight is newer news than what was stored. */
       if (state.status === 'checking') apply(data.session);
-    })
-    .catch(() => {
-      /* The session could not be read at all. That is not a signed-in person. */
-      apply(null);
-    });
+      return;
+    }
+    const guest = await guestSession(supabase);
+    if (guest) apply(guest);
+    else if (state.status === 'checking') apply(null);
+  } catch {
+    /* The session could not be read at all. That is not a signed-in person. */
+    if (state.status === 'checking') apply(null);
+  }
 }
 
 
@@ -280,8 +350,13 @@ export async function emailLink(email: string): Promise<string | null> {
 }
 
 /** Sign out. Awaited rather than fired and forgotten, because the caller says
- *  what happened next and "signed out" has to be true by then. */
+ *  what happened next and "signed out" has to be true by then.
+ *
+ *  `guestRefused` is the rest of that sentence: the app makes a guest on open,
+ *  and it must not make one the moment somebody says they want out. It lasts
+ *  for this page load, so a reload arrives as a new guest — see `guestSession`. */
 export async function signOutUser(): Promise<void> {
+  guestRefused = true;
   const supabase = await auth();
   if (supabase) await supabase.auth.signOut();
   apply(null);
@@ -291,13 +366,24 @@ export async function signOutUser(): Promise<void> {
  *
  *  `getSession` reads the stored session and refreshes an expiring token, and the
  *  library does that in the background too, so a copy kept in this file would be
- *  a copy that goes stale exactly when it matters. */
+ *  a copy that goes stale exactly when it matters.
+ *
+ *  No session is not a dead end any more: a request that arrives before `begin`
+ *  has finished — the first message sent the instant the app opens — asks for a
+ *  guest itself, so the failure mode is a sign-in that takes a moment rather
+ *  than a send that 401s for a reason the person cannot act on. */
 export async function accessToken(): Promise<string | null> {
   const supabase = await auth();
   if (!supabase) return null;
   const { data } = await supabase.auth.getSession();
-  apply(data.session);
-  return data.session?.access_token ?? null;
+  if (data.session) {
+    apply(data.session);
+    return data.session.access_token;
+  }
+  const guest = await guestSession(supabase);
+  if (guest) return guest.access_token;
+  apply(null);
+  return null;
 }
 
 /** The read. The third argument is the snapshot for a render with no DOM: the §5

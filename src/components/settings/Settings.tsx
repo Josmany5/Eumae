@@ -925,14 +925,17 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
               </>
             ) : (
               <>
-                {/* The demo door, and the first thing a person should see: the
-                    one control that makes the server answer without asking
-                    anyone to invent a password at a demo's start. */}
+                {/* Eumae opens as a guest by itself (src/auth.ts
+                    `guestSession`), so this pane is what you see after saying
+                    no to that — or in a project where anonymous sign-ins are
+                    switched off. Both are the same sentence: here is the guest
+                    door again, and here is a real account. */}
                 <div className="card">
-                  <b>Just looking?</b>
+                  <b>Who is using Eumae?</b>
                   <div className="s m" style={{ marginTop: 4, marginBottom: 8 }}>
-                    Continue as a guest and Eumae answers right away. Everything you make stays in
-                    this browser, and an email can be added later without losing any of it.
+                    Eumae opens as a guest, with no account and everything you make staying in this
+                    browser. Come back as a guest here, or sign in below to keep the work somewhere
+                    you can reach it from any device.
                   </div>
                   <div className="btns">
                     <button
