@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* Uploaded files: what the paperclip takes in, what the Library keeps.
  *
  * Every upload carries the same stamps as everything else saved — when it was
@@ -38,18 +40,15 @@ export function kindOf(mimeType: string, name: string): UploadKind {
   return 'other';
 }
 
+/* One odd row used to render an odd Library line; a badly-shaped one
+   could do worse. Drop what does not hold, keep what does. */
+const indexStore = createStore<Upload[]>(INDEX_KEY, {
+  seed: () => [],
+  normalize: (parsed) => (Array.isArray(parsed) ? parsed.filter(isUpload) : []),
+});
+
 function readIndex(): Upload[] {
-  try {
-    const raw = localStorage.getItem(INDEX_KEY);
-    if (!raw) return [];
-    const list = JSON.parse(raw) as Upload[];
-    if (!Array.isArray(list)) return [];
-    /* One odd row used to render an odd Library line; a badly-shaped one
-       could do worse. Drop what does not hold, keep what does. */
-    return list.filter(isUpload);
-  } catch {
-    return [];
-  }
+  return indexStore.read();
 }
 
 const UPLOAD_KINDS: UploadKind[] = ['image', 'pdf', 'text', 'audio', 'video', 'doc', 'other'];
@@ -71,12 +70,7 @@ function isUpload(u: unknown): u is Upload {
 }
 
 function writeIndex(list: Upload[]): void {
-  try {
-    localStorage.setItem(INDEX_KEY, JSON.stringify(list));
-  } catch {
-    /* Storage full — the files are still in IndexedDB; the list just won't
-       survive a reload. */
-  }
+  indexStore.write(list);
 }
 
 function openDb(): Promise<IDBDatabase> {

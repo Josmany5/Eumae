@@ -1,6 +1,7 @@
 import type { ApiChatBody, ThreadTurn } from './request';
 import type { Plan } from './eumae/dispatcher';
 import type { EumaeStep } from './eumae/loop';
+import { createStore } from './storage';
 
 /** One message in a thread. Attachments are pointers (§4.15): `uploadId`
  *  survives in storage, `url` is memory-only (live send + live preview). */
@@ -32,63 +33,34 @@ export interface Thread {
   from?: string;
 }
 
-const KEY = 'eumae:threads';
 const CURRENT_KEY = 'eumae:currentThread';
 
-/* In-memory cache — loaded once, written through on save. Every read used
-   to parse the whole block from storage; during streaming that was dozens of
-   full parse/stringify cycles per reply. */
-let cache: Thread[] | null = null;
+const store = createStore<Thread[]>('eumae:threads', {
+  seed: () => [],
+  normalize: (parsed) => (Array.isArray(parsed) ? cleanThreads(parsed) : []),
+  persistNormalized: true,
+});
 
 function load(): Thread[] {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      cache = [];
-      return cache;
-    }
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      cache = [];
-      return cache;
-    }
-    let dropped = 0;
-    const cleaned: Thread[] = [];
-    for (const t of parsed) {
-      if (!isThread(t)) {
-        dropped++;
-        continue;
-      }
-      const msgs = cleanMessages(t.messages);
-      /* Blank chats saved before drafts existed: drop them. */
-      if (!msgs.length) {
-        dropped++;
-        continue;
-      }
-      dropped += t.messages.length - msgs.length;
-      /* Office threads are labelled by page alone ("Console"), not "Console office". */
-      const from = t.from;
-      const fix = !!from && from.endsWith(' office');
-      if (fix) dropped++;
-      cleaned.push(fix ? { ...t, title: t.title === from ? from!.slice(0, -7) : t.title, from: from!.slice(0, -7), messages: msgs } : { ...t, messages: msgs });
-    }
-    cache = cleaned;
-    /* A bad row dies once: write the cleaned list back so the next boot
-       never reads it again. A crash-looping message is dropped here, before
-       React ever sees it. */
-    if (dropped > 0) {
-      try {
-        localStorage.setItem(KEY, JSON.stringify(cleaned));
-      } catch {
-        /* Non-fatal — memory still holds the cleaned list. */
-      }
-    }
-    return cache;
-  } catch {
-    cache = [];
-    return cache;
+  return store.read();
+}
+
+/* A bad row dies once: the cleaned list is written back (persistNormalized),
+   so the next boot never reads it again. A crash-looping message is dropped
+   here, before React ever sees it. */
+function cleanThreads(parsed: unknown[]): Thread[] {
+  const cleaned: Thread[] = [];
+  for (const t of parsed) {
+    if (!isThread(t)) continue;
+    const msgs = cleanMessages(t.messages);
+    /* Blank chats saved before drafts existed: drop them. */
+    if (!msgs.length) continue;
+    /* Office threads are labelled by page alone ("Console"), not "Console office". */
+    const from = t.from;
+    const fix = !!from && from.endsWith(' office');
+    cleaned.push(fix ? { ...t, title: t.title === from ? from!.slice(0, -7) : t.title, from: from!.slice(0, -7), messages: msgs } : { ...t, messages: msgs });
   }
+  return cleaned;
 }
 
 /* Something outside Chat (Eumae's office) changed a thread: App re-reads. */
@@ -102,12 +74,7 @@ export function threadsChanged(): void {
 }
 
 function save(threads: Thread[]): void {
-  cache = threads;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(threads));
-  } catch {
-    /* Storage full or unavailable — the in-memory threads still work. */
-  }
+  store.write(threads);
 }
 
 export function getThreads(): Thread[] {

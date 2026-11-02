@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* Events: what the calendar holds.
  *
  * Fields follow the mockup's SEED (`events:[{d,tm,t}]` — date YYYY-MM-DD,
@@ -60,25 +62,13 @@ export interface Repeat {
   until?: string;
 }
 
-const KEY = 'eumae:events';
-
-let cache: CalEvent[] | null = null;
+const store = createStore<CalEvent[]>('eumae:events', {
+  seed: () => withIds(seeds()),
+  normalize: (parsed) => withIds(Array.isArray(parsed) ? parsed.filter(isEvent) : seeds()),
+});
 
 function load(): CalEvent[] {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      cache = withIds(seeds());
-      return cache;
-    }
-    const parsed = JSON.parse(raw);
-    cache = withIds(Array.isArray(parsed) ? parsed.filter(isEvent) : seeds());
-    return cache;
-  } catch {
-    cache = withIds(seeds());
-    return cache;
-  }
+  return store.read();
 }
 
 let idSeq = 0;
@@ -104,12 +94,7 @@ function seeds(): CalEvent[] {
 }
 
 function save(events: CalEvent[]): void {
-  cache = events;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(events));
-  } catch {
-    /* Storage full — in-memory still works. */
-  }
+  store.write(events);
 }
 
 function isEvent(e: unknown): e is CalEvent {
@@ -209,11 +194,11 @@ export function skipOccurrence(id: string, day: string): void {
 /* Undo: a deep copy of the store taken before a delete; the toast's Undo
    writes it back. Same shape as snapshotTasks / snapshotLibrary. */
 export function snapshotEvents(): CalEvent[] {
-  return JSON.parse(JSON.stringify(load()));
+  return store.snapshot();
 }
 
 export function restoreEvents(s: CalEvent[]): void {
-  save(s);
+  store.restore(s);
 }
 
 /* ── Attendance (Oct 21, his call): after an event ends, Eumae asks

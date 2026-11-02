@@ -1,13 +1,21 @@
 #!/usr/bin/env node
 /* Classroom check - courses + progress + quiz, real code. */
-import { readFileSync } from 'node:fs';
-import { transformSync } from 'esbuild';
+import { buildSync } from 'esbuild';
+import { fileURLToPath } from 'node:url';
 
-const src = readFileSync(new URL('../src/classroom.ts', import.meta.url), 'utf8');
-const js = transformSync(src, { loader: 'ts', format: 'cjs' }).code
-  .replace(/^export (function|const|let|interface|type|async function) /gm, '$1 ')
-  .replace(/^export \{[^}]*\};?/gm, '')
-  .replace(/^export default /gm, '');
+function loadMod(path) {
+  const r = buildSync({
+    entryPoints: [fileURLToPath(new URL(path, import.meta.url))],
+    bundle: true,
+    format: 'cjs',
+    platform: 'node',
+    write: false,
+    logLevel: 'silent',
+  });
+  return r.outputFiles[0].text;
+}
+
+const js = loadMod('../src/classroom.ts');
 
 const failures = [];
 const check = (name, cond, detail) => {
@@ -24,8 +32,11 @@ function run(setup, body) {
   };
   setup(store);
   const mod = { exports: {} };
-  const fn = new Function('module', 'exports', 'localStorage', js + '; return (' + body + ');');
-  return { out: fn(mod, mod.exports, localStorage), store };
+  const load = new Function('module', 'exports', 'localStorage', js + '\nreturn module.exports;');
+  const ns = load(mod, mod.exports, localStorage);
+  const names = Object.keys(ns).filter((k) => /^[A-Za-z_$][\w$]*$/.test(k));
+  const fn = new Function('ns', 'localStorage', 'const {' + names.join(', ') + '} = ns; return (' + body + ');');
+  return { out: fn(ns, localStorage), store };
 }
 
 // 1. Two courses, seed percents + lessons verbatim.

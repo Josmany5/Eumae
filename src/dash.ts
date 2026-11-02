@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* Dashboard layout: which widgets live on which Console page, and at what
  * size. Fields follow the mockup's second rCon layer (`dash8.pages`,
  * `wsz10`): pages are arrays of widget ids, size is quick/full per widget.
@@ -61,23 +63,13 @@ export interface Dashboard {
 
 const KEY = 'eumae:dash';
 
-let cache: Dashboard | null = null;
+const store = createStore<Dashboard>(KEY, {
+  seed: () => seed(),
+  normalize: (parsed) => (isDashboard(parsed) ? migrate(parsed) : seed()),
+});
 
 function load(): Dashboard {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      cache = seed();
-      return cache;
-    }
-    const parsed = JSON.parse(raw);
-    cache = isDashboard(parsed) ? migrate(parsed) : seed();
-    return cache;
-  } catch {
-    cache = seed();
-    return cache;
-  }
+  return store.read();
 }
 
 /* Names for the seeded pages; later pages fall back to "Page N". */
@@ -112,12 +104,7 @@ function migrate(d: Dashboard): Dashboard {
 }
 
 function save(dash: Dashboard): void {
-  cache = dash;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(dash));
-  } catch {
-    /* Storage full — in-memory still works. */
-  }
+  store.write(dash);
 }
 
 function isWidgetId(id: unknown): id is WidgetId {
@@ -225,7 +212,7 @@ export function renameConsolePage(page: number, name: string): void {
 /* Undo: a deep copy of the store taken before a delete; the toast's Undo
    writes it back. Same shape as snapshotTasks / snapshotLibrary. */
 export function snapshotDash(): Dashboard {
-  return JSON.parse(JSON.stringify(load()));
+  return store.snapshot();
 }
 
 export function restoreDash(s: Dashboard): void {

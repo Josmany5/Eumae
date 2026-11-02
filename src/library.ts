@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* Library: authored files, folders, favorites, trash, folder prefs.
  *
  * Authored files (the mockup's S.files) live here, validated like every
@@ -102,7 +104,6 @@ const KEY = 'eumae:library';
 export const LIBRARY_EVENT = 'eumae:library-changed';
 /* Unique even when several files are made in the same millisecond. */
 const newId = () => 'f' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
-let cache: LibState | null = null;
 function isHistRow(h: unknown): h is { v: number; b: string; at: number } {
   if (!h || typeof h !== 'object') return false;
   const o = h as Record<string, unknown>;
@@ -150,20 +151,13 @@ function seeds(): LibState {
   };
 }
 
+const store = createStore<LibState>(KEY, {
+  seed: () => seeds(),
+  normalize: (parsed) => normalize(parsed),
+});
+
 function load(): LibState {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      cache = seeds();
-      return cache;
-    }
-    cache = normalize(JSON.parse(raw));
-    return cache;
-  } catch {
-    cache = seeds();
-    return cache;
-  }
+  return store.read();
 }
 
 /* One bad row drops, never the shelf - the projects.ts pattern. */
@@ -182,12 +176,7 @@ function normalize(s: unknown): LibState {
 }
 
 function save(s: LibState): void {
-  cache = s;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(s));
-  } catch {
-    /* Storage full - in-memory still works. */
-  }
+  store.write(s);
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(LIBRARY_EVENT));
 }
 
@@ -460,7 +449,7 @@ export function deleteFolder(name: string): boolean {
 
 /* Undo: the whole shelf before a delete, put back as it was. */
 export function snapshotLibrary(): LibState {
-  return JSON.parse(JSON.stringify(load()));
+  return store.snapshot();
 }
 
 export function restoreLibrary(snap: LibState): void {

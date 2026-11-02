@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /** One entry in a note — a single writing session. */
 export interface NoteEntry {
   id: string;
@@ -33,34 +35,17 @@ export interface Note {
   sortNewFirst?: boolean;
 }
 
-const KEY = 'eumae:notes';
-
-let cache: Note[] | null = null;
+const store = createStore<Note[]>('eumae:notes', {
+  seed: () => [],
+  normalize: (parsed) => (Array.isArray(parsed) ? parsed.filter(isNote).map(migrate) : []),
+});
 
 function load(): Note[] {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      cache = [];
-      return cache;
-    }
-    const parsed = JSON.parse(raw);
-    cache = Array.isArray(parsed) ? parsed.filter(isNote).map(migrate) : [];
-    return cache;
-  } catch {
-    cache = [];
-    return cache;
-  }
+  return store.read();
 }
 
 function save(notes: Note[]): void {
-  cache = notes;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(notes));
-  } catch {
-    /* Storage full — in-memory still works. */
-  }
+  store.write(notes);
 }
 
 function isNote(n: unknown): n is Note {
@@ -221,9 +206,9 @@ export function startEntry(): NoteEntry {
 /* Undo: a deep copy of the store taken before a delete; the toast's Undo
    writes it back. Same shape as snapshotTasks / snapshotLibrary. */
 export function snapshotNotes(): Note[] {
-  return JSON.parse(JSON.stringify(load()));
+  return store.snapshot();
 }
 
 export function restoreNotes(s: Note[]): void {
-  save(s);
+  store.restore(s);
 }

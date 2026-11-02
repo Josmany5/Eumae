@@ -6,6 +6,7 @@ import { getTasks } from '../tasks';
 import { isOverdue } from '../due';
 import { allSbx } from '../sandbox';
 import { useSbx } from '../components/SandboxView';
+import { useSkin } from '../skin';
 
 /** Where a tile goes: a tab (plus an optional page on it), the office, or Soon. */
 export type HomeDest =
@@ -99,6 +100,7 @@ function greeting(now: Date): string {
 }
 
 export default function HomeScreen({ onOpen, onSearch }: { onOpen: (d: HomeDest, name: string) => void; onSearch: () => void }) {
+  const skin = useSkin();
   const now = new Date();
   /* Re-render when a page is made in chat, so it is on this screen by the time
      they close the Sandbox. */
@@ -120,7 +122,7 @@ export default function HomeScreen({ onOpen, onSearch }: { onOpen: (d: HomeDest,
   const sections = madeSection ? [madeSection, ...homeSections(overdue)] : homeSections(overdue);
 
   return (
-    <div className="hm">
+    <div className="hm" data-skin={skin ?? undefined}>
       <div className="hmHead">
         <h1>Eumae</h1>
         <button className="hb" onClick={onSearch} aria-label="Search">

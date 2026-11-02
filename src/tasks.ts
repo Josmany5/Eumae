@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* Tasks: what the day asks of you.
  *
  * Fields follow the mockup's SEED (`tasks:[{id,t,d}]` — id, text, done) plus
@@ -64,29 +66,25 @@ export interface Task {
   createdAt: number;
 }
 
-const KEY = 'eumae:tasks';
-const LISTS_KEY = 'eumae:taskLists';
-
 const PRIORITIES: TaskPriority[] = ['none', 'important', 'urgent', 'critical'];
 
-let cache: Task[] | null = null;
-let listsCache: TaskList[] | null = null;
+const store = createStore<Task[]>('eumae:tasks', {
+  seed: () => seeds(),
+  normalize: (parsed) => (Array.isArray(parsed) ? parsed.filter(isTask) : seeds()),
+});
+
+const listsStore = createStore<TaskList[]>('eumae:taskLists', {
+  seed: () => seedLists(),
+  normalize: (parsed) =>
+    Array.isArray(parsed)
+      ? parsed.filter(
+          (l): l is TaskList => !!l && typeof l === 'object' && typeof (l as TaskList).id === 'string' && typeof (l as TaskList).n === 'string',
+        )
+      : seedLists(),
+});
 
 function load(): Task[] {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      cache = seeds();
-      return cache;
-    }
-    const parsed = JSON.parse(raw);
-    cache = Array.isArray(parsed) ? parsed.filter(isTask) : seeds();
-    return cache;
-  } catch {
-    cache = seeds();
-    return cache;
-  }
+  return store.read();
 }
 
 /* First run starts on the mockup's own rows, labeled examples: the Console's
@@ -101,12 +99,7 @@ function seeds(): Task[] {
 }
 
 function save(tasks: Task[]): void {
-  cache = tasks;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(tasks));
-  } catch {
-    /* Storage full — in-memory still works. */
-  }
+  store.write(tasks);
 }
 
 function isSubtask(s: unknown): s is Subtask {
@@ -270,33 +263,11 @@ function seedLists(): TaskList[] {
 }
 
 function loadLists(): TaskList[] {
-  if (listsCache) return listsCache;
-  try {
-    const raw = localStorage.getItem(LISTS_KEY);
-    if (!raw) {
-      listsCache = seedLists();
-      return listsCache;
-    }
-    const parsed = JSON.parse(raw);
-    listsCache = Array.isArray(parsed)
-      ? parsed.filter(
-          (l): l is TaskList => !!l && typeof l === 'object' && typeof (l as TaskList).id === 'string' && typeof (l as TaskList).n === 'string',
-        )
-      : seedLists();
-    return listsCache;
-  } catch {
-    listsCache = seedLists();
-    return listsCache;
-  }
+  return listsStore.read();
 }
 
 function saveLists(lists: TaskList[]): void {
-  listsCache = lists;
-  try {
-    localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
-  } catch {
-    /* Non-fatal. */
-  }
+  listsStore.write(lists);
 }
 
 export function getLists(): TaskList[] {
@@ -352,7 +323,7 @@ export interface TasksSnapshot {
 }
 
 export function snapshotTasks(): TasksSnapshot {
-  return { tasks: JSON.parse(JSON.stringify(load())), lists: JSON.parse(JSON.stringify(loadLists())) };
+  return { tasks: store.snapshot(), lists: listsStore.snapshot() };
 }
 
 export function restoreTasks(s: TasksSnapshot): void {

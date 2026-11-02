@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* Guild dashboard layout: which widgets live on which Guild page, and at
  * what size. Fields follow the mockup's Guild layer (`gdash9.pages`,
  * `wsz10` shared with the Console): pages are arrays of widget ids, size is
@@ -53,25 +55,13 @@ export interface GuildDashboard {
   names?: string[];
 }
 
-const KEY = 'eumae:gdash';
-
-let cache: GuildDashboard | null = null;
+const store = createStore<GuildDashboard>('eumae:gdash', {
+  seed: () => seed(),
+  normalize: (parsed) => (isGuildDashboard(parsed) ? parsed : seed()),
+});
 
 function load(): GuildDashboard {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      cache = seed();
-      return cache;
-    }
-    const parsed = JSON.parse(raw);
-    cache = isGuildDashboard(parsed) ? parsed : seed();
-    return cache;
-  } catch {
-    cache = seed();
-    return cache;
-  }
+  return store.read();
 }
 
 /* The mockup's own seed (`gdash9` default): Inbox + Network. */
@@ -86,12 +76,7 @@ function seed(): GuildDashboard {
 }
 
 function save(dash: GuildDashboard): void {
-  cache = dash;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(dash));
-  } catch {
-    /* Storage full — in-memory still works. */
-  }
+  store.write(dash);
 }
 
 function isGuildWidgetId(id: unknown): id is GuildWidgetId {
@@ -197,7 +182,7 @@ export function renameGuildPage(page: number, name: string): void {
 /* Undo: a deep copy of the store taken before a delete; the toast's Undo
    writes it back. Same shape as snapshotTasks / snapshotLibrary. */
 export function snapshotGuildDash(): GuildDashboard {
-  return JSON.parse(JSON.stringify(load()));
+  return store.snapshot();
 }
 
 export function restoreGuildDash(s: GuildDashboard): void {

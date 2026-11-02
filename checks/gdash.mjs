@@ -4,15 +4,22 @@
  * The checks/dash.mjs pattern on the Guild twin. No browser, no network.
  * Exit codes: 0 everything holds, 1 something does not.
  */
-import { readFileSync } from 'node:fs';
-import { transformSync } from 'esbuild';
+import { buildSync } from 'esbuild';
+import { fileURLToPath } from 'node:url';
 
-const src = readFileSync(new URL('../src/gdash.ts', import.meta.url), 'utf8');
+function loadMod(path) {
+  const r = buildSync({
+    entryPoints: [fileURLToPath(new URL(path, import.meta.url))],
+    bundle: true,
+    format: 'cjs',
+    platform: 'node',
+    write: false,
+    logLevel: 'silent',
+  });
+  return r.outputFiles[0].text;
+}
 
-const js = transformSync(src, { loader: 'ts', format: 'cjs' }).code
-  .replace(/^export (function|const|let|interface|type|async function) /gm, '$1 ')
-  .replace(/^export \{[^}]*\};?/gm, '')
-  .replace(/^export default /gm, '');
+const js = loadMod('../src/gdash.ts');
 
 const failures = [];
 const check = (name, cond, detail) => {
@@ -37,8 +44,11 @@ function run(setup, body) {
   };
   setup(store);
   const mod = { exports: {} };
-  const fn = new Function('module', 'exports', 'localStorage', 'Date', `${js}; return (${body});`);
-  return { out: fn(mod, mod.exports, localStorage, Date), store };
+  const load = new Function('module', 'exports', 'localStorage', 'Date', `${js}\nreturn module.exports;`);
+  const ns = load(mod, mod.exports, localStorage, Date);
+  const names = Object.keys(ns).filter((k) => /^[A-Za-z_$][\w$]*$/.test(k));
+  const fn = new Function('ns', 'localStorage', 'Date', `const {${names.join(', ')}} = ns; return (${body});`);
+  return { out: fn(ns, localStorage, Date), store };
 }
 
 // 1. First run seeds the mockup's Inbox + Network.

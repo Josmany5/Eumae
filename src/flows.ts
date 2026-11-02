@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* Habits, routines and flows (his definitions, Oct 21):
  *
  *  - HABIT: one repeated action that needs reinforcement. Set days, a check
@@ -52,7 +54,6 @@ export const KIND_LABEL: Record<FlowKind, string> = { habit: 'Habit', routine: '
 const KEY = 'eumae:flows';
 const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-let cache: Flow[] | null = null;
 
 /* ── Dates (local, YYYY-MM-DD) ── */
 function ymdOf(d: Date): string {
@@ -154,16 +155,13 @@ export function lastDone(f: Flow): string | undefined {
 }
 
 /* ── Load / save ── */
+const store = createStore<Flow[]>(KEY, {
+  seed: () => [],
+  normalize: (parsed) => (Array.isArray(parsed) ? parsed.filter(isFlow).map(normalize).filter(notOldSeed) : []),
+});
+
 function load(): Flow[] {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    cache = Array.isArray(parsed) ? parsed.filter(isFlow).map(normalize).filter(notOldSeed) : [];
-  } catch {
-    cache = [];
-  }
-  return cache;
+  return store.read();
 }
 
 /* The two old seeds (Morning brief, Shutdown ritual) said Eumae runs them,
@@ -196,12 +194,7 @@ function normalize(f: Flow): Flow {
 }
 
 function save(flows: Flow[]): void {
-  cache = flows;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(flows));
-  } catch {
-    /* Storage full — in-memory still works. */
-  }
+  store.write(flows);
 }
 
 /** Accepts old rows too ('routine'/'flow', free-text `w`, a stored streak). */
@@ -428,7 +421,7 @@ export function addStarter(s: Starter): Flow {
 /* Undo: a deep copy of the store taken before a change; the toast's Undo
    writes it back. Same shape as snapshotTasks / snapshotLibrary. */
 export function snapshotFlows(): Flow[] {
-  return JSON.parse(JSON.stringify(load()));
+  return store.snapshot();
 }
 
 export function restoreFlows(s: Flow[]): void {

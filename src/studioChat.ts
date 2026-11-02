@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* A Studio chat (his calls, Oct 27-28; mockups 26 + 27): Eumae's questions
  * flow in the chat, one at a time, with pills (ideas, never walls: type,
  * attach or talk instead any time). Each answer goes into the spec in the
@@ -72,26 +74,36 @@ const KEY = 'eumae:studioChats3';
 const EVT = 'eumae:studioChats';
 export const STUDIO_CHATS_EVENT = EVT;
 
+const persist = createStore<Session[]>(KEY, {
+  seed: () => [],
+  normalize: (parsed) =>
+    Array.isArray(parsed)
+      ? parsed.filter(
+          (x): x is Session =>
+            !!x && typeof (x as Session).id === 'string' && !!KINDS[(x as Session).kind] && !!(x as Session).spec && Array.isArray((x as Session).queue),
+        )
+      : [],
+});
+
 function load(): Session[] {
-  try {
-    const raw = JSON.parse(localStorage.getItem(KEY) || '[]');
-    return Array.isArray(raw) ? raw.filter((x) => x && typeof x.id === 'string' && KINDS[x.kind] && x.spec && Array.isArray(x.queue)) : [];
-  } catch {
-    return [];
-  }
+  return persist.read();
 }
 
 function store(list: Session[]): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(list.slice(0, 60)));
-  } catch {
-    /* Full storage: the chat still works this session. */
-  }
+  persist.write(list.slice(0, 60));
   window.dispatchEvent(new Event(EVT));
 }
 
 export function getSession(id: string): Session | undefined {
   return load().find((x) => x.id === id);
+}
+
+export function getSessions(): Session[] {
+  return [...load()];
+}
+
+export function restoreSessions(list: Session[]): void {
+  store(list);
 }
 export function sessionForFile(fileId: string): Session | undefined {
   return load().find((x) => x.fileId === fileId);

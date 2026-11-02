@@ -1,5 +1,6 @@
 import { setHomeOn, setDeskOn } from '../../home';
-import { useEffect, useState } from 'react';
+import { setSkin, useSkin } from '../../skin';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Icon } from '../shell/icons';
 import { LOG_AREAS, useLog, type LogArea } from '../../log';
 import { useMedia } from '../../useMedia';
@@ -7,6 +8,7 @@ import { speak, voiceLangChanged } from '../../voice';
 import { DEFAULT_SPEED, DEFAULT_VOICE, SPEEDS, VOICES, voiceById } from '../../voices';
 import { DEFAULT_VOICE_LANG, VOICE_LANGS, voiceLangByCode } from '../../voiceLang';
 import { createAccount, emailLink, keepAccount, signIn, signInGuest, signOutUser, useAuth } from '../../auth';
+import { onSyncStatus, syncStatus } from '../../sync';
 import { ItemMenu, ConfirmDialog } from '../ItemMenu';
 import type { NotifyOpts } from '../../nav';
 
@@ -25,7 +27,7 @@ const VOICE_SAMPLE = 'This is how I sound when I read an answer aloud.';
 
 type View =
   | 'main' | 'personalization' | 'memory' | 'permissions' | 'skills'
-  | 'automations' | 'crew' | 'appearance' | 'language' | 'accessibility'
+  | 'automations' | 'crew' | 'appearance' | 'skins' | 'language' | 'accessibility'
   | 'voice' | 'notifications' | 'connectors' | 'billing' | 'security'
   | 'usage' | 'logs' | 'datacontrols' | 'storage'
   | 'help' | 'report' | 'legal' | 'about';
@@ -39,6 +41,7 @@ const TITLES: Record<View, string> = {
   automations: 'Agents and automation',
   crew: 'Crew',
   appearance: 'Appearance',
+  skins: 'Skins',
   language: 'Language and region',
   accessibility: 'Accessibility',
   voice: 'Voice',
@@ -181,6 +184,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
   const [homeScr, setHomeScr] = useStored('homeScreen', false);
   const [deskScr, setDeskScr] = useStored('deskHome', false);
   const [theme, setTheme] = useStored('theme', document.documentElement.dataset.theme || 'dark');
+  const skin = useSkin();
   /* The voice is stored as the name a request sends (`voices.ts`) rather than as
      the row's label: the old value was the mockup's `Nova`, which this server
      cannot speak, and `voiceById` turns anything it does not recognise into the
@@ -212,6 +216,15 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
      account cards and the Security pane — which is why that state lives in its
      own module instead of here. */
   const account = useAuth();
+  const sync = useSyncExternalStore(onSyncStatus, syncStatus, syncStatus);
+  const syncText =
+    sync.status === 'syncing'
+      ? 'Saving to your account…'
+      : sync.status === 'error'
+        ? "Your account — couldn't save, will retry"
+        : sync.status === 'idle'
+          ? `Your account${sync.lastAt ? ` — saved ${new Date(sync.lastAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}`
+          : 'Local only';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -320,6 +333,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
       group: 'App',
       items: [
         { key: 'appearance', icon: 'img', title: 'Appearance', value: theme === 'dark' ? 'Dark' : 'Light' },
+        { key: 'skins', icon: 'img', title: 'Skins', value: skin === 'yc' ? 'YC' : 'None' },
         { key: 'voice', icon: 'mic', title: 'Voice', value: voiceById(voice).name },
         { key: 'notifications', icon: 'bel', title: 'Notifications', value: notif.allow ? 'On' : 'Off' },
         { key: 'connectors', icon: 'lnk', title: 'Connectors', value: '2 connected' },
@@ -587,6 +601,18 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
           </>
         )}
 
+        {view === 'skins' && (
+          <>
+            <div className="seg" style={{ padding: '12px 16px' }}>
+              <button className={skin === null ? 'on' : ''} onClick={() => setSkin(null)}>None</button>
+              <button className={skin === 'yc' ? 'on' : ''} onClick={() => setSkin('yc')}>YC</button>
+            </div>
+            <p className="xs m" style={{ padding: '0 16px' }}>
+              A skin changes your home screen's fonts and colors. The rest of the app keeps your Dark or Light look.
+            </p>
+          </>
+        )}
+
         {view === 'voice' && (
           <>
             {/* Speed, above the list because it changes how every one of these
@@ -840,7 +866,7 @@ export default function Settings({ open, onClose, notify, view: viewProp, onView
                         : 'No one yet'}
                 </span>
               </div>
-              <div className="kv"><span className="m">Where your work lives</span><span>Local only</span></div>
+              <div className="kv"><span className="m">Where your work lives</span><span>{syncText}</span></div>
             </div>
 
             {/* The mockup's Security page invents a password, a passkey and two

@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* Guild: people, threads, requests, shared, marketplace, assigned work,
  * groups. Fields follow the mockup's SEED guild block verbatim (people with
  * initials, threads with message pairs, reqIn/reqOut, act, shared, market)
@@ -105,25 +107,13 @@ export interface Guild {
   groups: GuildGroup[];
 }
 
-const KEY = 'eumae:guild';
-
-let cache: Guild | null = null;
+const store = createStore<Guild>('eumae:guild', {
+  seed: () => seed(),
+  normalize: (parsed) => (isGuild(parsed) ? parsed : seed()),
+});
 
 function load(): Guild {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      cache = seed();
-      return cache;
-    }
-    const parsed = JSON.parse(raw);
-    cache = isGuild(parsed) ? parsed : seed();
-    return cache;
-  } catch {
-    cache = seed();
-    return cache;
-  }
+  return store.read();
 }
 
 /* The mockup's own guild, verbatim. */
@@ -229,12 +219,7 @@ function seed(): Guild {
 }
 
 function save(guild: Guild): void {
-  cache = guild;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(guild));
-  } catch {
-    /* Storage full — in-memory still works. */
-  }
+  store.write(guild);
 }
 
 function isGuildAssignment(a: unknown): a is GuildAssignment {
@@ -521,7 +506,7 @@ export function createGroup(name: string, memberNames?: string[]): string {
 
 /* Undo: the whole Guild before a delete, put back as it was. */
 export function snapshotGuild(): Guild {
-  return JSON.parse(JSON.stringify(load()));
+  return store.snapshot();
 }
 
 export function restoreGuild(snap: Guild): void {

@@ -29,6 +29,7 @@ import { setAttendance, rescheduleOccurrence, occursOn } from '../events';
 import { setProjectDone, setPinnedProjectId, getPinnedProjectId, setLinkMilestone } from '../projects';
 import { getFiles, getFavs, getTrash, allFolders, getFolders, folderOf, folderPrefs, setFolderPrefs, addFile, setBody, setStatus, renameFile, saveEdit, duplicateFile, toggleFav, restoreVersion, moveFile, movableFolders, trashFile, restoreTrash, emptyTrash, addFolder, renameFolder, deleteFolder, LIB_KINDS, BUILT_IN_FOLDERS, type LibFile } from '../library';
 import { getThreads, getThread, saveThread, deleteThread, downloadThread, getCurrentThreadId, threadsChanged } from '../threads';
+import { setSkin } from '../skin';
 
 export type Risk = 'read' | 'write' | 'danger';
 export type ItemKind = 'task' | 'event' | 'goal' | 'project' | 'note';
@@ -37,7 +38,7 @@ const LINKABLE: readonly LinkKind[] = ['task', 'event', 'goal', 'note'];
 
 /** One line on the plan card: what kind of thing, what happens to it. */
 export interface PlanLine {
-  kind: 'Task' | 'Event' | 'Goal' | 'Project' | 'Note' | 'List' | 'Subtask' | 'Checklist line' | 'Milestone' | 'Phase' | 'Link' | 'Chat' | 'Attendance' | 'File' | 'Folder' | 'Trash' | 'Version';
+  kind: 'Task' | 'Event' | 'Goal' | 'Project' | 'Note' | 'List' | 'Subtask' | 'Checklist line' | 'Milestone' | 'Phase' | 'Link' | 'Chat' | 'Attendance' | 'File' | 'Folder' | 'Trash' | 'Version' | 'Skin';
   verb: 'Create' | 'Edit' | 'Complete' | 'Reopen' | 'Tick' | 'Untick' | 'Remove' | 'Move' | 'Add' | 'Log' | 'Link' | 'Unlink' | 'Delete' | 'Skip' | 'Rename' | 'Mark' | 'Pin' | 'Duplicate' | 'Restore' | 'Empty' | 'Favorite' | 'Unfavorite' | 'Set';
   text: string;
   detail?: string;
@@ -815,6 +816,21 @@ const changeList = (c: Args) =>
 const emptyChange = (c: Args | undefined) => (!c || !Object.keys(c).length ? 'changes is empty. Name at least one field to change.' : null);
 
 const changes: Action[] = [
+  {
+    name: 'set_skin',
+    risk: 'write',
+    description:
+      'Put a skin on the home screen, or take it off. A skin changes the home screen\'s fonts and colors only; the rest of the app keeps its look. "yc" is the YC skin: warm white, near-black text, orange, in the Outfit font. "none" takes the skin off.',
+    params: obj({ skin: s('The skin: "yc", or "none" to take the skin off.', { enum: ['yc', 'none'] }) }, ['skin']),
+    preview: (a) =>
+      a.skin === 'yc'
+        ? [{ kind: 'Skin', verb: 'Set', text: 'YC', detail: 'on the home screen' }]
+        : [{ kind: 'Skin', verb: 'Set', text: 'No skin', detail: 'home screen back to its usual look' }],
+    run: (a) => {
+      setSkin(a.skin === 'yc' ? 'yc' : null);
+      return { ok: true, summary: a.skin === 'yc' ? 'Home screen is wearing the YC skin' : 'Took the skin off the home screen' };
+    },
+  },
   {
     name: 'update_task',
     risk: 'write',

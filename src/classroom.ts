@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* Classroom: courses with progress, sections, tutorials.
  *
  * CR8 (course progress + lessons + quiz), CX8 (four sections: blurb +
@@ -135,38 +137,34 @@ export const DIGEST: DigestItem[] = [
   { t: 'Fed rate explainer', k: 'LINK', d: 'Article · 6 min read' },
 ];
 
-const KEY = 'eumae:classroom';
-
-interface CxState {
+export interface CxState {
   done: Record<string, string[]>;
 }
 
-let cache: CxState | null = null;
+const store = createStore<CxState>('eumae:classroom', {
+  seed: () => ({ done: {} }),
+  normalize: (parsed) => {
+    if (!parsed || typeof parsed !== 'object') return { done: {} };
+    const done = (parsed as { done?: unknown }).done;
+    return done && typeof done === 'object' ? { done: done as Record<string, string[]> } : { done: {} };
+  },
+});
 
 function load(): CxState {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      cache = { done: {} };
-      return cache;
-    }
-    const p = JSON.parse(raw);
-    cache = p && typeof p === 'object' && p.done && typeof p.done === 'object' ? { done: p.done } : { done: {} };
-    return cache;
-  } catch {
-    cache = { done: {} };
-    return cache;
-  }
+  return store.read();
 }
 
 function save(s: CxState): void {
-  cache = s;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(s));
-  } catch {
-    /* Non-fatal. */
-  }
+  store.write(s);
+}
+
+/* Undo + sync doors, the same shape as the other stores. */
+export function snapshotClassroom(): CxState {
+  return JSON.parse(JSON.stringify(load())) as CxState;
+}
+
+export function restoreClassroom(s: CxState): void {
+  save(s);
 }
 
 /* Lessons done = seed flags + stored extras. Percent = done/total. */

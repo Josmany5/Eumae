@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* Studio catalog: what Eumae can make, and how a good one is built.
  *
  * TY8 (12 categories with their templates) and TPL8 (per-template explainer
@@ -333,25 +335,18 @@ interface StudioUi {
   draftsOpen: boolean;
 }
 
+const uiStore = createStore<StudioUi>(UI_KEY, {
+  seed: () => ({ draftsOpen: false }),
+  normalize: (parsed) =>
+    parsed && typeof parsed === 'object' && typeof (parsed as StudioUi).draftsOpen === 'boolean' ? (parsed as StudioUi) : { draftsOpen: false },
+});
+
 function loadUi(): StudioUi {
-  try {
-    const raw = localStorage.getItem(UI_KEY);
-    if (raw) {
-      const p = JSON.parse(raw);
-      if (p && typeof p === 'object' && typeof p.draftsOpen === 'boolean') return p as StudioUi;
-    }
-  } catch {
-    /* Fall through to default. */
-  }
-  return { draftsOpen: false };
+  return uiStore.read();
 }
 
 function saveUi(ui: StudioUi): void {
-  try {
-    localStorage.setItem(UI_KEY, JSON.stringify(ui));
-  } catch {
-    /* Non-fatal. */
-  }
+  uiStore.write(ui);
 }
 
 export function draftsOpen(): boolean {

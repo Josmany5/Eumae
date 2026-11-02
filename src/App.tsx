@@ -26,6 +26,7 @@ import {
   type Thread,
 } from './threads';
 import { boot, saveNav } from './boot';
+import { startSync } from './sync';
 import { logEv } from './log';
 import { saveUpload, uploadData } from './uploads';
 import HomeScreen, { homeSections, type HomeDest, type Tile } from './screens/HomeScreen';
@@ -105,6 +106,11 @@ export default function App() {
      boot.ts (StrictMode double-invokes initializers — without the memo a
      cold open would create two threads and orphan the first). */
   const [snap] = useState(() => boot());
+  /* The data layer: the stores stay the working copy; sync carries them to
+     the account in the background (src/sync.ts). Started once, here. */
+  useEffect(() => {
+    void startSync();
+  }, []);
   /* Reload restores where you were (tab + pushed pages + overlays) from the
      boot snapshot; cold open lands on chat with an empty stack and closed
      overlays. First render already knows — no effect-driven nav, which would

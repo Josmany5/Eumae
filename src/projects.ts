@@ -3,6 +3,7 @@ import { getTasks } from './tasks';
 import { getGoals } from './goals';
 import { getEvents, attendanceOf } from './events';
 import { eventDay } from './due';
+import { createStore } from './storage';
 
 /* Projects: work with a shape. Fields follow the mockup's SEED
  * (`projs:[{id,n,d,ts,dn}]` — id, name, desc, total steps, done steps).
@@ -52,26 +53,15 @@ export interface ProjectLink {
   m?: string;
 }
 
-const KEY = 'eumae:projects';
 const PIN_KEY = 'eumae:pinnedProject';
 
-let cache: Project[] | null = null;
+const store = createStore<Project[]>('eumae:projects', {
+  seed: () => seeds(),
+  normalize: (parsed) => (Array.isArray(parsed) ? parsed.filter(isProject) : seeds()),
+});
 
 function load(): Project[] {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      cache = seeds();
-      return cache;
-    }
-    const parsed = JSON.parse(raw);
-    cache = Array.isArray(parsed) ? parsed.filter(isProject) : seeds();
-    return cache;
-  } catch {
-    cache = seeds();
-    return cache;
-  }
+  return store.read();
 }
 
 /* The mockup's own rows. */
@@ -84,12 +74,7 @@ function seeds(): Project[] {
 }
 
 function save(projects: Project[]): void {
-  cache = projects;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(projects));
-  } catch {
-    /* Storage full — in-memory still works. */
-  }
+  store.write(projects);
 }
 
 function isProject(p: unknown): p is Project {
@@ -242,7 +227,7 @@ export interface ProjectsSnapshot {
 }
 
 export function snapshotProjects(): ProjectsSnapshot {
-  return { projects: JSON.parse(JSON.stringify(load())), pin: getPinnedProjectId() };
+  return { projects: store.snapshot(), pin: getPinnedProjectId() };
 }
 
 export function restoreProjects(s: ProjectsSnapshot): void {

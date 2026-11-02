@@ -29,6 +29,10 @@
   font-family:"Inter"; font-style:normal; font-weight:700; font-display:swap;
   src:url("../assets/fonts/inter-700.woff2") format("woff2");
 }
+@font-face{
+  font-family:"Outfit"; font-style:normal; font-weight:400 800; font-display:swap;
+  src:url("../assets/fonts/outfit.woff2") format("woff2");
+}
 html[data-theme="light"]{
   --bg:#f2f2f7; --card:#fff; --card2:#e9e9ee; --card3:#dcdce2;
   --tx:#000; --mut:#6b6b70; --hair:rgba(0,0,0,.1);
@@ -62,6 +66,22 @@ html[data-theme="light"][data-space="studio"]{ --ac:#6f5ad6; --acsoft:rgba(111,9
 html[data-theme="light"][data-space="library"]{ --ac:#2f9a5c; --acsoft:rgba(47,154,92,.12); --acink:#fff; }
 html[data-theme="light"][data-space="classroom"]{ --ac:#1f9a9a; --acsoft:rgba(31,154,154,.12); --acink:#fff; }
 html[data-theme="light"][data-space="guild"]{ --ac:#c24d6e; --acsoft:rgba(194,77,110,.12); --acink:#fff; }
+/* The YC skin, worn by the home screen only (HomeScreen puts data-skin on
+   its root): YC's own fonts and colors, read off ycombinator.com's
+   stylesheet — Outfit, warm white #fdfdf8, near-black #16140f, orange
+   #ff6600. A skin restyles the subtree under it through the same tokens
+   every screen reads; nothing outside the home screen changes. */
+[data-skin="yc"]{
+  --bg:#fdfdf8; --card:#fff; --card2:#f1f1ec; --card3:#e3e3db;
+  --tx:#16140f; --mut:#6f6e66; --hair:rgba(22,20,15,.12);
+  --ac:#ff6600; --acsoft:rgba(255,102,0,.13); --acink:#fff;
+  --am:#b26a00; --amsoft:rgba(178,106,0,.12);
+  --rd:#d70015; --rdsoft:rgba(215,0,21,.08);
+  --gr:#248a3d; --grsoft:rgba(36,138,61,.12);
+  color-scheme:light;
+  background:var(--bg); color:var(--tx);
+  font-family:"Outfit",ui-sans-serif,system-ui,sans-serif;
+}
 /* The accent cross-fades when you switch tabs instead of snapping. */
 .pri, .tbar button, .ftabs button, .seg button, .msg.you .bubble, .cmpSend, .tag, .bar i, .sbItem, .stab{
   transition:color .18s ease, background-color .18s ease, border-color .18s ease; }

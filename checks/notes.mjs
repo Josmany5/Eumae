@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 /* Notes check — migration + first-line title, against the real code.
  *
- *  src/notes.ts is storage-only TypeScript with no imports, so this
- *  transpiles it with the project's own esbuild and runs the rules for real
- *  against stubbed storage — the checks/boot.mjs pattern. No browser, no
- *  network.
+ *  src/notes.ts is storage-only TypeScript, so this bundles it with the
+ *  project's own esbuild and runs the rules for real against stubbed
+ *  storage — the checks/stores.mjs pattern. No browser, no network.
  *
  *  What it exists to catch: the 2026-10-12 rebuild (entries-per-visit boxes
  *  into one flowing document). Old notes carry `entries`; new ones carry
@@ -13,15 +12,22 @@
  *
  *  Exit codes: 0 everything holds, 1 something does not.
  */
-import { readFileSync } from 'node:fs';
-import { transformSync } from 'esbuild';
+import { buildSync } from 'esbuild';
+import { fileURLToPath } from 'node:url';
 
-const src = readFileSync(new URL('../src/notes.ts', import.meta.url), 'utf8');
+function loadMod(path) {
+  const r = buildSync({
+    entryPoints: [fileURLToPath(new URL(path, import.meta.url))],
+    bundle: true,
+    format: 'cjs',
+    platform: 'node',
+    write: false,
+    logLevel: 'silent',
+  });
+  return r.outputFiles[0].text;
+}
 
-const js = transformSync(src, { loader: 'ts', format: 'cjs' }).code
-  .replace(/^export (function|const|let|interface|type|async function) /gm, '$1 ')
-  .replace(/^export \{[^}]*\};?/gm, '')
-  .replace(/^export default /gm, '');
+const js = loadMod('../src/notes.ts');
 
 const failures = [];
 const check = (name, cond, detail) => {
@@ -49,14 +55,11 @@ function run(setup, body) {
   now += 1000;
   const fakeDate = { now: () => tick };
   const mod = { exports: {} };
-  const fn = new Function(
-    'module',
-    'exports',
-    'localStorage',
-    'Date',
-    `${js}; return (${body});`,
-  );
-  return { out: fn(mod, mod.exports, localStorage, fakeDate), store };
+  const load = new Function('module', 'exports', 'localStorage', 'Date', `${js}\nreturn module.exports;`);
+  const ns = load(mod, mod.exports, localStorage, fakeDate);
+  const names = Object.keys(ns).filter((k) => /^[A-Za-z_$][\w$]*$/.test(k));
+  const fn = new Function('ns', 'localStorage', 'Date', `const {${names.join(', ')}} = ns; return (${body});`);
+  return { out: fn(ns, localStorage, fakeDate), store };
 }
 
 const OLD = {

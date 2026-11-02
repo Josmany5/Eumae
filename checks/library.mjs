@@ -3,15 +3,19 @@
  *
  * The checks/stores.mjs pattern. No browser, no network.
  */
-import { readFileSync } from 'node:fs';
-import { transformSync } from 'esbuild';
+import { buildSync } from 'esbuild';
+import { fileURLToPath } from 'node:url';
 
 function loadMod(path) {
-  const src = readFileSync(new URL(path, import.meta.url), 'utf8');
-  return transformSync(src, { loader: 'ts', format: 'cjs' }).code
-    .replace(/^export (function|const|let|interface|type|async function) /gm, '$1 ')
-    .replace(/^export \{[^}]*\};?/gm, '')
-    .replace(/^export default /gm, '');
+  const r = buildSync({
+    entryPoints: [fileURLToPath(new URL(path, import.meta.url))],
+    bundle: true,
+    format: 'cjs',
+    platform: 'node',
+    write: false,
+    logLevel: 'silent',
+  });
+  return r.outputFiles[0].text;
 }
 
 const lib = loadMod('../src/library.ts');
@@ -34,11 +38,12 @@ function run(js, setup, body) {
     removeItem: (k) => { delete store[k]; },
   };
   setup(store);
-  const clock = { now: () => 8000 };
   const mod = { exports: {} };
-  const fn = new Function('module', 'exports', 'localStorage', 'Date', js + '; return (' + body + ');');
-  const fakeDate = { now: () => 8000 };
-  return { out: fn(mod, mod.exports, localStorage, { now: () => 8000 }), store };
+  const load = new Function('module', 'exports', 'localStorage', 'Date', js + '\nreturn module.exports;');
+  const ns = load(mod, mod.exports, localStorage, { now: () => 8000 });
+  const names = Object.keys(ns).filter((k) => /^[A-Za-z_$][\w$]*$/.test(k));
+  const fn = new Function('ns', 'localStorage', 'Date', 'const {' + names.join(', ') + '} = ns; return (' + body + ');');
+  return { out: fn(ns, localStorage, { now: () => 8000 }), store };
 }
 
 // 1. Seeds: 4 files verbatim, fav f1, 1 trash row.

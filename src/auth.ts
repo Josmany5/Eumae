@@ -386,6 +386,12 @@ export async function accessToken(): Promise<string | null> {
   return null;
 }
 
+/** The shared client for the data layer (sync.ts): the same client sign-in
+ *  uses, never a second one holding its own session. */
+export async function dataClient(): Promise<SupabaseClient | null> {
+  return auth();
+}
+
 /** The read. The third argument is the snapshot for a render with no DOM: the §5
  *  server render mounts Settings, which mounts this — the same reason `useLog`
  *  has one. */

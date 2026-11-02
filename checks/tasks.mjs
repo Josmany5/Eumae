@@ -1,21 +1,28 @@
 #!/usr/bin/env node
 /* Tasks check — seeds + toggle + validation, against the real code.
  *
- * src/tasks.ts is storage-only TypeScript with no imports: transpile with
- * the project's own esbuild, run the rules for real against stubbed
- * storage. The checks/notes.mjs pattern. No browser, no network.
+ * src/tasks.ts is storage-only TypeScript: bundle with the project's own
+ * esbuild, run the rules for real against stubbed storage. The
+ * checks/stores.mjs pattern. No browser, no network.
  *
  * Exit codes: 0 everything holds, 1 something does not.
  */
-import { readFileSync } from 'node:fs';
-import { transformSync } from 'esbuild';
+import { buildSync } from 'esbuild';
+import { fileURLToPath } from 'node:url';
 
-const src = readFileSync(new URL('../src/tasks.ts', import.meta.url), 'utf8');
+function loadMod(path) {
+  const r = buildSync({
+    entryPoints: [fileURLToPath(new URL(path, import.meta.url))],
+    bundle: true,
+    format: 'cjs',
+    platform: 'node',
+    write: false,
+    logLevel: 'silent',
+  });
+  return r.outputFiles[0].text;
+}
 
-const js = transformSync(src, { loader: 'ts', format: 'cjs' }).code
-  .replace(/^export (function|const|let|interface|type|async function) /gm, '$1 ')
-  .replace(/^export \{[^}]*\};?/gm, '')
-  .replace(/^export default /gm, '');
+const js = loadMod('../src/tasks.ts');
 
 const failures = [];
 const check = (name, cond, detail) => {
@@ -38,8 +45,11 @@ function run(setup, body) {
   setup(store);
   const fakeDate = { now: () => 5000 };
   const mod = { exports: {} };
-  const fn = new Function('module', 'exports', 'localStorage', 'Date', `${js}; return (${body});`);
-  return { out: fn(mod, mod.exports, localStorage, fakeDate), store };
+  const load = new Function('module', 'exports', 'localStorage', 'Date', `${js}\nreturn module.exports;`);
+  const ns = load(mod, mod.exports, localStorage, fakeDate);
+  const names = Object.keys(ns).filter((k) => /^[A-Za-z_$][\w$]*$/.test(k));
+  const fn = new Function('ns', 'localStorage', 'Date', `const {${names.join(', ')}} = ns; return (${body});`);
+  return { out: fn(ns, localStorage, fakeDate), store };
 }
 
 // 1. First run seeds the mockup's three rows, labeled examples.

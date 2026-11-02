@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* Custom roles: how Eumae shows up for a chat — tone, style, purpose.
  *
  * The mockup's S.roles9 + ROLE9: roles are saved, the active one is the
@@ -17,34 +19,17 @@ export interface CustomRole {
   purpose: string;
 }
 
-const KEY = 'eumae:roles';
-
-let cache: CustomRole[] | null = null;
+const store = createStore<CustomRole[]>('eumae:roles', {
+  seed: () => [],
+  normalize: (parsed) => (Array.isArray(parsed) ? parsed.filter(isRole) : []),
+});
 
 function load(): CustomRole[] {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      cache = [];
-      return cache;
-    }
-    const parsed = JSON.parse(raw);
-    cache = Array.isArray(parsed) ? parsed.filter(isRole) : [];
-    return cache;
-  } catch {
-    cache = [];
-    return cache;
-  }
+  return store.read();
 }
 
 function save(roles: CustomRole[]): void {
-  cache = roles;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(roles));
-  } catch {
-    /* Storage full — in-memory still works. */
-  }
+  store.write(roles);
 }
 
 function isRole(r: unknown): r is CustomRole {

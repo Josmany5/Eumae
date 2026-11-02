@@ -1,3 +1,5 @@
+import { createStore } from './storage';
+
 /* The Sandbox: things Eumae makes in chat (a page, a widget, a calculator, a
  * game), kept with their versions.
  *
@@ -39,29 +41,24 @@ const KEY = 'eumae:sandbox';
 const MAX_VERSIONS = 20;
 const MAX_ITEMS = 40;
 
-let cache: SbxItem[] | null = null;
 let openId: string | null = null;
 const subs = new Set<() => void>();
 let ver = 0;
 
+const store = createStore<SbxItem[]>(KEY, {
+  seed: () => [],
+  normalize: (parsed) =>
+    Array.isArray(parsed)
+      ? parsed.filter((x): x is SbxItem => !!x && typeof (x as SbxItem).id === 'string' && Array.isArray((x as SbxItem).versions))
+      : [],
+});
+
 function load(): SbxItem[] {
-  if (cache) return cache;
-  try {
-    const raw = JSON.parse(localStorage.getItem(KEY) || '[]');
-    cache = Array.isArray(raw) ? raw.filter((x) => x && typeof x.id === 'string' && Array.isArray(x.versions)) : [];
-  } catch {
-    cache = [];
-  }
-  return cache;
+  return store.read();
 }
 
 function save(items: SbxItem[]): void {
-  cache = items.slice(0, MAX_ITEMS);
-  try {
-    localStorage.setItem(KEY, JSON.stringify(cache));
-  } catch {
-    /* Full storage: keep it in memory for this session rather than lose the reply. */
-  }
+  store.write(items.slice(0, MAX_ITEMS));
   ver += 1;
   subs.forEach((f) => f());
 }

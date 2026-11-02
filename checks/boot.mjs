@@ -15,6 +15,7 @@ import { transformSync } from 'esbuild';
 
 const threadsSrc = readFileSync(new URL('../src/threads.ts', import.meta.url), 'utf8');
 const bootSrc = readFileSync(new URL('../src/boot.ts', import.meta.url), 'utf8');
+const storageSrc = readFileSync(new URL('../src/storage.ts', import.meta.url), 'utf8');
 
 /* Drop import lines, including App's multi-line `import { … } from '…'`
    blocks: only lines that close with the module path end the skip. The
@@ -40,6 +41,7 @@ function stripImports(src) {
   return out.join('\n');
 }
 
+const storageBody = stripImports(storageSrc);
 const threadsBody = stripImports(threadsSrc)
   .replace('export interface Msg extends ThreadTurn {', 'export interface Msg {')
   .replace('body?: ApiChatBody;', 'body?: unknown;');
@@ -51,7 +53,7 @@ const panelType = navSrc.match(/export type PanelView =[^;]*;/)[0].replace('expo
 const panelViews = navSrc.match(/export const PANEL_VIEWS[^;]*;/)[0].replace('export ', '');
 
 const js = transformSync(
-  `interface ThreadTurn { role: string; text: string; }\ntype TabId = 'chat' | 'console' | 'studio' | 'library' | 'classroom' | 'guild';\n${panelType}\n${panelViews}\n${threadsBody}\n${bootBody}\nboot;`,
+  `interface ThreadTurn { role: string; text: string; }\ntype TabId = 'chat' | 'console' | 'studio' | 'library' | 'classroom' | 'guild';\n${panelType}\n${panelViews}\n${storageBody}\n${threadsBody}\n${bootBody}\nboot;`,
   { loader: 'ts' },
 ).code
   // The sources use `export` — strip it so the bundle runs in a Function.

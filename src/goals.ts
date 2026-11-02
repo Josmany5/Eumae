@@ -1,6 +1,7 @@
 import type { Milestone } from './milestones';
 import { getTasks } from './tasks';
 import { getEvents, attendanceOf } from './events';
+import { createStore } from './storage';
 import { eventDay } from './due';
 
 /* Goals: the long game. Fields follow the mockup's Goals page
@@ -45,25 +46,13 @@ export interface GoalLink {
   id: string;
 }
 
-const KEY = 'eumae:goals';
-
-let cache: Goal[] | null = null;
+const store = createStore<Goal[]>('eumae:goals', {
+  seed: () => seeds(),
+  normalize: (parsed) => (Array.isArray(parsed) ? parsed.filter(isGoal) : seeds()),
+});
 
 function load(): Goal[] {
-  if (cache) return cache;
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      cache = seeds();
-      return cache;
-    }
-    const parsed = JSON.parse(raw);
-    cache = Array.isArray(parsed) ? parsed.filter(isGoal) : seeds();
-    return cache;
-  } catch {
-    cache = seeds();
-    return cache;
-  }
+  return store.read();
 }
 
 /* The mockup's own rows. */
@@ -76,12 +65,7 @@ function seeds(): Goal[] {
 }
 
 function save(goals: Goal[]): void {
-  cache = goals;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(goals));
-  } catch {
-    /* Storage full — in-memory still works. */
-  }
+  store.write(goals);
 }
 
 function isGoal(g: unknown): g is Goal {
@@ -131,11 +115,11 @@ export function deleteGoal(id: string): void {
 /* Undo: a deep copy of the store taken before a delete; the toast's Undo
    writes it back. Same shape as snapshotTasks / snapshotLibrary. */
 export function snapshotGoals(): Goal[] {
-  return JSON.parse(JSON.stringify(load()));
+  return store.snapshot();
 }
 
 export function restoreGoals(s: Goal[]): void {
-  save(s);
+  store.restore(s);
 }
 
 /** Still being worked on (not done, not let go). */
