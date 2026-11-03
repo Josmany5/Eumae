@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNav } from '../nav';
 import {
-  COURSES, COURSE_ORDER, CONTINUE, SECTIONS, SECTION_ORDER,
+  COURSES, COURSE_ORDER, CONTINUE, SECTIONS,
   TUTORIALS, DIGEST,
   courseProgress, isLessonDone, markLessonDone, quizRight,
 } from '../classroom';
@@ -55,7 +55,7 @@ export default function ClassroomScreen() {
     );
   }
   if (sel.kind === 'tutorial') {
-    return <TutorialView name={sel.name} onBack={() => setSel({ kind: 'root' })} toChat={toChat} onOpenFull={(n) => go('tut', n)} />;
+    return <TutorialView name={sel.name} onBack={() => setSel({ kind: 'root' })} onOpenFull={(n) => go('tut', n)} />;
   }
   if (sel.kind === 'section') {
     return (
@@ -74,17 +74,23 @@ export default function ClassroomScreen() {
       assigned={assigned}
       onCourse={(n) => setSel({ kind: 'course', name: n })}
       onTutorial={(n) => setSel({ kind: 'tutorial', name: n })}
-      onSection={(n) => setSel({ kind: 'section', name: n })}
       toChat={toChat}
     />
   );
 }
 
-function ClassroomRoot({ assigned, onCourse, onTutorial, onSection, toChat }: {
+function ClassroomRoot({ assigned, onCourse, onTutorial, toChat }: {
   assigned: { t: string; who: string; pct: number; mine: number }[];
-  onCourse: (n: string) => void; onTutorial: (n: string) => void; onSection: (n: string) => void;
+  onCourse: (n: string) => void; onTutorial: (n: string) => void;
   toChat: (brief: string) => void;
 }) {
+  const [want, setWant] = useState('');
+  const createCourse = () => {
+    const v = want.trim();
+    if (!v) return;
+    setWant('');
+    toChat(`Create a course for me: ${v}`);
+  };
   const toYou = assigned.filter((a) => a.mine);
   /* Overall progress across every course — lessons done over lessons total. */
   const totals = COURSE_ORDER.reduce(
@@ -102,9 +108,10 @@ function ClassroomRoot({ assigned, onCourse, onTutorial, onSection, toChat }: {
   return (
     <div>
       <div className="screenT dupT">Classroom</div>
-      <div className="s m">Learn it here - or ask in Chat and keep going.</div>
-      {/* Hero: overall progress + continue where you left off. */}
-      <div className="card">
+      <div className="s m">Learn it here, in class.</div>
+      {/* Hero: overall progress + continue where you left off. The whole
+          card is the tap — the dashboard style has no button bar. */}
+      <div className="card" role="button" style={{ cursor: 'pointer' }} onClick={() => onCourse(CONTINUE.course)}>
         <div className="row">
           <div className="ringC" style={{ background: `conic-gradient(var(--ac) ${overall}%, var(--card2) ${overall}%)` }}>
             <i>{overall}%</i>
@@ -114,23 +121,25 @@ function ClassroomRoot({ assigned, onCourse, onTutorial, onSection, toChat }: {
             <div className="s m" style={{ marginTop: 2 }}>{CONTINUE.lesson}</div>
             <div className="xs m" style={{ marginTop: 2 }}>{totals.done} of {totals.total} lessons done</div>
           </div>
-        </div>
-        <div className="btns">
-          <button className="pri" onClick={() => onCourse(CONTINUE.course)}>Resume</button>
-          <button className="gho" onClick={() => toChat('Continue my ' + CONTINUE.course + ' lesson')}>Continue in Chat</button>
+          <span className="ch">›</span>
         </div>
       </div>
-      {/* Create a course — the four ways in open the course-builder chat. */}
-      <div className="cxCreate">
-        <div className="cxT">Create a course</div>
-        <div className="s m" style={{ marginTop: 4 }}>Describe it, build it from a link or upload, build it from your chats and notes — or start from scratch and build it yourself.</div>
-        <div className="btns">
-          <button className="gho" onClick={() => toChat('Create a course for me. I will describe what I want to learn.')}>Describe it</button>
-          <button className="gho" onClick={() => toChat('Create a course from a link or upload. Ask me for the link or file.')}>From a link or upload</button>
-          <button className="gho" onClick={() => toChat('Create a course from my chats and notes. Ask me which ones.')}>From my chats and notes</button>
-          <button className="gho" onClick={() => toChat('Start a new empty course from scratch so I can build it myself, lesson by lesson.')}>From scratch</button>
-        </div>
+      {/* Create a course — Console's quick-add shape: one pill field, one
+          round button. The words can name any of the four ways in. */}
+      <div className="qaBar" style={{ margin: '12px 0 4px' }}>
+        <input
+          className="qaIn"
+          placeholder="Turn something into a course…"
+          aria-label="Turn something into a course"
+          value={want}
+          onChange={(e) => setWant(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') createCourse(); }}
+        />
+        <button className="qaSend" onClick={createCourse} disabled={!want.trim()} aria-label="Create course">
+          <Icon name="up" />
+        </button>
       </div>
+      <div className="xs m">Describe it — or say “from this link”, “from my notes”, or “from scratch”.</div>
       <div className="cxChips">
         <span className="cxChip">{COURSE_ORDER.length} courses</span>
         <span className="cxChip">{totals.done} of {totals.total} lessons done</span>
@@ -145,44 +154,40 @@ function ClassroomRoot({ assigned, onCourse, onTutorial, onSection, toChat }: {
       </div>
       <h3 className="sec">Training</h3>
       {toYou.length ? toYou.map((a) => (
-        <div key={a.t} className="cxcard">
-          <div className="row"><div className="g"><b>{a.t}</b><div className="xs m">Training · assigned to you · {a.pct}%</div></div></div>
+        <div
+          key={a.t}
+          className="cxcard"
+          role="button"
+          style={{ cursor: 'pointer' }}
+          onClick={() => {
+            const hit = COURSE_ORDER.find((c) => a.t.toLowerCase().includes(c.toLowerCase()));
+            if (hit) onCourse(hit);
+            else toChat(`Continue my ${a.t} training`);
+          }}
+        >
+          <div className="row"><div className="g"><b>{a.t}</b><div className="xs m">Training · assigned to you · {a.pct}%</div></div><span className="ch">›</span></div>
           <div className="bar"><i style={{ width: a.pct + '%' }} /></div>
-          <div className="btns">
-            <button
-              className="pri"
-              onClick={() => {
-                const hit = COURSE_ORDER.find((c) => a.t.toLowerCase().includes(c.toLowerCase()));
-                if (hit) onCourse(hit);
-                else toChat(`Continue my ${a.t} training`);
-              }}
-            >
-              Resume training
-            </button>
-          </div>
         </div>
       )) : <div className="s m">Nothing assigned to you.</div>}
       <h3 className="sec">Digest</h3>
-      {DIGEST.map((d) => (
-        <DigestRow key={d.t} title={d.t} kind={d.k === 'VID' ? 'Video' : 'Link'} detail={d.d} toChat={toChat} />
-      ))}
+      <div className="card cardPad">
+        {DIGEST.map((d) => (
+          <DigestRow key={d.t} title={d.t} kind={d.k === 'VID' ? 'Video' : 'Link'} detail={d.d} toChat={toChat} />
+        ))}
+      </div>
       <h3 className="sec">Eumae tutorials &amp; best practices</h3>
       <div className="card cardPad">
         {Object.keys(TUTORIALS).map((t) => (
-          <div key={t} className="li">
-            <div className="g s">{t}</div>
-            <button className="fb" onClick={() => onTutorial(t)}>Open</button>
-          </div>
+          <button key={t} className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => onTutorial(t)}>
+            <span className="g s">{t}</span>
+            <span className="ch">›</span>
+          </button>
         ))}
-        <div className="li">
-          <div className="g s">Best practices</div>
-          <button className="fb" onClick={() => toChat('Teach me the best practices for using Eumae well')}>Ask Eumae</button>
-        </div>
-      </div>
-      <div className="btns">
-        {SECTION_ORDER.map((s) => (
-          <button key={s} className="gho" onClick={() => onSection(s)}>{s}</button>
-        ))}
+        <button className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => toChat('Teach me the best practices for using Eumae well')}>
+          <span className="g s">Best practices</span>
+          <span className="xs m">Ask Eumae</span>
+          <span className="ch">›</span>
+        </button>
       </div>
     </div>
   );
@@ -198,27 +203,28 @@ function courseSub(name: string): string {
 function CourseCard({ name, sub, onOpen }: { name: string; sub: string; onOpen: () => void }) {
   const p = courseProgress(name);
   return (
-    <div className="cxcard">
+    <div className="cxcard" role="button" style={{ cursor: 'pointer' }} onClick={onOpen}>
       <div className="row"><div className="g"><b>{name}</b><div className="xs m">{sub}</div></div><span className="tag">{p}%</span></div>
       <div className="bar"><i style={{ width: p + '%' }} /></div>
-      <div className="btns">
-        <button className="pri" onClick={onOpen}>Open course</button>
-      </div>
     </div>
   );
 }
 
-/* A Digest row's Distill hands the item to Chat. It used to unfold three
-   canned bullets that were the same for every title (invented data). */
+/* A Digest row hands the item to Chat for the distilling itself — the row
+   is the tap, no Distill button. It used to unfold three canned bullets
+   that were the same for every title (invented data). */
 function DigestRow({ title, kind, detail, toChat }: { title: string; kind: string; detail: string; toChat: (brief: string) => void }) {
   return (
-    <div className="cxcard">
-      <div className="row">
-        <div className="fi">{kind}</div>
-        <div className="g"><div>{title}</div><div className="xs m">{detail}</div></div>
-        <button className="fb" onClick={() => toChat(`Distill "${title}" into its main argument, the tactics worth stealing, and what to ignore`)}>Distill</button>
-      </div>
-    </div>
+    <button
+      className="li"
+      style={{ width: '100%', textAlign: 'left' }}
+      onClick={() => toChat(`Distill "${title}" into its main argument, the tactics worth stealing, and what to ignore`)}
+    >
+      <span className="fi">{kind}</span>
+      <span className="g"><span>{title}</span><span className="xs m" style={{ display: 'block' }}>{detail}</span></span>
+      <span className="xs m">Distill</span>
+      <span className="ch">›</span>
+    </button>
   );
 }
 
@@ -262,13 +268,12 @@ function CourseView({ name, onBack, notify, toChat, refresh, onOpenFull }: {
                 aria-label={done ? `${l.t} done` : `Mark ${l.t} done`}
                 onClick={() => { if (!done) { markLessonDone(name, l.t); refresh(); } }}
               />
-              <button className="g" style={{ textAlign: 'left' }} onClick={() => toChat(`Continue my ${name} lesson: ${l.t}`)}>
+              <span className="g">
                 {l.t}
                 {done ? <div className="xs m">done</div> : null}
-              </button>
+              </span>
               <ItemMenu
                 name={l.t}
-                open={() => toChat(`Continue my ${name} lesson: ${l.t}`)}
                 extra={done ? undefined : [{ label: 'Mark done', onClick: () => { markLessonDone(name, l.t); refresh(); } }]}
               />
             </div>
@@ -276,14 +281,14 @@ function CourseView({ name, onBack, notify, toChat, refresh, onOpenFull }: {
         })}
       </div>
       <div className="card cardPad">
-        <div className="li">
-          <div className="g s">Make a quiz from this course</div>
-          <button className="fb" onClick={() => toChat(`Make a quiz from my ${name} course`)}>Make</button>
-        </div>
-        <div className="li">
-          <div className="g s">Make flashcards from this course</div>
-          <button className="fb" onClick={() => toChat(`Make a set of flashcards from my ${name} course`)}>Make</button>
-        </div>
+        <button className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => toChat(`Make a quiz from my ${name} course`)}>
+          <span className="g s">Make a quiz from this course</span>
+          <span className="ch">›</span>
+        </button>
+        <button className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => toChat(`Make a set of flashcards from my ${name} course`)}>
+          <span className="g s">Make flashcards from this course</span>
+          <span className="ch">›</span>
+        </button>
       </div>
       <div className="card">
         <b>Quick check</b>
@@ -300,18 +305,18 @@ function CourseView({ name, onBack, notify, toChat, refresh, onOpenFull }: {
           ))}
         </div>
       </div>
-      <div className="btns">
-        <button className="gho" onClick={() => toChat('Continue my ' + name + ' lesson')}>Continue in Chat</button>
-        <button className="fb" onClick={() => onOpenFull(name)}>
-          Open full page
+      <div className="card cardPad">
+        <button className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => onOpenFull(name)}>
+          <span className="g s">Open full page</span>
+          <span className="ch">›</span>
         </button>
       </div>
     </div>
   );
 }
 
-function TutorialView({ name, onBack, toChat, onOpenFull }: {
-  name: string; onBack: () => void; toChat: (brief: string) => void;
+function TutorialView({ name, onBack, onOpenFull }: {
+  name: string; onBack: () => void;
   onOpenFull: (n: string) => void;
 }) {
   const steps = TUTORIALS[name] || ['Open it from the Classroom tab.', 'Everything here is reference — no progress, no pressure.'];
@@ -333,10 +338,10 @@ function TutorialView({ name, onBack, toChat, onOpenFull }: {
           </div>
         ))}
       </div>
-      <div className="btns">
-        <button className="pri" onClick={() => toChat('Teach me: ' + name)}>Learn it in Chat</button>
-        <button className="fb" onClick={() => onOpenFull(name)}>
-          Open full page
+      <div className="card cardPad">
+        <button className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => onOpenFull(name)}>
+          <span className="g s">Open full page</span>
+          <span className="ch">›</span>
         </button>
       </div>
     </div>
@@ -382,57 +387,61 @@ function SectionView({ name, onBack, onOpenCourse, onOpenTutorial, toChat, onOpe
       {name === 'Digest' ? (
         /* Distill used to print three canned bullets ("Main argument in one
            line") no matter what was pasted, which is invented data. Now it
-           hands the real link to Chat, where Eumae actually reads it. */
-        <div className="card">
+           hands the real link to Chat, where Eumae actually reads it. The
+           field is Console's quick-add shape: one pill, one round button. */
+        <div className="qaBar" style={{ margin: '12px 0 4px' }}>
           <input
-            className="sinput"
-            placeholder="Paste a link to distill"
+            className="qaIn"
+            placeholder="Paste a link to distill…"
             aria-label="Paste a link to distill"
             value={link}
             onChange={(e) => setLink(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && link.trim()) toChat(`Distill this into its main argument, the tactics worth stealing, and what to ignore: ${link.trim()}`); }}
           />
-          <div className="btns">
-            <button className="pri" disabled={!link.trim()} onClick={() => toChat(`Distill this into its main argument, the tactics worth stealing, and what to ignore: ${link.trim()}`)}>Distill in Chat</button>
-          </div>
+          <button
+            className="qaSend"
+            disabled={!link.trim()}
+            aria-label="Distill in Chat"
+            onClick={() => toChat(`Distill this into its main argument, the tactics worth stealing, and what to ignore: ${link.trim()}`)}
+          >
+            <Icon name="up" />
+          </button>
         </div>
       ) : null}
       <h3 className="sec">Yours</h3>
-      {sec.yours.map((row) => (
-        <div key={row} className="cxcard">
-          <div className="row">
-            <div className="g"><b>{row}</b></div>
-            <button className="fb" onClick={() => openRow(row)}>Open</button>
-          </div>
-        </div>
-      ))}
+      <div className="card cardPad">
+        {sec.yours.map((row) => (
+          <button key={row} className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => openRow(row)}>
+            <span className="g"><b>{row}</b></span>
+            <span className="ch">›</span>
+          </button>
+        ))}
+      </div>
       {sec.discover.length ? (
         <>
           <h3 className="sec">Discover</h3>
-          {sec.discover.map((row) => (
-            <div key={row} className="cxcard">
-              <div className="row">
-                <div className="g"><b>{row}</b></div>
-                <button className="fb" onClick={() => openRow(row)}>Open</button>
-              </div>
-            </div>
-          ))}
+          <div className="card cardPad">
+            {sec.discover.map((row) => (
+              <button key={row} className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => openRow(row)}>
+                <span className="g"><b>{row}</b></span>
+                <span className="ch">›</span>
+              </button>
+            ))}
+          </div>
         </>
       ) : null}
-      {sec.create ? (
-        <div className="btns">
-          <button className="gho" onClick={() => toChat(sec.create + ': ')}>{sec.create}</button>
-          <button className="fb" onClick={() => onOpenFull(name)}>
-            Open full page
+      <div className="card cardPad">
+        {sec.create ? (
+          <button className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => toChat(sec.create + ': ')}>
+            <span className="g s">{sec.create}</span>
+            <span className="ch">›</span>
           </button>
-        </div>
-      ) : (
-        <div className="btns">
-          <button className="fb" onClick={() => onOpenFull(name)}>
-            Open full page
-          </button>
-        </div>
-      )}
+        ) : null}
+        <button className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => onOpenFull(name)}>
+          <span className="g s">Open full page</span>
+          <span className="ch">›</span>
+        </button>
+      </div>
     </div>
   );
 }

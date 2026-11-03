@@ -57,19 +57,21 @@ export default function SharedViewPage({ arg }: PageProps) {
           </select>
         </span>
       </div>
-      <div className="btns">
+      <div className="card cardPad">
         {f ? (
-          <button className="pri" onClick={() => go('view', f.id)}>
-            Open it
+          <button className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => go('view', f.id)}>
+            <span className="g s">Open it</span>
+            <span className="ch">›</span>
           </button>
         ) : (
-          <button className="pri soon" onClick={() => notify('Lives in their Studio for now.')}>
-            Open it
+          <button className="li soon" style={{ width: '100%', textAlign: 'left' }} onClick={() => notify('Lives in their Studio for now.')}>
+            <span className="g s">Open it</span>
+            <span className="ch">›</span>
           </button>
         )}
         <button
-          className="gho"
-          style={{ color: 'var(--rd)' }}
+          className="li"
+          style={{ width: '100%', textAlign: 'left', color: 'var(--rd)' }}
           onClick={() => {
             const snap = snapshotGuild();
             const msg = unshare(i);
@@ -77,7 +79,7 @@ export default function SharedViewPage({ arg }: PageProps) {
             notify(msg, { undo: () => restoreGuild(snap) });
           }}
         >
-          Unshare
+          <span className="g s">Unshare</span>
         </button>
       </div>
       <div className="s m">The actual shared thing — who shared it, what it is, and what you are allowed to do with it.</div>

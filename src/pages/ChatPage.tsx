@@ -194,7 +194,7 @@ export function GroupChatPage({ arg }: PageProps) {
           <div className="row">
             <span className="pinT g">📌 PINNED</span>
             {pinEdit === null ? (
-              <button className="fb" onClick={() => setPinEdit(gr.pin ?? '')}>Edit</button>
+              <button className="lnkBtn" onClick={() => setPinEdit(gr.pin ?? '')}>Edit</button>
             ) : null}
           </div>
           {pinEdit !== null ? (
@@ -207,9 +207,9 @@ export function GroupChatPage({ arg }: PageProps) {
                 aria-label="Pinned note"
                 onChange={(e) => setPinEdit(e.target.value)}
               />
-              <div className="btns">
-                <button className="pri" onClick={savePin}>Save pin</button>
-                <button className="gho" onClick={() => setPinEdit(null)}>Cancel</button>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button className="fb" style={{ fontWeight: 700 }} onClick={savePin}>Save pin</button>
+                <button className="fb" onClick={() => setPinEdit(null)}>Cancel</button>
               </div>
             </>
           ) : (

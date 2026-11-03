@@ -62,22 +62,22 @@ export default function RequestsPage(_props: PageProps) {
                 </div>
               </div>
               {r.st === 'new' ? (
-                <div className="btns">
-                  <button className="pri" onClick={() => act(i, 1)}>
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button className="fb" style={{ fontWeight: 700 }} onClick={() => act(i, 1)}>
                     Accept
                   </button>
-                  <button onClick={() => act(i, 0)}>Decline</button>
+                  <button className="fb" onClick={() => act(i, 0)}>Decline</button>
                 </div>
               ) : r.st === 'found' ? (
                 <>
                   <div className="s" style={{ marginTop: 8 }}>
                     Eumae found it in your Library. Nothing sends until you say so.
                   </div>
-                  <div className="btns">
-                    <button className="pri" onClick={() => act(i, 2)}>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                    <button className="fb" style={{ fontWeight: 700 }} onClick={() => act(i, 2)}>
                       Send it
                     </button>
-                    <button onClick={() => act(i, 3)}>Not yet</button>
+                    <button className="fb" onClick={() => act(i, 3)}>Not yet</button>
                   </div>
                 </>
               ) : (
@@ -115,19 +115,20 @@ export default function RequestsPage(_props: PageProps) {
             aria-label="What do you need?"
             style={{ marginTop: 8 }}
           />
-          <div className="btns">
-            <button className="pri" onClick={submitAssign}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button className="fb" style={{ fontWeight: 700 }} onClick={submitAssign}>
               Assign
             </button>
-            <button className="gho" onClick={() => setAssigning(false)}>
+            <button className="fb" onClick={() => setAssigning(false)}>
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <div className="btns" style={{ margin: '0 0 8px' }}>
-          <button className="pri" onClick={() => setAssigning(true)}>
-            Assign to a Guild member
+        <div className="card cardPad" style={{ marginBottom: 8 }}>
+          <button className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => setAssigning(true)}>
+            <span className="g s">Assign to a Guild member</span>
+            <span className="ch">›</span>
           </button>
         </div>
       )}
@@ -180,9 +181,9 @@ export default function RequestsPage(_props: PageProps) {
             <i style={{ width: `${a.pct}%` }} />
           </div>
           {tab === 'to' ? (
-            <div className="btns">
+            <div style={{ marginTop: 10 }}>
               <button
-                className="pri soon"
+                className="fb soon"
                 onClick={() => notify('Opening assigned training in Classroom comes soon. Its course has not shipped yet.')}
               >
                 Open in Classroom

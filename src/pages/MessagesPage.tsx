@@ -104,7 +104,7 @@ export default function MessagesPage(_props: PageProps) {
             }}
             aria-label="New group name"
           />
-          <button className="fb" onClick={submitGroup}>
+          <button className="lnkBtn" onClick={submitGroup}>
             Create
           </button>
         </span>

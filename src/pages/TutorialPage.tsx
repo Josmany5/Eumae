@@ -1,13 +1,10 @@
 /* Classroom tutorial — the TutorialView extracted to PAGES (arg = tutorial
- * name): TUT12 steps + Learn-in-Chat via brief queue. */
+ * name): TUT12 steps, read in class. */
 
-import { useNav } from '../nav';
 import { TUTORIALS } from '../classroom';
-import { queueBrief } from '../studio';
 import type { PageProps } from './index';
 
 export default function TutorialPage({ arg }: PageProps) {
-  const { goTab } = useNav();
   const name = typeof arg === 'string' ? arg : '';
   const steps = TUTORIALS[name] || [
     'Open it from the Classroom tab.',
@@ -26,17 +23,6 @@ export default function TutorialPage({ arg }: PageProps) {
             </div>
           </div>
         ))}
-      </div>
-      <div className="btns">
-        <button
-          className="pri"
-          onClick={() => {
-            queueBrief(`Teach me: ${name}`);
-            goTab('chat');
-          }}
-        >
-          Learn it in Chat
-        </button>
       </div>
     </div>
   );

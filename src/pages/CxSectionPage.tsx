@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useNav } from '../nav';
 import { SECTIONS, COURSE_ORDER } from '../classroom';
 import { queueBrief } from '../studio';
+import { Icon } from '../components/shell/icons';
 import type { PageProps } from './index';
 
 export default function CxSectionPage({ arg }: PageProps) {
@@ -53,55 +54,54 @@ export default function CxSectionPage({ arg }: PageProps) {
       {name === 'Digest' ? (
         /* Distill used to print three canned bullets ("Main argument in one
            line") no matter what was pasted, which is invented data. Now it
-           hands the real link to Chat, where Eumae actually reads it. */
-        <div className="card">
+           hands the real link to Chat, where Eumae actually reads it. The
+           field is Console's quick-add shape: one pill, one round button. */
+        <div className="qaBar" style={{ margin: '12px 0 4px' }}>
           <input
-            className="sinput"
-            placeholder="Paste a link to distill"
+            className="qaIn"
+            placeholder="Paste a link to distill…"
             aria-label="Paste a link to distill"
             value={link}
             onChange={(e) => setLink(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && link.trim()) toChat(`Distill this into its main argument, the tactics worth stealing, and what to ignore: ${link.trim()}`); }}
           />
-          <div className="btns">
-            <button className="pri" disabled={!link.trim()} onClick={() => toChat(`Distill this into its main argument, the tactics worth stealing, and what to ignore: ${link.trim()}`)}>Distill in Chat</button>
-          </div>
+          <button
+            className="qaSend"
+            disabled={!link.trim()}
+            aria-label="Distill in Chat"
+            onClick={() => toChat(`Distill this into its main argument, the tactics worth stealing, and what to ignore: ${link.trim()}`)}
+          >
+            <Icon name="up" />
+          </button>
         </div>
       ) : null}
       <h3 className="sec">Yours</h3>
-      {sec.yours.map((row) => (
-        <div key={row} className="cxcard">
-          <div className="row">
-            <div className="g">
-              <b>{row}</b>
-            </div>
-            <button className="fb" onClick={() => openRow(row)}>
-              Open
-            </button>
-          </div>
-        </div>
-      ))}
+      <div className="card cardPad">
+        {sec.yours.map((row) => (
+          <button key={row} className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => openRow(row)}>
+            <span className="g"><b>{row}</b></span>
+            <span className="ch">›</span>
+          </button>
+        ))}
+      </div>
       {sec.discover.length ? (
         <>
           <h3 className="sec">Discover</h3>
-          {sec.discover.map((row) => (
-            <div key={row} className="cxcard">
-              <div className="row">
-                <div className="g">
-                  <b>{row}</b>
-                </div>
-                <button className="fb" onClick={() => openRow(row)}>
-                  Open
-                </button>
-              </div>
-            </div>
-          ))}
+          <div className="card cardPad">
+            {sec.discover.map((row) => (
+              <button key={row} className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => openRow(row)}>
+                <span className="g"><b>{row}</b></span>
+                <span className="ch">›</span>
+              </button>
+            ))}
+          </div>
         </>
       ) : null}
       {sec.create ? (
-        <div className="btns">
-          <button className="gho" onClick={() => toChat(`${sec.create}: `)}>
-            {sec.create}
+        <div className="card cardPad">
+          <button className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => toChat(`${sec.create}: `)}>
+            <span className="g s">{sec.create}</span>
+            <span className="ch">›</span>
           </button>
         </div>
       ) : null}

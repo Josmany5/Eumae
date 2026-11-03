@@ -71,9 +71,9 @@ export default function AssignedPage(_props: PageProps) {
             </div>
           </div>
         ))}
-        <div className="btns">
+        <div style={{ marginTop: 10 }}>
           <button
-            className="pri soon"
+            className="fb soon"
             onClick={() => notify('Opening assigned training in Classroom comes soon. Its course has not shipped yet.')}
           >
             Open in Classroom
@@ -102,19 +102,20 @@ export default function AssignedPage(_props: PageProps) {
             aria-label="What do you need?"
             style={{ marginTop: 8 }}
           />
-          <div className="btns">
-            <button className="pri" onClick={submitAssign}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button className="fb" style={{ fontWeight: 700 }} onClick={submitAssign}>
               Assign
             </button>
-            <button className="gho" onClick={() => setAssigning(false)}>
+            <button className="fb" onClick={() => setAssigning(false)}>
               Cancel
             </button>
           </div>
         </div>
       ) : (
-        <div className="btns">
-          <button className="gho" onClick={() => setAssigning(true)}>
-            Assign work
+        <div className="card cardPad">
+          <button className="li" style={{ width: '100%', textAlign: 'left' }} onClick={() => setAssigning(true)}>
+            <span className="g s">Assign work</span>
+            <span className="ch">›</span>
           </button>
         </div>
       )}

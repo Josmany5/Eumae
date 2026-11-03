@@ -43,12 +43,12 @@ export default function PersonPage({ arg }: PageProps) {
         </div>
         <ItemMenu name={p.n} deleteLabel="Remove contact" onDelete={remove} />
         {th >= 0 ? (
-          <button className="fb" onClick={() => go('gchat', th)}>
+          <button className="lnkBtn" onClick={() => go('gchat', th)}>
             Message
           </button>
         ) : (
           <button
-            className="fb"
+            className="lnkBtn"
             onClick={() => {
               const stamp = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
               go('gchat', threadWith(i, stamp));

@@ -57,7 +57,7 @@ export default function GuildSectionPage({ arg }: PageProps) {
                     {p.n}
                   </button>
                   <button
-                    className="fb"
+                    className="lnkBtn"
                     onClick={() => {
                       const stamp = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
                       go('gchat', threadWith(pi, stamp));
@@ -78,7 +78,7 @@ export default function GuildSectionPage({ arg }: PageProps) {
                   +
                 </div>
                 <div className="g">Invite someone</div>
-                <button className="fb" onClick={() => void copyInvite(notify)}>
+                <button className="lnkBtn" onClick={() => void copyInvite(notify)}>
                   Invite
                 </button>
               </div>,
@@ -122,11 +122,11 @@ export default function GuildSectionPage({ arg }: PageProps) {
                     <div className="xs m">by @{x.by}</div>
                   </div>
                   {x.got ? (
-                    <button className="fb" onClick={() => goTab('studio')}>
+                    <button className="lnkBtn" onClick={() => goTab('studio')}>
                       Open in Studio
                     </button>
                   ) : (
-                    <button className="fb" onClick={() => take(i)}>
+                    <button className="lnkBtn" onClick={() => take(i)}>
                       Add to Studio
                     </button>
                   )}

@@ -1282,12 +1282,7 @@ input[type=checkbox]{ accent-color:var(--ac); }
 .ringC{ width:64px; height:64px; border-radius:50%; flex:none; display:grid; place-items:center; }
 .ringC i{ width:50px; height:50px; border-radius:50%; background:var(--card); display:grid; place-items:center;
   font-style:normal; font-weight:700; font-size:calc(14px + var(--fsUp, 0px)); }
-/* Dashed create box — the Console CreatePage pattern, plain. */
-.cxCreate{ border:1.5px dashed var(--hair2, var(--mut)); border-radius:16px; padding:14px; margin:12px 0;
-  background:color-mix(in srgb, var(--card) 60%, transparent); }
-.cxCreate .cxT{ font-weight:700; font-size:calc(16px + var(--fsUp, 0px)); }
-.cxCreateIn{ display:flex; gap:8px; margin-top:10px; }
-.cxCreateIn input{ flex:1; min-width:0; }
+
 /* Small stat chips under the hero. */
 .cxChips{ display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 2px; }
 .cxChip{ padding:6px 12px; border-radius:99px; background:var(--card2); color:var(--tx);

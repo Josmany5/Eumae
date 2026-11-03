@@ -1,6 +1,6 @@
 /* Classroom course — the CourseView extracted to PAGES so rail rows can
- * push it (arg = course name). Lessons tap-to-done, Quick-check quiz,
- * Continue-in-Chat via brief queue. */
+ * push it (arg = course name). Lessons with check circles, Quick-check
+ * quiz, Make rows. Learning stays in class; nothing routes to Chat. */
 
 import { useState } from 'react';
 import { useNav } from '../nav';
@@ -59,23 +59,12 @@ export default function CoursePage({ arg }: PageProps) {
                   }
                 }}
               />
-              <button
-                className="g"
-                style={{ textAlign: 'left' }}
-                onClick={() => {
-                  queueBrief(`Continue my ${name} lesson: ${l.t}`);
-                  goTab('chat');
-                }}
-              >
+              <span className="g">
                 {l.t}
                 {done ? <div className="xs m">done</div> : null}
-              </button>
+              </span>
               <ItemMenu
                 name={l.t}
-                open={() => {
-                  queueBrief(`Continue my ${name} lesson: ${l.t}`);
-                  goTab('chat');
-                }}
                 extra={done ? undefined : [{ label: 'Mark done', onClick: () => { markLessonDone(name, l.t); refresh(); } }]}
               />
             </div>
@@ -83,30 +72,28 @@ export default function CoursePage({ arg }: PageProps) {
         })}
       </div>
       <div className="card cardPad">
-        <div className="li">
-          <div className="g s">Make a quiz from this course</div>
-          <button
-            className="fb"
-            onClick={() => {
-              queueBrief(`Make a quiz from my ${name} course`);
-              goTab('chat');
-            }}
-          >
-            Make
-          </button>
-        </div>
-        <div className="li">
-          <div className="g s">Make flashcards from this course</div>
-          <button
-            className="fb"
-            onClick={() => {
-              queueBrief(`Make a set of flashcards from my ${name} course`);
-              goTab('chat');
-            }}
-          >
-            Make
-          </button>
-        </div>
+        <button
+          className="li"
+          style={{ width: '100%', textAlign: 'left' }}
+          onClick={() => {
+            queueBrief(`Make a quiz from my ${name} course`);
+            goTab('chat');
+          }}
+        >
+          <span className="g s">Make a quiz from this course</span>
+          <span className="ch">›</span>
+        </button>
+        <button
+          className="li"
+          style={{ width: '100%', textAlign: 'left' }}
+          onClick={() => {
+            queueBrief(`Make a set of flashcards from my ${name} course`);
+            goTab('chat');
+          }}
+        >
+          <span className="g s">Make flashcards from this course</span>
+          <span className="ch">›</span>
+        </button>
       </div>
       </div>
       <div>
@@ -126,22 +113,6 @@ export default function CoursePage({ arg }: PageProps) {
             </button>
           ))}
         </div>
-      </div>
-      <div className="btns">
-        <button
-          className="gho"
-          onClick={() => {
-            /* Like Distill: hand Chat the real context and go there. */
-            const next = c.les.find((l) => !isLessonDone(name, l.t));
-            queueBrief(
-              `I'm taking the ${name} course in Classroom (${p}% done). ` +
-                (next ? `My next lesson is "${next.t}". Teach it to me, one step at a time.` : 'I finished every lesson. Quiz me on the whole course.'),
-            );
-            goTab('chat');
-          }}
-        >
-          Continue in Chat
-        </button>
       </div>
       </div>
       </div>

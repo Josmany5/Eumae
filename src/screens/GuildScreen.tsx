@@ -19,6 +19,7 @@ import {
   type GuildWidgetId,
 } from '../gdash';
 import { GuildWidgetCard, GUILD_WIDGET_NAV } from '../components/shell/guildWidgets';
+import { Icon } from '../components/shell/icons';
 
 /* The Guild — the mockup's guild widget dashboard (latest rGld layer),
  * rebuilt as React on tokens.
@@ -167,7 +168,12 @@ function GuildFrontDoor({ guildName, setGuildName, refresh }: {
         </div>
       </div>
       {g.reqIn.length || unread ? (
-        <div className="card">
+        <div
+          className="card"
+          role="button"
+          style={{ cursor: 'pointer' }}
+          onClick={() => go(g.reqIn.length ? 'greq' : 'gmsg')}
+        >
           <div className="row">
             <div className="g">
               <b>Waiting on you</b>
@@ -177,42 +183,39 @@ function GuildFrontDoor({ guildName, setGuildName, refresh }: {
                 {unread ? `${unread} unread message${unread > 1 ? 's' : ''}` : ''}
               </div>
             </div>
-            {g.reqIn.length ? (
-              <button className="fb" onClick={() => go('greq')}>Review</button>
-            ) : null}
+            <span className="ch">›</span>
           </div>
         </div>
       ) : null}
-      <div className="cxCreate">
-        <div className="cxT">Create a guild</div>
-        <div className="s m" style={{ marginTop: 4 }}>A guild is your people around one thing — family, a team, a crew. Name it and it starts here.</div>
-        <div className="cxCreateIn">
-          <input
-            className="sinput"
-            placeholder="Guild name"
-            aria-label="Guild name"
-            value={guildName}
-            onChange={(e) => setGuildName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && guildName.trim()) create(); }}
-          />
-          <button className="pri" disabled={!guildName.trim()} onClick={create}>Create</button>
-        </div>
+      {/* Create a guild — Console's quick-add shape: one pill field, one
+          round button. A guild is your people around one thing. */}
+      <div className="qaBar" style={{ margin: '12px 0 4px' }}>
+        <input
+          className="qaIn"
+          placeholder="Name a new guild…"
+          aria-label="Guild name"
+          value={guildName}
+          onChange={(e) => setGuildName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && guildName.trim()) create(); }}
+        />
+        <button className="qaSend" disabled={!guildName.trim()} onClick={create} aria-label="Create guild">
+          <Icon name="up" />
+        </button>
       </div>
+      <div className="xs m">Family, a team, a crew — name it and it starts here.</div>
       {g.groups.length ? (
         <>
           <h3 className="sec">Your guilds</h3>
           <div className="cxGrid">
             {g.groups.map((gr) => (
-              <div key={gr.n} className="cxcard">
+              <div key={gr.n} className="cxcard" role="button" style={{ cursor: 'pointer' }} onClick={() => go('gchatg', gr.n)}>
                 <div className="row">
                   <div className="g">
                     <b>{gr.n}</b>
                     <div className="xs m">{gr.last || `${gr.msgs.length} messages`}</div>
                   </div>
                   {gr.un ? <span className="tag">{gr.un} new</span> : null}
-                </div>
-                <div className="btns">
-                  <button className="pri" onClick={() => go('gchatg', gr.n)}>Open guild</button>
+                  <span className="ch">›</span>
                 </div>
               </div>
             ))}
