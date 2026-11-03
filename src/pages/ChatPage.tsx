@@ -4,7 +4,7 @@
 import { fmtStamp } from '../stamp';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNav } from '../nav';
-import { getGuild, saveGuild, sendGuildMessage, sendGroupMessage, deleteThread, leaveGroup, snapshotGuild, restoreGuild } from '../guild';
+import { getGuild, saveGuild, sendGuildMessage, sendGroupMessage, deleteThread, leaveGroup, setGroupPin, snapshotGuild, restoreGuild } from '../guild';
 import { Icon } from '../components/shell/icons';
 import type { PageProps } from './index';
 import { ItemMenu } from '../components/ItemMenu';
@@ -151,10 +151,19 @@ export function GroupChatPage({ arg }: PageProps) {
   const { notify, back } = useNav();
   const name = typeof arg === 'string' ? arg : '';
   const [draft, setDraft] = useState('');
+  const [pinEdit, setPinEdit] = useState<string | null>(null);
   const [, setTick] = useState(0);
+  const refresh = () => setTick((x) => x + 1);
   const g = getGuild();
   const gr = g.groups.find((x) => x.n === name);
   if (!gr) return <div className="empty">No group here.</div>;
+  const savePin = () => {
+    if (pinEdit === null) return;
+    setGroupPin(gr.n, pinEdit);
+    setPinEdit(null);
+    refresh();
+    notify(pinEdit.trim() ? 'Pinned to the top of this guild.' : 'Pin removed.');
+  };
   const sendG = () => {
     if (sendGroupMessage(name, draft) === 'Nothing there.') return;
     setDraft('');
@@ -171,8 +180,43 @@ export function GroupChatPage({ arg }: PageProps) {
       <ImHead
         name={gr.n}
         sub={`${gr.msgs.length} messages`}
-        action={<ItemMenu name={gr.n} deleteLabel="Leave group" onDelete={leave} />}
+        action={
+          <ItemMenu
+            name={gr.n}
+            extra={[{ label: gr.pin ? 'Edit pinned note' : 'Pin a note', onClick: () => setPinEdit(gr.pin ?? '') }]}
+            deleteLabel="Leave group"
+            onDelete={leave}
+          />
+        }
       />
+      {gr.pin || pinEdit !== null ? (
+        <div className="pinNote">
+          <div className="row">
+            <span className="pinT g">📌 PINNED</span>
+            {pinEdit === null ? (
+              <button className="fb" onClick={() => setPinEdit(gr.pin ?? '')}>Edit</button>
+            ) : null}
+          </div>
+          {pinEdit !== null ? (
+            <>
+              <textarea
+                className="sinput"
+                rows={2}
+                value={pinEdit}
+                placeholder="One note everyone in this guild sees first"
+                aria-label="Pinned note"
+                onChange={(e) => setPinEdit(e.target.value)}
+              />
+              <div className="btns">
+                <button className="pri" onClick={savePin}>Save pin</button>
+                <button className="gho" onClick={() => setPinEdit(null)}>Cancel</button>
+              </div>
+            </>
+          ) : (
+            <div className="s" style={{ marginTop: 6 }}>{gr.pin}</div>
+          )}
+        </div>
+      ) : null}
       <Bubbles group msgs={gr.msgs.map(([who, text, at]) => ({ me: who === 'You', who, text, at }))} />
       <MsgBar placeholder={`Message ${gr.n}`} value={draft} onChange={setDraft} onSend={sendG} />
     </div>

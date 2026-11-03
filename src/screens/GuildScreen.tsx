@@ -3,7 +3,7 @@ import { PagedDash } from '../components/shell/PagedDash';
 import { snapshotGuildDash, restoreGuildDash } from '../gdash';
 import { undoable } from '../undo';
 import { useNav } from '../nav';
-import { getGuild } from '../guild';
+import { getGuild, createGroup } from '../guild';
 import {
   getGuildDashboard,
   removeGuildWidget,
@@ -36,6 +36,7 @@ export default function GuildScreen() {
   const { notify, go, goTab } = useNav();
   const [dash, setDash] = useState<GuildDashboard>(() => getGuildDashboard());
   const [editing, setEditing] = useState(false);
+  const [guildName, setGuildName] = useState('');
   const [headSlot, setHeadSlot] = useState<HTMLDivElement | null>(null);
   const holdTimer = useRef<number | null>(null);
 
@@ -85,6 +86,7 @@ export default function GuildScreen() {
         </div>
         <div className="dashSlot" ref={setHeadSlot} />
       </div>
+      {!editing ? <GuildFrontDoor guildName={guildName} setGuildName={setGuildName} refresh={refresh} /> : null}
       <PagedDash
         pages={dash.pages}
         names={guildPageNames()}
@@ -122,6 +124,101 @@ export default function GuildScreen() {
           />
         )}
       />
+    </div>
+  );
+}
+
+/* The dashboard front door above the widget pages: where your guilds
+ * stand, what is waiting on you, creating a guild, and the guild cards.
+ * Everything reads the real guild store; creating writes through
+ * createGroup. */
+function GuildFrontDoor({ guildName, setGuildName, refresh }: {
+  guildName: string;
+  setGuildName: (v: string) => void;
+  refresh: () => void;
+}) {
+  const { notify, go } = useNav();
+  const g = getGuild();
+  const mine = g.assigned.filter((a) => a.mine);
+  const myPct = mine.length ? Math.round(mine.reduce((s, a) => s + a.pct, 0) / mine.length) : 0;
+  const unread = g.threads.reduce((a, t) => a + (t.un || 0), 0) + g.groups.reduce((a, x) => a + (x.un || 0), 0);
+  const create = () => {
+    const msg = createGroup(guildName);
+    notify(msg);
+    if (msg === 'Group created.') {
+      setGuildName('');
+      refresh();
+    }
+  };
+  return (
+    <div>
+      <div className="card">
+        <div className="row">
+          <div className="ringC" style={{ background: `conic-gradient(var(--ac) ${myPct}%, var(--card2) ${myPct}%)` }}>
+            <i>{myPct}%</i>
+          </div>
+          <div className="g">
+            <b>Your guilds</b>
+            <div className="s m" style={{ marginTop: 2 }}>
+              {g.groups.length} groups · {g.people.length} people · {mine.length} assigned to you
+            </div>
+            <div className="xs m" style={{ marginTop: 2 }}>The ring is your assigned work, on average.</div>
+          </div>
+        </div>
+      </div>
+      {g.reqIn.length || unread ? (
+        <div className="card">
+          <div className="row">
+            <div className="g">
+              <b>Waiting on you</b>
+              <div className="s m" style={{ marginTop: 2 }}>
+                {g.reqIn.length ? `${g.reqIn.length} request${g.reqIn.length > 1 ? 's' : ''} to answer` : ''}
+                {g.reqIn.length && unread ? ' · ' : ''}
+                {unread ? `${unread} unread message${unread > 1 ? 's' : ''}` : ''}
+              </div>
+            </div>
+            {g.reqIn.length ? (
+              <button className="fb" onClick={() => go('greq')}>Review</button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      <div className="cxCreate">
+        <div className="cxT">Create a guild</div>
+        <div className="s m" style={{ marginTop: 4 }}>A guild is your people around one thing — family, a team, a crew. Name it and it starts here.</div>
+        <div className="cxCreateIn">
+          <input
+            className="sinput"
+            placeholder="Guild name"
+            aria-label="Guild name"
+            value={guildName}
+            onChange={(e) => setGuildName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && guildName.trim()) create(); }}
+          />
+          <button className="pri" disabled={!guildName.trim()} onClick={create}>Create</button>
+        </div>
+      </div>
+      {g.groups.length ? (
+        <>
+          <h3 className="sec">Your guilds</h3>
+          <div className="cxGrid">
+            {g.groups.map((gr) => (
+              <div key={gr.n} className="cxcard">
+                <div className="row">
+                  <div className="g">
+                    <b>{gr.n}</b>
+                    <div className="xs m">{gr.last || `${gr.msgs.length} messages`}</div>
+                  </div>
+                  {gr.un ? <span className="tag">{gr.un} new</span> : null}
+                </div>
+                <div className="btns">
+                  <button className="pri" onClick={() => go('gchatg', gr.n)}>Open guild</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

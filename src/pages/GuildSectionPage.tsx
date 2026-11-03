@@ -107,6 +107,7 @@ export default function GuildSectionPage({ arg }: PageProps) {
                     {x.n}
                     <div className="xs m">with {p ? p.n : 'Guild'}</div>
                   </div>
+                  <span className="tag">{x.perm === 'edit' ? 'Can edit' : 'View only'}</span>
                   <span className="m">›</span>
                 </button>
               );

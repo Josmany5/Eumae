@@ -8,6 +8,7 @@ import {
 import { getGuild } from '../guild';
 import { queueBrief } from '../studio';
 import { Icon } from '../components/shell/icons';
+import { ItemMenu } from '../components/ItemMenu';
 
 /* The Classroom - the mockup's latest rCx layer, rebuilt as React.
  *
@@ -84,30 +85,61 @@ function ClassroomRoot({ assigned, onCourse, onTutorial, onSection, toChat }: {
   onCourse: (n: string) => void; onTutorial: (n: string) => void; onSection: (n: string) => void;
   toChat: (brief: string) => void;
 }) {
-  const cont = courseProgress(CONTINUE.course);
   const toYou = assigned.filter((a) => a.mine);
+  /* Overall progress across every course — lessons done over lessons total. */
+  const totals = COURSE_ORDER.reduce(
+    (acc, n) => {
+      const c = COURSES[n];
+      if (!c) return acc;
+      return {
+        total: acc.total + c.les.length,
+        done: acc.done + c.les.filter((l) => isLessonDone(n, l.t)).length,
+      };
+    },
+    { total: 0, done: 0 },
+  );
+  const overall = totals.total ? Math.round((totals.done / totals.total) * 100) : 0;
   return (
     <div>
       <div className="screenT dupT">Classroom</div>
       <div className="s m">Learn it here - or ask in Chat and keep going.</div>
-      {/* Hero: continue where you left off. */}
+      {/* Hero: overall progress + continue where you left off. */}
       <div className="card">
-        <div className="big">{toYou.length + 1}<small>lesson{toYou.length ? 's' : ''} to continue</small></div>
-        <div className="s" style={{ marginTop: 4 }}>{CONTINUE.course} · {CONTINUE.lesson}</div>
-        <div className="bar"><i style={{ width: cont + '%' }} /></div>
+        <div className="row">
+          <div className="ringC" style={{ background: `conic-gradient(var(--ac) ${overall}%, var(--card2) ${overall}%)` }}>
+            <i>{overall}%</i>
+          </div>
+          <div className="g">
+            <b>Keep going — {CONTINUE.course}</b>
+            <div className="s m" style={{ marginTop: 2 }}>{CONTINUE.lesson}</div>
+            <div className="xs m" style={{ marginTop: 2 }}>{totals.done} of {totals.total} lessons done</div>
+          </div>
+        </div>
         <div className="btns">
           <button className="pri" onClick={() => onCourse(CONTINUE.course)}>Resume</button>
           <button className="gho" onClick={() => toChat('Continue my ' + CONTINUE.course + ' lesson')}>Continue in Chat</button>
         </div>
       </div>
-      {/* Mirror + nudge. */}
-      <div className="card">
-        <div className="wt"><Icon name="zap" /><span>Eumae noticed</span></div>
-        <div className="s" style={{ marginTop: 4 }}><b>Mirror:</b> lessons stick when they are under ten minutes. <b>Nudge:</b> Lesson 5 is eight minutes - do it before training?</div>
+      {/* Create a course — the four ways in open the course-builder chat. */}
+      <div className="cxCreate">
+        <div className="cxT">Create a course</div>
+        <div className="s m" style={{ marginTop: 4 }}>Describe it, build it from a link or upload, build it from your chats and notes — or start from scratch and build it yourself.</div>
+        <div className="btns">
+          <button className="gho" onClick={() => toChat('Create a course for me. I will describe what I want to learn.')}>Describe it</button>
+          <button className="gho" onClick={() => toChat('Create a course from a link or upload. Ask me for the link or file.')}>From a link or upload</button>
+          <button className="gho" onClick={() => toChat('Create a course from my chats and notes. Ask me which ones.')}>From my chats and notes</button>
+          <button className="gho" onClick={() => toChat('Start a new empty course from scratch so I can build it myself, lesson by lesson.')}>From scratch</button>
+        </div>
+      </div>
+      <div className="cxChips">
+        <span className="cxChip">{COURSE_ORDER.length} courses</span>
+        <span className="cxChip">{totals.done} of {totals.total} lessons done</span>
+        <span className="cxChip">{toYou.length} assigned to you</span>
+        <span className="cxChip">{DIGEST.length} in the Digest</span>
       </div>
       <h3 className="sec">Courses</h3>
       <div className="cxGrid">
-      {COURSE_ORDER.filter((n) => n !== CONTINUE.course).map((n) => (
+      {COURSE_ORDER.map((n) => (
         <CourseCard key={n} name={n} sub={courseSub(n)} onOpen={() => onCourse(n)} />
       ))}
       </div>
@@ -132,16 +164,20 @@ function ClassroomRoot({ assigned, onCourse, onTutorial, onSection, toChat }: {
       )) : <div className="s m">Nothing assigned to you.</div>}
       <h3 className="sec">Digest</h3>
       {DIGEST.map((d) => (
-        <DigestRow key={d.t} title={d.t} kind={d.k} detail={d.d} toChat={toChat} />
+        <DigestRow key={d.t} title={d.t} kind={d.k === 'VID' ? 'Video' : 'Link'} detail={d.d} toChat={toChat} />
       ))}
-      <h3 className="sec">App tutorials</h3>
+      <h3 className="sec">Eumae tutorials &amp; best practices</h3>
       <div className="card cardPad">
-        {['Using Chat', 'Using Studio', 'Using Guild'].map((t) => (
+        {Object.keys(TUTORIALS).map((t) => (
           <div key={t} className="li">
             <div className="g s">{t}</div>
             <button className="fb" onClick={() => onTutorial(t)}>Open</button>
           </div>
         ))}
+        <div className="li">
+          <div className="g s">Best practices</div>
+          <button className="fb" onClick={() => toChat('Teach me the best practices for using Eumae well')}>Ask Eumae</button>
+        </div>
       </div>
       <div className="btns">
         {SECTION_ORDER.map((s) => (
@@ -220,17 +256,34 @@ function CourseView({ name, onBack, notify, toChat, refresh, onOpenFull }: {
         {c.les.map((l) => {
           const done = isLessonDone(name, l.t);
           return (
-            <button
-              key={l.t}
-              className="sr"
-              onClick={() => { markLessonDone(name, l.t); refresh(); }}
-            >
-              <span className="g">{l.t}</span>
-              {done ? <span className="v">done</span> : null}
-              <span className="ch">›</span>
-            </button>
+            <div key={l.t} className="li">
+              <button
+                className={'ck' + (done ? ' d' : '')}
+                aria-label={done ? `${l.t} done` : `Mark ${l.t} done`}
+                onClick={() => { if (!done) { markLessonDone(name, l.t); refresh(); } }}
+              />
+              <button className="g" style={{ textAlign: 'left' }} onClick={() => toChat(`Continue my ${name} lesson: ${l.t}`)}>
+                {l.t}
+                {done ? <div className="xs m">done</div> : null}
+              </button>
+              <ItemMenu
+                name={l.t}
+                open={() => toChat(`Continue my ${name} lesson: ${l.t}`)}
+                extra={done ? undefined : [{ label: 'Mark done', onClick: () => { markLessonDone(name, l.t); refresh(); } }]}
+              />
+            </div>
           );
         })}
+      </div>
+      <div className="card cardPad">
+        <div className="li">
+          <div className="g s">Make a quiz from this course</div>
+          <button className="fb" onClick={() => toChat(`Make a quiz from my ${name} course`)}>Make</button>
+        </div>
+        <div className="li">
+          <div className="g s">Make flashcards from this course</div>
+          <button className="fb" onClick={() => toChat(`Make a set of flashcards from my ${name} course`)}>Make</button>
+        </div>
       </div>
       <div className="card">
         <b>Quick check</b>

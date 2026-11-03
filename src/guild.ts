@@ -92,6 +92,8 @@ export interface GuildGroup {
   un: number;
   last: string;
   msgs: GuildGroupMsg[];
+  /** The one pinned note at the top of the group's page. */
+  pin?: string;
   example?: boolean;
 }
 
@@ -463,6 +465,18 @@ export function deleteThread(index: number): boolean {
 }
 
 /* Leave a group — it drops off your list. */
+/* Pin (or clear, with an empty string) the group's one pinned note. */
+export function setGroupPin(name: string, pin: string): boolean {
+  const g = getGuild();
+  if (!g.groups.some((x) => x.n === name)) return false;
+  const v = pin.trim().slice(0, 240);
+  save({
+    ...g,
+    groups: g.groups.map((x) => (x.n === name ? { ...x, pin: v || undefined } : x)),
+  });
+  return true;
+}
+
 export function leaveGroup(name: string): boolean {
   const g = getGuild();
   if (!g.groups.some((x) => x.n === name)) return false;

@@ -77,44 +77,56 @@ export const PAGE_MENU: Record<TabId, MenuSection[]> = {
   ],
   guild: [
     {
+      items: [{ label: 'New guild', icon: 'pls' }],
+    },
+    {
+      heading: 'People',
       items: [
         { label: 'Contacts', icon: 'lnk' },
         { label: 'Messages', icon: 'chat' },
         { label: 'Requests', icon: 'chk' },
+      ],
+    },
+    {
+      heading: 'Work',
+      items: [
         { label: 'Assigned work', icon: 'cap' },
-        { label: 'Activity', icon: 'clk' },
         { label: 'Shared work', icon: 'lnk' },
+        { label: 'Activity', icon: 'clk' },
         { label: 'Marketplace', icon: 'str' },
       ],
     },
   ],
   classroom: [
     {
-      heading: 'Courses',
+      items: [{ label: 'New course', icon: 'pls' }],
+    },
+    {
+      heading: 'Continue',
       items: [
         { label: 'Spanish · Lesson 5', icon: 'cap' },
         { label: 'AI Engineering · Ch 3', icon: 'cap' },
       ],
     },
     {
-      heading: 'Training',
-      items: [
-        { label: 'Sales onboarding · assigned to you', icon: 'chk' },
-        { label: 'Onboarding · you assigned', icon: 'chk' },
-      ],
+      heading: 'Courses',
+      items: [{ label: 'All courses', icon: 'cap' }],
     },
     {
       heading: 'Digest',
       items: [
-        { label: 'gbrain teardown', icon: 'doc' },
-        { label: 'Speech as programming', icon: 'vid' },
+        { label: 'Videos', icon: 'vid' },
+        { label: 'Articles', icon: 'doc' },
+        { label: 'Links', icon: 'lnk' },
+        { label: 'Uploads', icon: 'upl' },
       ],
     },
     {
-      heading: 'App tutorials',
+      heading: 'More',
       items: [
-        { label: 'Using Studio', icon: 'cap' },
-        { label: 'Using Guild', icon: 'cap' },
+        { label: 'Training assigned to you', icon: 'chk' },
+        { label: 'Eumae tutorials', icon: 'cap' },
+        { label: 'Best practices', icon: 'str' },
       ],
     },
   ],

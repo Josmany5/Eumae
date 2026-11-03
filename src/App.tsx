@@ -508,6 +508,16 @@ export default function App() {
         'Speech as programming': { tab: 'classroom', page: 'cxsec', arg: 'Digest' },
         'Using Studio': { tab: 'classroom', page: 'tut', arg: 'Using Studio' },
         'Using Guild': { tab: 'classroom', page: 'tut', arg: 'Using Guild' },
+        'New course': { tab: 'classroom' },
+        'New guild': { tab: 'guild' },
+        'All courses': { tab: 'classroom', page: 'cxsec', arg: 'Courses' },
+        Videos: { tab: 'classroom', page: 'cxsec', arg: 'Digest' },
+        Articles: { tab: 'classroom', page: 'cxsec', arg: 'Digest' },
+        Links: { tab: 'classroom', page: 'cxsec', arg: 'Digest' },
+        Uploads: { tab: 'classroom', page: 'cxsec', arg: 'Digest' },
+        'Training assigned to you': { tab: 'classroom', page: 'cxsec', arg: 'Training' },
+        'Eumae tutorials': { tab: 'classroom', page: 'cxsec', arg: 'App tutorials' },
+        'Best practices': { tab: 'classroom', page: 'cxsec', arg: 'App tutorials' },
       }[label];
       if (hit) {
         const ht = hit as { tab?: TabId; page?: string; arg?: unknown };

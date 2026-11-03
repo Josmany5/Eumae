@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useNav } from '../nav';
 import { COURSES, courseProgress, isLessonDone, markLessonDone, quizRight } from '../classroom';
 import { queueBrief } from '../studio';
+import { ItemMenu } from '../components/ItemMenu';
 import type { PageProps } from './index';
 
 export default function CoursePage({ arg }: PageProps) {
@@ -40,26 +41,75 @@ export default function CoursePage({ arg }: PageProps) {
           <i style={{ width: `${p}%` }} />
         </div>
       </div>
+      <div className="courseCols">
+      <div>
       <h3 className="sec">Lessons</h3>
       <div className="card cardPad">
         {c.les.map((l) => {
           const done = isLessonDone(name, l.t);
           return (
-            <button
-              key={l.t}
-              className="sr"
-              onClick={() => {
-                markLessonDone(name, l.t);
-                refresh();
-              }}
-            >
-              <span className="g">{l.t}</span>
-              {done ? <span className="v">done</span> : null}
-              <span className="ch">›</span>
-            </button>
+            <div key={l.t} className="li">
+              <button
+                className={'ck' + (done ? ' d' : '')}
+                aria-label={done ? `${l.t} done` : `Mark ${l.t} done`}
+                onClick={() => {
+                  if (!done) {
+                    markLessonDone(name, l.t);
+                    refresh();
+                  }
+                }}
+              />
+              <button
+                className="g"
+                style={{ textAlign: 'left' }}
+                onClick={() => {
+                  queueBrief(`Continue my ${name} lesson: ${l.t}`);
+                  goTab('chat');
+                }}
+              >
+                {l.t}
+                {done ? <div className="xs m">done</div> : null}
+              </button>
+              <ItemMenu
+                name={l.t}
+                open={() => {
+                  queueBrief(`Continue my ${name} lesson: ${l.t}`);
+                  goTab('chat');
+                }}
+                extra={done ? undefined : [{ label: 'Mark done', onClick: () => { markLessonDone(name, l.t); refresh(); } }]}
+              />
+            </div>
           );
         })}
       </div>
+      <div className="card cardPad">
+        <div className="li">
+          <div className="g s">Make a quiz from this course</div>
+          <button
+            className="fb"
+            onClick={() => {
+              queueBrief(`Make a quiz from my ${name} course`);
+              goTab('chat');
+            }}
+          >
+            Make
+          </button>
+        </div>
+        <div className="li">
+          <div className="g s">Make flashcards from this course</div>
+          <button
+            className="fb"
+            onClick={() => {
+              queueBrief(`Make a set of flashcards from my ${name} course`);
+              goTab('chat');
+            }}
+          >
+            Make
+          </button>
+        </div>
+      </div>
+      </div>
+      <div>
       <div className="card">
         <b>Quick check</b>
         <div className="qz">
@@ -92,6 +142,8 @@ export default function CoursePage({ arg }: PageProps) {
         >
           Continue in Chat
         </button>
+      </div>
+      </div>
       </div>
     </div>
   );
